@@ -12,6 +12,8 @@ const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
 const { Server } = require('socket.io');
+const db = require('./db');
+const { createAuth } = require('./auth');
 
 const PORT = process.env.PORT || 3000;
 const MAX_ROOMS = +process.env.MAX_ROOMS || 50;
@@ -19,14 +21,24 @@ const TICK_MS = 50;
 const GAME_SRC = fs.readFileSync(path.join(__dirname, 'public', 'game.js'), 'utf8');
 const GAME_SCRIPT = new vm.Script(GAME_SRC, { filename: 'game.js' });
 const DIFFS = ['facil', 'normal', 'dificil'];
+const TRAINER_KEYS = makeGame().TRAINERS.map(t => t.key);
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', 1); // Render va detrás de un proxy: así req.ip y req.secure son correctos
+app.use((req, res, next) => {
+  res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin' });
+  next();
+});
+const auth = createAuth(db, { trainers: TRAINER_KEYS });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rooms.size }));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
+app.use('/api', auth.router);
+// Sin caché larga: tras cada despliegue el navegador revalida (ETag) y nunca mezcla versiones
+app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 16 * 1024 });
+io.use(auth.socketGuard);
 
 /** @type {Map<string, any>} */
 const rooms = new Map();
@@ -42,11 +54,12 @@ function newCode() {
 function roomList() {
   return [...rooms.values()].filter(r => r.state === 'lobby').map(r => ({
     code: r.code, name: r.name, n: r.seats.length, max: r.max, diff: r.diff,
-    av: (r.seats.find(s => s.peer === r.owner) || r.seats[0] || {}).av || '🧢',
+    tr: (r.seats.find(s => s.peer === r.owner) || r.seats[0] || {}).tr || '',
   }));
 }
 const broadcastRooms = () => io.emit('rooms', roomList());
-function lobbyState(r) { return { code: r.code, name: r.name, max: r.max, diff: r.diff, owner: r.owner, seats: r.seats }; }
+const publicSeats = seats => seats.map(s => ({ peer: s.peer, nick: s.nick, tr: s.tr, connected: s.connected }));
+function lobbyState(r) { return { code: r.code, name: r.name, max: r.max, diff: r.diff, owner: r.owner, seats: publicSeats(r.seats) }; }
 const emitLobby = r => io.to(r.code).emit('lobby', lobbyState(r));
 
 // Crea el motor de juego de una sala en un contexto aislado
@@ -78,9 +91,9 @@ function closeRoom(room, reason) {
 function startGame(room, opts) {
   room.state = 'game';
   room.game = makeGame(room);
-  io.to(room.code).emit('start', { seats: room.seats });
+  io.to(room.code).emit('start', { seats: publicSeats(room.seats) });
   room.game.serverCreate(
-    { diff: room.diff, humans: room.seats, timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
+    { diff: room.diff, humans: publicSeats(room.seats), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
     (t, d) => route(room, t, d)
   );
   let last = Date.now();
@@ -90,10 +103,27 @@ function startGame(room, opts) {
     try { room.game.serverTick(dt); }
     catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
     const info = room.game.serverInfo();
+    recordPlaces(room, info.places);
     if (info.over) { if (!room.endAt) room.endAt = now + 30000; else if (now > room.endAt) closeRoom(room, 'fin'); }
     else if (info.humans === 0 && !room.seats.some(s => s.connected)) closeRoom(room, 'vacía');
   }, TICK_MS);
   broadcastRooms();
+}
+
+// Apunta en la cuenta de cada jugador su puesto final (una sola vez por asiento)
+function recordPlaces(room, places) {
+  for (const [peer, place] of places) {
+    const seat = room.seats.find(s => s.peer === peer);
+    if (!seat || seat.recorded) continue;
+    seat.recorded = true;
+    db.addResult(seat.uid, place).catch(e => console.error(`[${room.code}] no se pudo guardar el resultado`, e.message));
+  }
+}
+// Asiento con los datos de la cuenta (no se fía de lo que mande el navegador)
+async function seatFor(socket) {
+  const u = socket.data.user;
+  const fresh = await db.userById(u.id).catch(() => null);
+  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), tr: (fresh || u).trainer || '', connected: true };
 }
 
 function leave(socket) {
@@ -127,32 +157,37 @@ io.on('connection', socket => {
 
   socket.on('list', () => socket.emit('rooms', roomList()));
 
-  socket.on('create', cfg => {
+  socket.on('create', async cfg => {
     if (limited() || !cfg || typeof cfg !== 'object') return;
     if (socket.data.room) leave(socket);
     if (rooms.size >= MAX_ROOMS) return socket.emit('err', 'El servidor está lleno, prueba en un rato');
+    const seat = await seatFor(socket);
+    if (!socket.connected || socket.data.room) return;
     const room = {
       code: newCode(),
       name: clean(cfg.name, 24, 'Sala'),
       max: Math.min(8, Math.max(2, cfg.max | 0 || 8)),
       diff: DIFFS.includes(cfg.diff) ? cfg.diff : 'normal',
       owner: socket.id, state: 'lobby', game: null, timer: null,
-      seats: [{ peer: socket.id, nick: clean(cfg.nick, 14, 'Entrenador'), av: clean(cfg.av, 4, '🧢'), connected: true }],
+      seats: [seat],
     };
     rooms.set(room.code, room);
     socket.join(room.code); socket.data.room = room.code;
     emitLobby(room); broadcastRooms();
   });
 
-  socket.on('join', d => {
+  socket.on('join', async d => {
     if (limited() || !d || typeof d !== 'object') return;
     const code = typeof d.code === 'string' ? d.code.toLowerCase() : '';
+    const seat = await seatFor(socket);
+    if (!socket.connected) return;
     const room = rooms.get(code);
     if (!room) return socket.emit('err', 'No existe ninguna sala con ese código');
     if (room.state !== 'lobby') return socket.emit('err', 'Esa partida ya empezó');
+    if (room.seats.some(s => s.peer === socket.id)) return;
     if (room.seats.length >= room.max) return socket.emit('err', 'La sala está llena');
     if (socket.data.room) leave(socket);
-    room.seats.push({ peer: socket.id, nick: clean(d.nick, 14, 'Entrenador'), av: clean(d.av, 4, '🧢'), connected: true });
+    room.seats.push(seat);
     socket.join(code); socket.data.room = code;
     emitLobby(room); broadcastRooms();
   });
@@ -174,7 +209,13 @@ io.on('connection', socket => {
   socket.on('disconnect', () => leave(socket));
 });
 
-if (require.main === module) {
-  server.listen(PORT, () => console.log(`Poké Tactics escuchando en el puerto ${PORT}`));
+if (process.env.RENDER && !process.env.DATABASE_URL) {
+  console.warn('AVISO: falta DATABASE_URL. Las cuentas se guardan en un archivo y se BORRARÁN en el próximo despliegue o reinicio.');
 }
-module.exports = { server, rooms };
+const ready = db.init();
+if (require.main === module) {
+  ready.then(() => {
+    server.listen(PORT, () => console.log(`Poké Tactics escuchando en el puerto ${PORT} · cuentas en ${db.kind}`));
+  }, e => { console.error('No se pudo abrir la base de datos', e); process.exit(1); });
+}
+module.exports = { server, rooms, ready };

@@ -8,6 +8,8 @@ Fangame gratuito y sin ánimo de lucro. Los sprites se cargan desde [PokeAPI/spr
 ```
 poke-tactics/
 ├── server.js          Servidor Node.js + Socket.io: salas y partidas
+├── auth.js            Cuentas: registro, login, sesiones por cookie
+├── db.js              Guarda cuentas en PostgreSQL (o en data/db.json en local)
 ├── public/
 │   ├── index.html     Interfaz del juego
 │   └── game.js        Motor del juego (lo usan el navegador Y el servidor)
@@ -22,6 +24,9 @@ poke-tactics/
   y reciben su estado. Los combates usan una semilla compartida, así que el servidor y cada jugador
   calculan exactamente el mismo resultado.
 - Si un jugador se desconecta, un bot sigue jugando por él. Las salas vacías se cierran solas.
+- **Cuentas**: hace falta usuario y contraseña para jugar. Cada cuenta guarda su entrenador
+  (estratega), sus opciones y sus estadísticas (partidas, victorias, top 4, mejor puesto).
+  Las contraseñas se guardan con scrypt y la sesión va en una cookie `HttpOnly`.
 
 ## Probarlo en tu ordenador
 
@@ -66,10 +71,23 @@ git push -u origin main
 
 Cada vez que hagas `git push` a `main`, Render vuelve a desplegar solo.
 
+### Base de datos para las cuentas (Neon, gratis)
+
+En el plan gratis de Render los archivos del servidor se borran en cada despliegue, así que las
+cuentas se guardan en una base de datos PostgreSQL de [Neon](https://neon.tech):
+
+1. Crea una cuenta en <https://neon.tech> y un proyecto nuevo (región: la más cercana a tu Render).
+2. En **Connection string** copia la URL que empieza por `postgresql://…` (con `?sslmode=require`).
+3. En Render: tu servicio → **Environment** → **Add Environment Variable**:
+   `DATABASE_URL` = la URL que copiaste. Guarda: Render redespliega solo.
+
+Las tablas se crean solas al arrancar. En tu ordenador, sin `DATABASE_URL`, las cuentas se
+guardan en `data/db.json` (no se sube a GitHub).
+
 ### A tener en cuenta con el plan gratuito
 
 - El servidor **se duerme tras 15 minutos sin visitas** y tarda ~30–50 s en despertar con la primera visita.
-- Al redesplegar o dormirse se pierden las partidas en curso (no hay base de datos).
+- Al redesplegar o dormirse se pierden las partidas en curso (las cuentas no: están en Neon).
 - Si lo juega más gente, cambia a un plan de pago en Render (o mueve el mismo código a Railway): no hay que tocar nada.
 
 ## Variables de entorno opcionales
@@ -78,8 +96,10 @@ Cada vez que hagas `git push` a `main`, Render vuelve a desplegar solo.
 |-------------|-------------|-----------------------------------|
 | `PORT`      | 3000        | Render la pone automáticamente    |
 | `MAX_ROOMS` | 50          | Máximo de salas simultáneas       |
+| `DATABASE_URL` | —        | PostgreSQL para las cuentas (Neon) |
 
 ## Aviso legal
 
 Pokémon y sus personajes son marcas de Nintendo, Game Freak y The Pokémon Company.
 Este proyecto es un fangame gratuito sin afiliación oficial. La música es original.
+Sprites de Pokémon y objetos: PokeAPI/sprites. Sprites de entrenadores: Pokémon Showdown.
