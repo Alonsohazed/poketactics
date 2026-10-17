@@ -1,0 +1,20 @@
+{
+  "name": "poke-tactics",
+  "version": "1.0.0",
+  "description": "Autochess de Pokémon estilo TFT con multijugador por salas (fangame gratuito)",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
