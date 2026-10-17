@@ -75,7 +75,7 @@ function makeGame(room) {
 }
 // Reparte los mensajes que genera el motor
 function route(room, topic, data) {
-  if (topic === 'pub' || topic === 'car') io.to(room.code).emit(topic, data);
+  if (topic === 'pub' || topic === 'car' || topic === 'cmbs') io.to(room.code).emit(topic, data);
   else if ((topic === 'priv' || topic === 'cmb') && data && data.to) io.to(data.to).emit(topic, data);
 }
 

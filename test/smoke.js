@@ -55,6 +55,32 @@ ready.then(() => server.listen(0, async () => {
   assert.strictEqual(anonErr, 'auth', 'socket sin sesión rechazado');
   anon.close();
 
+  // ---- emparejamiento al estilo TFT ----
+  {
+    const vm = require('vm');
+    const ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'public', 'game.js'), 'utf8'), ctx);
+    const E = ctx.module.exports;
+    for (let rep = 0; rep < 20; rep++) {
+      E.newGame({ auto: true, diff: 'normal' });
+      const G = E.G, ps = G.players, seen = new Map(ps.map(p => [p.id, new Set()]));
+      let last = new Map();
+      for (let round = 0; round < 7; round++) {
+        G.roundIdx = 10 + round;
+        const fights = E.makeFights(ps);
+        assert.strictEqual(fights.length, 4, '4 combates con 8 jugadores');
+        for (const f of fights) {
+          assert.notStrictEqual(last.get(f.a.id), f.b.id, 'nunca el mismo rival dos rondas seguidas');
+          seen.get(f.a.id).add(f.b.id); seen.get(f.b.id).add(f.a.id);
+          last.set(f.a.id, f.b.id); last.set(f.b.id, f.a.id); f.a.lastOpp = f.b.id; f.b.lastOpp = f.a.id;
+        }
+      }
+      for (const [, s] of seen) assert(s.size >= 6, `en 7 rondas cada uno se enfrenta a casi todos (visto ${s.size})`);
+      assert(E.possibleOpps(ps[0]).every(p => p.id !== ps[0].lastOpp), 'el último rival no sale como posible');
+    }
+  }
+
   // ---- partida ----
   const mk = cookie => io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookie } });
   const A = mk(cookieA), B = mk(cookieB);
@@ -66,6 +92,7 @@ ready.then(() => server.listen(0, async () => {
     s.on('pub', d => { st[k].pub++; st[k].ph = d.ph; st[k].rounds.add(d.ri); st[k].over = d.ov; lastPub = d; });
     s.on('priv', d => { if (d.to === s.id) st[k].priv = d; });
     s.on('cmb', d => { if (d.to === s.id) st[k].cmb++; });
+    s.on('cmbs', d => { st[k].cmbs = d.list.length; });
     s.on('err', m => console.log(k, 'err', m));
   }
   await sleep(300);
@@ -95,6 +122,8 @@ ready.then(() => server.listen(0, async () => {
   assert.strictEqual(started, 2, 'ambos recibieron start');
   assert(st.A.rounds.size >= 8, 'la partida avanza');
   assert(st.A.cmb > 0 && st.B.cmb > 0, 'cada jugador recibe su combate');
+  assert(st.A.cmbs >= 4 && st.B.cmbs >= 4, 'cada jugador recibe todos los combates para poder verlos');
+  assert(Array.isArray(st.A.priv.po), 'llegan los posibles rivales');
   assert(lastPub.pl.every(p => typeof p[12] === 'string' && p[12]), 'todos los jugadores llevan entrenador');
   B.disconnect(); await sleep(400);
   A.disconnect(); await sleep(300);
