@@ -8,7 +8,12 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node test/smoke.js",
-    "test:aug": "node test/augments.js"
+    "test:aug": "node test/augments.js",
+    "test:e2e": "playwright test",
+    "test:all": "node test/smoke.js && node test/augments.js && playwright test --grep @rapido",
+    "check": "node -e \"for(const f of ['public/augments.js','public/game.js'])require('vm').createScript(require('fs').readFileSync(f,'utf8'),{filename:f})\" && node --no-warnings --experimental-vm-modules -e \"new (require('vm').SourceTextModule)(require('fs').readFileSync('public/board3d.js','utf8'),{identifier:'board3d.js'})\" && echo sintaxis-ok",
+    "test:e2e:rapido": "playwright test --grep @rapido",
+    "test:completo": "node test/smoke.js && node test/augments.js && playwright test"
   },
   "engines": {
     "node": ">=18"
@@ -19,6 +24,8 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.83",
+    "@playwright/test": "^1.64.1",
     "socket.io-client": "^4.8.1"
   }
 }

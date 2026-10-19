@@ -190,6 +190,13 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .sideTabs{display:flex;gap:4px;margin-bottom:8px}
 .sideTabs button{flex:1;border:1px solid var(--line2);background:var(--panel3);border-radius:9px;padding:5px 6px;font-weight:900;font-size:12px;cursor:pointer;white-space:nowrap}
 .sideTabs button[data-tab="log"]{flex:0 0 38px}
+/* ventana de resultado de un aumento (Llamada al Caos, contratos) */
+.reveal{text-align:center;padding:6px 8px 2px}
+.reveal .rvIcon{font-size:64px;line-height:1;filter:drop-shadow(0 0 18px var(--rk));animation:rvPop .5s cubic-bezier(.2,1.6,.4,1)}
+.reveal h1{padding:0;margin:6px 0 8px;font-size:30px;color:var(--rk)}
+.reveal .rvKind{display:inline-block;padding:2px 12px;border-radius:999px;background:var(--rk);color:#14101e;font-weight:900;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.reveal p{margin:14px auto 18px;max-width:42ch}
+@keyframes rvPop{from{transform:scale(.2) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
 .sideTabs button[aria-selected="true"]{background:color-mix(in srgb,var(--gold) 28%,var(--panel3));border-color:var(--gold)}
 /* Lista de entrenadores: nombre, vida y retrato con un anillo que se vacía con la vida */
 .pl{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:5px;border-radius:999px 12px 12px 999px}
@@ -215,7 +222,8 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .upb b{font-size:10px;letter-spacing:-1px;color:#ffd75e}
 .upb.s3 b{color:#ffcf33;text-shadow:0 0 6px #ffb400}
 @keyframes upIn{from{transform:scale(.3);opacity:0}60%{transform:scale(1.2)}to{transform:none;opacity:1}}
-.viewInfo{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,var(--panel2));border:1px solid var(--gold);font-weight:800}
+/* «Viendo: X vs Y»: flota justo debajo del planificador de fases, por encima de todo */
+.viewInfo{position:fixed;top:calc(env(safe-area-inset-top,0px) + 114px);left:50%;transform:translateX(-50%);z-index:8;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.45);display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,var(--panel2));border:1px solid var(--gold);font-weight:800}
 .head{--hs:38px;width:var(--hs);height:var(--hs);border-radius:50%;flex:none;background:var(--panel) var(--src) no-repeat 50% 12%/190%;image-rendering:pixelated;border:2px solid var(--line2);box-shadow:inset 0 -6px 10px rgba(0,0,0,.25);display:grid;place-items:center;font-size:18px}
 .log{font-size:12px;color:var(--muted);max-height:none;overflow:auto;margin:0;padding-left:16px}
 .log li{margin-bottom:3px}
@@ -410,28 +418,36 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 @keyframes upPulse{to{transform:translateX(-50%) scale(1.18)}}
 .card .cardArt{background-size:cover;background-position:60% 40%}
 .card .cardArt::before,.card .cardArt::after{display:none}
-/* ---------- barra superior: rondas de la fase ---------- */
-.roundBar{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:12px;padding:7px 34px 15px;
-  clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,22px 100%);background:linear-gradient(180deg,#20384a,#0f1c28 70%);color:#eef2ff;
-  box-shadow:inset 0 -2px 0 #b8933e,inset 0 1px 0 rgba(255,255,255,.1)}
-.roundBar::before{content:"";position:absolute;inset:0;clip-path:inherit;pointer-events:none;background:linear-gradient(180deg,transparent 60%,rgba(184,147,62,.25));}
-.rbStage{font-family:var(--display);font-size:21px;padding-right:12px;border-right:1px solid rgba(255,255,255,.18);text-shadow:0 2px 0 #000}
-.roundBar .pills{display:flex;gap:6px}
-.roundBar .pill{position:relative;width:34px;height:34px;display:grid;place-items:center;border-radius:8px;background:none;border:0;opacity:.9}
-.roundBar .pill svg{width:26px;height:26px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.6))}
-.pill.rt-pve svg{fill:#8fd06a}.pill.rt-pvp svg{fill:#ff6a4a}.pill.rt-carousel svg{fill:#5fd6e8}
-.roundBar .pill.past{opacity:.35;filter:grayscale(.7)}
-.roundBar .pill.cur{opacity:1;background:rgba(255,215,94,.16);box-shadow:inset 0 -3px 0 #ffd75e}
-.roundBar .pill.cur::after{content:"";position:absolute;bottom:-9px;left:50%;border:5px solid transparent;border-top-color:#ffd75e;transform:translateX(-50%)}
-.augDot{position:absolute;top:-2px;right:-2px;width:9px;height:9px;transform:rotate(45deg);background:#c97bff;border:1px solid #fff}
-.rbTimer{font-family:var(--display);font-size:21px;min-width:52px;padding-left:12px;border-left:1px solid rgba(255,255,255,.18);text-align:center;text-shadow:0 2px 0 #000}
-.rbTimer::before{content:"⏱ ";font-size:14px;opacity:.8}
-.rbBar{position:absolute;left:30px;right:30px;bottom:5px;height:6px;border-radius:3px;background:rgba(0,0,0,.7);overflow:hidden}
-.rbBar b{display:block;height:100%;width:0;background:linear-gradient(90deg,#3fd0d8,#7fe8ff);transition:width .25s linear}
-.roundBar.hurry .rbBar b{background:linear-gradient(90deg,#ff5a3a,#ffb03a)}
+/* ---------- planificador de fases (estilo TFT) ---------- */
+.roundBar{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 30px 7px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 26px) 100%,26px 100%);background:linear-gradient(180deg,#1c3344,#0d1822 75%);color:#eef2ff;
+  box-shadow:inset 0 -2px 0 #b8933e,inset 0 1px 0 rgba(255,255,255,.1);min-width:300px}
+.rbTitle{font-family:var(--display);font-size:13px;letter-spacing:.03em;color:#f4e3b0;text-shadow:0 1px 0 #000;white-space:nowrap}
+.rbTitle b{color:#fff;font-weight:400}
+.roundBar .pills{display:flex;align-items:center;gap:7px}
+.roundBar .pill{position:relative;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 50% 35%,#3a5266,#142230);
+  border:2px solid #5d7286;box-shadow:0 2px 0 rgba(0,0,0,.6);opacity:1;overflow:visible}
+.roundBar .pill svg{width:17px;height:17px;filter:drop-shadow(0 1px 0 rgba(0,0,0,.7))}
+.roundBar .pill img{width:34px;height:34px;image-rendering:pixelated;margin-top:-4px;filter:drop-shadow(0 1px 1px #000)}
+.pill.rt-pve{border-color:#7fae5e}.pill.rt-pvp svg{fill:#ff7a5a}.pill.rt-carousel svg{fill:#5fd6e8}.pill.rt-pve svg{fill:#8fd06a}
+.roundBar .pill.past{opacity:.38;filter:grayscale(.8)}
+.roundBar .pill.cur{width:38px;height:38px;border-color:#ffd75e;box-shadow:0 0 0 2px rgba(255,215,94,.35),0 0 14px rgba(255,215,94,.6)}
+.roundBar .pill.cur svg{width:21px;height:21px}
+.augDot{position:absolute;top:-3px;right:-3px;width:10px;height:10px;transform:rotate(45deg);background:#c97bff;border:1px solid #fff;box-shadow:0 0 6px #c97bff}
+.rbLow{display:flex;align-items:center;gap:10px;margin-top:1px}
+.rbPhase,.rbAlive{font-size:12px;font-weight:900;padding:3px 12px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);white-space:nowrap}
+.rbPhase{color:#cfe8ff}
+.rbAlive{color:#f4e3b0}
+.rbClock{position:relative;width:40px;height:40px;display:grid;place-items:center;margin:-2px 0 -6px}
+.rbClock svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.rbClock circle{fill:none;stroke-width:4}
+.rbClock .bg{stroke:rgba(0,0,0,.65);fill:#0b1520}
+.rbClock .fg{stroke:#7fe8ff;stroke-linecap:round;transition:stroke-dashoffset .25s linear,stroke .2s}
+.rbTimer{position:relative;font-family:var(--display);font-size:16px;text-shadow:0 2px 0 #000}
+.roundBar.hurry .rbClock .fg{stroke:#ff6a3a}
 .roundBar.hurry .rbTimer{color:#ff8a5a;animation:hurry .5s ease-in-out infinite alternate}
 @keyframes hurry{to{transform:scale(1.18)}}
-.roundBar .phase{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font-size:11.5px;font-weight:800;white-space:nowrap;color:#dfe6ff;text-shadow:0 1px 2px #000}
+.roundBar .phase{display:none}
 /* Selección de aumentos: solo cartas, con el color de su rareza y un refresco debajo de cada una */
 .mbox.bare{background:none;border:0;box-shadow:none;max-width:1000px}
 .augPick{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
@@ -656,7 +672,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   /* Móvil: barra superior y tienda compactas para que el tablero y el banquillo quepan entre las dos */
   .top{gap:6px;padding:6px 8px}
   .top .stage{font-size:13px;padding:2px 8px}
-  .roundBar{padding:3px 8px 8px;gap:5px;margin:0} .rbStage{font-size:13px;padding-right:5px} .roundBar .pill{width:22px;height:22px} .roundBar .pill svg{width:16px;height:16px} .rbTimer{font-size:14px;min-width:34px;padding-left:5px} .roundBar .phase{display:none}
+  .roundBar{padding:3px 14px 5px;gap:2px;margin:0;min-width:0} .rbTitle{font-size:11px} .roundBar .pill{width:22px;height:22px} .roundBar .pill.cur{width:28px;height:28px} .roundBar .pill svg{width:13px;height:13px} .roundBar .pill img{width:26px;height:26px} .rbLow{gap:6px} .rbPhase,.rbAlive{font-size:10.5px;padding:2px 8px} .rbClock{width:32px;height:32px} .rbTimer{font-size:13px} .roundBar .phase{display:none}
   .pills{gap:2px} .pill{width:22px;height:20px;font-size:10px;border-radius:6px}
   .phase{flex:1 1 calc(100% - 190px);min-width:0;font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .top .btn{padding:5px 8px;font-size:13px} .top .btn.icon{min-width:34px;padding:5px 6px}
@@ -684,7 +700,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 <header class="top">
   <div class="brand"><span class="ball" aria-hidden="true"></span>Poké Tactics</div>
   <span class="netTag" id="netTag" hidden></span>
-  <div class="roundBar" id="roundBar"><span class="rbStage" id="stage">1-1</span><div class="pills" id="pills"></div><span class="rbTimer" id="rbTimer">·</span><i class="rbBar"><b id="rbFill"></b></i><div class="phase" id="phase"></div></div>
+  <div class="roundBar" id="roundBar"><div class="rbTitle" id="stage">Fase 1-1</div><div class="pills" id="pills"></div><div class="rbLow"><span class="rbPhase" id="rbPhase">Planificación</span><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" title="Entrenadores que siguen vivos">👤 8/8</span></div><div class="phase" id="phase"></div></div>
   <button class="btn ghost icon" id="dexBtn" title="Pokédex">📕</button>
   <button class="btn ghost icon" id="recBtn" title="Recetas de objetos">⚒️</button>
   <button class="btn ghost icon" id="muteBtn" title="Música">🔊</button>
@@ -710,6 +726,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
       <div class="sideTabs" role="tablist">
         <button role="tab" data-tab="pl" aria-selected="true" title="Entrenadores">👥 <span>Entrenadores</span></button>
         <button role="tab" data-tab="dmg" aria-selected="false" title="Registro de daño">⚔️ <span>Daño</span></button>
+        <button role="tab" data-tab="log" aria-selected="false" title="Registro de la partida: aumentos, botín, Caos…">📜</button>
       </div>
       <div class="tabBody" id="tabPl"><div id="players"></div><p class="small muted" id="plHint"></p></div>
       <div class="tabBody" id="tabDmg" hidden>
