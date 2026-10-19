@@ -10,7 +10,10 @@ import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-const MODEL_URL=d=>`https://cdn.jsdelivr.net/gh/Pokemon-3D-api/assets@main/models/opt/regular/${d}.glb`;
+// d: número de la Pokédex (carpeta regular) o 'carpeta/número' para formas especiales (mega/3, x/6, y/9…)
+const MODEL_URL=d=>`https://cdn.jsdelivr.net/gh/Pokemon-3D-api/assets@main/models/opt/${String(d).includes('/')?d:'regular/'+d}.glb`;
+// Segundo intento directamente desde GitHub (jsDelivr rechaza algunos archivos grandes)
+const MODEL_RAW=d=>`https://raw.githubusercontent.com/Pokemon-3D-api/assets/main/models/opt/${String(d).includes('/')?d:'regular/'+d}.glb`;
 const SPRITE_URL=d=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${d}.png`;
 const TAU=Math.PI*2, clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,k)=>a+(b-a)*k;
 const col=c=>new THREE.Color(c);
@@ -252,7 +255,7 @@ function wantModel(dex){
 function pump(){
  while(loading<4&&queue.length){
    const dex=queue.shift(), m=models[dex]; loading++; m.status='loading';
-   loader.load(MODEL_URL(dex),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
+   loader.load(m.retry?MODEL_RAW(dex):MODEL_URL(dex),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; if(!m.retry){ m.retry=1; m.status='queued'; queue.push(dex); pump(); return; } m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
  }
 }
 const RX={
@@ -278,7 +281,8 @@ function prepModel(m,gl,dex){
  const box=new THREE.Box3().setFromObject(root,true), size=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
  // Todos del mismo alto (como las piezas de TFT), salvo los muy anchos o largos, que se encogen para no salirse de su casilla
  const h=Math.max(size.y,1e-3), L=Math.max(size.x,size.z,1e-3);
- m.k=Math.min(1.05/h,1.3/L); m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
+ // Las serpientes enroscadas (COIL) ocupan más ancho que alto: se les deja algo más de margen
+ m.kh=1.05/h; m.k=COIL.has(dex)?Math.min(1.2/h,1.8/L):Math.min(1.05/h,1.3/L); m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
 }
 
 /* ---------- pose y movimiento por código (modelos sin animaciones) ---------- */
@@ -286,7 +290,7 @@ function prepModel(m,gl,dex){
 // (Hips, Spine, Head, LArm, Tail…) se bajan los brazos, se enrosca la cola de las serpientes y se les da un
 // vaivén suave (respirar, cabecear, mover la cola) para que no parezcan estatuas.
 const boneName=o=>o.name.replace(/^\d+\s+/,'').replace(/_\d+$/,'');
-const COIL=new Set([147,148]); // Dratini y Dragonair: cuerpo enroscado como una serpiente
+const COIL=new Set([147,148,384]); // Dratini, Dragonair y Rayquaza: cuerpo enroscado como una serpiente
 const _q=new THREE.Quaternion(), _v=new THREE.Vector3();
 function bonesOf(root){ const B={}; root.traverse(o=>{ if(o.isBone){ const n=boneName(o); if(!B[n]) B[n]=o; } }); return B; }
 function chainOf(B,re){ return Object.keys(B).filter(n=>re.test(n)).sort((a,b)=>(+(a.match(/\d+$/)||[0])[0])-(+(b.match(/\d+$/)||[0])[0])).map(n=>B[n]); }
@@ -312,9 +316,10 @@ function rigPose(root,dex){
    // Serpiente: desde la cadera, la cola se tumba en el suelo y da algo más de una vuelta en espiral
    // hacia dentro; el tronco se yergue en S y la cabeza mira al frente
    const segs=[B.Hips||tail[0],...tail].filter(Boolean), lens=segs.map(b=>{ const k=b.children.find(o=>o.isBone); return k?b.getWorldPosition(new THREE.Vector3()).distanceTo(k.getWorldPosition(new THREE.Vector3())):0; });
-   const Lt=lens.reduce((a,b)=>a+b,0)||1, r0=Lt/(Math.PI*2*1.1); let a=0, s=0;
-   segs.forEach((b,i)=>{ if(!lens[i]) return; const r=r0*(1-.35*s/Lt); a+=lens[i]/r*.5; aimBone(b,new THREE.Vector3(Math.sin(a),i?-.04:-.5,-Math.cos(a))); a+=lens[i]/r*.5; s+=lens[i]; });
-   const ns=spine.length; spine.forEach((b,i)=>{ const th=-.2+1.25*(i/Math.max(1,ns-1))**1.4; aimBone(b,new THREE.Vector3(0,Math.cos(th),Math.sin(th))); });
+   // Colas largas (Rayquaza): más vueltas, apiladas hacia arriba como un muelle
+   const Lt=lens.reduce((a,b)=>a+b,0)||1, turns=segs.length>10?2.2:1.1, r0=Lt/(Math.PI*2*turns), up=segs.length>10?.07:-.04; let a=0, s=0;
+   segs.forEach((b,i)=>{ if(!lens[i]) return; const r=r0*(1-.35*s/Lt); a+=lens[i]/r*.5; aimBone(b,new THREE.Vector3(Math.sin(a),i?-up:-.5,-Math.cos(a))); a+=lens[i]/r*.5; s+=lens[i]; });
+   const rise=[...spine,...chainOf(B,/^Neck\d*$/)], ns=rise.length; rise.forEach((b,i)=>{ const th=-.2+1.25*(i/Math.max(1,ns-1))**1.4; aimBone(b,new THREE.Vector3(0,Math.cos(th),Math.sin(th))); });
    tail.forEach((b,i)=>add(b,Y,.03,1.2,i*.5)); spine.forEach((b,i)=>add(b,X,.04,1.1,i*.4));
  } else tail.forEach((b,i)=>add(b,Y,.18+i*.03,2,i*.55));
  spine.forEach((b,i)=>{ add(b,X,.05,1.3,i*.3); add(b,Z,.03,.7,i*.4); });
@@ -322,6 +327,9 @@ function rigPose(root,dex){
  // Al andar: piernas y brazos en vaivén alterno (en los cuadrúpedos, en diagonal)
  for(const [n,ph] of [['LThigh',0],['RThigh',Math.PI],['LArm',Math.PI],['RArm',0],['LArm2',0],['RArm2',Math.PI]]) add(B[n],X,.55,4.2,ph,1);
  for(const [n,ph] of [['LLeg',.6],['RLeg',Math.PI+.6]]) add(B[n],X,.35,4.2,ph,1);
+ // Alas y apéndices (huesos Feeler): con 4 o más segmentos son alas y aletean en espejo; los cortos se mecen
+ for(const side of ['L','R']){ const ch=chainOf(B,new RegExp('^'+side+'Feeler\\d+$')); if(ch.length<2) continue; const wing=ch.length>=4, ax=side==='L'?Z:Z.clone().negate();
+   ch.forEach((bn,i)=>{ add(bn,ax,(wing?.32:.12)*(i?.45:1),wing?1.3:1.6,i*.5); if(wing) add(bn,ax,(i?.25:.5),4.6,i*.5,1); }); }
  add(B.Jaw,X,.06,1.4,1.2); for(const n of ['LThigh','RThigh']) add(B[n],X,.04,1.3,n[0]==='L'?0:Math.PI); add(B.LEar,Z,.08,2.4,0); add(B.REar,Z,.08,2.4,1);
  return proc.length?proc:null;
 }
@@ -360,18 +368,14 @@ class Actor{
    if(m.status==='ok'&&!this.model){
      if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; }
      if(this.ball){ this.body.remove(this.ball); this.ball=null; }
-     const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(m.k); holder.userData.k=m.k;
+     const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); const kk=this.fitH&&m.kh?Math.min(m.kh,m.k*1.6):m.k; holder.scale.setScalar(kk); holder.userData.k=kk;
      this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); this.mats.push(mt); } } });
      this.model=holder; this.body.add(holder); this.mixer=new THREE.AnimationMixer(inst); this.acts={};
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
      this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;
      for(const k in m.clips) if(m.clips[k]) this.acts[k]=this.mixer.clipAction(m.clips[k]);
      this.play('idle',true);
-   } else if(m.status!=='ok'&&m.status!=='fail'&&!this.ball){
-     this.ball=pokeBall(); this.body.add(this.ball);
-   } else if(m.status==='fail'&&!this.sprite){ if(this.ball){ this.body.remove(this.ball); this.ball=null; }
-     const s=new THREE.Sprite(new THREE.SpriteMaterial({map:getSpriteTex(this.dex),transparent:true,alphaTest:.3})); s.center.set(.5,.12); s.scale.set(1.9,1.9,1); this.sprite=s; this.body.add(s);
-   }
+   } else if(m.status!=='ok'&&!this.ball){ this.ball=pokeBall(); this.body.add(this.ball); } // cargando o sin modelo: Poké Ball, nunca un sprite 2D
  }
  play(name,loop){
    const a=this.acts&&this.acts[name]; if(!a){ return false; }
@@ -381,7 +385,7 @@ class Actor{
    if(this.cur&&this.cur!==a) a.crossFadeFrom(this.cur,.15,false); a.play(); this.cur=a; this.curName=name; return true;
  }
  update(spec,dt,t){
-   this.ensure();
+   this.fitH=!!spec.tac; this.ensure();
    if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star,!!spec.tac); this.star=spec.star; }
    const p=W3(spec.x,spec.y,0);
    const moving=this.lastPos&&Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z)>.004; this.moveT=moving?.15:Math.max(0,this.moveT-dt);
@@ -593,6 +597,37 @@ function updFx(f,v,F,dt){
 const upos=(F,u,h)=>{ const [x,y]=F.unitPx(u); return W3(x,y,TOP+h); };
 function killFx(v){ for(const o of [v.obj,v.ring]) if(o&&o.parent){ scene.remove(o); o.traverse(m=>{ if(m.geometry&&m.geometry!==shieldGeo) m.geometry.dispose(); if(m.material) m.material.dispose(); }); } }
 
+/* ---------- tótem de aumentos y cristales de intereses ---------- */
+// El tótem (a la izquierda del tablero) sostiene los aumentos; game.js dibuja encima sus iconos.
+// Los 5 cristales (junto al banquillo) se encienden con el oro de intereses de la ronda.
+let totem=null; const crystals=[];
+function buildProps(){
+ const g=new THREE.Group(), gold=new THREE.MeshStandardMaterial({color:'#e8b84a',metalness:.75,roughness:.3,emissive:'#4a3000',emissiveIntensity:.3});
+ const stone=new THREE.MeshStandardMaterial({color:'#3a3f5c',roughness:.7}), gem=new THREE.MeshStandardMaterial({color:'#b9a6ff',emissive:'#6a4bff',emissiveIntensity:.8,roughness:.2,metalness:.2});
+ const base=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.22,8),gold); base.position.y=.11;
+ const col=new THREE.Mesh(new THREE.CylinderGeometry(.16,.24,1.25,8),stone); col.position.y=.85;
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.24,.05,8,24),gold); ring.rotation.x=Math.PI/2; ring.position.y=1.2;
+ // Master Ball: mitad morada con dos bultos rosas y la "M", mitad blanca, franja negra y botón
+ const top=new THREE.Group(), mb=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.3,metalness:.1});
+ const up=new THREE.Mesh(new THREE.SphereGeometry(.34,28,14,0,TAU,0,Math.PI/2),mb('#6a2fb8')), dn=new THREE.Mesh(new THREE.SphereGeometry(.34,28,14,0,TAU,Math.PI/2,Math.PI/2),mb('#f4f4f4'));
+ const band=new THREE.Mesh(new THREE.CylinderGeometry(.345,.345,.05,28),mb('#15151c')), btn=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,18),mb('#f4f4f4')); btn.rotation.x=Math.PI/2; btn.position.z=.34;
+ for(const sx of [-1,1]){ const bump=new THREE.Mesh(new THREE.SphereGeometry(.09,14,10),mb('#ff6fb0')); bump.position.set(sx*.17,.21,.21); bump.scale.set(1,.7,.7); top.add(bump); }
+ const mTex=canvasTex(64,64,(g2)=>{ g2.fillStyle='#fff'; g2.font='900 46px system-ui'; g2.textAlign='center'; g2.textBaseline='middle'; g2.fillText('M',32,36); },false);
+ const mLogo=new THREE.Mesh(new THREE.PlaneGeometry(.2,.2),new THREE.MeshBasicMaterial({map:mTex,transparent:true,depthWrite:false})); mLogo.position.set(0,.2,.29); mLogo.rotation.x=-.6;
+ top.add(up,dn,band,btn,mLogo); top.position.y=1.72;
+ const halo=glowSprite('#c9a2ff',1.6); halo.position.y=1.72;
+ g.add(base,col,ring,top,halo); g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.userData.top=top; scene.add(g); totem=g;
+ const cg=new THREE.OctahedronGeometry(.26,0);
+ for(let i=0;i<5;i++){ const m=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:'#4a6c9a',emissive:'#000000',roughness:.25,metalness:.2,transparent:true,opacity:.65})); m.scale.y=1.9; const h=glowSprite('#7fe0ff',1.3); h.visible=false; const c=new THREE.Group(); c.add(m,h); c.userData={m,h}; scene.add(c); crystals.push(c); }
+}
+function stepProps(F,now){
+ if(!totem) buildProps();
+ const T=F.totem; totem.visible=!!T; if(T){ const p=W3(T.x,T.y,0); totem.position.set(p.x,TOP-.05,p.z); totem.userData.top.rotation.y=Math.sin(now*.8)*.6; totem.userData.top.position.y=1.72+Math.sin(now*2)*.05; }
+ const I=F.interest; crystals.forEach((c,i)=>{ c.visible=!!I; if(!I) return; const p=W3(I.x,I.y+i*I.dy,0); c.position.set(p.x,TOP+.25+(i<I.n?Math.sin(now*2.5+i)*.05:0),p.z);
+   const on=i<I.n, m=c.userData.m; m.material.color.set(on?'#9fe8ff':'#3a4a66'); m.material.emissive.set(on?'#2aa8ff':'#000000'); m.material.emissiveIntensity=on?1:.0; m.material.opacity=on?.95:.55; m.rotation.y=now*(on?1.4:.3); c.userData.h.visible=on; });
+}
+const totemTop=()=>totem&&totem.visible?projectV(totem.position.clone().setY(TOP+2.2)):null;
+
 /* ---------- orbes de botín ---------- */
 // Esfera brillante con halo que flota y gira; la prismática cambia de color. Al abrirla estalla en chispas de su color.
 const ORB_COL={gray:['#eef2fa','#9aa6bc','#ffffff'],gold:['#ffe27a','#ffb21f','#fff3b0'],prism:['#ff9ad8','#8fd8ff','#c6ff9c']};
@@ -706,7 +741,7 @@ function render(F){
  const fseen=new Set();
  for(const f of F.fx){ let v=fxVis.get(f); if(v===undefined){ v=makeFx(f,F); fxVis.set(f,v); } if(v){ fseen.add(f); if(!v.done) updFx(f,v,F,dt); } }
  for(const [f,v] of fxVis) if(!fseen.has(f)){ if(v) killFx(v); fxVis.delete(f); }
- stepOrbs(F.orbs,now);
+ stepOrbs(F.orbs,now); stepProps(F,now);
  stepParticles(PA,dt); stepParticles(PN,dt);
  // temblor de cámara en los impactos fuertes
  const base=camera.position.clone(); if(shake>0){ camera.position.x+=rnd(shake); camera.position.y+=rnd(shake); shake=Math.max(0,shake-dt*.6); }
@@ -736,8 +771,10 @@ function makePortrait(dex){
    const core=new THREE.Box3(); inst.traverse(o=>{ if(o.isMesh&&![].concat(o.material).some(mt=>mt.transparent)) core.expandByObject(o,true); });
    const cb=core.isEmpty()?box:core, cs=cb.getSize(new THREE.Vector3()), cc=cb.getCenter(new THREE.Vector3());
    // De la cadera a la cabeza, visto de tres cuartos: se aleja la cámara hasta que esa parte entera cabe en la imagen
-   const top=Math.max(cb.max.y,box.max.y*.9,head?head.getWorldPosition(new THREE.Vector3()).y:-1e9), h=top-cb.min.y, low=cb.min.y+h*.3;
-   const corners=[]; for(const x of [cb.min.x,cb.max.x]) for(const y of [low,top]) for(const z of [cb.min.z,cb.max.z]) corners.push(new THREE.Vector3(x,y,z));
+   // Con hueso de cabeza, el tope es la cabeza (las hojas, antenas o crestas muy altas no encogen el retrato)
+   const hy=head?head.getWorldPosition(new THREE.Vector3()).y:null, full=Math.max(cb.max.y,box.max.y*.9)-cb.min.y;
+   const top=hy!=null?Math.min(Math.max(cb.max.y,box.max.y*.9),hy+full*.22):Math.max(cb.max.y,box.max.y*.9), h=top-cb.min.y, low=cb.min.y+h*.3;
+   const hw=h*.5, corners=[]; for(const x of [Math.max(cb.min.x,cc.x-hw),Math.min(cb.max.x,cc.x+hw)]) for(const y of [low,top]) for(const z of [Math.max(cb.min.z,cc.z-hw),Math.min(cb.max.z,cc.z+hw)]) corners.push(new THREE.Vector3(x,y,z));
    const tgt=new THREE.Vector3(cc.x,(low+top)/2,cc.z), dir=new THREE.Vector3(.45,.14,.88).normalize();
    const cam=new THREE.PerspectiveCamera(30,1,.01,80), place=D=>{ cam.position.copy(tgt).addScaledVector(dir,D); cam.lookAt(tgt); cam.updateMatrixWorld(); };
    let lo=.05,hi=40; for(let i=0;i<26;i++){ const D=(lo+hi)/2; place(D); if(corners.every(p=>{ const q=p.clone().project(cam); return q.z<1&&Math.abs(q.x)<=.9&&Math.abs(q.y)<=.9; })) hi=D; else lo=D; }
@@ -749,5 +786,5 @@ function makePortrait(dex){
 // Precarga de modelos (por ejemplo, los de la tienda) para que aparezcan sin espera
 function preload(list){ for(const d of list) wantModel(d); }
 function modelStatus(dex){ return models[dex]?models[dex].status:'none'; }
-window.B3={init,resize,render,project,unproject,preload,modelStatus,setQuality,portrait,get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+window.B3={init,resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));
