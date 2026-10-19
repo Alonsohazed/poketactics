@@ -108,6 +108,31 @@ for (const [id, k] of Object.entries(HEROES)) { const { G, p } = fresh(); const 
 { const { p } = fresh(); p.board = { '0,0': E.makeInst('ditto') }; E.applyAugment(p, E.AUG_BY.diferente); const sn = E.augSnap(p).find(r => r[0] === 'diferente'); ok(sn && sn[1].includes('0,0'), 'Diferente: detecta al Pokémon sin sinergias activas'); }
 ok(!Object.values(E.AUG_BY).some(a => ['Depredadores Supremos', 'Linaje Ancestral', 'Cadena de Evolución'].includes(a.name)), 'renombrados los aumentos que chocaban con sinergias');
 
+// 8. Los aumentos de héroe solo salen en 2-1 y 3-2
+{ const { G, p } = fresh(); const seen = { early: 0, late: 0 };
+  for (const [s, k] of [[2, 'early'], [3, 'early'], [4, 'late'], [5, 'late']]) { G.round = { s, n: 2 }; for (let i = 0; i < 150; i++) for (const t of ['S', 'G', 'P']) seen[k] += E.augmentChoices(p, t).filter(id => E.AUG_BY[id].hero).length; }
+  ok(seen.early > 0, `salen héroes en las fases 2 y 3 (${seen.early})`); ok(seen.late === 0, `no salen héroes desde la fase 4 (${seen.late})`); }
+// 9. Aumentos de stats por ronda: se aplican en combate y el contador dice cuánto han dado
+const combatOf = (p, k) => { const cb = E.createCombatSnap(E.teamSnap(p), null, { s: 1, n: 1 }, { seed: 7 }); return cb.units.find(u => u.side === 0 && u.bk === k); };
+{ const { p } = fresh(); const u = E.makeInst('charmander'); p.board = { '3,0': u }; const base = combatOf(p, '3,0');
+  E.applyAugment(p, E.AUG_BY.favorito); E.resolvePick(p, p.picks[0].id, 0); for (let i = 0; i < 4; i++) event(p, 'roundStart', {});
+  const c = combatOf(p, '3,0'); ok(Math.round(c.maxHp - base.maxHp) === 60 && Math.round(c.ap - base.ap) === 30, `Pokémon Favorito: +60 de vida y +30 de poder tras 4 rondas (${Math.round(c.maxHp - base.maxHp)}, ${Math.round(c.ap - base.ap)})`);
+  ok(/Charmander.*\+60 de vida/.test(E.augProgress(p, 'favorito')), 'Pokémon Favorito: el contador dice a quién y cuánto: ' + E.augProgress(p, 'favorito')); }
+{ const { p } = fresh(); const u = E.makeInst('machop'); p.board = { '3,0': u }; const base = combatOf(p, '3,0');
+  E.applyAugment(p, E.AUG_BY.extremo); E.resolvePick(p, p.picks[0].id, 0); for (let i = 0; i < 3; i++) event(p, 'roundStart', {});
+  const c = combatOf(p, '3,0'); ok(Math.round(c.maxHp - base.maxHp) === 120 && Math.round(c.ap - base.ap) === 9, `Entrenamiento Extremo: +120 de vida y +9 de poder tras 3 rondas`);
+  p.board = {}; p.bench[0] = u; event(p, 'roundStart', {}); ok(p.augSt.extremo.n === 3, 'Entrenamiento Extremo: no cuenta rondas en el banquillo');
+  ok(/\+9% de daño, \+9 de poder y \+120 de vida/.test(E.augProgress(p, 'extremo')), 'Entrenamiento Extremo: contador con las stats: ' + E.augProgress(p, 'extremo')); }
+{ const { p } = fresh(); p.board = { '3,0': E.makeInst('squirtle') }; const base = combatOf(p, '3,0');
+  E.applyAugment(p, E.AUG_BY.entreno_diario); for (let i = 0; i < 5; i++) event(p, 'win', {}); const c = combatOf(p, '3,0');
+  ok(Math.abs(c.maxHp / base.maxHp - 1.05) < .001, 'Entrenamiento Diario: +5% de vida tras 5 victorias'); ok(/\+5% de vida y de daño/.test(E.augProgress(p, 'entreno_diario')), 'Entrenamiento Diario: contador'); }
+{ const { p } = fresh(); const u = E.makeInst('abra'); p.board = { '3,0': u };
+  E.applyAugment(p, E.AUG_BY.entreno_combate); E.resolvePick(p, p.picks[0].id, 0); for (let i = 0; i < 2; i++) event(p, 'roundEnd', {});
+  ok(u.stk.ad === 6 && u.stk.hp === 40, 'Entrenamiento de Combate: +6 de ataque y +40 de vida permanentes'); ok(/\+6 de ataque y \+40 de vida/.test(E.augProgress(p, 'entreno_combate')), 'Entrenamiento de Combate: contador'); }
+{ const { p } = fresh(); p.board = { '3,0': E.makeInst('abra') }; const base = combatOf(p, '3,0'); E.applyAugment(p, E.AUG_BY.h_alakazam); for (let i = 0; i < 3; i++) event(p, 'roundStart', {});
+  ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 12, 'Fuerza Creciente: +12 de poder tras 3 rondas'); }
+ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite');
+
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');

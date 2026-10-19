@@ -1991,7 +1991,7 @@ function drawTotemIcons(){
  ctx.save(); ctx.fillStyle='rgba(6,8,18,.85)'; rrPath(ctx,x0,y0,w,sz+6,5); ctx.fill(); ctx.strokeStyle='rgba(255,215,94,.7)'; ctx.lineWidth=1.5; ctx.stroke();
  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`${sz*.7}px system-ui`;
  if(!list.length){ ctx.fillStyle='#ffd75e'; ctx.font=`900 ${sz*.7}px Nunito,system-ui`; ctx.fillText('?',tt[0],y0+sz/2+3); }
- list.forEach((a,i)=>{ const cx=x0+4+i*(sz+3)+sz/2, cy=y0+3+sz/2, col={S:'#c9d3e2',G:'#f4c04e',P:'#c97bff'}[a.tier]; ctx.fillStyle='#141a30'; ctx.fillRect(cx-sz/2,cy-sz/2,sz,sz); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.strokeRect(cx-sz/2+1,cy-sz/2+1,sz-2,sz-2); ctx.fillStyle='#fff'; ctx.fillText(a.icon,cx,cy+1); hudAugs.push({id:a.id,x:cx,y:cy,s:sz}); });
+ list.forEach((a,i)=>{ const cx=x0+4+i*(sz+3)+sz/2, cy=y0+3+sz/2, col={S:'#c9d3e2',G:'#f4c04e',P:'#c97bff'}[a.tier]; ctx.fillStyle='#141a30'; ctx.fillRect(cx-sz/2,cy-sz/2,sz,sz); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.strokeRect(cx-sz/2+1,cy-sz/2+1,sz-2,sz-2); const im=augImgEl(a); if(im) ctx.drawImage(im,cx-sz*.42,cy-sz*.42,sz*.84,sz*.84); else { ctx.fillStyle='#fff'; ctx.fillText(a.icon,cx,cy+1); } hudAugs.push({id:a.id,x:cx,y:cy,s:sz}); });
  ctx.restore();
 }
 function drawBoardTrainers(){
@@ -2193,7 +2193,7 @@ function tipHTML(spec){
    if(I.comp) h+=`<div class="units">Combina con: ${ORDER.map(o=>{ const r=ITEMS[combineKey(key,o)]; return `${ITEMS[o].name} → <b>${r.name}</b>`; }).join('<br>')}</div>`;
    return h;
  }
- if(type==='aug'){ const a=AUG_BY[key]; if(!a) return ''; const pg=G&&G.me&&G.me.augments.includes(key)?(G.mirror?(G.me.augUi||{})[key]:augProgress(G.me,key)):''; return `<h4>${a.icon} ${a.name}</h4><div class="scope">${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</div><div>${a.desc}</div>${pg?`<div class="units">${esc(pg)}</div>`:''}`; }
+ if(type==='aug'){ const a=AUG_BY[key]; if(!a) return ''; const pg=G&&G.me&&G.me.augments.includes(key)?(G.mirror?(G.me.augUi||{})[key]:augProgress(G.me,key)):''; return `<h4>${augIcon(a,'augTipIco')} ${a.name}</h4><div class="scope">${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</div><div>${a.desc}</div>${pg?`<div class="units">${esc(pg)}</div>`:''}`; }
  return '';
 }
 let tipOn=false, tipCanvas=null;
@@ -2601,13 +2601,17 @@ function upBadge(p){
  return now-r.t<UP_MS?`<span class="upb s${star}" title="Subió un Pokémon a ${star} estrellas">${portraitImg(dex)}<b>${'★'.repeat(star)}</b></span>`:'';
 }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
+// Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
+const augIcon=(a,cls)=>a.img?`<img class="augImg${cls?' '+cls:''}" src="${a.img}" alt="" data-fb="${esc(a.icon)}">`:a.icon;
+const AUG_IMGS={};
+function augImgEl(a){ if(!a.img||HEADLESS) return null; let im=AUG_IMGS[a.id]; if(!im){ im=AUG_IMGS[a.id]=new Image(); im.crossOrigin='anonymous'; im.src=a.img; } return im.complete&&im.naturalWidth?im:null; }
 function renderAugs(){
  const list=viewedPlayer().augments.map(id=>AUG_BY[id]).filter(Boolean), bar=$('augBar'), box=$('augList');
  $('augWrap').innerHTML=''; bar.hidden=true; if(!list.length&&!box.hidden) box.innerHTML='';
  document.getElementById('boardWrap').style.setProperty('--augTop',($('items').offsetHeight+10)+'px');
- bar.innerHTML=list.map(a=>`<span class="aug tier${a.tier}" data-tip="aug:${a.id}">${a.icon}</span>`).join('');
+ bar.innerHTML=list.map(a=>`<span class="aug tier${a.tier}" data-tip="aug:${a.id}">${augIcon(a)}</span>`).join('');
  const P=viewedPlayer(), prog=id=>P===G.me&&G.mirror?(G.me.augUi||{})[id]||'':augProgress(P,id);
- box.innerHTML='<h4>Aumentos</h4>'+list.map(a=>`<div class="augRow tier${a.tier}" data-tip="aug:${a.id}"><span class="aug tier${a.tier}">${a.icon}</span><span><b>${esc(a.name)}</b><small>${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</small>${prog(a.id)?`<em>${esc(prog(a.id))}</em>`:''}</span></div>`).join('')
+ box.innerHTML='<h4>Aumentos</h4>'+list.map(a=>`<div class="augRow tier${a.tier}" data-tip="aug:${a.id}"><span class="aug tier${a.tier}">${augIcon(a)}</span><span><b>${esc(a.name)}</b><small>${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</small>${prog(a.id)?`<em>${esc(prog(a.id))}</em>`:''}</span></div>`).join('')
    +`<div class="augMeta">${P.streak>=2?`🔥 Racha de ${P.streak} victorias`:P.streak<=-2?`🧊 Racha de ${-P.streak} derrotas`:'Sin racha'} · Nivel ${P.level} · ${P.gold} de oro</div>`;
 }
 function renderPlayers(){
@@ -2761,7 +2765,7 @@ function showAugment(){
  const choices=me.augChoices.map(id=>AUG_BY[id]).filter(Boolean), rr=me.augRR||[0,0,0];
  NET.augKey=me.augChoices.join()+'|'+rr.join();
  // Solo las cartas: cada una con el color de su rareza y su botón de refresco debajo
- openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${a.icon}</span><b>${esc(a.name)}</b><span class="ac2Desc${a.desc.length>150?' long':''}">${esc(a.desc)}</span><span class="ac2Tier">${TIER_NAME[a.tier]}</span></button>
+ openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${augIcon(a)}</span><b>${esc(a.name)}</b><span class="ac2Desc${a.desc.length>150?' long':''}">${esc(a.desc)}</span><span class="ac2Tier">${TIER_NAME[a.tier]}</span></button>
    <button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
  $('mbox').querySelectorAll('.augCard2').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });
@@ -2996,6 +3000,6 @@ function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.
 
 if(HEADLESS){ module.exports={serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
-  AUG_BY,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
+  AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js
   TRAITS,PRISM,FORGE_OF,tierOf,emblemCountsOf,useItem,combineBench,makeCombatUnit,lootTrack,growPotential,boardUnits}; } else boot();

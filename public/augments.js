@@ -267,7 +267,7 @@ AG({id:'monotipo',tier:'P',cat:'trait',tags:['trait'],req:p=>elemTraitsOf(p).len
 AG({id:'favorito',tier:'G',cat:'carry',tags:['carry'],req:p=>boardUnits(p).length>0,name:'Pokémon Favorito',icon:'💝',desc:'Elige un Pokémon de tu tablero: +30 de poder y gana +15 de vida permanente por cada ronda que siga en tu tablero.',
  on:{select:c=>c.offer('Pokémon Favorito','Elige a tu favorito',boardUnits(c.p).slice(0,4).map(u=>({t:`${nameOf(DEF[u.defId],u.star)} ${'★'.repeat(u.star)}`,i:'💝',d:'',v:String(u.uid)}))),
   pick:c=>{ c.st.uid=+c.d.v; c.say('favorito elegido'); }, roundStart:c=>{ if(c.st.uid&&boardKeyOf(c.p,c.st.uid)) c.st.n=Math.min(40,(c.st.n||0)+1); }},
- combat:(us,prm)=>{ const u=us.find(x=>x.bk===prm[0]); if(u) boost(u,{ap:30,hpf:15*prm[1]}); },snap:c=>{ const k=c.st.uid&&boardKeyOf(c.p,c.st.uid); return k?[k,c.st.n||0]:null; },ui:c=>`Vida acumulada: +${15*(c.st.n||0)}`});
+ combat:(us,prm)=>{ const u=us.find(x=>x.bk===prm[0]); if(u) boost(u,{ap:30,hpf:15*prm[1]}); },snap:c=>{ const k=c.st.uid&&boardKeyOf(c.p,c.st.uid); return k?[k,c.st.n||0]:null; },ui:c=>c.st.uid?`${augUnitName(c.p,c.st.uid)}: +30 de poder y +${15*(c.st.n||0)} de vida (${c.st.n||0} rondas)`:'Sin elegir'});
 AG({id:'academia',tier:'G',cat:'evo',tags:['reroll','evo'],name:'Academia Pokémon',icon:'🏫',desc:'Tus Pokémon de coste 1-2 ganan +15% de vida y daño por cada estrella por encima de 1.',
  combat:us=>{ for(const u of us) if(u.cost<=2&&u.star>1) boost(u,{hp:.15*(u.star-1),ad:.15*(u.star-1)}); }});
 AG({id:'hiper_carry',tier:'P',cat:'carry',tags:['carry'],req:p=>boardUnits(p).length>0,name:'Mega Investigación',icon:'💠',desc:'Elige un Pokémon de tu tablero: +35% de daño, +35 de poder y +20% de velocidad de ataque. El resto de tu equipo pierde un 8% de vida.',
@@ -278,9 +278,9 @@ AG({id:'apoyo',tier:'G',cat:'carry',tags:['Sanador','carry'],name:'Apoyo Incondi
 AG({id:'cadena_evo',tier:'G',cat:'evo',tags:['evo'],name:'Herencia Elemental',icon:'⛓️',desc:'Cada vez que un Pokémon sube de estrellas, tu equipo gana un bonus permanente según su tipo (Fuego daño, Agua maná, Planta vida, Eléctrico velocidad, Psíquico poder; otros, defensa). Máx. 15.',
  on:{starUp:c=>{ const st=c.st; if((st.n||0)>=15) return; st.n=(st.n||0)+1; const t=DEF[c.d.key].traits.find(x=>ELEM_TRAITS.includes(x))||'Normal'; const k={Fuego:'ad',Agua:'mana',Planta:'hp',Eléctrico:'as','Psíquico':'ap'}[t]||'df'; st[k]=(st[k]||0)+1; c.say(`bonus de ${t}`); }},
  combat:(us,b)=>{ for(const u of us) boost(u,{ad:.02*(b.ad||0),mana:3*(b.mana||0),hp:.02*(b.hp||0),as:.02*(b.as||0),ap:3*(b.ap||0),df:2*(b.df||0)}); },
- snap:c=>c.st.n?{ad:c.st.ad||0,mana:c.st.mana||0,hp:c.st.hp||0,as:c.st.as||0,ap:c.st.ap||0,df:c.st.df||0}:null,ui:c=>`Evoluciones: ${c.st.n||0}/15`});
+ snap:c=>c.st.n?{ad:c.st.ad||0,mana:c.st.mana||0,hp:c.st.hp||0,as:c.st.as||0,ap:c.st.ap||0,df:c.st.df||0}:null,ui:c=>{ const s=c.st, t=[['ad',2,'% de daño'],['mana',3,' de maná'],['hp',2,'% de vida'],['as',2,'% de vel. de ataque'],['ap',3,' de poder'],['df',2,' de defensa y resistencia']].filter(([k])=>s[k]).map(([k,m,x])=>`+${m*s[k]}${x}`); return `Tu equipo: ${t.length?t.join(', '):'aún nada'} (${s.n||0}/15)`; }});
 AG({id:'entreno_diario',tier:'S',cat:'hybrid',tags:['win'],name:'Entrenamiento Diario',icon:'🏋️',desc:'Cada victoria da a tu equipo +1% de vida y +1% de daño permanentes (máx. 15).',
- on:{win:c=>{ c.st.n=Math.min(15,(c.st.n||0)+1); }},combat:(us,n)=>{ for(const u of us) boost(u,{hp:.01*n,ad:.01*n}); },snap:c=>c.st.n||null,ui:c=>`Entrenamiento: ${c.st.n||0}/15`});
+ on:{win:c=>{ c.st.n=Math.min(15,(c.st.n||0)+1); }},combat:(us,n)=>{ for(const u of us) boost(u,{hp:.01*n,ad:.01*n}); },snap:c=>c.st.n||null,ui:c=>`Tu equipo: +${c.st.n||0}% de vida y de daño (${c.st.n||0}/15)`});
 AG({id:'coleccionista',tier:'S',cat:'econ',tags:['reroll'],name:'Coleccionista',icon:'📒',desc:'Al empezar cada ronda: +1 de oro si tienes 6 especies distintas o más, +2 si tienes 9 o más.',
  on:{roundStart:c=>{ const n=ownedSpecies(c.p).size; const g=n>=9?2:n>=6?1:0; if(g) c.p.gold+=g; }},ui:c=>`Especies: ${ownedSpecies(c.p).size}`});
 AG({id:'dominio',tier:'G',cat:'trait',tags:['trait'],name:'Dominio Elemental',icon:'🌀',desc:'La primera vez que un tipo llega a su 2.º nivel al empezar un combate, eliges: su emblema, 8 de oro o un objeto completo (2 veces).',
@@ -293,8 +293,8 @@ AG({id:'poder_prohibido',tier:'G',cat:'risk',name:'Poder Prohibido',icon:'☠️
  on:{select:c=>{ c.st.k=5; }, roundEnd:c=>{ if(c.st.k>0) c.st.k--; }},combat:(us,k)=>{ for(const u of us) boost(u,{dmg:k>2?.3:-.15}); },snap:c=>c.st.k>0?c.st.k:null,ui:c=>c.st.k>2?`Poder: ${c.st.k-2} combates`:c.st.k>0?`Debilidad: ${c.st.k} combates`:'Terminado'});
 AG({id:'extremo',tier:'S',cat:'risk',tags:['carry'],req:p=>boardUnits(p).length>0,name:'Entrenamiento Extremo',icon:'🥊',desc:'Elige un Pokémon: cada ronda gana +3% de daño, +3 de poder y +40 de vida permanentes (máx. 10). Coste: −1 de oro por ronda.',
  on:{select:c=>c.offer('Entrenamiento Extremo','¿A quién entrenas?',boardUnits(c.p).slice(0,4).map(u=>({t:`${nameOf(DEF[u.defId],u.star)} ${'★'.repeat(u.star)}`,i:'🥊',d:'',v:String(u.uid)}))),
-  pick:c=>{ c.st.uid=+c.d.v; c.p.mods.income-=1; }, roundStart:c=>{ if(c.st.uid) c.st.n=Math.min(10,(c.st.n||0)+1); }},
- combat:(us,prm)=>{ const u=us.find(x=>x.bk===prm[0]); if(u) boost(u,{ad:.03*prm[1],ap:3*prm[1],hpf:40*prm[1]}); },snap:c=>{ const k=c.st.uid&&boardKeyOf(c.p,c.st.uid); return k?[k,c.st.n||0]:null; },ui:c=>`Entrenamiento: ${c.st.n||0}/10`});
+  pick:c=>{ c.st.uid=+c.d.v; c.p.mods.income-=1; }, roundStart:c=>{ if(c.st.uid&&boardKeyOf(c.p,c.st.uid)) c.st.n=Math.min(10,(c.st.n||0)+1); }},
+ combat:(us,prm)=>{ const u=us.find(x=>x.bk===prm[0]); if(u) boost(u,{ad:.03*prm[1],ap:3*prm[1],hpf:40*prm[1]}); },snap:c=>{ const k=c.st.uid&&boardKeyOf(c.p,c.st.uid); return k?[k,c.st.n||0]:null; },ui:c=>{ const n=c.st.n||0; return c.st.uid?`${augUnitName(c.p,c.st.uid)}: +${3*n}% de daño, +${3*n} de poder y +${40*n} de vida (${n}/10)`:'Sin elegir'; }});
 
 // ===== Misiones =====
 AG({id:'proyecto_mew',tier:'P',cat:'quest',tags:['trait'],name:'Proyecto Mew',icon:'🧬',desc:'Misión: al empezar un combate con 4 tipos distintos en el tablero → 6 de oro; con 6 → un objeto completo; con 8 → un Mewtwo.',
@@ -327,6 +327,8 @@ AG({id:'forja_portatil',tier:'P',cat:'rules',name:'Forja Portátil',icon:'⚒️
 
 /* ---------- Aumentos de héroe: te dan el Pokémon y potencian solo a esa especie (y sus evoluciones) ---------- */
 const isHero=(u,k)=>!!u.d&&u.d.key===k;
+// Nombre del Pokémon que sigue un aumento (por uid), para los contadores
+const augUnitName=(p,uid)=>{ const u=allUnits(p).find(x=>x.uid===uid); return u?`${nameOf(DEF[u.defId],u.star)} ${'★'.repeat(u.star)}`:'(ya no está)'; };
 // Da un Pokémon de n estrellas sacando del pool las copias que haría falta juntar
 function giveStar(p,k,star,drawn){ const need=Math.pow(3,star-1)-(drawn?1:0); if(G.pool&&k in G.pool) G.pool[k]=Math.max(0,G.pool[k]-need); const u=makeInst(k); u.star=star; if(p.bench.some(x=>!x)) addUnitToBench(p,u); else { p.gold+=DEF[k].cost*Math.pow(3,star-1); note(p,`Banquillo lleno: ${DEF[k].name} se convirtió en oro`); } }
 const HERO=(o,k,n,star)=>AG(Object.assign({cat:'carry',w:.8},o,{tags:['carry','hero'],hero:k,on:Object.assign({select:c=>{ if(star>1) giveStar(c.p,k,star); else for(let i=0;i<n;i++){ if(G.pool&&G.pool[k]>0) G.pool[k]--; giveUnitTo(c.p,k); } c.say(`recibes ${n>1?n+' × ':''}${nameOf(DEF[k],star||1)}`); }},o.on||{})}));
@@ -338,7 +340,7 @@ HERO({id:'h_gyarados',tier:'P',name:'El Elegido',icon:'🐉',desc:'Recibes un Gy
 HERO({id:'h_clefable',tier:'P',name:'Precisión Lunar',icon:'🌙',desc:'Recibes 2 Cleffa. Las habilidades de tu línea de Clefable pueden ser críticas, con +50% de prob. crítica, +30% de daño crítico y +25 de poder.',
  combat:us=>{ for(const u of heroes(us,'cleffa')){ u.critAbil=true; u.critC+=.5; u.critM+=.3; u.ap+=25; } }},'cleffa',2);
 HERO({id:'h_alakazam',tier:'G',name:'Fuerza Creciente',icon:'🥄',desc:'Recibes 2 Abra. Tu línea de Alakazam gana +4 de poder permanente por cada ronda que pase y +6 de poder cada vez que lanza su habilidad en combate.',
- on:{roundStart:c=>{ c.st.n=(c.st.n||0)+1; }},snap:c=>c.st.n||0,ui:c=>`Poder acumulado: +${4*(c.st.n||0)}`,
+ on:{roundStart:c=>{ c.st.n=(c.st.n||0)+1; }},snap:c=>c.st.n||0,ui:c=>`Tu línea de Alakazam: +${4*(c.st.n||0)} de poder permanente y +6 por cada lanzamiento`,
  combat:(us,n)=>{ for(const u of heroes(us,'abra')){ u.ap+=4*(+n||0); u.castAp=(u.castAp||0)+6; } }},'abra',2);
 HERO({id:'h_raichu',tier:'G',name:'¡Emocionado!',icon:'⚡',desc:'Recibes 2 Pichu. Tu línea de Raichu empieza con +15% de vel. de ataque y, cada vez que consigue una baja, se emociona: +100% de vel. de ataque durante 3 s.',
  combat:(us,prm,cb,side)=>{ const hs=heroes(us,'pichu'); if(!hs.length) return; for(const u of hs) boost(u,{as:.15}); addKillHook(cb,side,(cb2,src)=>{ if(src&&isHero(src,'pichu')&&!src.dead){ src.rushMul=Math.max(src.rushT>0?src.rushMul||1:1,2); src.rushT=3; fxText(cb2,src,'¡Emocionado!','#ffe066'); } }); }},'pichu',2);
@@ -367,7 +369,7 @@ AG({id:'entreno_combate',tier:'S',cat:'carry',tags:['carry'],req:p=>boardUnits(p
  on:{select:c=>c.offer('Entrenamiento de Combate','Elige a quién entrenar',boardUnits(c.p).slice(0,4).map(u=>({t:`${nameOf(DEF[u.defId],u.star)} ${'★'.repeat(u.star)}`,i:'🏋️',d:'',v:String(u.uid)}))),
   pick:c=>{ c.st.uid=+c.d.v; c.say('alumno elegido'); },
   roundEnd:c=>{ const k=c.st.uid&&boardKeyOf(c.p,c.st.uid); if(!k) return; const u=c.p.board[k]; u.stk.ad+=3; u.stk.hp+=20; c.st.n=(c.st.n||0)+1; }},
- ui:c=>c.st.uid?`Entrenado: +${3*(c.st.n||0)} de ataque y +${20*(c.st.n||0)} de vida`:'Sin elegir'});
+ ui:c=>c.st.uid?`${augUnitName(c.p,c.st.uid)}: +${3*(c.st.n||0)} de ataque y +${20*(c.st.n||0)} de vida permanentes`:'Sin elegir'});
 
 /* ---------- Llamada al Caos ---------- */
 // Tabla ponderada de resultados: cada uno con requisito y efecto; algunos con coste diferido (maldiciones)
@@ -424,7 +426,8 @@ function augWeight(p,a){
 }
 function augmentChoices(p,tier,n=3){
  const groups=new Set(p.augments.map(id=>AUG_BY[id]&&AUG_BY[id].ex).filter(Boolean));
- let pool=AUGS.filter(a=>a.tier===tier&&!p.augments.includes(a.id)&&!(a.ex&&groups.has(a.ex))&&(!a.req||a.req(p)));
+ // Los aumentos de héroe solo salen en 2-1 y 3-2: después ya estás comprometido con tu estilo de juego
+ let pool=AUGS.filter(a=>a.tier===tier&&!p.augments.includes(a.id)&&!(a.ex&&groups.has(a.ex))&&(!a.req||a.req(p))&&!(a.hero&&G&&G.round&&G.round.s>=4));
  const out=[]; const cats=new Set();
  while(out.length<n&&pool.length){
    // Ruleta ponderada; se evita repetir categoría mientras haya alternativas
@@ -445,3 +448,8 @@ function applyAugment(p,a){
 function augProgress(p,id){ const def=AUG_BY[id]; if(!def||!def.ui) return ''; try{ return def.ui(augCtx(p,def)); }catch(e){ return ''; } }
 // Sinergias que encaja un aumento con lo que tiene el jugador (para la tarjeta de la oferta)
 function augFits(p,a){ const c=traitCounts(p); return a.tags.filter(t=>TRAITS[t]&&c[t]); }
+
+
+// Sprite de cada aumento: objeto de PokeAPI, Pokémon (número) o medalla (b + número). El emoji queda de reserva.
+const AUG_IMG={"huevo":"mystery-egg","paga_extra":"nugget","fondo_emergencia":"revive","ahorro_profesor":"coin-case","reserva_balls":"premier-ball","crianza":"oval-stone","investigacion_campo":"poke-radar","equipo_cria":"destiny-knot","prodigio":"exp-share","crecimiento":"exp-candy-xl","impulso":"x-speed","revancha":"red-card","emb_elemental":"berry-pouch","combustion":"fire-stone","corriente":"water-stone","fotosintesis":"leaf-stone","sobrecarga":"thunder-stone","nocturnos":"dusk-stone","supervivientes":"max-potion","entreno_diario":"power-weight","coleccionista":"pokemon-box-link","extremo":"macho-brace","pacto_cruel":"black-sludge","pandora":"zygarde-cube","ticket_dorado":"rainbow-pass","entreno_combate":"power-anklet","h_dusknoir":355,"amuleto2":"amulet-coin","banco_rocket":"gold-teeth","comerciante_trigal":"relic-gold","inversion":"pearl","intercambio_eq":"old-amber","paciencia_evo":"everstone","investigacion_fin":"silph-scope","profesor_pokemon":"rare-candy","evolucion_temprana":"miracle-seed","especialista":"repeat-ball","insignias":"b1","camino_campeon":"bicycle","regalo_cumple":"sweet-heart","invicto":"dire-hit","rivalidad":"vs-seeker","racha_dorada":"comet-shard","regreso":"max-revive","voluntad":"iron","emb_clase":"ability-capsule","medalla2":"bottle-cap","concentracion":"mind-plate","espectro":"spooky-plate","ultima_linea":"stone-plate","formacion_kanto":"town-map","relampago":"quick-ball","depredadores":"sharp-beak","cazadores":"dusk-ball","favorito":"luxury-ball","academia":"tm-case","apoyo":"heal-ball","cadena_evo":"zap-plate","dominio":"prism-scale","pacto_rocket":"card-key","poder_prohibido":"adrenaline-orb","llamada_caos":"metronome","aguante":"focus-band","ultraball":"ultra-ball","diferente":"odd-incense","h_alakazam":65,"h_raichu":26,"h_machamp":68,"h_lucario":448,"h_charizard":6,"h_meowth":52,"h_ditto":132,"amuleto3":"big-nugget","mercado_negro":"smoke-ball","laboratorio_evo":"dna-splicers","expedicion":"lustrous-orb","maestro":"cherish-ball","ultima_ball":"poke-ball","emb_doble":"b2","legado_arceus":"blank-plate","linaje":"draco-plate","monotipo":"shiny-stone","hiper_carry":"reveal-glass","proyecto_mew":151,"campeon_sinnoh":"adamant-orb","equipo_imposible":"star-piece","caos_absoluto":"griseous-orb","corona_maldita":"relic-crown","master":"master-ball","forja_portatil":"hard-stone","h_gengar":94,"h_gyarados":130,"h_clefable":36};
+for(const a of AUGS){ const v=AUG_IMG[a.id]; if(v!=null) a.img=typeof v==='number'?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${v}.png`:/^b\d+$/.test(v)?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${v.slice(1)}.png`:`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${v}.png`; }
