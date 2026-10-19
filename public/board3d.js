@@ -251,7 +251,7 @@ function wantModel(dex){
 function pump(){
  while(loading<4&&queue.length){
    const dex=queue.shift(), m=models[dex]; loading++; m.status='loading';
-   loader.load(MODEL_URL(dex),gl=>{ loading--; try{ prepModel(m,gl); m.status='ok'; }catch(e){ m.status='fail'; } pump(); },undefined,()=>{ loading--; m.status='fail'; pump(); });
+   loader.load(MODEL_URL(dex),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
  }
 }
 const RX={
@@ -262,15 +262,61 @@ const RX={
  ko:[/down|faint|\bko\b|_ko|dead|die|lose/i],
 };
 const BAD_IDLE=/dizzy|faint|down|\bko\b|_ko|sleep|dead|die|lose|damage|hurt/i;
-function prepModel(m,gl){
+function prepModel(m,gl,dex){
  const root=gl.scene; root.updateMatrixWorld(true);
  root.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=false; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt.map) mt.map.colorSpace=THREE.SRGBColorSpace; if(mt.transparent&&mt.opacity>=1) mt.alphaTest=.5; } } });
- const box=new THREE.Box3().setFromObject(root,true), size=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
- const h=Math.max(size.y,1e-3), wmax=Math.max(size.x,size.z,1e-3);
- m.k=1/Math.max(h,wmax*.62); m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
  const clips=gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
  m.clips={idle:pick(RX.idle),walk:pick(RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
  if(!m.clips.idle){ const c2=clips.find(k=>!BAD_IDLE.test(k.name)&&k!==m.clips.attack&&k!==m.clips.ko); m.clips.idle=c2||null; }
+ // Se mide en la pose de reposo real: la animación de espera o, si no hay, la pose que le damos por código
+ if(m.clips.idle){ const mx=new THREE.AnimationMixer(root); mx.clipAction(m.clips.idle).play(); mx.update(.4); root.updateMatrixWorld(true); }
+ else { m.proc=rigPose(root,dex); root.updateMatrixWorld(true); }
+ const box=new THREE.Box3().setFromObject(root,true), size=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
+ // Todos más o menos del mismo tamaño: se iguala la media entre alto y largo, sin pasarse de alto ni de ancho
+ const h=Math.max(size.y,1e-3), L=Math.max(size.x,size.z,1e-3);
+ m.k=Math.min(1/Math.sqrt(h*L),1.2/h,1.55/L); m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
+}
+
+/* ---------- pose y movimiento por código (modelos sin animaciones) ---------- */
+// Muchos modelos llegan sin animaciones, en la pose de montaje (a veces en T). Por el nombre de los huesos
+// (Hips, Spine, Head, LArm, Tail…) se bajan los brazos, se enrosca la cola de las serpientes y se les da un
+// vaivén suave (respirar, cabecear, mover la cola) para que no parezcan estatuas.
+const boneName=o=>o.name.replace(/^\d+\s+/,'').replace(/_\d+$/,'');
+const COIL=new Set([147,148]); // Dratini y Dragonair: cuerpo enroscado como una serpiente
+const _q=new THREE.Quaternion(), _v=new THREE.Vector3();
+function bonesOf(root){ const B={}; root.traverse(o=>{ if(o.isBone){ const n=boneName(o); if(!B[n]) B[n]=o; } }); return B; }
+function chainOf(B,re){ return Object.keys(B).filter(n=>re.test(n)).sort((a,b)=>(+(a.match(/\d+$/)||[0])[0])-(+(b.match(/\d+$/)||[0])[0])).map(n=>B[n]); }
+// Gira un hueso con una rotación dada en el espacio del modelo
+function rotModel(b,q){ const pw=b.parent.getWorldQuaternion(new THREE.Quaternion()), bw=b.getWorldQuaternion(new THREE.Quaternion()); b.quaternion.copy(pw.invert().multiply(q.clone().multiply(bw))); b.updateMatrixWorld(true); }
+// Dirección (en el modelo) del hueso hacia su primer hijo
+function dirOf(b){ const kid=b.children.find(o=>o.isBone), a=b.getWorldPosition(new THREE.Vector3()); if(kid) return kid.getWorldPosition(new THREE.Vector3()).sub(a).normalize(); return new THREE.Vector3(1,0,0).applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion())); }
+// Eje del modelo expresado en el espacio local del hueso (para girarlo después respecto a su reposo)
+function localAxis(b,ax){ return ax.clone().applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize(); }
+// Apunta un hueso hacia una dirección del modelo, con una fracción k del giro
+function aimBone(b,dir,k=1){ const d=dirOf(b); const q=new THREE.Quaternion().setFromUnitVectors(d,dir.clone().normalize()); if(k<1) q.slerp(new THREE.Quaternion(),1-k); rotModel(b,q); }
+function rigPose(root,dex){
+ const B=bonesOf(root); if(!Object.keys(B).length) return null; root.updateMatrixWorld(true);
+ const proc=[], X=new THREE.Vector3(1,0,0), Y=new THREE.Vector3(0,1,0), Z=new THREE.Vector3(0,0,1);
+ const add=(b,ax,amp,f,ph)=>{ if(b) proc.push({n:b.name,ax:localAxis(b,ax).toArray(),amp,f,ph}); };
+ // Brazos en T: se bajan hacia los lados (solo si están casi horizontales; las patas de los cuadrúpedos ya miran abajo)
+ // (Machamp tiene dos pares: LArm y LArm2)
+ for(const n of Object.keys(B).filter(n=>/^[LR](Upper)?Arm\d*$/.test(n))){ const arm=B[n], d=dirOf(arm);
+   if(Math.abs(d.y)<.7){ const out=new THREE.Vector3(Math.sign(d.x)||1,0,0); aimBone(arm,out.multiplyScalar(.45).add(new THREE.Vector3(0,-1,.15)),.85); }
+   add(arm,X,.06,1.6,n[0]==='L'?0:Math.PI); }
+ const tail=chainOf(B,/^Tail\d*$/), spine=chainOf(B,/^Spine\d*$/), head=B.Head, neck=B.Neck||B.Neck1;
+ if(COIL.has(dex)&&tail.length>=4){
+   // Serpiente: desde la cadera, la cola se tumba en el suelo y da algo más de una vuelta en espiral
+   // hacia dentro; el tronco se yergue en S y la cabeza mira al frente
+   const segs=[B.Hips||tail[0],...tail].filter(Boolean), lens=segs.map(b=>{ const k=b.children.find(o=>o.isBone); return k?b.getWorldPosition(new THREE.Vector3()).distanceTo(k.getWorldPosition(new THREE.Vector3())):0; });
+   const Lt=lens.reduce((a,b)=>a+b,0)||1, r0=Lt/(Math.PI*2*1.1); let a=0, s=0;
+   segs.forEach((b,i)=>{ if(!lens[i]) return; const r=r0*(1-.35*s/Lt); a+=lens[i]/r*.5; aimBone(b,new THREE.Vector3(Math.sin(a),i?-.04:-.5,-Math.cos(a))); a+=lens[i]/r*.5; s+=lens[i]; });
+   const ns=spine.length; spine.forEach((b,i)=>{ const th=-.2+1.25*(i/Math.max(1,ns-1))**1.4; aimBone(b,new THREE.Vector3(0,Math.cos(th),Math.sin(th))); });
+   tail.forEach((b,i)=>add(b,Y,.03,1.2,i*.5)); spine.forEach((b,i)=>add(b,X,.04,1.1,i*.4));
+ } else tail.forEach((b,i)=>add(b,Y,.12+i*.02,2.2,i*.55));
+ spine.forEach((b,i)=>add(b,X,.025,1.4,i*.3));
+ add(neck,X,.04,1.4,.6); add(head,X,.05,1.4,.9); add(head,Y,.06,.5,0);
+ add(B.Jaw,X,.04,1.4,1.2); add(B.LEar,Z,.08,2.4,0); add(B.REar,Z,.08,2.4,1);
+ return proc.length?proc:null;
 }
 const spriteTex={};
 function getSpriteTex(dex){ if(!spriteTex[dex]){ const t=new THREE.TextureLoader().setCrossOrigin('anonymous').load(SPRITE_URL(dex)); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; spriteTex[dex]=t; } return spriteTex[dex]; }
@@ -299,9 +345,11 @@ class Actor{
    const m=this.m; if(!m) return;
    if(m.status==='ok'&&!this.model){
      if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; }
-     const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(m.k);
+     const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(m.k); holder.userData.k=m.k;
      this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); this.mats.push(mt); } } });
      this.model=holder; this.body.add(holder); this.mixer=new THREE.AnimationMixer(inst); this.acts={};
+     // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
+     this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph}; }).filter(Boolean):null;
      for(const k in m.clips) if(m.clips[k]) this.acts[k]=this.mixer.clipAction(m.clips[k]);
      this.play('idle',true);
    } else if(m.status!=='ok'&&!this.sprite){
@@ -332,7 +380,7 @@ class Actor{
    if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
    if((spec.cast||0)>this.lastCast){ this.lastCast=spec.cast; this.castT=0; this.play('cast',false); }
    this.atkT+=dt; this.castT+=dt;
-   let lift=TOP, lean=0, fwd=0;
+   let lift=TOP, lean=0, fwd=0, breath=0;
    if(spec.dead){
      if(this.deadT<0){ this.deadT=0; if(!this.play('ko',false)) this.noKo=true; }
      this.deadT+=dt; const k=clamp(this.deadT/1.1,0,1);
@@ -343,7 +391,7 @@ class Actor{
      if(!this.cur||this.curName==='idle'||this.curName==='walk'){ if(this.moveT>0&&this.acts&&this.acts.walk) this.play('walk',true); else this.play('idle',true); }
      if(this.atkT<.3) fwd=Math.sin(this.atkT/.3*Math.PI)*.35;
      if(this.castT<.5){ lift+=Math.sin(this.castT/.5*Math.PI)*.35; }
-     if(!this.acts||!this.acts.idle) lift+=Math.abs(Math.sin(t*3+this.root.id))*.06;
+     if(!this.acts||!this.acts.idle){ lift+=(Math.sin(t*2.2+this.root.id)*.5+.5)*.035; breath=Math.sin(t*2.6+this.root.id)*.025; }
      if(this.moveT>0&&!(this.acts&&this.acts.walk)) lift+=Math.abs(Math.sin(t*14))*.12;
      if(spec.drag) lift+=.5;
      this.setAlpha(spec.alpha!=null?spec.alpha:1);
@@ -354,6 +402,8 @@ class Actor{
    const fl=clamp((spec.flash||0)/.12,0,1), gl=spec.glow||0;
    if(this.mats) for(const mt of this.mats) if(mt.emissive){ const e=Math.max(fl*.12,gl*.3), w=fl*.12>gl*.3, e0=mt.userData.e0; mt.emissive.setRGB(e0.r+e*(w?1:spec.glowCol.r),e0.g+e*(w?1:spec.glowCol.g),e0.b+e*(w?1:spec.glowCol.b)); }
    if(this.mixer) this.mixer.update(dt*(spec.stun>0&&!spec.dead?.15:1));
+   if(this.proc&&!spec.dead){ const k=spec.stun>0?.2:1; for(const p of this.proc) p.b.quaternion.copy(p.rest).multiply(_q.setFromAxisAngle(p.ax,p.amp*k*Math.sin(t*p.f*Math.PI+p.ph+this.root.id))); }
+   if(this.model) this.model.scale.set(this.model.userData.k,this.model.userData.k*(1+breath),this.model.userData.k);
    // escudo, aturdimiento
    if(spec.shield>0&&!spec.dead){ if(!this.shieldM){ this.shieldM=new THREE.Mesh(shieldGeo,new THREE.MeshStandardMaterial({color:'#bfe6ff',emissive:'#3a7bd5',emissiveIntensity:.4,transparent:true,opacity:.22,depthWrite:false})); this.root.add(this.shieldM); }
      this.shieldM.visible=true; this.shieldM.scale.set(.85*sc*1.1,.9*sc*1.1,.85*sc*1.1); this.shieldM.position.y=TOP+.55*sc; this.shieldM.material.opacity=.18+.06*Math.sin(t*5); }
@@ -583,8 +633,39 @@ function render(F){
  const base=camera.position.clone(); if(shake>0){ camera.position.x+=rnd(shake); camera.position.y+=rnd(shake); shake=Math.max(0,shake-dt*.6); }
  renderer.render(scene,camera); camera.position.copy(base);
 }
+/* ---------- retratos (cartas de la tienda y paneles) ---------- */
+// La cara de cada modelo se renderiza una sola vez, con fondo transparente, y se guarda como imagen.
+// Se encuadra en el hueso de la cabeza (o en la parte alta del modelo si no tiene huesos).
+let pR=null, pScene=null; const portraits={}, pWait={};
+function portrait(dex,cb){
+ if(dex in portraits) return portraits[dex];
+ if(cb) (pWait[dex]=pWait[dex]||[]).push(cb);
+ const m=wantModel(dex); if(m.status==='ok') makePortrait(dex); else if(m.status==='fail') portraits[dex]='';
+ return null;
+}
+function makePortrait(dex){
+ const m=models[dex]; if(dex in portraits||!m||m.status!=='ok') return;
+ try{
+   if(!pR){ pR=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true}); pR.setSize(240,200,false); pR.outputColorSpace=THREE.SRGBColorSpace; pR.toneMapping=THREE.ACESFilmicToneMapping;
+     pScene=new THREE.Scene(); pScene.add(new THREE.HemisphereLight('#ffffff','#6a6a80',2.2)); const l=new THREE.DirectionalLight('#ffffff',2.2); l.position.set(-2,3,4); pScene.add(l); }
+   const inst=SkeletonUtils.clone(m.scene), g=new THREE.Group(); inst.position.copy(m.off); g.add(inst); g.scale.setScalar(m.k); pScene.add(g);
+   if(m.clips.idle){ const mx=new THREE.AnimationMixer(inst); mx.clipAction(m.clips.idle).play(); mx.update(.4); }
+   g.updateMatrixWorld(true);
+   const box=new THREE.Box3().setFromObject(g,true), size=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
+   let head=null; inst.traverse(o=>{ if(!head&&o.isBone&&/^Head$/.test(boneName(o))) head=o; });
+   // Sin hueso de cabeza: se encuadra la parte alta de las piezas opacas (el gas de Gastly, por ejemplo, no cuenta)
+   const core=new THREE.Box3(); inst.traverse(o=>{ if(o.isMesh&&![].concat(o.material).some(mt=>mt.transparent)) core.expandByObject(o,true); });
+   const cb=core.isEmpty()?box:core, cs=cb.getSize(new THREE.Vector3()), cc=cb.getCenter(new THREE.Vector3());
+   const tgt=head?head.getWorldPosition(new THREE.Vector3()):new THREE.Vector3(cc.x,cb.min.y+cs.y*.62,cc.z+cs.z*.15);
+   tgt.y=Math.min(tgt.y,box.max.y-size.y*.12); tgt.y+=size.y*.04;
+   const fh=clamp((head?size.y:cs.y)*.6,.38,.7), cam=new THREE.PerspectiveCamera(30,1.2,.01,50), dist=fh/(2*Math.tan(THREE.MathUtils.degToRad(15)));
+   cam.position.set(tgt.x+dist*.28,tgt.y+dist*.12,tgt.z+dist*.95); cam.lookAt(tgt);
+   pR.setClearColor(0x000000,0); pR.render(pScene,cam); portraits[dex]=pR.domElement.toDataURL('image/png'); pScene.remove(g);
+ }catch(e){ portraits[dex]=''; }
+ for(const f of pWait[dex]||[]) try{ f(portraits[dex]); }catch(e){} delete pWait[dex];
+}
 // Precarga de modelos (por ejemplo, los de la tienda) para que aparezcan sin espera
 function preload(list){ for(const d of list) wantModel(d); }
 function modelStatus(dex){ return models[dex]?models[dex].status:'none'; }
-window.B3={init,resize,render,project,unproject,preload,modelStatus,setQuality,get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+window.B3={init,resize,render,project,unproject,preload,modelStatus,setQuality,portrait,get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));

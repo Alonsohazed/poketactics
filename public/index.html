@@ -91,14 +91,24 @@ img{-webkit-user-drag:none}
 @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 
 /* ---------- sinergias ---------- */
-.trait{display:flex;align-items:center;gap:8px;padding:5px 8px 5px 5px;border-radius:12px;margin-bottom:5px;background:var(--panel3);border:1px solid transparent;cursor:help;opacity:.7}
-.trait.on{opacity:1;border-color:color-mix(in srgb,var(--tc) 70%,transparent);background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 30%,var(--panel3)),var(--panel3))}
-.trait .ti{width:32px;height:32px;display:grid;place-items:center;font-size:16px;flex:none;clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%);background:var(--panel)}
-.trait.on .ti{background:var(--tc)}
-.trait .tn{font-weight:800;flex:1;min-width:0}
-.trait .tb{font-size:11px;color:var(--muted)}
-.trait .tb b{color:var(--ink)}
-.trait .tc{font-family:var(--display);font-size:15px}
+/* Hexágono con el color del nivel: bronce, plata, oro y prismático (nivel máximo) */
+.traitsPanel{padding:10px 8px}
+.trait{display:grid;grid-template-columns:34px auto minmax(0,1fr);align-items:center;gap:6px;padding:3px 8px 3px 3px;border-radius:9px;margin-bottom:4px;cursor:help;
+  background:linear-gradient(90deg,rgba(8,12,28,.85),rgba(8,12,28,.35));border:1px solid rgba(255,255,255,.06)}
+.trait .ti{width:32px;height:36px;display:grid;place-items:center;font-size:16px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:#3b4359;filter:grayscale(.6) brightness(.85)}
+.trait.t1 .ti{background:linear-gradient(160deg,#f0b27a,#a5602c 55%,#6b3814);filter:none}
+.trait.t2 .ti{background:linear-gradient(160deg,#ffffff,#b9c6d6 50%,#6f7d92);filter:none}
+.trait.t3 .ti{background:linear-gradient(160deg,#fff1a8,#f2c23c 50%,#a87406);filter:none}
+.trait.t4 .ti{background:conic-gradient(from 0deg,#ff8ad8,#9f8bff,#6fd8ff,#8cffb4,#fff38a,#ffa86f,#ff8ad8);filter:none;animation:prism 3s linear infinite}
+@keyframes prism{to{filter:hue-rotate(360deg)}}
+.trait .tc{font-family:var(--display);font-size:15px;min-width:24px;text-align:center;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12)}
+.trait.t1 .tc{border-color:#c98447}.trait.t2 .tc{border-color:#c7d2e0}.trait.t3 .tc{border-color:#f2c23c}.trait.t4 .tc{border-color:#c7a2ff}
+.trait .tn{font-weight:900;min-width:0;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trait .tb{font-size:11px;color:var(--muted);font-weight:800}
+.trait .tb b{color:#fff}
+.trait.off{background:rgba(8,12,28,.45)}
+.trait.off .tn{color:var(--muted)}
+.trait.off .tc{background:transparent;border-color:transparent;font-family:inherit;font-size:12px;color:var(--muted);font-weight:800}
 .augs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
 .aug{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:19px;border:2px solid var(--tc);background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--tc) 35%,var(--panel2)),var(--panel));cursor:help;box-shadow:0 0 10px color-mix(in srgb,var(--tc) 35%,transparent)}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:var(--panel3);border:1px solid var(--line2);margin:2px 2px 0 0}
@@ -119,6 +129,8 @@ img{-webkit-user-drag:none}
 .item{cursor:grab;touch-action:none;user-select:none;transition:transform .12s;animation:pop .3s ease-out}
 .item:hover{transform:translateY(-3px) scale(1.06)}
 .item .ii{--is:44px}
+.islot{width:var(--is,44px);height:var(--is,44px);border-radius:10px;border:2px dashed rgba(255,255,255,.14)}
+.item.target .ii{outline:3px solid var(--gold);outline-offset:2px;box-shadow:0 0 16px var(--gold)}
 @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:none;opacity:1}}
 
 /* ---------- ficha del Pokémon ---------- */
@@ -148,63 +160,159 @@ img{-webkit-user-drag:none}
 .slot .ii{--is:34px}
 .slot .rm{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:2px solid var(--bg);background:var(--red);color:#fff;font-weight:900;font-size:11px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
 
-/* ---------- entrenadores ---------- */
-.pl{display:grid;grid-template-columns:38px 1fr auto;gap:2px 8px;align-items:center;padding:5px 8px 6px 5px;border-radius:12px;margin-bottom:4px;border:1px solid transparent}
-.pl.me{background:color-mix(in srgb,var(--blue) 18%,var(--panel3));border-color:color-mix(in srgb,var(--blue) 50%,transparent)}
-.pl.opp{border-color:var(--red);background:color-mix(in srgb,var(--red) 14%,var(--panel3))}
-.pl.dead{opacity:.4;filter:grayscale(1)}
+/* ---------- panel derecho: entrenadores, registro de daño y registro ---------- */
+.side{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);border-radius:16px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.sideTabs{display:flex;gap:4px;margin-bottom:8px}
+.sideTabs button{flex:1;border:1px solid var(--line2);background:var(--panel3);border-radius:9px;padding:5px 6px;font-weight:900;font-size:12px;cursor:pointer;white-space:nowrap}
+.sideTabs button[data-tab="log"]{flex:0 0 38px}
+.sideTabs button[aria-selected="true"]{background:color-mix(in srgb,var(--gold) 28%,var(--panel3));border-color:var(--gold)}
+/* Lista de entrenadores: nombre, vida y retrato con un anillo que se vacía con la vida */
+.pl{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:5px;border-radius:999px 12px 12px 999px}
 .pl.click{cursor:pointer}
-.pl.click:not(.me):hover{background:var(--panel3);border-color:var(--line2)}
-.pl.watch{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--panel3))}
-.poTag{display:inline-block;margin-right:4px;padding:0 4px;border-radius:999px;font-size:10px;font-weight:900;background:color-mix(in srgb,var(--red) 30%,var(--panel3));border:1px solid color-mix(in srgb,var(--red) 60%,transparent);vertical-align:1px}
-.poTag.eye{background:color-mix(in srgb,var(--gold) 30%,var(--panel3));border-color:var(--gold)}
+.pl.click:hover .nm{background:color-mix(in srgb,var(--gold) 25%,rgba(8,12,28,.85))}
+.pl .nm{min-width:0;flex:0 1 auto;max-width:150px;padding:4px 10px;border-radius:8px;background:rgba(8,12,28,.8);border:1px solid rgba(255,255,255,.08);font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .hp{font-family:var(--display);font-size:14px;min-width:30px;text-align:center;padding:2px 5px;border-radius:6px;background:#0c1228;border:1px solid rgba(255,255,255,.15)}
+.pl .ring{--p:100;--hc:#e2463a;flex:none;width:44px;height:44px;border-radius:50%;padding:3px;background:conic-gradient(var(--hc) calc(var(--p)*1%),#2a3048 0);position:relative}
+.pl .ring .head{--hs:38px;border:2px solid #0c1228}
+.pl .lv{position:absolute;right:-4px;bottom:-3px;font-size:10px;font-weight:900;background:#0c1228;border:1px solid var(--line2);border-radius:6px;padding:0 4px}
+.pl.me .ring{--hc:var(--gold);width:52px;height:52px}
+.pl.me .ring .head{--hs:46px}
+.pl.me .nm{border-color:color-mix(in srgb,var(--gold) 60%,transparent)}
+.pl.opp .nm{border-color:var(--red);background:color-mix(in srgb,var(--red) 30%,rgba(8,12,28,.85))}
+.pl.watch .nm{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 30%,rgba(8,12,28,.85))}
+.pl.dead{opacity:.4;filter:grayscale(1)}
+.poTag{display:inline-block;margin-right:4px;font-size:11px}
+/* Aviso de subida de estrellas: foto del Pokémon y estrellas */
+.upb{display:flex;align-items:center;gap:1px;padding:1px 5px 1px 1px;border-radius:999px;background:rgba(8,12,28,.85);border:1px solid var(--gold);animation:upIn .5s ease-out;flex:none}
+.upb img{width:26px;height:26px;image-rendering:pixelated;object-fit:contain}
+.upb b{font-size:10px;letter-spacing:-1px;color:#ffd75e}
+.upb.s3 b{color:#ffcf33;text-shadow:0 0 6px #ffb400}
+@keyframes upIn{from{transform:scale(.3);opacity:0}60%{transform:scale(1.2)}to{transform:none;opacity:1}}
 .viewInfo{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:999px;background:color-mix(in srgb,var(--gold) 18%,var(--panel2));border:1px solid var(--gold);font-weight:800}
-.pl .em{grid-row:span 2}
-.pl .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pl .hp{font-family:var(--display);font-size:15px;text-align:right}
-.hpbar{height:6px;background:var(--panel);border-radius:4px;overflow:hidden;grid-column:2/4;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
-.hpbar i{display:block;height:100%;background:linear-gradient(90deg,#2fbf63,#7cf0a4);transition:width .5s}
 .head{--hs:38px;width:var(--hs);height:var(--hs);border-radius:50%;flex:none;background:var(--panel) var(--src) no-repeat 50% 12%/190%;image-rendering:pixelated;border:2px solid var(--line2);box-shadow:inset 0 -6px 10px rgba(0,0,0,.25);display:grid;place-items:center;font-size:18px}
-.pl.me .head{border-color:var(--blue)}
-.log{font-size:12px;color:var(--muted);max-height:200px;overflow:auto;margin:0;padding-left:16px}
+.log{font-size:12px;color:var(--muted);max-height:none;overflow:auto;margin:0;padding-left:16px}
 .log li{margin-bottom:3px}
+/* Registro de daño: barras ordenadas de mayor a menor */
+.dmgModes{display:flex;gap:4px;margin-bottom:6px}
+.dmgModes button{flex:1;border:1px solid var(--line2);background:transparent;border-radius:8px;padding:3px;font-size:11.5px;font-weight:900;cursor:pointer;color:var(--muted)}
+.dmgModes button[aria-pressed="true"]{color:var(--ink);background:var(--panel3);border-color:var(--ink)}
+#dmgTitle{margin:0 0 6px}
+.dmgRow{display:grid;grid-template-columns:34px minmax(0,1fr);gap:6px;align-items:center;margin-bottom:5px}
+.dmgRow .pic{width:34px;height:34px;border-radius:8px;background:var(--panel3);border:2px solid var(--cc,var(--line2));display:grid;place-items:center;overflow:hidden}
+.dmgRow .pic img{width:120%;height:120%;object-fit:contain;image-rendering:pixelated}
+.dmgRow .nm{font-size:11.5px;font-weight:800;display:flex;justify-content:space-between;gap:6px;white-space:nowrap}
+.dmgRow .nm span{overflow:hidden;text-overflow:ellipsis}
+.dmgRow .bar{height:9px;border-radius:5px;background:var(--panel3);overflow:hidden;margin-top:2px}
+.dmgRow .bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#ff6a3d,#ffb347)}
+.dmgRow.tank .bar i{background:linear-gradient(90deg,#3d7bff,#8fc0ff)}
+.dmgRow.heal .bar i{background:linear-gradient(90deg,#2fbf63,#8cf0b0)}
+.dmgRow.foe{opacity:.75}
+.dmgRow.foe .pic{filter:saturate(.7)}
 
 /* ---------- tienda ---------- */
-.shop{position:sticky;bottom:0;background:linear-gradient(180deg,var(--panel2),var(--panel));border-top:1px solid var(--line2);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:240px minmax(0,1fr);gap:14px;z-index:4;box-shadow:0 -10px 30px rgba(0,0,0,.3)}
+.shop{position:sticky;bottom:0;background:linear-gradient(180deg,var(--panel2),var(--panel));border-top:1px solid var(--line2);padding:6px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:4;box-shadow:0 -10px 30px rgba(0,0,0,.3)}
 .shop.sell{background:color-mix(in srgb,var(--red) 25%,var(--panel))}
-.sellMsg{display:none;position:absolute;inset:0;place-items:center;font-family:var(--display);font-size:22px;pointer-events:none;z-index:2}
+.sellMsg{display:none;position:absolute;inset:0;place-items:center;font-family:var(--display);font-size:22px;pointer-events:none;z-index:5}
 .shop.sell .sellMsg{display:grid}
-.shopL{display:flex;flex-direction:column;gap:7px}
-.lvl{display:flex;align-items:center;gap:8px;font-weight:800}
+.shopTop{display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+.lvl{display:flex;align-items:center;gap:8px;font-weight:800;width:230px}
 .lvl .px{font-family:var(--display);font-size:17px}
 .xpbar{flex:1;height:9px;background:var(--panel3);border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
 .xpbar i{display:block;height:100%;background:linear-gradient(90deg,#3d86ff,#8fc0ff);transition:width .4s}
-.gold{font-family:var(--display);font-size:26px;color:var(--gold);display:flex;align-items:center;gap:7px;text-shadow:0 2px 0 rgba(0,0,0,.35)}
-.coin{width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#f6c544 45%,#c58a12);border:2px solid #8d5f05;box-shadow:0 2px 0 rgba(0,0,0,.3)}
-.sbtns{display:flex;gap:6px}
-.sbtns .btn{flex:1;padding:7px 6px;font-size:12px}
-.odds{display:flex;gap:8px;font-size:11px;font-weight:900}
-.cards{display:grid;grid-template-columns:repeat(5,minmax(108px,1fr));gap:10px;overflow-x:auto;padding:2px 2px 4px}
-.card{position:relative;border:2px solid var(--cc);border-radius:14px;padding:0;cursor:pointer;text-align:left;display:flex;flex-direction:column;min-height:150px;overflow:hidden;
-  background:radial-gradient(120% 90% at 50% 15%,color-mix(in srgb,var(--cc) 45%,var(--panel2)),var(--panel) 75%);
-  box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),inset 0 1px 0 rgba(255,255,255,.2);transition:transform .12s,box-shadow .12s}
-.card:hover{transform:translateY(-4px);box-shadow:0 8px 0 color-mix(in srgb,var(--cc) 45%,#000),0 0 22px color-mix(in srgb,var(--cc) 55%,transparent)}
+.odds{display:flex;gap:10px;font-size:12px;font-weight:900;padding:2px 10px;border-radius:999px;background:rgba(8,12,28,.55);border:1px solid var(--line)}
+.odds span{display:flex;align-items:center;gap:4px}
+.odds span::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.gold{font-family:var(--display);font-size:24px;color:var(--gold);display:flex;align-items:center;gap:7px;text-shadow:0 2px 0 rgba(0,0,0,.35);margin-left:auto;padding:0 14px;border-radius:999px;background:rgba(8,12,28,.55);border:1px solid var(--line)}
+.coin{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#f6c544 45%,#c58a12);border:2px solid #8d5f05;box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.shopTop #lockBtn{margin-right:auto}
+.shopMain{display:grid;grid-template-columns:140px minmax(0,1fr);gap:10px}
+.sbtns{display:flex;flex-direction:column;gap:8px}
+.sbtns .btn{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:6px 12px;text-align:left}
+.sbtns .btn b{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.02em}
+.sbtns .btn span{font-size:11px;opacity:.8}
+.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+/* Carta: arte del tipo a todo lo alto, retrato del Pokémon, sinergias con nombre y barra inferior con nombre y coste */
+.card{position:relative;height:var(--ch,158px);border:2px solid var(--cc);border-radius:12px;padding:0;cursor:pointer;text-align:left;overflow:hidden;isolation:isolate;
+  box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),inset 0 0 0 1px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s;background:#141a30}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 0 color-mix(in srgb,var(--cc) 45%,#000),0 0 22px color-mix(in srgb,var(--cc) 60%,transparent)}
 .card:active{transform:translateY(0)}
-.card.off{opacity:.45;cursor:not-allowed;filter:grayscale(.5)}
+.card.off{cursor:not-allowed;filter:grayscale(.65) brightness(.7)}
 .card.off:hover{transform:none}
 .card.owned{animation:owned 1.6s ease-in-out infinite}
 @keyframes owned{50%{box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),0 0 0 3px var(--gold),0 0 22px var(--gold)}}
 .card.empty{border-style:dashed;border-color:var(--line2);background:var(--panel);box-shadow:none;cursor:default;display:grid;place-items:center;color:var(--muted)}
-.card .ci{display:grid;place-items:center;height:74px;margin-top:6px}
-.card .ci .spr{filter:drop-shadow(0 4px 0 rgba(0,0,0,.35))}
-.card .ct{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;gap:2px;font-size:12px}
-.card .ct span{width:22px;height:22px;display:grid;place-items:center;border-radius:6px;background:rgba(0,0,0,.4)}
-.card .cbot{margin-top:auto;background:rgba(5,8,20,.72);padding:5px 8px 6px;display:flex;align-items:center;gap:6px;border-top:1px solid rgba(255,255,255,.08)}
-.card .cn{font-weight:900;font-size:13px;line-height:1.1;color:#fff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .art{position:absolute;inset:0;z-index:-1;overflow:hidden}
+.card .art::before,.card .art::after{content:"";position:absolute;inset:0;pointer-events:none}
+.card .pic{position:absolute;inset:0 0 24px 0;display:grid;place-items:end center}
+.card .pic img{height:100%;width:100%;object-fit:cover;object-position:50% 30%;filter:drop-shadow(0 4px 6px rgba(0,0,0,.45))}
+.card .pic img.px{image-rendering:pixelated;object-fit:contain;width:auto;height:118%;margin-bottom:-10%}
+.card .tr{position:absolute;left:5px;bottom:29px;display:flex;flex-direction:column;gap:3px;z-index:2}
+.card .tr span{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:900;color:#fff;line-height:1;padding:2px 7px 2px 2px;border-radius:7px;background:rgba(6,9,22,.72);border:1px solid rgba(255,255,255,.14);text-shadow:0 1px 1px #000;width:max-content;max-width:100%}
+.card .tr i{font-style:normal;width:17px;height:17px;display:grid;place-items:center;font-size:11px;border-radius:5px;background:var(--tc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.card .cbot{position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(90deg,rgba(5,8,20,.95),rgba(5,8,20,.82));padding:0 8px;display:flex;align-items:center;gap:6px;border-top:2px solid var(--cc);z-index:2}
+.card .cn{font-weight:900;font-size:13px;color:#fff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .cc{font-family:var(--display);color:#ffe18a;font-size:15px;display:flex;align-items:center;gap:3px}
 .card .cc::before{content:"";width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#f6c544 45%,#c58a12)}
-.card .own{position:absolute;top:6px;right:6px;font-size:10px;font-weight:900;background:var(--gold);color:#3b2604;border-radius:6px;padding:1px 5px}
+.card .own{position:absolute;top:5px;right:5px;font-size:10px;font-weight:900;background:var(--gold);color:#3b2604;border-radius:6px;padding:1px 5px;z-index:2}
 .c1{--cc:var(--c1)}.c2{--cc:var(--c2)}.c3{--cc:var(--c3)}.c4{--cc:var(--c4)}.c5{--cc:var(--c5)}
+
+/* Fondos de las cartas según el tipo (animados con capas y SVG en línea) */
+.bg-Agua{background:radial-gradient(120% 70% at 70% 0%,#7fe0ff,transparent 60%),linear-gradient(180deg,#2a86e8,#0b2f7a)}
+.bg-Agua::before{background-image:radial-gradient(circle,rgba(255,255,255,.75) 0 2px,rgba(255,255,255,.25) 3px,transparent 4px),radial-gradient(circle,rgba(255,255,255,.6) 0 3px,rgba(255,255,255,.2) 4.5px,transparent 6px),radial-gradient(circle,rgba(255,255,255,.5) 0 1.5px,transparent 3px);
+  background-size:38px 46px,61px 71px,23px 29px;background-position:4px 0,20px 10px,9px 5px;animation:bubbles 6s linear infinite}
+.bg-Agua::after{background:repeating-linear-gradient(175deg,transparent 0 18px,rgba(255,255,255,.07) 18px 20px);animation:sway 4s ease-in-out infinite alternate}
+@keyframes bubbles{to{background-position:4px -184px,20px -274px,9px -116px}}
+@keyframes sway{to{transform:translateX(-8px)}}
+.bg-Eléctrico{background:radial-gradient(90% 60% at 30% 10%,#5d5aa8,transparent 70%),linear-gradient(180deg,#2c2b5e,#14122e 60%,#3d3210)}
+.bg-Eléctrico::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'%3E%3Cpath d='M58 0 30 62h20L22 140 78 52H56L74 0z' fill='%23ffe35c' stroke='%23fff8c4' stroke-width='3'/%3E%3C/svg%3E") no-repeat 12% 30%/34% auto,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'%3E%3Cpath d='M58 0 30 62h20L22 140 78 52H56L74 0z' fill='%23fff27a'/%3E%3C/svg%3E") no-repeat 88% 10%/20% auto;filter:drop-shadow(0 0 6px #ffe35c);animation:flash 3.2s steps(1) infinite}
+.bg-Eléctrico::after{background:radial-gradient(40% 22% at 20% 6%,rgba(160,165,200,.55),transparent),radial-gradient(45% 20% at 75% 2%,rgba(140,140,180,.5),transparent);animation:sway 5s ease-in-out infinite alternate}
+@keyframes flash{0%,55%{opacity:.25}58%{opacity:1}61%{opacity:.35}64%{opacity:1}70%,100%{opacity:.25}}
+.bg-Fuego{background:radial-gradient(90% 55% at 50% 105%,#ffd25a,#ff6a1f 45%,transparent 75%),linear-gradient(180deg,#5a0f0a,#b8260f 70%,#ff6a1f)}
+.bg-Fuego::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V40C10 20 18 30 22 14c6 16 12 18 18 6 4 14 12 22 20 4 5 18 14 20 22 0 6 16 14 24 22 6 4 14 12 16 18 2 6 18 14 22 22 8 6 12 14 16 22 4 4 14 10 22 14 30v20z' fill='%23ffb02e' opacity='.85'/%3E%3Cpath d='M0 60V48c10-8 16-2 22-12 6 12 14 12 20 4 6 12 14 14 22 2 6 12 14 14 22 4 6 10 14 14 22 2 6 12 14 12 22 4 8 10 14 8 22-2 6 10 12 12 18 6v12z' fill='%23ffe46b'/%3E%3C/svg%3E") no-repeat bottom/100% 32%;animation:flick .5s ease-in-out infinite alternate}
+.bg-Fuego::after{background-image:radial-gradient(circle,#ffd25a 0 1.5px,transparent 2.5px),radial-gradient(circle,#ff8a3d 0 2px,transparent 3px);background-size:31px 53px,47px 67px;animation:embers 3.5s linear infinite}
+@keyframes flick{to{transform:scaleY(1.12) translateY(-2px)}}
+@keyframes embers{to{background-position:6px -212px,-8px -268px}}
+.bg-Planta{background:radial-gradient(100% 60% at 50% 0%,#b8f28a,transparent 65%),linear-gradient(180deg,#3fa04a,#14502a)}
+.bg-Planta::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cpath d='M10 40C10 20 30 10 48 12 46 30 32 44 10 40z' fill='%2397e06a' opacity='.55'/%3E%3Cpath d='M10 40 40 16' stroke='%23d8ffb8' stroke-width='1.5' opacity='.6'/%3E%3C/svg%3E") 0 0/44px 44px;animation:leaves 7s linear infinite}
+.bg-Planta::after{background:radial-gradient(60% 30% at 50% 100%,rgba(20,60,20,.7),transparent)}
+@keyframes leaves{to{background-position:44px 88px}}
+.bg-Psíquico::before{inset:-40%;background:repeating-conic-gradient(from 0deg,rgba(255,140,220,.35) 0 12deg,transparent 12deg 30deg);animation:spin 14s linear infinite}
+.bg-Psíquico{background:radial-gradient(circle at 50% 40%,#ff9ad8,#b13a9e 45%,#3d1460)}
+.bg-Psíquico::after{background:radial-gradient(circle at 50% 40%,transparent 30%,rgba(40,8,60,.55))}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bg-Roca{background:radial-gradient(circle at 20% 80%,#a98b5c 0 8%,transparent 9%),radial-gradient(circle at 80% 70%,#8a6f45 0 11%,transparent 12%),radial-gradient(circle at 60% 90%,#c4a676 0 6%,transparent 7%),linear-gradient(180deg,#b79a68,#5a4426)}
+.bg-Roca::before{background-image:radial-gradient(circle,rgba(60,40,20,.5) 0 1px,transparent 1.5px);background-size:9px 11px}
+.bg-Dragón{background:radial-gradient(90% 60% at 50% 20%,#8f7bff,transparent 70%),linear-gradient(180deg,#4a33c4,#160c45)}
+.bg-Dragón::before{background:radial-gradient(circle at 50% 0,transparent 9px,rgba(190,170,255,.28) 10px 11px,transparent 12px) 0 0/22px 14px;animation:sway 5s ease-in-out infinite alternate}
+.bg-Dragón::after{background:radial-gradient(50% 35% at 50% 35%,rgba(255,170,90,.35),transparent);animation:glow 2.4s ease-in-out infinite alternate}
+@keyframes glow{from{opacity:.4}to{opacity:1}}
+.bg-Fantasma{background:radial-gradient(80% 50% at 50% 100%,#6a4aa8,transparent 70%),linear-gradient(180deg,#24123f,#0b0618)}
+.bg-Fantasma::before{background:radial-gradient(30% 14% at 25% 70%,rgba(200,170,255,.35),transparent),radial-gradient(35% 12% at 70% 45%,rgba(180,150,255,.3),transparent),radial-gradient(25% 10% at 40% 25%,rgba(220,200,255,.25),transparent);filter:blur(2px);animation:wisp 6s ease-in-out infinite alternate}
+.bg-Fantasma::after{background-image:radial-gradient(circle,rgba(190,255,220,.9) 0 1.5px,transparent 2.5px);background-size:41px 37px;animation:glow 1.8s ease-in-out infinite alternate}
+@keyframes wisp{to{transform:translate(10px,-8px) scale(1.1)}}
+.bg-Hada{background:radial-gradient(100% 60% at 50% 0%,#ffe1f2,transparent 60%),linear-gradient(180deg,#ff8cc8,#a8336f)}
+.bg-Hada::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Cpath d='M12 4l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM38 26l1.5 4.5L44 32l-4.5 1.5L38 38l-1.5-4.5L32 32l4.5-1.5z' fill='%23fff'/%3E%3C/svg%3E") 0 0/40px 40px;animation:twinkle 1.6s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.3}to{opacity:1}}
+.bg-Normal{background:radial-gradient(circle at 50% 30%,#fff6d8,#d6c99c 50%,#857955)}
+.bg-Normal::before{inset:-40%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.22) 0 8deg,transparent 8deg 24deg);animation:spin 30s linear infinite}
+.bg-Acero{background:linear-gradient(135deg,#d6dfeb,#8796ab 40%,#4b576b 70%,#a9b5c6)}
+.bg-Acero::before{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.55) 45%,transparent 55%) no-repeat;background-size:250% 100%;animation:shineBg 3.5s ease-in-out infinite}
+.bg-Acero::after{background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(0,0,0,.07) 9px 10px)}
+@keyframes shineBg{0%,40%{background-position:120% 0}100%{background-position:-60% 0}}
+.bg-Siniestro{background:radial-gradient(circle at 75% 18%,#f4efd8 0 9%,rgba(244,239,216,.25) 10%,transparent 22%),linear-gradient(180deg,#1d1530,#050309)}
+.bg-Siniestro::before{background-image:radial-gradient(circle,rgba(255,255,255,.7) 0 1px,transparent 1.5px);background-size:27px 31px;animation:twinkle 2.2s ease-in-out infinite alternate}
+.bg-Lucha{background:radial-gradient(circle at 50% 45%,#ffb37a,#d9441f 40%,#4d1208)}
+.bg-Lucha::before{inset:-40%;background:repeating-conic-gradient(from 0deg,rgba(255,240,200,.3) 0 6deg,transparent 6deg 18deg);animation:spin 20s linear infinite reverse}
+
+/* Descripción de la habilidad al pasar por una carta de la tienda */
+#tip.shopTip{max-width:330px;padding:0;overflow:hidden;border-color:var(--cc,var(--line2))}
+#tip .stHead{display:flex;gap:9px;align-items:center;padding:9px 11px;background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 40%,#0c1228),#0c1228)}
+#tip .stIco{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:20px;background:color-mix(in srgb,var(--tc) 55%,#141a30);border:2px solid var(--tc);flex:none}
+#tip .stName{font-family:var(--display);font-size:17px;line-height:1.1}
+#tip .stMana{font-size:11px;font-weight:900;color:#8fc0ff}
+#tip .stBody{padding:8px 11px 10px}
+#tip .stBody p{margin:0 0 6px}
+#tip .stMeta{font-size:11.5px;color:var(--muted);font-weight:800}
 
 .spr{display:inline-grid;place-items:center;width:var(--s);height:var(--s);flex:none}
 .spr img{width:100%;height:100%;image-rendering:pixelated;object-fit:contain}
@@ -329,16 +437,29 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
 .trOpt[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 18px color-mix(in srgb,var(--gold) 50%,transparent);background:radial-gradient(100% 70% at 50% 100%,color-mix(in srgb,var(--gold) 35%,var(--panel3)),var(--panel2))}
 .trBar{position:sticky;bottom:-22px;margin:0 -22px -22px;padding:12px 22px;background:linear-gradient(180deg,transparent,var(--panel) 30%);display:flex;gap:10px;align-items:center;justify-content:flex-end}
 
+/* Escritorio: el juego ocupa la pantalla entera, sin scroll; los paneles laterales se desplazan por dentro */
+@media (min-width:1101px){
+  body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  .top{flex:none}
+  .layout{flex:1;min-height:0;width:100%;max-width:none;grid-template-columns:250px minmax(0,1fr) 290px;align-items:stretch;padding:10px 14px}
+  .traitsPanel,.right{min-height:0;overflow:auto;scrollbar-width:thin}
+  .center{min-height:0}
+  .shop{flex:none;position:relative}
+  /* Banca de objetos dentro del tablero, a la izquierda */
+  #boardWrap{position:relative}
+  #boardWrap .items{position:absolute;left:0;top:0;z-index:3;display:grid;grid-template-columns:repeat(2,46px);gap:6px;padding:8px;border-radius:14px;background:rgba(8,12,28,.62);border:1px solid var(--line2);min-height:0}
+  #boardWrap .items .item .ii,#boardWrap .items .islot{--is:46px}
+}
 @media (max-width:1100px){
   .layout{grid-template-columns:1fr;}
   .center{order:-1}
-  .right{display:grid;grid-template-columns:1fr 1fr}
-  .shop{grid-template-columns:1fr;gap:8px}
-  /* Oro y nivel en una fila: la tienda ocupa menos alto y deja más sitio al tablero */
-  .shopL{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 12px}
-  .shopL .gold{grid-row:1;grid-column:1;font-size:21px} .shopL .lvl{grid-row:1;grid-column:2}
-  .sbtns,.odds{grid-column:1/-1}
-  .card{min-height:128px} .card .ci{height:60px}
+  #boardWrap{flex-direction:column;align-items:center;gap:8px}
+  #boardWrap .items{order:2}
+  .right{display:grid;grid-template-columns:1fr 1fr;align-items:start}
+  .shopTop{gap:8px}
+  .lvl{width:auto;flex:1 1 180px}
+  .shopMain{grid-template-columns:110px minmax(0,1fr)}
+  .card{--ch:132px}
   .ucard{position:fixed;left:8px;right:8px;bottom:8px;top:auto;max-height:60vh;z-index:13;box-shadow:0 -8px 30px rgba(0,0,0,.4)}
 }
 @media (max-width:820px){
@@ -355,15 +476,17 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
   .top #readyBtn{flex:1}
   .layout{padding:8px;gap:10px} .center{gap:6px}
   .boardInfo{gap:4px;font-size:11px} .boardInfo span:not(:empty){padding:2px 8px}
-  .shop{padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));gap:6px}
-  .shopL{gap:4px 10px} .shopL .gold{font-size:19px} .coin{width:15px;height:15px}
-  .sbtns .btn{padding:5px 4px;font-size:11.5px} .odds{font-size:10px}
-  .cards{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;overflow:visible;padding:0}
-  .card{min-height:0;border-radius:10px}
-  .card .ci{height:44px;margin-top:3px} .card .ci .spr{width:44px;height:44px}
-  .card .ct{top:3px;left:3px;font-size:9px} .card .ct span{width:15px;height:15px;border-radius:4px}
-  .card .cbot{padding:2px 4px 3px;gap:2px} .card .cn{font-size:10px} .card .cc{font-size:11px} .card .cc::before{width:8px;height:8px}
-  .card .own{top:3px;right:3px;font-size:9px;padding:0 3px}
+  .shop{padding:4px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+  .shopTop{gap:6px;margin-bottom:4px} .lvl{flex:1 1 120px;gap:5px;font-size:12px} .gold{font-size:17px;padding:0 8px} .coin{width:14px;height:14px}
+  .odds{order:5;flex:1 1 100%;justify-content:center;font-size:10px;gap:8px;padding:1px 6px}
+  .shopTop #lockBtn{margin-right:0;padding:3px 6px;min-width:30px}
+  .shopMain{grid-template-columns:62px minmax(0,1fr);gap:5px}
+  .sbtns{gap:5px} .sbtns .btn{padding:4px 6px} .sbtns .btn b{font-size:12px} .sbtns .btn span{font-size:9.5px}
+  .cards{gap:4px}
+  .card{--ch:92px;border-radius:9px}
+  .card .tr{left:2px;bottom:22px;gap:2px} .card .tr span{font-size:0;padding:1px;gap:0} .card .tr i{width:14px;height:14px;font-size:9px}
+  .card .cbot{height:19px;padding:0 4px;gap:2px} .card .pic{bottom:19px} .card .cn{font-size:9.5px} .card .cc{font-size:11px} .card .cc::before{width:8px;height:8px}
+  .card .own{top:2px;right:2px;font-size:9px;padding:0 3px}
 }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
@@ -380,42 +503,54 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
   <button class="btn ghost icon" id="muteBtn" title="Música">🔊</button>
   <button class="btn" id="speedBtn" title="Velocidad del combate">x1</button>
   <button class="btn gold" id="readyBtn">¡Listo!</button>
+  <button class="btn ghost icon" id="fsBtn" title="Pantalla completa">⛶</button>
   <button class="btn ghost icon" id="menuBtn" title="Volver al menú">☰</button>
 </header>
 
 <main class="layout">
-  <aside class="panel">
-    <h2>Sinergias</h2>
+  <aside class="panel traitsPanel">
     <div id="traits"></div>
     <div id="augWrap"></div>
   </aside>
   <section class="center">
     <div class="viewInfo" id="viewInfo" hidden></div>
     <div class="boardInfo"><span id="boardCount"></span><span id="streakInfo"></span><span id="incomeInfo" class="muted"></span></div>
-    <div id="boardWrap"><div id="boardStack"><canvas id="gl" aria-hidden="true"></canvas><canvas id="cv" aria-label="Tablero de combate"></canvas></div></div>
-    <div class="items" id="items" aria-label="Objetos"></div>
-    <div class="feed hidden" id="feed"><h3>Habilidades del combate</h3><ol id="feedList"></ol></div>
+    <div id="boardWrap"><div class="items" id="items" aria-label="Objetos"></div><div id="boardStack"><canvas id="gl" aria-hidden="true"></canvas><canvas id="cv" aria-label="Tablero de combate"></canvas></div></div>
   </section>
   <aside class="right">
     <div class="ucard hidden" id="ucard" aria-live="polite"></div>
-    <div class="panel"><h2>Entrenadores</h2><div id="players"></div><p class="small muted" id="plHint" style="margin:6px 2px 0"></p></div>
-    <div class="panel"><h2>Registro</h2><ul class="log" id="log"></ul></div>
+    <div class="side">
+      <div class="sideTabs" role="tablist">
+        <button role="tab" data-tab="pl" aria-selected="true" title="Entrenadores">👥 <span>Entrenadores</span></button>
+        <button role="tab" data-tab="dmg" aria-selected="false" title="Registro de daño">⚔️ <span>Daño</span></button>
+        <button role="tab" data-tab="log" aria-selected="false" title="Registro">📜</button>
+      </div>
+      <div class="tabBody" id="tabPl"><div id="players"></div><p class="small muted" id="plHint"></p></div>
+      <div class="tabBody" id="tabDmg" hidden>
+        <div class="dmgModes"><button data-m="dmg" aria-pressed="true">Daño</button><button data-m="tank" aria-pressed="false">Recibido</button><button data-m="heal" aria-pressed="false">Curación</button></div>
+        <p class="small muted" id="dmgTitle"></p><div id="dmgList"></div>
+      </div>
+      <div class="tabBody" id="tabLog" hidden><ul class="log" id="log"></ul></div>
+    </div>
+    <div class="feed hidden" id="feed"><h3>Habilidades del combate</h3><ol id="feedList"></ol></div>
   </aside>
 </main>
 
 <footer class="shop" id="shopPanel">
   <div class="sellMsg" id="sellMsg">Suelta para vender</div>
-  <div class="shopL">
-    <div class="lvl"><span>Nivel <span class="px" id="lvl">1</span></span><div class="xpbar"><i id="xpbar"></i></div><span class="small" id="xpTxt"></span></div>
-    <div class="gold"><span class="coin"></span><span id="gold">0</span></div>
-    <div class="sbtns">
-      <button class="btn" id="xpBtn" title="Comprar 4 de EXP (tecla F)">⬆ EXP · 4</button>
-      <button class="btn" id="rerollBtn" title="Nueva tienda (tecla D)">🔄 Tienda · 2</button>
-      <button class="btn icon" id="lockBtn" title="Bloquear tienda para la siguiente ronda">🔓</button>
-    </div>
+  <div class="shopTop">
+    <div class="lvl"><span class="lvN">Nv. <span class="px" id="lvl">1</span></span><div class="xpbar"><i id="xpbar"></i></div><span class="small" id="xpTxt"></span></div>
     <div class="odds" id="odds" title="Probabilidad de cada coste en tu nivel"></div>
+    <div class="gold"><span class="coin"></span><span id="gold">0</span></div>
+    <button class="btn icon" id="lockBtn" title="Bloquear tienda para la siguiente ronda">🔓</button>
   </div>
-  <div class="cards" id="cards"></div>
+  <div class="shopMain">
+    <div class="sbtns">
+      <button class="btn" id="xpBtn" title="Comprar 4 de EXP (tecla F)"><b>⬆ EXP</b><span>4 de oro</span></button>
+      <button class="btn" id="rerollBtn" title="Nueva tienda (tecla D)"><b>🔄 Tienda</b><span>2 de oro</span></button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </div>
 </footer>
 
 <canvas id="scene" aria-hidden="true"></canvas>
