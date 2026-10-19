@@ -74,7 +74,10 @@ img{-webkit-user-drag:none}
 .panel h2{font-family:var(--display);font-weight:400;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
 .center{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
 #boardWrap{width:100%;display:flex;justify-content:center;position:relative}
-#cv{display:block;touch-action:none;cursor:grab;max-width:100%;filter:drop-shadow(0 18px 30px rgba(0,0,0,.35))}
+/* El tablero 3D (#gl, WebGL) va debajo y la capa 2D (#cv: barras, textos, entrenadores) encima */
+#boardStack{position:relative;max-width:100%;border-radius:16px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.4)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cv{position:relative;display:block;touch-action:none;cursor:grab;max-width:100%}
 .boardInfo{display:flex;gap:8px;justify-content:center;font-weight:800;flex-wrap:wrap;text-align:center}
 .boardInfo span:not(:empty){padding:3px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
 .feed{width:100%;max-width:660px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);border-radius:14px;padding:8px 10px;font-size:12.5px}
@@ -365,7 +368,7 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
   <section class="center">
     <div class="viewInfo" id="viewInfo" hidden></div>
     <div class="boardInfo"><span id="boardCount"></span><span id="streakInfo"></span><span id="incomeInfo" class="muted"></span></div>
-    <div id="boardWrap"><canvas id="cv" aria-label="Tablero de combate"></canvas></div>
+    <div id="boardWrap"><div id="boardStack"><canvas id="gl" aria-hidden="true"></canvas><canvas id="cv" aria-label="Tablero de combate"></canvas></div></div>
     <div class="items" id="items" aria-label="Objetos"></div>
     <div class="feed hidden" id="feed"><h3>Habilidades del combate</h3><ol id="feedList"></ol></div>
   </section>
@@ -436,5 +439,7 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="game.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+<script type="module" src="board3d.js"></script>
 </body>
 </html>
