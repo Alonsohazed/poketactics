@@ -1968,6 +1968,23 @@ function drawTacLabel(x,y,p,col,bub){
 }
 // Iconos de los aumentos sobre el tótem (con su descripción al pasar el cursor)
 let hudAugs=[];
+// Pokémon en el tablero / máximo, pintado en la mitad rival durante la planificación (como en TFT).
+// Llamativo mientras quede hueco; oscuro y apagado cuando el tablero está lleno
+function drawBoardCount(){
+ const me=G.me; if(G.phase!=='planning'||!me||!me.alive||viewedPlayer()!==me) return;
+ const n=boardUnits(me).length, max=maxBoard(me), full=n>=max, [ax,ay]=cellXY(3,1), [bx,by]=cellXY(3,2), [x,y]=scr((ax+bx)/2,(ay+by)/2,0);
+ const fs=Math.max(34,geo.R*2.3), txt=n+'/'+max, t=performance.now()/1000;
+ ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+fs+'px Nunito,system-ui'; ctx.lineJoin='round';
+ const w=ctx.measureText(txt).width, ix=x-w/2-fs*.42, r=fs*.3;
+ if(full){ ctx.globalAlpha=.6; ctx.fillStyle='rgba(8,10,20,.85)'; ctx.strokeStyle='rgba(255,255,255,.18)'; }
+ else { const g=ctx.createLinearGradient(0,y-fs/2,0,y+fs/2); g.addColorStop(0,'#bff8ff'); g.addColorStop(.5,'#3fd6ff'); g.addColorStop(1,'#2a7bff'); ctx.fillStyle=g; ctx.strokeStyle='#082a4a'; ctx.shadowColor='rgba(63,214,255,'+(.55+.25*Math.sin(t*3))+')'; ctx.shadowBlur=fs*.45; }
+ ctx.lineWidth=fs*.12; ctx.strokeText(txt,x+r*.7,y); ctx.fillText(txt,x+r*.7,y);
+ // Poké Ball a la izquierda del número
+ ctx.shadowBlur=0; ctx.lineWidth=fs*.07; ctx.beginPath(); ctx.arc(ix,y,r,Math.PI,0); ctx.fillStyle=full?'rgba(30,32,44,.9)':'#ff5a4a'; ctx.fill(); ctx.beginPath(); ctx.arc(ix,y,r,0,Math.PI); ctx.fillStyle=full?'rgba(60,64,80,.9)':'#f4f4f4'; ctx.fill();
+ ctx.beginPath(); ctx.arc(ix,y,r,0,Math.PI*2); ctx.moveTo(ix-r,y); ctx.lineTo(ix+r,y); ctx.strokeStyle=full?'rgba(0,0,0,.7)':'#1a1a22'; ctx.stroke();
+ ctx.beginPath(); ctx.arc(ix,y,r*.3,0,Math.PI*2); ctx.fillStyle=full?'rgba(60,64,80,.9)':'#f4f4f4'; ctx.fill(); ctx.stroke();
+ ctx.restore();
+}
 function drawTotemIcons(){
  hudAugs=[]; const tt=B3.totemTop&&B3.totemTop(); if(!tt) return;
  const list=viewedPlayer().augments.map(id=>AUG_BY[id]).filter(Boolean), R=geo.R, sz=Math.max(30,R*1.05), n=Math.max(1,list.length), w=n*(sz+3)+5, x0=tt[0]-w/2, y0=tt[1]-sz-6;
@@ -2321,7 +2338,7 @@ function draw(){
    interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
- if(inCar) drawCarouselHud(); else { drawBoardTrainers(); drawTotemIcons(); }
+ if(inCar) drawCarouselHud(); else { drawBoardCount(); drawBoardTrainers(); drawTotemIcons(); }
  if(TAC.mark){ const k=(performance.now()-TAC.mark.t0)/500; if(k>=1) TAC.mark=null; else { const [mx,my]=scr(TAC.mark.x,TAC.mark.y,0), [,my2]=scr(TAC.mark.x,TAC.mark.y+geo.R*.5,0); ctx.save(); ctx.globalAlpha=1-k; ctx.strokeStyle='#7fe0ff'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(mx,my,geo.R*(.25+k*.35),Math.max(3,(my2-my)*(.5+k*.7)),0,0,7); ctx.stroke(); ctx.restore(); } }
  // De atrás adelante: si las barras se solapan, la del Pokémon más cercano queda encima
  for(const a of A.filter(a=>a.base).sort((p,q)=>p.base[1]-q.base[1])) drawHud(a);
