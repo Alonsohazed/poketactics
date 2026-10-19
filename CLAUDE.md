@@ -95,7 +95,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - Entrenadores: Pokémon Showdown (`play.pokemonshowdown.com/sprites/trainers/<clave>.png`, lista `TRAINERS`). Antes de añadir uno, comprueba que la URL existe.
 - **Arenas 3D low-poly** (`buildArena()` en `board3d.js`): el templo (`temple-fire`, `temple-grass`, `temple-water`: suelo liso, muros de piedra y columnas con braseros) es la arena de todos los combates y su variante es la del anfitrión, según su minileyenda (`arenaHost()`/`bgKind()` en `game.js`); `plaza` es el carrusel. Las casillas hexagonales solo se ven al arrastrar un Pokémon. `route` y `stadium` siguen en el código, pero ya no se usan.
 - El menú y el acceso usan de fondo el propio campo 3D (`menuActors()`); la escena pixel art (`Scene`) ya no se muestra.
-- Ilustraciones de carta para la tienda en `public/art/` (`CARD_ART` en `game.js`; por ahora, Charmander).
+- Retratos de la tienda y de las minileyendas (selector, menú, cabezas de la lista de jugadores y salas): ilustraciones recortadas de cartas TCG en `public/art/<clave>.webp` (414×256, sin texto; `CARD_ART` y `artImg()` en `game.js`), sacadas de pokemon-tcg-data, pokemon-tcg-pocket-database y tcgdex. Ahí no se cargan modelos 3D. Son arte oficial: sustituibles por arte propio cuando lo haya.
 - No uses fan art de terceros sin permiso; inspírate en el estilo de los juegos oficiales.
 
 ## Cuentas y seguridad

@@ -2092,7 +2092,7 @@ function tacArea(){ const R=geo.R; return {x0:geo.pad,x1:geo.W-geo.pad,y0:cellXY
 function stepTac(dt){
  if(!G||!G.players.length||!geo.W) return;
  if(TAC.g!==G){ const sp=trainerSpots().me; Object.assign(TAC,{g:G,x:sp[0],y:sp[1],tx:null,ty:null,mark:null}); TAC.picked.clear(); }
- if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), st=geo.R*3.6*dt;
+ if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), toOrb=orbList().some(o=>!TAC.picked.has(o.id)&&Math.hypot(TAC.tx-o.x,TAC.ty-o.y)<geo.R*1.2), st=geo.R*3.6*(toOrb?2:1)*dt;
    if(d<=st){ TAC.x=TAC.tx; TAC.y=TAC.ty; TAC.tx=null; } else { TAC.x+=dx/d*st; TAC.y+=dy/d*st; } }
  if(!G.me.alive||G.phase==='carousel'||G.view) return;
  for(const o of orbList()) if(!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){ TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } }
@@ -2330,8 +2330,10 @@ const TRAIT_SVG={
 const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="${TRAIT_SVG[t]}"/></svg>`:(TRAITS[t]?TRAITS[t].icon:'');
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
-// Ilustraciones de carta para la tienda (sustituyen al fondo y al retrato 3D)
-const CARD_ART={charmander:'art/charmander.png'};
+// Ilustraciones recortadas de cartas TCG (public/art): retratos de la tienda y de las minileyendas, sin cargar modelos 3D
+const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp`]));
+const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
+const artImg=k=>CARD_ART[k]?`<img src="${CARD_ART[k]}" alt="" class="artPic">`:portraitImg(TACS[k]?TACS[k].dex[0]:dexOf(DEF[k],1));
 // Tipo elemental de un Pokémon: pinta el fondo de su carta
 const ELEMS=['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dragón','Fantasma','Hada','Normal','Acero','Siniestro','Lucha'];
 const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
@@ -2424,7 +2426,7 @@ function renderPlayers(){
  const watching=G.view?G.view.pid:-1;
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
    ${upBadge(p)}<span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
-   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${portraitImg(tacDex(p))}</span>`:'<span class="head em">💀</span>'}<span class="lv">${p.level}</span></span></div>`).join('');
+   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}<span class="lv">${p.level}</span></span></div>`).join('');
  $('plHint').textContent=combat?'Toca un entrenador para ver su combate':'Toca un entrenador para ver su tablero'+(po.size?' · ⚔️ = posible rival':'');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
@@ -2498,8 +2500,8 @@ function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
  openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6, 8 y 9 (Mega). Con <b>T</b> saludas 👍.</p>
-  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k], u=window.B3&&B3.portrait?B3.portrait(t.dex[0],v=>{ const im=document.querySelector(`.tacOpt[data-k="${k}"] img`); if(im&&v) im.src=v; }):null;
-    return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art bg-${elemOf(DEF[k])}"><i class="fx"></i></span><img src="${u||SPRITE(t.dex[0])}" alt=""><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
+  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k];
+    return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn gold" id="tacOk">Confirmar</button></div>`,{closable:!first,onClose:()=>{ if(ACC) showMenu(); }});
  $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
@@ -2508,7 +2510,7 @@ function showTacPick(first){
    catch(err){ toast(err.message); $('tacOk').disabled=false; if(err.status===401) showAuth(err.message); }
  };
 }
-const tacHeadHTML=(k,s)=>`<span class="head tacHead" style="--hs:${s}px">${portraitImg(tacOf({tac:k}).dex[0])}</span>`;
+const tacHeadHTML=(k,s)=>`<span class="head tacHead" style="--hs:${s}px">${artImg(tacKey({tac:k}))}</span>`;
 function showDifficulty(){
  openModal(`<h1>Contra bots</h1><p class="muted">7 entrenadores rivales. Elige la dificultad.</p>
  <div class="diffs">
@@ -2606,7 +2608,7 @@ function showGameOver(){
 }
 function renderMenu(){
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], st=ACC.stats||{};
- $('menuWho').innerHTML=`<div class="stand">${portraitImg(t.dex[0])}</div>
+ $('menuWho').innerHTML=`<div class="stand artStand">${artImg(tk)}</div>
   <div class="tname">${esc(ACC.name)}</div><div class="tfrom">Minileyenda: ${esc(t.name)}</div>
   <div class="stats"><div><b>${st.games||0}</b><span>Partidas</span></div><div><b>${st.wins||0}</b><span>Victorias</span></div><div><b>${st.top4||0}</b><span>Top 4</span></div><div><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
   <div class="row"><button class="btn sm" id="pickTr">Cambiar minileyenda</button></div>`;
