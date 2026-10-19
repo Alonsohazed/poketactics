@@ -36,14 +36,15 @@ Autochess de Pokémon al estilo Teamfight Tactics: modo solitario contra 7 bots 
 
 ## Arte
 
-- Modelos 3D de los Pokémon: [Pokemon-3D-api/assets](https://github.com/Pokemon-3D-api/assets) servidos por jsDelivr (`models/opt/regular/<n.º Pokédex>.glb`, comprimidos con Draco y texturas WebP). Se cargan bajo demanda (máx. 4 a la vez) y, mientras llegan o si fallan, se ve el sprite 2D de PokeAPI. Se normaliza su tamaño y las animaciones se eligen por nombre (`RX` en `board3d.js`: reposo, andar, ataque, habilidad, debilitado), porque cada modelo las nombra distinto; si no hay, se anima por código (saltitos, embestida, caída).
+- Modelos 3D de los Pokémon: [Pokemon-3D-api/assets](https://github.com/Pokemon-3D-api/assets) servidos por jsDelivr (`models/opt/regular/<n.º Pokédex>.glb`, comprimidos con Draco y texturas WebP). Se cargan bajo demanda (máx. 4 a la vez; si jsDelivr falla, se reintenta desde raw.githubusercontent) y, mientras llegan, se ve una Poké Ball 3D: **no se usan sprites 2D de Pokémon**. Las Megas de las minileyendas salen de las carpetas `mega/`, `x/` e `y/` (p. ej. `mega/3`, `y/6`, `y/9`). Se normaliza su tamaño y las animaciones se eligen por nombre (`RX` en `board3d.js`: reposo, andar, ataque, habilidad, debilitado), porque cada modelo las nombra distinto; si no hay, se anima por código (saltitos, embestida, caída).
 - Sprites cargados en caliente (no hay imágenes en el repo):
   - Pokémon (tienda, paneles y reserva del 3D) y objetos: PokeAPI/sprites (`sprites/pokemon`, `sprites/items`).
   - Medallas de las insignias: `sprites/badges/N.png` (tabla `BADGE_OF`).
   - Sprites de 3.ª gen del menú: `versions/generation-iii/emerald`.
   - Entrenadores: Pokémon Showdown (`play.pokemonshowdown.com/sprites/trainers/<clave>.png`, lista `TRAINERS`). Antes de añadir uno, comprueba que la URL existe.
-- **Arenas 3D low-poly** (`buildArena()` en `board3d.js`): `route` (PvE: hierba, árboles, rocas, hojas que caen), `stadium` (PvP: campo con Poké Ball, gradas con público, focos y banderas) y `plaza` (carrusel: plaza circular con fuente). Las texturas del suelo se pintan en un canvas a baja resolución y se amplían sin suavizado, para conservar el aire pixel art.
-- La escena del menú y del login (`Scene`) sigue siendo pixel art 2D (`pixelPainter()`, paleta `PAL`). El canvas `#scene` se muestra por CSS solo cuando el menú o el login están visibles.
+- **Arenas 3D low-poly** (`buildArena()` en `board3d.js`): el templo (`temple-fire`, `temple-grass`, `temple-water`: suelo liso, muros de piedra y columnas con braseros) es la arena de todos los combates y su variante es la del anfitrión, según su minileyenda (`arenaHost()`/`bgKind()` en `game.js`); `plaza` es el carrusel. Las casillas hexagonales solo se ven al arrastrar un Pokémon. `route` y `stadium` siguen en el código, pero ya no se usan.
+- El menú y el acceso usan de fondo el propio campo 3D (`menuActors()`); la escena pixel art (`Scene`) ya no se muestra.
+- Ilustraciones de carta para la tienda en `public/art/` (`CARD_ART` en `game.js`; por ahora, Charmander).
 - No uses fan art de terceros sin permiso; inspírate en el estilo de los juegos oficiales.
 
 ## Cuentas y seguridad

@@ -393,6 +393,23 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .xpbar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(var(--seg,25%) - 2px),rgba(6,8,18,.9) calc(var(--seg,25%) - 2px) var(--seg,25%));pointer-events:none}
 .lvl #xpTxt{font-family:var(--display);font-size:15px}
 .lvl .lvN{font-size:15px}
+/* Tienda flotante (escritorio): una barra compacta centrada abajo, para que el campo se vea entero */
+body.fullField .shop{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(1240px,calc(100vw - 340px));padding:4px 10px 8px;border:1px solid rgba(184,147,62,.6);border-bottom:0;border-radius:14px 14px 0 0;
+  background:linear-gradient(180deg,rgba(14,22,36,.94),rgba(8,12,22,.97));box-shadow:0 -8px 26px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
+body.fullField .shopTop{margin-bottom:4px}
+body.fullField .shopMain{grid-template-columns:150px minmax(0,1fr)}
+body.fullField .cardsWrap{width:100%}
+body.fullField .card{--ch:118px}
+/* Banca de objetos pegada al borde izquierdo: una columna de 10 casillas; las sinergias, justo a su derecha */
+body.fullField #boardWrap .items{position:fixed;left:6px;top:58px;z-index:4;grid-template-columns:60px;gap:5px;padding:6px;border-radius:12px;max-height:calc(100vh - 70px);overflow:hidden}
+body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) + 8px)}
+/* Estrellas sobre las cartas que suben de nivel al comprarlas */
+.upStars{position:absolute;top:2px;left:50%;transform:translateX(-50%);z-index:4;font-size:16px;letter-spacing:-1px;line-height:1;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,.8);animation:upPulse 1s ease-in-out infinite alternate}
+.upStars.s2{color:#e8eef8;filter:drop-shadow(0 0 4px #cfd8ea)}
+.upStars.s3{color:#ffd23a;filter:drop-shadow(0 0 6px #ffb400)}
+@keyframes upPulse{to{transform:translateX(-50%) scale(1.18)}}
+.card .cardArt{background-size:cover;background-position:60% 40%}
+.card .cardArt::before,.card .cardArt::after{display:none}
 /* ---------- barra superior: rondas de la fase ---------- */
 .roundBar{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:12px;padding:7px 34px 15px;
   clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,22px 100%);background:linear-gradient(180deg,#20384a,#0f1c28 70%);color:#eef2ff;
