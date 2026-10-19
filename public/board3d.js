@@ -17,7 +17,7 @@ const col=c=>new THREE.Color(c);
 
 let renderer, scene, camera, clock=new THREE.Clock(), ready=false, camDist=30;
 // Mapa de píxeles de tablero (los de game.js) a mundo: 1 unidad = radio de una casilla
-const M={cx:0,cz:0,R:30,W:600,H:600};
+const M={cx:0,cz:0,R:30,W:600,H:600,rect:{x:0,y:0,w:600,h:600}};
 const W3=(x,y,h=0)=>new THREE.Vector3((x-M.cx)/M.R,h,(y-M.cz)/M.R);
 const TOP=.2; // altura de la cara superior de las casillas
 const ccache={}, ccol=c=>ccache[c]||(ccache[c]=new THREE.Color(c)); // colores de solo lectura (sin crear uno por fotograma)
@@ -577,27 +577,32 @@ function watchPerf(dt){
  perf.fps=perf.n/perf.acc; perf.acc=0; perf.n=0;
  if(perf.fps<40&&qLevel>0){ if(++perf.bad>=2){ perf.bad=0; setQuality(qLevel-1); } } else perf.bad=0;
 }
-// Ajusta la cámara para que entren el tablero, el banquillo y los laterales
+// Ajusta la cámara para que el tablero, el banquillo y los laterales entren en el rectángulo de juego (M.rect).
+// El lienzo puede ocupar toda la pantalla: el campo se ve detrás de los paneles y el tablero queda en el hueco central.
 function fitCamera(G){
- const el=THREE.MathUtils.degToRad(47), aspect=M.W/M.H; camera.aspect=aspect;
+ const el=THREE.MathUtils.degToRad(47), aspect=M.W/M.H, rc=M.rect, lx=rc.w/M.W, ly=rc.h/M.H; camera.aspect=aspect; camera.clearViewOffset();
  const pts=[]; const add=(x,y,h=0)=>pts.push(W3(x,y,h));
  add(G.ox-G.R*.6,G.pad,1.6); add(G.ox+G.bw+G.R*.6,G.pad,1.6); add(G.ox-G.R*.4,G.pad+G.bh+18+G.bs+G.R*.1,0); add(G.ox+G.bw+G.R*.4,G.pad+G.bh+18+G.bs+G.R*.1,0);
  add(G.pad,G.pad+G.bh*.5,0); add(G.W-G.pad,G.pad+G.bh*.5,0);
  let tz=0;
  const place=D=>{ camera.position.set(0,Math.sin(el)*D,tz+Math.cos(el)*D); camera.lookAt(0,0,tz); camera.updateProjectionMatrix(); camera.updateMatrixWorld(); };
  for(let it=0;it<3;it++){
-   let lo=4,hi=80; for(let i=0;i<30;i++){ const D=(lo+hi)/2; place(D); const ok=pts.every(p=>{ const q=p.clone().project(camera); return Math.abs(q.x)<=.97&&Math.abs(q.y)<=.95; }); if(ok) hi=D; else lo=D; }
+   let lo=4,hi=80; for(let i=0;i<30;i++){ const D=(lo+hi)/2; place(D); const ok=pts.every(p=>{ const q=p.clone().project(camera); return Math.abs(q.x)<=.97*lx&&Math.abs(q.y)<=.95*ly; }); if(ok) hi=D; else lo=D; }
    place(hi); camDist=hi; let y0=9,y1=-9; for(const p of pts){ const q=p.clone().project(camera); y0=Math.min(y0,q.y); y1=Math.max(y1,q.y); }
    const mid=(y0+y1)/2; if(Math.abs(mid)<.01) break; tz+=-mid*hi*.35;
  }
+ // Desplaza la imagen para que el centro del tablero caiga en el centro del rectángulo de juego
+ const ox=M.W/2-(rc.x+rc.w/2), oy=M.H/2-(rc.y+rc.h/2); if(Math.abs(ox)>.5||Math.abs(oy)>.5){ camera.setViewOffset(M.W,M.H,ox,oy,M.W,M.H); camera.updateProjectionMatrix(); }
  sun.target.position.set(0,0,tz); sun.position.set(-6,14,tz+8);
  partScale();
 }
 // Tamaño de las partículas en píxeles del búfer (depende del alto y de la densidad de píxeles)
 function partScale(){ const s=renderer.getSize(new THREE.Vector2()); for(const P of [PA,PN]) P.mat.uniforms.uScale.value=s.y*renderer.getPixelRatio()/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)); }
-function resize(G,dpr){
- Object.assign(M,{W:G.W,H:G.H,R:G.R,cx:G.W/2,cz:(G.pad+G.pad+G.bh+18+G.bs)/2});
- dpr0=dpr||1; renderer.setPixelRatio(Math.min(dpr0,Q.pr)); renderer.setSize(G.W,G.H,false);
+// V: tamaño del lienzo y rectángulo donde debe caber el tablero (por defecto, el lienzo entero)
+function resize(G,dpr,V){
+ V=V||{W:G.W,H:G.H,rect:{x:0,y:0,w:G.W,h:G.H}};
+ Object.assign(M,{W:V.W,H:V.H,rect:V.rect,R:G.R,cx:G.W/2,cz:(G.pad+G.pad+G.bh+18+G.bs)/2});
+ dpr0=dpr||1; renderer.setPixelRatio(Math.min(dpr0,Q.pr)); renderer.setSize(V.W,V.H,false);
  buildBoard(G); fitCamera(G);
 }
 const v3=new THREE.Vector3();
@@ -646,7 +651,7 @@ function portrait(dex,cb){
 function makePortrait(dex){
  const m=models[dex]; if(dex in portraits||!m||m.status!=='ok') return;
  try{
-   if(!pR){ pR=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true}); pR.setSize(240,200,false); pR.outputColorSpace=THREE.SRGBColorSpace; pR.toneMapping=THREE.ACESFilmicToneMapping;
+   if(!pR){ pR=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true}); pR.setSize(300,300,false); pR.outputColorSpace=THREE.SRGBColorSpace; pR.toneMapping=THREE.ACESFilmicToneMapping;
      pScene=new THREE.Scene(); pScene.add(new THREE.HemisphereLight('#ffffff','#6a6a80',2.2)); const l=new THREE.DirectionalLight('#ffffff',2.2); l.position.set(-2,3,4); pScene.add(l); }
    const inst=SkeletonUtils.clone(m.scene), g=new THREE.Group(); inst.position.copy(m.off); g.add(inst); g.scale.setScalar(m.k); pScene.add(g);
    if(m.clips.idle){ const mx=new THREE.AnimationMixer(inst); mx.clipAction(m.clips.idle).play(); mx.update(.4); }
@@ -656,10 +661,12 @@ function makePortrait(dex){
    // Sin hueso de cabeza: se encuadra la parte alta de las piezas opacas (el gas de Gastly, por ejemplo, no cuenta)
    const core=new THREE.Box3(); inst.traverse(o=>{ if(o.isMesh&&![].concat(o.material).some(mt=>mt.transparent)) core.expandByObject(o,true); });
    const cb=core.isEmpty()?box:core, cs=cb.getSize(new THREE.Vector3()), cc=cb.getCenter(new THREE.Vector3());
-   const tgt=head?head.getWorldPosition(new THREE.Vector3()):new THREE.Vector3(cc.x,cb.min.y+cs.y*.62,cc.z+cs.z*.15);
-   tgt.y=Math.min(tgt.y,box.max.y-size.y*.12); tgt.y+=size.y*.04;
-   const fh=clamp((head?size.y:cs.y)*.6,.38,.7), cam=new THREE.PerspectiveCamera(30,1.2,.01,50), dist=fh/(2*Math.tan(THREE.MathUtils.degToRad(15)));
-   cam.position.set(tgt.x+dist*.28,tgt.y+dist*.12,tgt.z+dist*.95); cam.lookAt(tgt);
+   // Medio cuerpo: de algo por debajo de la cintura hasta un poco por encima de la cabeza, visto de tres cuartos
+   const top=Math.max(cb.max.y,head?head.getWorldPosition(new THREE.Vector3()).y:0), h=top-cb.min.y, fh=Math.max(h*.66,.42);
+   const tgt=new THREE.Vector3(cc.x,top-fh*.47,cc.z);
+   if(head){ const hp=head.getWorldPosition(new THREE.Vector3()); tgt.x=lerp(tgt.x,hp.x,.4); tgt.z=lerp(tgt.z,hp.z,.4); }
+   const cam=new THREE.PerspectiveCamera(30,1,.01,50), dist=fh/(2*Math.tan(THREE.MathUtils.degToRad(15)))+cs.z*.3;
+   cam.position.set(tgt.x+dist*.42,tgt.y+dist*.1,tgt.z+dist*.9); cam.lookAt(tgt);
    pR.setClearColor(0x000000,0); pR.render(pScene,cam); portraits[dex]=pR.domElement.toDataURL('image/png'); pScene.remove(g);
  }catch(e){ portraits[dex]=''; }
  for(const f of pWait[dex]||[]) try{ f(portraits[dex]); }catch(e){} delete pWait[dex];

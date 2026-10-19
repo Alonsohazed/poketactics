@@ -230,7 +230,7 @@ img{-webkit-user-drag:none}
 .sbtns .btn{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:6px 12px;text-align:left}
 .sbtns .btn b{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.02em}
 .sbtns .btn span{font-size:11px;opacity:.8}
-.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.cards{display:grid;grid-template-columns:repeat(5,minmax(0,230px));justify-content:center;gap:10px}
 /* Carta: arte del tipo a todo lo alto, retrato del Pokémon, sinergias con nombre y barra inferior con nombre y coste */
 .card{position:relative;height:var(--ch,158px);border:2px solid var(--cc);border-radius:12px;padding:0;cursor:pointer;text-align:left;overflow:hidden;isolation:isolate;
   box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),inset 0 0 0 1px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s;background:#141a30}
@@ -243,9 +243,10 @@ img{-webkit-user-drag:none}
 .card.empty{border-style:dashed;border-color:var(--line2);background:var(--panel);box-shadow:none;cursor:default;display:grid;place-items:center;color:var(--muted)}
 .card .art{position:absolute;inset:0;z-index:-1;overflow:hidden}
 .card .art::before,.card .art::after{content:"";position:absolute;inset:0;pointer-events:none}
-.card .pic{position:absolute;inset:0 0 24px 0;display:grid;place-items:end center}
-.card .pic img{height:100%;width:100%;object-fit:cover;object-position:50% 30%;filter:drop-shadow(0 4px 6px rgba(0,0,0,.45))}
-.card .pic img.px{image-rendering:pixelated;object-fit:contain;width:auto;height:118%;margin-bottom:-10%}
+/* El Pokémon (medio cuerpo) ocupa la mitad derecha; se funde por la izquierda con el fondo, donde van las sinergias */
+.card .pic{position:absolute;top:0;bottom:24px;right:0;width:64%;display:flex;justify-content:flex-end;align-items:flex-end;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24%);mask-image:linear-gradient(90deg,transparent,#000 24%)}
+.card .pic img{height:100%;width:100%;object-fit:cover;object-position:50% 40%;filter:drop-shadow(-4px 6px 8px rgba(0,0,0,.55))}
+.card .pic img.px{image-rendering:pixelated;object-fit:contain;object-position:100% 100%;height:112%}
 .card .tr{position:absolute;left:5px;bottom:29px;display:flex;flex-direction:column;gap:3px;z-index:2}
 .card .tr span{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:900;color:#fff;line-height:1;padding:2px 7px 2px 2px;border-radius:7px;background:rgba(6,9,22,.72);border:1px solid rgba(255,255,255,.14);text-shadow:0 1px 1px #000;width:max-content;max-width:100%}
 .card .tr i{font-style:normal;width:17px;height:17px;display:grid;place-items:center;font-size:11px;border-radius:5px;background:var(--tc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
@@ -303,6 +304,24 @@ img{-webkit-user-drag:none}
 .bg-Siniestro::before{background-image:radial-gradient(circle,rgba(255,255,255,.7) 0 1px,transparent 1.5px);background-size:27px 31px;animation:twinkle 2.2s ease-in-out infinite alternate}
 .bg-Lucha{background:radial-gradient(circle at 50% 45%,#ffb37a,#d9441f 40%,#4d1208)}
 .bg-Lucha::before{inset:-40%;background:repeating-conic-gradient(from 0deg,rgba(255,240,200,.3) 0 6deg,transparent 6deg 18deg);animation:spin 20s linear infinite reverse}
+
+/* Capa épica común: halo del color del tipo detrás del Pokémon, rayos de luz que giran, viñeta y destello al pasar el ratón */
+.bg-Agua{--g:#6fd3ff}.bg-Eléctrico{--g:#ffe35c}.bg-Fuego{--g:#ffb02e}.bg-Planta{--g:#c4f590}.bg-Psíquico{--g:#ff7ad8}.bg-Roca{--g:#ffd28a}.bg-Dragón{--g:#b49dff}
+.bg-Fantasma{--g:#b48cff}.bg-Hada{--g:#ffd1ee}.bg-Normal{--g:#fff2c0}.bg-Acero{--g:#e6f0ff}.bg-Siniestro{--g:#c08aff}.bg-Lucha{--g:#ffb37a}
+.card .fx{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;
+  background:radial-gradient(55% 70% at 72% 64%,color-mix(in srgb,var(--g) 75%,transparent),transparent 72%);mix-blend-mode:screen;animation:fxPulse 2.6s ease-in-out infinite alternate}
+.card .fx::before{content:"";position:absolute;width:240%;aspect-ratio:1;left:72%;top:64%;transform:translate(-50%,-50%);
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--g) 55%,transparent) 0 5deg,transparent 5deg 18deg);
+  -webkit-mask-image:radial-gradient(circle,#000 0 12%,transparent 42%);mask-image:radial-gradient(circle,#000 0 12%,transparent 42%);animation:raySpin 16s linear infinite}
+.card .fx::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 45%,transparent 60%) no-repeat;background-size:250% 100%;background-position:130% 0;opacity:0}
+.card:hover .fx::after{animation:cardShine .9s ease-out;opacity:1}
+.card::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(130% 110% at 65% 45%,transparent 55%,rgba(0,0,0,.6)),linear-gradient(180deg,rgba(255,255,255,.22),transparent 14%),linear-gradient(0deg,rgba(0,0,0,.45),transparent 40%)}
+.card .pic{z-index:1}
+@keyframes fxPulse{from{opacity:.65}to{opacity:1}}
+@keyframes raySpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes cardShine{from{background-position:130% 0}to{background-position:-60% 0}}
+.card.c4,.card.c5{box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),0 0 14px color-mix(in srgb,var(--cc) 55%,transparent),inset 0 0 0 1px rgba(0,0,0,.4)}
 
 /* Descripción de la habilidad al pasar por una carta de la tienda */
 #tip.shopTip{max-width:330px;padding:0;overflow:hidden;border-color:var(--cc,var(--line2))}
@@ -450,6 +469,21 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
   #boardWrap .items{position:absolute;left:0;top:0;z-index:3;display:grid;grid-template-columns:repeat(2,46px);gap:6px;padding:8px;border-radius:14px;background:rgba(8,12,28,.62);border:1px solid var(--line2);min-height:0}
   #boardWrap .items .item .ii,#boardWrap .items .islot{--is:46px}
 }
+/* Campo a pantalla completa (escritorio, lo activa layout() con la clase fullField): el tablero 3D queda detrás de todo
+   y los paneles flotan encima, semitransparentes; los huecos vacíos dejan pasar el ratón al tablero */
+body.fullField #boardStack{position:fixed;inset:0;z-index:0;border-radius:0;box-shadow:none;max-width:none;pointer-events:auto}
+body.fullField .layout{position:relative;z-index:2;pointer-events:none;align-items:start}
+body.fullField .traitsPanel,body.fullField .right,body.fullField .boardInfo span,body.fullField .viewInfo{pointer-events:auto;position:relative;z-index:1}
+body.fullField #boardWrap .items{pointer-events:auto}
+body.fullField .right{max-height:100%}
+body.fullField .traitsPanel{max-height:100%;background:linear-gradient(180deg,rgba(8,12,28,.62),rgba(8,12,28,.38));border-color:rgba(255,255,255,.1);box-shadow:none;backdrop-filter:blur(3px)}
+body.fullField .traitsPanel:not(:has(.trait)){visibility:hidden}
+body.fullField .traitsPanel{grid-column:1} body.fullField .center{grid-column:2} body.fullField .right{grid-column:3}
+body.fullField .side{background:linear-gradient(180deg,rgba(8,12,28,.66),rgba(8,12,28,.42));backdrop-filter:blur(3px)}
+body.fullField .feed{background:rgba(8,12,28,.6)}
+body.fullField .top{position:relative;z-index:5;background:linear-gradient(180deg,rgba(8,12,28,.88),rgba(8,12,28,.5));box-shadow:none;border-bottom-color:rgba(255,255,255,.08);backdrop-filter:blur(3px)}
+body.fullField .shop{z-index:5;background:linear-gradient(180deg,rgba(8,12,28,.35),rgba(8,12,28,.88) 40%);border-top-color:rgba(255,255,255,.08);box-shadow:none}
+body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 @media (max-width:1100px){
   .layout{grid-template-columns:1fr;}
   .center{order:-1}
@@ -487,6 +521,7 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
   .card .tr{left:2px;bottom:22px;gap:2px} .card .tr span{font-size:0;padding:1px;gap:0} .card .tr i{width:14px;height:14px;font-size:9px}
   .card .cbot{height:19px;padding:0 4px;gap:2px} .card .pic{bottom:19px} .card .cn{font-size:9.5px} .card .cc{font-size:11px} .card .cc::before{width:8px;height:8px}
   .card .own{top:2px;right:2px;font-size:9px;padding:0 3px}
+  .card .pic{width:100%;-webkit-mask-image:none;mask-image:none}
 }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>

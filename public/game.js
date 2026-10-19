@@ -1509,17 +1509,27 @@ function computeGeo(W){
  const R=clamp((W-pad*2)/(7.5*Math.sqrt(3)+SIDE*2),15,44), side=R*SIDE, hw=Math.sqrt(3)*R, bw=hw*7.5, bh=R*2+7*1.5*R, bs=bw/9;
  return {pad,R,hw,bw,bh,bs,side,ox:pad+side,W:bw+(pad+side)*2,H:pad+bh+18+bs+pad+R*.25};
 }
+// Escritorio: el lienzo ocupa toda la pantalla (el campo se ve detrás de los paneles) y el tablero se encaja en el hueco central.
+// Móvil y tablet: el lienzo mide lo mismo que el tablero, entre la barra superior y la tienda.
+const fullField=()=>!HEADLESS&&window.matchMedia&&matchMedia('(min-width:1101px)').matches;
+let view={W:0,H:0,rect:null};
 function layout(){
- const wrap=$('boardWrap'), hOf=el=>el?el.offsetHeight:0;
- // Que quepan tablero y banquillo entre la barra superior y la tienda, que se quedan fijas al hacer scroll
- const availH=innerHeight-hOf(document.querySelector('.top'))-hOf($('shopPanel'))-hOf(document.querySelector('.boardInfo'))-36;
- // En escritorio la banca de objetos va dentro, a la izquierda: se deja su hueco a los dos lados para centrar el tablero
+ const wrap=$('boardWrap'), hOf=el=>el?el.offsetHeight:0, full=fullField();
+ // La banca de objetos va dentro, a la izquierda: se deja su hueco para que no tape el tablero
  const it=$('items'), side=it&&getComputedStyle(it).position==='absolute'?it.offsetWidth+8:0;
- let w=Math.min((wrap.clientWidth||600)-side*2,760);
+ let rect=null, availH, w;
+ if(full){
+   const c=document.querySelector('.center').getBoundingClientRect(), inf=document.querySelector('.boardInfo').getBoundingClientRect(), sh=$('shopPanel').getBoundingClientRect();
+   rect={x:c.left+side,y:inf.bottom+4,w:Math.max(200,c.width-side),h:Math.max(200,sh.top-6-(inf.bottom+4))};
+   availH=rect.h; w=Math.min(rect.w,1100);
+ } else { availH=innerHeight-hOf(document.querySelector('.top'))-hOf($('shopPanel'))-hOf(document.querySelector('.boardInfo'))-36; w=Math.min((wrap.clientWidth||600)-side*2,760); }
  for(let i=0;i<3;i++){ const g=computeGeo(w); if(g.H<=availH) break; w*=availH/g.H; }
  const g=computeGeo(Math.max(280,w)), dpr=Math.min(window.devicePixelRatio||1,2);
- if(geo.W===g.W&&geo.H===g.H&&layout.dpr===dpr) return; // sin cambios: no rehace el tablero 3D
- geo=g; layout.dpr=dpr; cv.width=geo.W*dpr; cv.height=geo.H*dpr; cv.style.width=geo.W+'px'; cv.style.height=geo.H+'px';
+ const V=full?{W:innerWidth,H:innerHeight,rect}:{W:g.W,H:g.H,rect:{x:0,y:0,w:g.W,h:g.H}};
+ const key=[g.W,g.H,dpr,V.W,V.H,rect&&[rect.x,rect.y,rect.w,rect.h].map(Math.round)].join();
+ if(key===layout.key) return; layout.key=key; // sin cambios: no rehace el tablero 3D
+ geo=g; view=V; layout.dpr=dpr; document.body.classList.toggle('fullField',full);
+ cv.width=view.W*dpr; cv.height=view.H*dpr; cv.style.width=view.W+'px'; cv.style.height=view.H+'px';
  ctx.setTransform(dpr,0,0,dpr,0,0); readColors(); sizeB3();
 }
 const cellXY=(c,r)=>[geo.ox+geo.hw*(c+.5*(r&1))+geo.hw/2, geo.pad+geo.R+r*1.5*geo.R];
@@ -1554,7 +1564,7 @@ function spectate(pid){
 const benchXY=i=>[geo.ox+geo.bs*i+geo.bs/2, geo.pad+geo.bh+18+geo.bs/2];
 function unitXY(u){ const [x1,y1]=vXY(u.pc,u.pr), [x2,y2]=vXY(u.c,u.r), k=clamp(u.mt/.3,0,1); return [x1+(x2-x1)*k,y1+(y2-y1)*k]; }
 // Devuelve el punto del suelo (píxeles de tablero) bajo el puntero y guarda su posición en pantalla
-function canvasPos(e){ const b=cv.getBoundingClientRect(); ptr=[(e.clientX-b.left)*(geo.W/b.width),(e.clientY-b.top)*(geo.H/b.height)]; return b3On()?B3.unproject(ptr[0],ptr[1]):ptr.slice(); }
+function canvasPos(e){ const b=cv.getBoundingClientRect(); ptr=[(e.clientX-b.left)*(view.W/b.width),(e.clientY-b.top)*(view.H/b.height)]; return b3On()?B3.unproject(ptr[0],ptr[1]):ptr.slice(); }
 function hitCell(x,y){ let best=null,bd=1e9; for(let r=0;r<8;r++) for(let c=0;c<7;c++){ const [cx,cy]=cellXY(c,r); const d=Math.hypot(x-cx,y-cy); if(d<bd){bd=d;best=[c,r];} } return bd<geo.R*.95?best:null; }
 function hitBench(x,y){ const top=geo.pad+geo.bh+18; if(y<top||y>top+geo.bs) return -1; const i=Math.floor((x-geo.ox)/geo.bs); return i>=0&&i<BENCH?i:-1; }
 function unitAt(x,y){
@@ -1656,11 +1666,11 @@ function drawTrainer(x0,y0,key,o={}){
  ctx.restore();
  if(o.label){
    ctx.save(); ctx.font=`900 ${Math.max(9,R*.27)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-   const w=ctx.measureText(o.label).width+R*.4, h=R*.38, ly=y+s*.2, lx=clamp(x,w/2+2,geo.W-w/2-2);
+   const w=ctx.measureText(o.label).width+R*.4, h=R*.38, ly=y+s*.2, lx=clamp(x,w/2+2,view.W-w/2-2);
    ctx.globalAlpha=o.dim?.6:1; ctx.fillStyle='rgba(8,12,30,.78)'; rrPath(ctx,lx-w/2,ly-h/2,w,h,h/2); ctx.fill(); ctx.strokeStyle=ring; ctx.lineWidth=1.5; ctx.stroke();
    ctx.fillStyle='#fff'; ctx.fillText(o.label,lx,ly+.5);
    // Vida del estratega debajo del nombre
-   if(o.hp!==undefined){ const bw=Math.max(w,R*1.5), bx=clamp(x,bw/2+2,geo.W-bw/2-2)-bw/2, by2=ly+h/2+2, bh=Math.max(5,R*.16), f=clamp(o.hp/100,0,1);
+   if(o.hp!==undefined){ const bw=Math.max(w,R*1.5), bx=clamp(x,bw/2+2,view.W-bw/2-2)-bw/2, by2=ly+h/2+2, bh=Math.max(5,R*.16), f=clamp(o.hp/100,0,1);
      ctx.fillStyle='rgba(8,12,30,.85)'; rrPath(ctx,bx-1.5,by2-1.5,bw+3,bh+3,3); ctx.fill();
      ctx.fillStyle=f>.5?'#3fd27a':f>.25?'#f4c04e':'#ff5a5f'; rrPath(ctx,bx,by2,Math.max(0,bw*f),bh,2); ctx.fill();
      ctx.font=`900 ${Math.max(8,bh*1.05)}px Nunito,system-ui,sans-serif`; ctx.fillStyle='#fff'; ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.lineWidth=2.5; const tx=bx+bw/2, ty=by2+bh/2+.5; ctx.strokeText(Math.max(0,R0(o.hp)),tx,ty); ctx.fillText(Math.max(0,R0(o.hp)),tx,ty); }
@@ -1877,7 +1887,7 @@ function hideTip(){ if(!tipOn) return; tipOn=false; tipAnchor=null; $('tip').sty
 let ptr=[0,0], hudActors=[], myTrBox=null;
 const b3On=()=>!HEADLESS&&window.B3&&B3.ready;
 function b3Geo(){ const cells=[]; for(let r=0;r<8;r++) for(let c=0;c<7;c++) cells.push(cellXY(c,r)); return {...geo,cells,bench:[...Array(BENCH)].map((_,i)=>benchXY(i))}; }
-function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready) B3.init($('gl')); B3.resize(b3Geo(),window.devicePixelRatio||1); }
+function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready) B3.init($('gl')); B3.resize(b3Geo(),window.devicePixelRatio||1,view); }
 // De píxeles de tablero (suelo) a pantalla; h en radios de casilla
 const scr=(x,y,h=0)=>b3On()?B3.project(x,y,h/1):[x,y];
 function bgKind(){ if(G.phase==='carousel') return 'plaza'; if(G.round&&G.round.type==='pve'&&['planning','combat'].includes(G.phase)) return 'route'; return 'stadium'; }
@@ -1950,9 +1960,9 @@ function sceneActors(){
 }
 function draw(){
  if(!G||!geo.W) return;
- ctx.clearRect(0,0,geo.W,geo.H);
+ ctx.clearRect(0,0,view.W,view.H);
  const me=G.me; if(!me) return;
- if(!b3On()){ ctx.save(); ctx.fillStyle='#16203d'; ctx.fillRect(0,0,geo.W,geo.H); ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(14,geo.R*.5)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.fillText('Cargando tablero 3D…',geo.W/2,geo.H/2); ctx.restore(); return; }
+ if(!b3On()){ ctx.save(); ctx.fillStyle='#16203d'; ctx.fillRect(0,0,view.W,view.H); ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(14,geo.R*.5)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.fillText('Cargando tablero 3D…',view.W/2,view.H/2); ctx.restore(); return; }
  const inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel, playing=G.players&&G.players.length;
  const dragBoard=drag&&drag.moved&&G.phase!=='combat'&&!inCar, cell=dragBoard?hitCell(drag.x,drag.y):null, bh=drag&&drag.moved?hitBench(drag.x,drag.y):-1;
  // Con el menú o el login delante (pantalla completa) no se ve el tablero: no se pinta, y el móvil lo agradece
@@ -1975,7 +1985,7 @@ function drawFxHud(cb){
     case 'text': { const [x0,y0]=vXY(f.c,f.r), [x,y]=scr(x0,y0,1.9); ctx.globalAlpha=1-p; ctx.font=`900 ${Math.max(10,R*.36)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.fillStyle=f.color; const yy=y-p*R*.9; ctx.strokeText(f.txt,x+f.dx,yy); ctx.fillText(f.txt,x+f.dx,yy); break; }
     case 'banner': { if(f.u.dead&&p>.3) break; const [x0,y0]=unitXY(f.u), [x,y]=scr(x0,y0,2.5); const a=p<.1?p/.1:p>.75?(1-p)/.25:1; ctx.globalAlpha=a; ctx.font=`900 ${Math.max(12,R*.44)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       const txt=(f.icon?f.icon+' ':'')+f.txt, w=ctx.measureText(txt).width+R*.7, h=R*.62, by=y-p*R*.25; ctx.fillStyle='rgba(15,20,40,.88)'; ctx.strokeStyle=f.color; ctx.lineWidth=2.5; rrPath(ctx,x-w/2,by-h/2,w,h,h/2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#fff'; ctx.fillText(txt,x,by+1); break; }
-    case 'flash': { ctx.globalAlpha=(1-p)*.25; ctx.fillStyle=f.color; ctx.fillRect(0,0,geo.W,geo.H); break; }
+    case 'flash': { ctx.globalAlpha=(1-p)*.25; ctx.fillStyle=f.color; ctx.fillRect(0,0,view.W,view.H); break; }
    }
    ctx.restore();
  }
@@ -1998,7 +2008,7 @@ function drawCarouselHud(){
  }
  const myIdx=C.order.indexOf(G.me), myAv=C.av[G.me.id];
  const msg=!myAv?'Mirando el carrusel':myAv.done?'Ya tienes tu Pokémon. Esperando al resto…':myAv.rel?'¡Te toca! Toca un Pokémon':`Sales en ${Math.max(0,Math.ceil(releaseAt(myIdx)-C.t))}s · menos vida = eliges antes`;
- ctx.save(); ctx.font=`900 ${Math.max(12,R*.42)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.fillStyle='#fff'; ctx.strokeText(msg,geo.W/2,8); ctx.fillText(msg,geo.W/2,8); ctx.restore();
+ ctx.save(); ctx.font=`900 ${Math.max(12,R*.42)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.fillStyle='#fff'; const mx=view.rect?view.rect.x+view.rect.w/2:view.W/2, my=view.rect?view.rect.y+8:8; ctx.strokeText(msg,mx,my); ctx.fillText(msg,mx,my); ctx.restore();
 }
 function renderFeed(){
  const box=$('feed'); const cb=G&&G.phase==='combat'?viewCombat():null;
@@ -2104,7 +2114,7 @@ function renderShop(){
      if(!k||!DEF[k]) return `<div class="card empty">—</div>`;
      const d=DEF[k], can=canBuy(me,i)&&me.alive;
      return `<button class="card c${d.cost} ${can?'':'off'} ${owned[k]?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
-       <span class="art bg-${elemOf(d)}"></span><span class="pic">${portraitImg(dexOf(d,1))}</span>
+       <span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>
        ${owned[k]?`<span class="own">${owned[k]}/3</span>`:''}
        <span class="tr">${d.traits.map(t=>`<span title="${t}"><i style="--tc:${TRAITS[t].color}">${TRAITS[t].icon}</i>${t}</span>`).join('')}</span>
        <span class="cbot"><span class="cn">${d.name}</span><span class="cc">${d.cost}</span></span></button>`;
