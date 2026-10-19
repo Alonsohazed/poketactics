@@ -1,13 +1,13 @@
 // Carga inicial, acceso y cuentas
 const { test, expect, register, uniqueUser, PASS } = require('./helpers');
 
-test('la página carga en la pantalla de acceso sin errores', async ({ page }) => {
+test('la página carga en la pantalla de acceso sin errores @rapido', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle('Poké Tactics');
   await expect(page.locator('#auth .logo')).toBeVisible();
   await expect(page.locator('#auGo')).toHaveText('Entrar');
   await expect(page.locator('#auPass2Wrap')).toBeHidden(); // solo aparece al crear cuenta
-  await expect(page.locator('#scene')).toBeVisible(); // escena pixel art de fondo
+  await expect(page.locator('#boardStack')).toBeVisible(); // de fondo, el campo 3D
 });
 
 test('el formulario valida antes de enviar', async ({ page }) => {
@@ -24,10 +24,10 @@ test('el formulario valida antes de enviar', async ({ page }) => {
   await expect(page.locator('#auErr')).toContainText('no coinciden');
 });
 
-test('registro, elección de entrenador, cierre de sesión y vuelta a entrar', async ({ page }) => {
-  const user = await register(page, undefined, 'misty');
+test('registro, elección de minileyenda, cierre de sesión y vuelta a entrar @rapido', async ({ page }) => {
+  const user = await register(page, undefined, 'bulbasaur');
   await expect(page.locator('#menuWho .tname')).toHaveText(user);
-  await expect(page.locator('#menuWho .tfrom')).toContainText('Misty');
+  await expect(page.locator('#menuWho .tfrom')).toContainText('Bulbasaur');
   // cerrar sesión desde Opciones
   await page.locator('#optBtn').click();
   await page.locator('#logoutBtn').click();
@@ -42,7 +42,7 @@ test('registro, elección de entrenador, cierre de sesión y vuelta a entrar', a
   await page.locator('#auPass').fill(PASS);
   await page.locator('#auGo').click();
   await expect(page.locator('#menu')).toBeVisible();
-  await expect(page.locator('#menuWho .tfrom')).toContainText('Misty');
+  await expect(page.locator('#menuWho .tfrom')).toContainText('Bulbasaur');
 });
 
 test('la sesión sobrevive a recargar la página', async ({ page }) => {
@@ -63,4 +63,14 @@ test('los menús secundarios abren y cierran', async ({ page }) => {
   // la tabla de objetos muestra las 8 insignias con su medalla
   await page.locator('#recMenuBtn').click();
   await expect(page.locator('#mbox .ii.emb')).toHaveCount(16);
+});
+
+test('la minileyenda se cambia en el menú y queda guardada en la cuenta', async ({ page }) => {
+  await register(page, undefined, 'bulbasaur');
+  await page.locator('#pickTr').click();
+  await page.locator('.tacOpt[data-k="squirtle"]').click();
+  await page.locator('#tacOk').click();
+  await expect(page.locator('#menuWho .tfrom')).toContainText('Squirtle');
+  await page.reload();
+  await expect(page.locator('#menuWho .tfrom')).toContainText('Squirtle');
 });

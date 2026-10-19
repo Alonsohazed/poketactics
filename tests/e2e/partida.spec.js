@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 const me = page => page.evaluate(() => ({ gold: G.me.gold, level: G.me.level, xp: G.me.xp, bench: G.me.bench.filter(Boolean).length, board: Object.keys(G.me.board).length, shop: G.me.shop.slice(), items: G.me.items.slice(), augs: G.me.augments.slice() }));
 
-test('tienda: comprar resta oro, refrescar cuesta 2 y la EXP sube de nivel', async ({ page }) => {
+test('tienda: comprar resta oro, refrescar cuesta 2 y la EXP sube de nivel @rapido', async ({ page }) => {
   await page.evaluate(() => { G.me.gold = 50; renderUI(); });
   await expect(page.locator('#gold')).toHaveText('50');
   const before = await me(page);
@@ -62,7 +62,7 @@ test('tres copias se combinan en 2 estrellas', async ({ page }) => {
   expect(units).toEqual([['bulbasaur', 2, 'Ivysaur']]);
 });
 
-test('rondas: Listo inicia el combate automático y la ronda avanza', async ({ page }) => {
+test('rondas: Listo inicia el combate automático y la ronda avanza @rapido', async ({ page }) => {
   await page.evaluate(() => { G.speed = 4; });
   const r0 = await page.evaluate(() => G.roundIdx);
   await page.locator('#readyBtn').click();
@@ -71,7 +71,7 @@ test('rondas: Listo inicia el combate automático y la ronda avanza', async ({ p
   await expect(page.locator('#readyBtn')).toHaveText('Saltar combate');
   // el combate se resuelve solo y empieza la siguiente ronda
   await expect.poll(() => page.evaluate(() => G.roundIdx), { timeout: 60_000 }).toBeGreaterThan(r0);
-  await expect(page.locator('#stage')).toContainText('Ronda 1-2');
+  await expect(page.locator('#stage')).toContainText('Fase 1-2');
 });
 
 test('objetos: arrastrar un componente sobre un Pokémon y combinar dos', async ({ page }) => {
@@ -95,14 +95,11 @@ test('rasgos: colocar Pokémon activa sus sinergias en el panel', async ({ page 
 
 test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page }) => {
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
-  await expect(page.locator('#mbox h1')).toContainText('Aumento 1 de 3');
-  await expect(page.locator('#mbox .augCard')).toHaveCount(3);
-  await expect(page.locator('#augOk')).toBeDisabled(); // hay que elegir y confirmar
-  await page.locator('#mbox .augCard').first().click();
-  await page.locator('#augOk').click();
+  await expect(page.locator('#mbox .augCard2')).toHaveCount(3);
+  await expect(page.locator('#mbox .augRR')).toHaveCount(3); // un cambio por carta
+  await page.locator('#mbox .augCard2').first().click();
   await expect(page.locator('#modal')).toBeHidden();
   expect((await me(page)).augs).toHaveLength(1);
-  await expect(page.locator('#augBar .aug')).toHaveCount(1); // tira de aumentos sobre el tablero
 });
 
 test('PvP: barras visibles, posibles rivales y ver el combate de otro entrenador', async ({ page }) => {
@@ -126,8 +123,45 @@ test('PvP: barras visibles, posibles rivales y ver el combate de otro entrenador
   await expect(page.locator('#viewInfo')).toBeHidden();
 });
 
-test('tu entrenador aparece en el tablero con su vida', async ({ page }) => {
-  const shot = await page.evaluate(() => { const sp = trainerSpots(); return { ok: !!trainerOf(G.me), x: sp.me[0], y: sp.me[1], tr: G.me.tr }; });
-  expect(shot.ok).toBe(true);
-  expect(shot.tr).toBe('misty');
+test('tu minileyenda es la de tu cuenta', async ({ page }) => {
+  // la minileyenda de la partida es la elegida en el menú (al registrarse: bulbasaur)
+  expect(await page.evaluate(() => G.me.tac)).toBe('bulbasaur');
+});
+
+test('planificador de fases: título, rondas, reloj y jugadores vivos @rapido', async ({ page }) => {
+  await expect(page.locator('#stage')).toContainText('Fase 1-1');
+  await expect(page.locator('#stage')).toContainText('Magikarp');
+  await expect(page.locator('#pills .pill')).toHaveCount(3);
+  await expect(page.locator('#pills .pill.cur img')).toHaveCount(1); // retrato del Pokémon salvaje
+  await expect(page.locator('#rbAlive')).toHaveText('👤 8/8');
+  await expect(page.locator('#rbPhase')).toHaveText('Planificación');
+  await jumpToRound(page, 6); // 2-4: carrusel
+  await expect(page.locator('#stage')).toContainText('Carrusel');
+  await expect(page.locator('#pills .pill')).toHaveCount(7);
+});
+
+test('Llamada al Caos: se elige y aparece una ventana con el resultado', async ({ page }) => {
+  await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
+  await expect(page.locator('#mbox h1')).toHaveText('Llamada al Caos');
+  await page.locator('#mbox .choice').first().click(); // aceptar el Caos
+  await expect(page.locator('#mbox .reveal')).toBeVisible();
+  await expect(page.locator('#mbox .reveal h1')).not.toBeEmpty();
+  await page.locator('#rvOk').click();
+  await expect(page.locator('#modal')).toBeHidden();
+  // también queda en el registro de la partida
+  await page.locator('.sideTabs [data-tab="log"]').click();
+  await expect(page.locator('#log')).toContainText('Llamada al Caos');
+});
+
+test('Pokémon favorito: su vida extra se ve en la ficha antes del combate', async ({ page }) => {
+  const r = await page.evaluate(() => {
+    G.me.board = { '3,2': makeInst('charmander') }; G.me.bench = Array(BENCH).fill(null);
+    const u = G.me.board['3,2'], base = makeCombatUnit(u, G.me, traitTiers(G.me), 0).maxHp;
+    applyAugment(G.me, AUG_BY.favorito); const pk = G.me.picks[0]; resolvePick(G.me, pk.id, 0);
+    for (let i = 0; i < 4; i++) augFire(G.me, 'roundStart', {});
+    closeModal(); selected = u; renderUI();
+    return { base: Math.round(base), shown: Math.round(prepUnit(u).maxHp) };
+  });
+  expect(r.shown).toBeGreaterThan(r.base);
+  await expect(page.locator('#ucard')).toContainText(String(r.shown));
 });

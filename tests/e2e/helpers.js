@@ -25,7 +25,7 @@ let seq = 0;
 const uniqueUser = () => `e2e_${Date.now().toString(36)}${(seq++).toString(36)}`.slice(0, 16);
 const PASS = 'clave-prueba-123';
 
-async function register(page, user = uniqueUser(), trainer = 'misty') {
+async function register(page, user = uniqueUser(), tac = 'bulbasaur') {
   await page.goto('/');
   await expect(page.locator('#auth')).toBeVisible();
   await page.locator('#tabReg').click();
@@ -33,9 +33,9 @@ async function register(page, user = uniqueUser(), trainer = 'misty') {
   await page.locator('#auPass').fill(PASS);
   await page.locator('#auPass2').fill(PASS);
   await page.locator('#auGo').click();
-  await expect(page.locator('#trGrid')).toBeVisible();
-  await page.locator(`.trOpt[data-k="${trainer}"]`).click();
-  await page.locator('#trOk').click();
+  await expect(page.locator('.tacPick')).toBeVisible(); // al crear la cuenta se elige la minileyenda
+  await page.locator(`.tacOpt[data-k="${tac}"]`).click();
+  await page.locator('#tacOk').click();
   await expect(page.locator('#menu')).toBeVisible();
   await expect(page.locator('#modal')).toBeHidden();
   return user;
@@ -46,7 +46,7 @@ async function startSolo(page, diff = 'normal') {
   await page.locator('#playBtn').click();
   await page.locator(`.choice[data-d="${diff}"]`).click();
   await expect(page.locator('#menu')).toBeHidden();
-  await pickTac(page);
+  await expect(page.locator('.tacPick')).toHaveCount(0); // la minileyenda ya viene de la cuenta: no se pregunta al empezar
   await page.evaluate(() => { G.timer = Infinity; });
   await expect(page.locator('#cards .card')).toHaveCount(5);
 }

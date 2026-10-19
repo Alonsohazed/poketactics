@@ -56,13 +56,16 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - +10 de maná por ataque y maná al recibir daño;
   - reducción de daño de 100/(100+defensa) (física) o 100/(100+resistencia) (mágica);
   - reducción extra con un máximo del 75 %;
-  - al perder, el jugador recibe el daño de la fase más 1 por cada Pokémon rival que sobrevive (2 si es de 3★).
+  - al perder, el jugador recibe el daño de la fase más 1 por cada Pokémon rival que sobrevive (2 si es de 3★);
+  - **habilidades híbridas** (`abilPower`): base por coste y estrellas × (1 + poder/100) × factor del rol. Asesinos, luchadores y tiradores multiplican por ataque actual/base; los tanques, por (vida máx. actual/base)^0,75; magos y soportes, solo poder. Sin objetos el factor vale 1. Se recalcula en cada lanzamiento, así que lo acumulado (Eevee, «Acumular», Cinta Furia…) hace crecer la habilidad.
 - **Contenido actual** (comprobado con `validate.js`):
   - 65 líneas de Pokémon, más 7 evoluciones de Eevee;
   - 21 sinergias y 39 tipos de habilidad;
   - 75 objetos: 9 componentes (Medalla incluida), 37 completos, 28 insignias (8 con arte de medalla) y el Imán Removedor;
   - 80 aumentos: 25 de Plata, 37 de Oro y 18 Prismáticos, en 15 categorías (Llamada al Caos incluida).
-- **Minileyenda**: Charmander, Bulbasaur o Squirtle; se elige al empezar, evoluciona a nivel 6, se mueve con clic derecho y recoge los orbes de botín.
+- **Minileyenda** (sustituye a los entrenadores): Charmander, Bulbasaur o Squirtle. Se elige **en el menú** (y al crear la cuenta) y se guarda en la cuenta: la columna `trainer` de la base de datos guarda su clave y el servidor la valida contra `TAC_KEYS`. Evoluciona en los niveles 6, 8 y 9 (Mega), se mueve con clic derecho y recoge los orbes de botín.
+- **Resultados de aumentos**: lo que el jugador debe ver (Llamada al Caos, contratos) se añade con `revealTo(p,…)` y sale en una ventana (`showReveal`; en multijugador viaja en `priv.rv`). El registro de la partida está en la pestaña 📜.
+- **Ficha y barras en planificación**: se calculan con `prepTeam`, igual que al crear el combate (aumentos incluidos); en multijugador el cliente recibe los parámetros de combate de sus aumentos en `priv.ag`.
 - **Objetos**: los componentes se combinan también en el inventario; para quitar objetos de un Pokémon se usa el 🧲 Imán Removedor.
 - **Limitación conocida**: si un jugador se desconecta, un bot sigue por él y **no puede volver a su asiento**.
 
@@ -110,7 +113,8 @@ npm run check                     # sintaxis de game.js, augments.js y board3d.j
 npm test                          # prueba de humo; debe terminar en "OK: prueba de humo superada"
 npm run test:aug                  # pruebas de aumentos; debe terminar en "OK: pruebas de aumentos superadas"
 npm run test:e2e                  # Playwright (levanta su propio servidor en :3100 con una base de datos temporal)
-npm run test:all                  # las tres
+npm run test:all                  # humo + aumentos + 5 pruebas de navegador básicas (@rapido, ~2 min)
+npm run test:completo             # todo, con las ~20 pruebas de navegador (~10 min: el campo 3D va lento sin GPU)
 ```
 
 - Necesitas Node 18 o superior.

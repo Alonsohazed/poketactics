@@ -302,7 +302,7 @@ AG({id:'equipo_imposible',tier:'P',cat:'trait',tags:['Legendario'],name:'Equipo 
 AG({id:'llamada_caos',tier:'G',cat:'chaos',tags:['chaos'],name:'Llamada al Caos',icon:'🌪️',desc:'Recibes una oferta del Caos: si la aceptas, un resultado al azar entre bendiciones, intercambios y maldiciones. Si la rechazas, 4 de oro.',
  on:{select:c=>chaosOffer(c.p,'llamada_caos'),pick:c=>chaosPick(c)},ui:c=>c.st.last?`Resultado: ${c.st.last}`:''});
 AG({id:'caos_absoluto',tier:'P',cat:'chaos',tags:['chaos'],name:'Caos Absoluto',icon:'🌀',desc:'Al empezar cada ronda, el Caos te regala algo al azar (3 tiendas gratis, 5 de oro, 4 de EXP o un componente). Ahora mismo: una Llamada al Caos.',
- on:{select:c=>chaosOffer(c.p,'caos_absoluto'),pick:c=>chaosPick(c),roundStart:c=>{ const g=pick(['rr:3','g:5','xp:4','c']); c.st.last=augGrant(c.p,g); }},ui:c=>c.st.last?`Último regalo: ${c.st.last}`:''});
+ on:{select:c=>chaosOffer(c.p,'caos_absoluto'),pick:c=>chaosPick(c),roundStart:c=>{ const g=pick(['rr:3','g:5','xp:4','c']); c.st.last=augGrant(c.p,g); c.say('regalo: '+c.st.last); }},ui:c=>c.st.last?`Último regalo: ${c.st.last}`:''});
 
 // ===== Clásicos (estadísticas y recursos directos) =====
 AG({id:'exp1',tier:'S',cat:'classic',w:.5,tags:['fast'],name:'Repartir Exp.',icon:'📡',desc:'+1 de EXP extra por ronda y +4 de EXP ahora.',on:{select:c=>{c.p.mods.xpRound+=1;c.xp(4);}}});
@@ -329,12 +329,17 @@ const CHAOS=[
  {w:6,id:'nada',name:'El Caos se ríe',kind:'malo',desc:'No pasa nada… salvo 2 de oro de consuelo.',run:p=>{ p.gold+=2; return '2 de oro de consuelo'; }},
 ];
 function chaosOffer(p,src){ augOffer(p,src,'Llamada al Caos','¿Aceptas? Puede salir: '+CHAOS.map(x=>x.name).join(', ')+'.',[{t:'Aceptar el Caos',i:'🌪️',d:'Resultado aleatorio ponderado',v:'yes'},{t:'Rechazar',i:'🙅',d:'Recibes 4 de oro',v:'no'}]); }
+// Resultados que el jugador debe ver aunque no esté mirando: se muestran en una ventana (también en multijugador, vía priv.rv)
+function revealTo(p,icon,title,name,text,kind){
+ p.rvSeq=(p.rvSeq||0)+1; (p.reveals=p.reveals||[]).push([p.rvSeq,icon,title,name,text,kind||'']); if(p.reveals.length>3) p.reveals=p.reveals.slice(-3);
+}
 function chaosPick(c){
- if(c.d.v==='no'){ c.p.gold+=4; c.st.last='rechazado'; c.say('rechazado: 4 de oro'); return; }
- if(String(c.d.v).startsWith('em:')){ c.say(augGrant(c.p,c.d.v)); return; }
+ if(c.d.v==='no'){ c.p.gold+=4; c.st.last='rechazado'; c.say('rechazado: 4 de oro'); revealTo(c.p,'🙅','Llamada al Caos','Rechazaste el Caos','Recibes 4 de oro.','mixto'); return; }
+ if(String(c.d.v).startsWith('em:')){ const got=augGrant(c.p,c.d.v); c.say(got); revealTo(c.p,'🌪️','Llamada al Caos',got,'Ya está en tu inventario de objetos.','bueno'); return; }
  const pool=CHAOS.filter(o=>!o.req||o.req(c.p)), o=weighted(pool.map(x=>[x.w,x])); const txt=o.run(c.p,c.st);
  c.st.last=o.name; (c.p.chaosLog=c.p.chaosLog||[]).push([G.round?G.round.s+'-'+G.round.n:'',o.id]);
  c.say(`${o.name}: ${txt}`);
+ revealTo(c.p,'🌪️','Llamada al Caos',o.name,`${o.desc} Resultado: ${txt}.`,o.kind);
 }
 // Deudas y contratos del Caos: se procesan con los eventos normales del jugador
 const AUG_EVENTS={
@@ -344,8 +349,8 @@ function chaosTick(p,evt,d){
  for(const id of ['llamada_caos','caos_absoluto']){ if(!augOwned(p,id)) continue; const st=augState(p,id);
    if(evt==='roundStart'&&st.debt>0){ st.debt--; p.gold=Math.max(0,p.gold-3); }
    if(st.contract&&(evt==='win'||evt==='lose')&&!d.pve){ const k=st.contract; k.left--; if(evt==='win') k.wins++;
-     if(k.wins>=2){ st.contract=null; augGrant(p,'f'); augGrant(p,'f'); note(p,'🌪️ Contrato cumplido: 2 objetos completos',true); }
-     else if(k.left<=0){ st.contract=null; p.hp-=10; note(p,'🌪️ Contrato fallido: −10 de vida',true); } } }
+     if(k.wins>=2){ st.contract=null; const a=augGrant(p,'f'), b=augGrant(p,'f'); note(p,'🌪️ Contrato cumplido: 2 objetos completos',true); revealTo(p,'📜','Contrato de Alto Riesgo','¡Contrato cumplido!',`Recibes ${a} y ${b}.`,'bueno'); }
+     else if(k.left<=0){ st.contract=null; p.hp-=10; note(p,'🌪️ Contrato fallido: −10 de vida',true); revealTo(p,'📜','Contrato de Alto Riesgo','Contrato fallido','Pierdes 10 de vida.','malo'); } } }
 }
 
 /* ---------- registro, ofertas y selección ---------- */

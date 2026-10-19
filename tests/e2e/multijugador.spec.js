@@ -1,13 +1,13 @@
 // Multijugador: dos navegadores con cuentas distintas crean una sala, juegan y el servidor manda
-const { test, expect, register, pickTac } = require('./helpers');
+const { test, expect, register } = require('./helpers');
 
 test('dos jugadores crean sala, se unen con código y juegan', async ({ browser }) => {
   const ctxA = await browser.newContext(), ctxB = await browser.newContext();
   const A = await ctxA.newPage(), B = await ctxB.newPage();
   const errors = [];
   for (const p of [A, B]) p.on('pageerror', e => errors.push(e.message));
-  const userA = await register(A, undefined, 'red');
-  const userB = await register(B, undefined, 'may');
+  const userA = await register(A, undefined, 'charmander');
+  const userB = await register(B, undefined, 'squirtle');
 
   await A.locator('#mpBtn').click();
   await A.locator('#rmCreate').click();
@@ -26,14 +26,13 @@ test('dos jugadores crean sala, se unen con código y juegan', async ({ browser 
   await A.locator('#rmStart').click();
   for (const p of [A, B]) {
     await expect(p.locator('#menu')).toBeHidden();
-    await pickTac(p);
     await expect.poll(() => p.evaluate(() => NET.mode)).toBe('client');
     await expect(p.locator('#cards .card')).toHaveCount(5);
   }
-  // ambos ven a los dos humanos con su entrenador
-  const names = await A.evaluate(() => G.players.map(p => [p.name, p.tr]));
-  expect(names).toContainEqual([userA, 'red']);
-  expect(names).toContainEqual([userB, 'may']);
+  // ambos ven a los dos humanos con la minileyenda de su cuenta
+  const names = await A.evaluate(() => G.players.map(p => [p.name, p.tac]));
+  expect(names).toContainEqual([userA, 'charmander']);
+  expect(names).toContainEqual([userB, 'squirtle']);
 
   // el servidor es quien valida: en la ronda 1-1 hay 0 de oro, así que comprar no hace nada
   await expect.poll(() => A.evaluate(() => G.me.bench.filter(Boolean).length)).toBe(1); // Pokémon inicial

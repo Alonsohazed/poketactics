@@ -20,7 +20,7 @@ ready.then(() => server.listen(0, async () => {
   const cookieOf = res => (res.headers.get('set-cookie') || '').split(';')[0];
 
   // ---- cuentas ----
-  let r = await post('/api/register', { user: 'Ana', pass: 'secreta1', trainer: 'misty' });
+  let r = await post('/api/register', { user: 'Ana', pass: 'secreta1', trainer: 'bulbasaur' });
   assert.strictEqual(r.status, 201, 'registro');
   const cookieA = cookieOf(r);
   assert(/^pt_sid=/.test(cookieA), 'cookie de sesión');
@@ -34,15 +34,15 @@ ready.then(() => server.listen(0, async () => {
   r = await post('/api/login', { user: 'ANA', pass: 'secreta1' });
   assert.strictEqual(r.status, 200, 'login sin distinguir mayúsculas');
   let me = await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json();
-  assert.strictEqual(me.user.trainer, 'misty', 'entrenador guardado');
+  assert.strictEqual(me.user.trainer, 'bulbasaur', 'minileyenda guardada');
   assert.strictEqual(me.user.pass, undefined, 'nunca se envía la contraseña');
   assert.strictEqual((await fetch(url + '/api/me')).status, 401, 'sin sesión');
   assert.strictEqual((await post('/api/me', { trainer: 'noexiste' }, cookieA)).status, 400, 'entrenador no válido');
-  assert.strictEqual((await post('/api/me', { trainer: 'red', settings: { vol: 3, hack: 'x' } }, cookieA)).status, 200, 'cambiar entrenador');
+  assert.strictEqual((await post('/api/me', { trainer: 'squirtle', settings: { vol: 3, hack: 'x' } }, cookieA)).status, 200, 'cambiar minileyenda');
   me = await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json();
-  assert.strictEqual(me.user.trainer, 'red');
+  assert.strictEqual(me.user.trainer, 'squirtle');
   assert.deepStrictEqual(me.user.settings, { vol: 1 }, 'ajustes saneados');
-  r = await post('/api/register', { user: 'Beto', pass: 'secreta2', trainer: 'brock' });
+  r = await post('/api/register', { user: 'Beto', pass: 'secreta2', trainer: 'charmander' });
   const cookieB = cookieOf(r);
   // cerrar sesión invalida la cookie
   const tmpLogin = cookieOf(await post('/api/login', { user: 'Beto', pass: 'secreta2' }));
@@ -100,7 +100,7 @@ ready.then(() => server.listen(0, async () => {
   await sleep(200);
   assert(lobby && lobby.code, 'sala creada');
   assert.strictEqual(lobby.seats[0].nick, 'Ana', 'el nombre sale de la cuenta, no del navegador');
-  assert.strictEqual(lobby.seats[0].tr, 'red', 'el entrenador sale de la cuenta');
+  assert.strictEqual(lobby.seats[0].tr, 'squirtle', 'la minileyenda sale de la cuenta');
   B.emit('join', { code: lobby.code });
   await sleep(200);
   assert.strictEqual(lobby.seats.length, 2, 'dos jugadores en la sala');
@@ -124,7 +124,8 @@ ready.then(() => server.listen(0, async () => {
   assert(st.A.cmb > 0 && st.B.cmb > 0, 'cada jugador recibe su combate');
   assert(st.A.cmbs >= 4 && st.B.cmbs >= 4, 'cada jugador recibe todos los combates para poder verlos');
   assert(Array.isArray(st.A.priv.po), 'llegan los posibles rivales');
-  assert(lastPub.pl.every(p => typeof p[12] === 'string' && p[12]), 'todos los jugadores llevan entrenador');
+  assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle'].includes(p[14])), 'todos los jugadores llevan minileyenda');
+  assert.strictEqual(lastPub.pl.find(p => p[1] === 'Ana')[14], 'squirtle', 'la minileyenda de la partida sale de la cuenta');
   B.disconnect(); await sleep(400);
   A.disconnect(); await sleep(300);
   fs.rmSync(tmp, { recursive: true, force: true });

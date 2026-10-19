@@ -22,7 +22,8 @@ const TICK_MS = 50;
 const GAME_SRC = ['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirname, 'public', f), 'utf8')).join('\n');
 const GAME_SCRIPT = new vm.Script(GAME_SRC, { filename: 'game.js' });
 const DIFFS = ['facil', 'normal', 'dificil'];
-const TRAINER_KEYS = makeGame().TRAINERS.map(t => t.key);
+// El campo «trainer» de las cuentas guarda ahora la minileyenda elegida en el menú
+const TRAINER_KEYS = makeGame().TAC_KEYS;
 
 const app = express();
 app.disable('x-powered-by');
