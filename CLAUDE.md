@@ -50,6 +50,8 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - interés de 1 por cada 10 de oro (máximo 5);
   - racha de 2-3 da +1, de 4 da +2 y de 5 o más da +3;
   - refrescar la tienda cuesta 2; comprar EXP cuesta 4 por 4 EXP.
+- **Estrellas y formas**: los costes 4 de 3 formas empiezan en su 2.ª forma (`formIdx`): a 2★ ya son la forma final con su mejor habilidad. A 3★ las estadísticas usan `STAR3_BY_COST=[3.24,3.24,3.4,5,8]` y las habilidades `ABIL3_BY_COST=[3,3.1,3.3,6,11]` (los costes 4 y 5 a 3★ son casi victoria segura). Además, a 3★ cada lanzamiento suma +20 % de poder (+25 % en costes 4 y 5) durante el combate, sin límite (`u.castBoost`).
+- **Legendarios**: cada uno tiene una mecánica propia mediante parámetros de habilidad: `grow` (crece al lanzar), `refundKill` (recupera maná por baja), `amp` (cadena que se amplifica), `revive`/`nova` (renace), `phoenix` (el primer aliado que cae renace), `markAll`, `asTeam`, `mana0` (maná inicial) y `mm` (maná máximo), y los tipos nuevos `titan` (escudo y golpes) y `devour` (si derrota, crece para siempre).
 - **Progresión**: nivel máximo 10 (`XP_NEED`); probabilidades de la tienda por nivel en `SHOP_ODDS`; pool compartido `POOL_SIZE=[30,25,18,10,9]`; 3 copias suben 1 estrella. Tablero = nivel + bonus + Medallas Maestras.
 - **Combate**:
   - tick de 0,05 s y límite de 40 s (luego empate);
