@@ -63,12 +63,18 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - **habilidades híbridas** (`abilPower`): base por coste y estrellas × (1 + poder/100) × factor del rol. Asesinos, luchadores y tiradores multiplican por ataque actual/base; los tanques, por (vida máx. actual/base)^0,75; magos y soportes, solo poder. Sin objetos el factor vale 1. Se recalcula en cada lanzamiento, así que lo acumulado (Eevee, «Acumular», Cinta Furia…) hace crecer la habilidad.
 - **Contenido actual** (comprobado con `validate.js`):
   - 65 líneas de Pokémon, más 7 evoluciones de Eevee;
-  - 23 sinergias (13 tipos, 9 clases y Legendario) y 41 tipos de habilidad;
-  - 77 objetos: 9 componentes (Medalla incluida), 37 completos, 30 insignias (8 con arte de medalla) y el Imán Removedor;
-  - 80 aumentos: 25 de Plata, 37 de Oro y 18 Prismáticos, en 15 categorías (Llamada al Caos incluida).
+  - 24 sinergias (13 tipos, 10 clases y Legendario) y 41 tipos de habilidad;
+  - 94 objetos: 9 componentes (Medalla incluida), 37 completos, 24 insignias forjables, emblemas y el Imán Removedor;
+  - 93 aumentos, en 15 categorías (Llamada al Caos incluida), con 11 aumentos de héroe.
 - **Minileyenda** (sustituye a los entrenadores): Charmander, Bulbasaur o Squirtle. Se elige **en el menú** (y al crear la cuenta) y se guarda en la cuenta: la columna `trainer` de la base de datos guarda su clave y el servidor la valida contra `TAC_KEYS`. Evoluciona en los niveles 6, 8 y 9 (Mega), se mueve con clic derecho y recoge los orbes de botín.
 - **Resultados de aumentos**: lo que el jugador debe ver (Llamada al Caos, contratos) se añade con `revealTo(p,…)` y sale en una ventana (`showReveal`; en multijugador viaja en `priv.rv`). El registro de la partida está en la pestaña 📜.
 - **Ficha y barras en planificación**: se calculan con `prepTeam`, igual que al crear el combate (aumentos incluidos); en multijugador el cliente recibe los parámetros de combate de sus aumentos en `priv.ag`.
+- **Tipos con identidad**: Fuego se propaga al morir quemado (`spreadFire`), Agua lanza oleadas cada 4 habilidades, Eléctrico hace Sobrecarga (rayo en cadena), Psíquico regala maná, Dragón gana daño con el tiempo, Acero absorbe daño de los adyacentes y Siniestro ejecuta. Los efectos al lanzar están en `typeOnCast`.
+- **Clases fusionadas**: Depredadores (antes Rival; recuperan maná al matar), Cazatesoros (antes Fortuna; el botín se apunta con `lootTrack` en `p.loot`, viaja en `priv.lt` y se ve al tocar la sinergia) y Potencial Evolutivo (`growPotential`: vida y ataque permanentes cada ronda).
+- **Nivel prismático**: cada sinergia tiene un escalón más (`PRISM`, `TRAITS[t].pr`) que solo se alcanza si cuenta al menos un emblema (`tierOf`, `emblemCountsOf`). En el panel sale como 🔒 o 🌈. `tv()` usa el último valor de cada tabla si la tabla es más corta.
+- **Forja de insignias**: Medalla + componente crea la insignia y abre una elección (`forgeOffer`, valor `fg:`) entre 3 sinergias afines (`FORGE_OF`). Los componentes al azar salen Medalla 1 de cada 6.
+- **Aumentos de héroe** (`HERO` en `augments.js`): dan el Pokémon y potencian solo a su línea (`isHero`). Efectos que necesitan ver a los dos equipos van en `cb.startFns`.
+- **Ficha y tooltips de habilidad estilo TFT** (`abHTML`): números reales con el icono del stat que escala, ratio al pasar el ratón (el poder ✨ se muestra empezando en 100) y valores [1★/2★/3★]. Pruebas: `npm run test:sin` (`test/sinergias.js`).
 - **Objetos**: los componentes se combinan también en el inventario; para quitar objetos de un Pokémon se usa el 🧲 Imán Removedor.
 - **Limitación conocida**: si un jugador se desconecta, un bot sigue por él y **no puede volver a su asiento**.
 

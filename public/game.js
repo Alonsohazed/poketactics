@@ -56,6 +56,33 @@ const TRAITS={
  'Potencial Evolutivo':T('🌱','#5bbf6a',[2,4,6],'Afecta a tus Pokémon con Potencial Evolutivo','Crecen para siempre: al terminar cada ronda en el tablero ganan vida y ataque permanentes (el doble a 3★).',['+12 de vida y +1 de ataque por ronda','+25 de vida y +2 de ataque por ronda','+45 de vida y +4 de ataque por ronda']),
  'Team Rocket':T('🚀','#b8203c',[3,5],'Afecta a tus miembros del Team Rocket','La primera vez que bajan del 60% de vida se ponen serios durante 4 s.',['25% menos de daño, +50% de vel. de ataque y regeneran 3% de vida/s','45% menos de daño, +80% de vel. de ataque y regeneran 5% de vida/s']),
 };
+// Nivel prismático: un escalón más allá del máximo que solo se alcanza si al menos un emblema cuenta para la sinergia
+const PRISM={
+ 'Fuego':[8,'Quemadura del 10%/s, +35% de daño · al propagarse explota por 300'],
+ 'Agua':[8,'+14 de maná por ataque · oleada cada 2 habilidades: cura 18% y 320 de daño'],
+ 'Planta':[6,'Regeneran 6% de vida máx./s · todo tu equipo regenera 2%/s'],
+ 'Eléctrico':[6,'+70% de vel. de ataque · cada habilidad eléctrica lanza un rayo a 7 enemigos que aturde 1 s'],
+ 'Psíquico':[8,'+100 de poder · regalan 60 de maná · Todo tu equipo: +40 de poder'],
+ 'Roca':[8,'Roca: +160 de defensa · Todo tu equipo: +50'],
+ 'Dragón':[8,'+800 de vida · +6% de daño por segundo (máx. +150%)'],
+ 'Fantasma':[8,'Esquivan el 60% de los ataques físicos'],
+ 'Hada':[8,'Escudo de 700 (8s) para todo tu equipo'],
+ 'Normal':[8,'+900 de vida y +40% de vel. de ataque'],
+ 'Acero':[6,'35% menos de daño · absorben el 60% del daño de los aliados adyacentes'],
+ 'Siniestro':[6,'Rematan por debajo del 30% · cada remate: equipo +12% de daño (máx. 5)'],
+ 'Lucha':[6,'45% de robo de vida y +20% de daño'],
+ 'Guardián':[10,'+170 de defensa y resistencia · protegen con el 45%'],
+ 'Coloso':[10,'+900 de vida para todo tu equipo (el doble para Colosos)'],
+ 'Tirador':[8,'+25% de daño por hexágono de distancia y +1 de alcance'],
+ 'Hechicero':[10,'Todo tu equipo: +60 de poder (doble para Hechiceros) · las habilidades de los Hechiceros se lanzan dos veces'],
+ 'Asesino':[8,'+70% de prob. crítica y +60% de daño crítico'],
+ 'Sanador':[8,'Curas y escudos +120% · +60 de resistencia'],
+ 'Cazatesoros':[5,'Al ganar: un orbe de botín, 4 de oro y oro de racha · al perder: 4 de oro'],
+ 'Depredadores':[8,'+80% de vel. de ataque · al matar: acelerón +130% 4 s y reinicia su habilidad'],
+ 'Potencial Evolutivo':[8,'+80 de vida y +8 de ataque por ronda'],
+ 'Team Rocket':[7,'Se ponen serios con 60% menos de daño · la primera vez que caen ¡despegan! y vuelven con la mitad de vida · cada baja roba 1 de oro'],
+};
+for(const t in PRISM) TRAITS[t].pr=PRISM[t];
 const ROLE={
  t:{hp:720,ad:45,as:.6,range:1,df:45,mr:40,mana:50,maxMana:100},
  b:{hp:660,ad:56,as:.7,range:1,df:35,mr:30,mana:20,maxMana:80},
@@ -76,7 +103,7 @@ const UNIT_LIST=[
  U('charmander',['Charmander','Charmeleon','Charizard'],[4,5,6],1,'b',['Fuego','Coloso','Potencial Evolutivo'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:1,len:2,burn:.03}],['cone','Llamarada',{m:1.3,len:3,burn:.04}]]),
  U('bulbasaur',['Bulbasaur','Ivysaur','Venusaur'],[1,2,3],1,'t',['Planta','Guardián','Potencial Evolutivo'],[['seed','Drenadoras',{m:1.2,dur:4,h:1}],['knock','Látigo Cepa',{m:1,k:2,stun:1}],['zone','Planta Feroz',{r:1,m:1.3,dur:3,root:1.2}]]),
  U('squirtle',['Squirtle','Wartortle','Blastoise'],[7,8,9],1,'t',['Agua','Guardián','Potencial Evolutivo'],[['shield','Refugio',{m:1.3}],['spin','Giro Rápido',{m:.3,n:4,dr:.3}],['wave','Hidrocañón',{m:1.2,w:1.2,push:1}]]),
- U('pichu',['Pichu','Pikachu','Raichu'],[172,25,26],1,'r',['Eléctrico','Tirador'],[['bolt','Impactrueno',{m:1.4}],['chain','Rayo',{n:3,m:.9}],['strike','Trueno',{r:1,m:1.4,delay:.6,stun:.8}]]),
+ U('pichu',['Pichu','Pikachu','Raichu'],[172,25,26],1,'r',['Eléctrico','Tirador'],[['bolt','Impactrueno',{selfAs:0.1,m:1.4}],['chain','Rayo',{selfAs:0.15,n:3,m:.9}],['strike','Trueno',{selfAs:0.25,r:1,m:1.4,delay:.6,stun:.8}]]),
  U('geodude',['Geodude','Graveler','Golem'],[74,75,76],1,'b',['Roca','Coloso'],[['harden','Rizo Defensa',{df:25,heal:.5}],['slam','Rodar',{r:1,m:.9,stun:.8}],['nova','Explosión',{r:2,m:1.75,selfDmg:.3}]]),
  U('gastly',['Gastly','Haunter','Gengar'],[92,93,94],1,'m',['Fantasma','Hechicero','Team Rocket'],[['bolt','Lengüetazo',{m:1.2,stun:1}],['mark','Maldición',{m:.9,amp:.3,dur:4}],['blast','Bola Sombra',{r:1,m:1.15,shred:.3}]]),
  U('abra',['Abra','Kadabra','Alakazam'],[63,64,65],1,'m',['Psíquico','Hechicero'],[['bolt','Confusión',{m:1.3}],['pull','Telequinesis',{r:2,m:.8,stun:.8}],['strike','Premonición',{r:1,m:1.6,delay:1.2,stun:.5,ghost:1}]]),
@@ -91,7 +118,7 @@ const UNIT_LIST=[
  U('growlithe',['Growlithe','Arcanine'],[58,59],2,'b',['Fuego','Coloso','Depredadores'],[['dash','Colmillo Ígneo',{m:1.2,to:'target',burn:.03}],['dash','Velocidad Extrema',{m:1.5,to:'low',r:1,burn:.03}]]),
  U('psyduck',['Psyduck','Golduck'],[54,55],2,'m',['Agua','Hechicero'],[['sing','Confusión',{r:0,s:1.5,m:1}],['wave','Hidropulso',{m:1,w:1,stun:.8}]]),
  U('chikorita',['Chikorita','Bayleef','Meganium'],[152,153,154],2,'h',['Planta','Sanador'],[['heal','Síntesis',{n:2,m:.8}],['teamShield','Pantalla de Luz',{m:.4}],['zone','Aromaterapia',{r:2,m:1,dur:4,ally:1,self:1}]]),
- U('magnemite',['Magnemite','Magneton','Magnezone'],[81,82,462],2,'r',['Eléctrico','Acero','Tirador'],[['bolt','Onda Voltio',{m:1.3,stun:.5}],['chain','Bomba Imán',{n:3,m:.85}],['line','Cañón Destello',{m:1.6,shred:.3}]]),
+ U('magnemite',['Magnemite','Magneton','Magnezone'],[81,82,462],2,'r',['Eléctrico','Acero','Tirador'],[['bolt','Onda Voltio',{selfAs:0.08,m:1.3,stun:.5}],['chain','Bomba Imán',{selfAs:0.12,n:3,m:.85}],['line','Cañón Destello',{selfAs:0.2,m:1.6,shred:.3}]]),
  U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Guardián'],[['harden','Fortaleza',{df:30,heal:.8}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
  U('drowzee',['Drowzee','Hypno'],[96,97],2,'t',['Psíquico','Guardián','Team Rocket'],[['sing','Hipnosis',{r:0,s:2,m:.6}],['sing','Come Sueños',{r:1,s:1.5,m:.8,drain:.5}]]),
  U('igglybuff',['Igglybuff','Jigglypuff','Wigglytuff'],[174,39,40],2,'h',['Hada','Normal','Sanador'],[['heal','Encanto',{n:2,m:.7}],['sing','Canto',{r:1,s:2,m:.3}],['sing','Voz Cautivadora',{r:2,s:2,m:.6}]]),
@@ -99,7 +126,7 @@ const UNIT_LIST=[
  U('poliwag',['Poliwag','Poliwhirl','Poliwrath'],[60,61,62],2,'b',['Agua','Lucha','Coloso'],[['bolt','Burbuja',{m:1.2}],['sing','Hipnosis',{r:1,s:1.2,m:.6}],['combo','Puño Dinámico',{n:3,m:.7,stun:1.2}]]),
  U('sableye',['Sableye'],[302],2,'a',['Siniestro','Cazatesoros','Team Rocket'],[['dash','Ladrón',{m:1.2,to:'low',g:1}]]),
  U('houndour',['Houndour','Houndoom'],[228,229],2,'m',['Fuego','Siniestro','Hechicero'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:1,len:4,burn:.04}]]),
- U('riolu',['Riolu','Lucario'],[447,448],2,'r',['Lucha','Acero','Tirador'],[['bolt','Palmeo',{m:1.3,stun:.6}],['multi','Esfera Aural',{n:3,m:.75}]]),
+ U('riolu',['Riolu','Lucario'],[447,448],2,'r',['Lucha','Acero','Tirador'],[['bolt','Palmeo',{selfAs:0.12,m:1.3,stun:.6}],['multi','Esfera Aural',{selfAs:0.2,n:3,m:.75}]]),
  U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:1.2,to:'far',burn:.03,selfAs:.15}],['dash','Envite Ígneo',{m:1.7,to:'low',r:1,burn:.04}]]),
  U('shellder',['Shellder','Cloyster'],[90,91],3,'t',['Agua','Guardián'],[['harden','Refugio',{df:35,heal:.6}],['multi','Carámbano',{n:5,m:.5,chill:3,el:'Hielo'}]]),
  U('oddish',['Oddish','Gloom','Vileplume'],[43,44,45],3,'m',['Planta','Hechicero'],[['zone','Somnífero',{r:1,m:.5,dur:2,sleep:1.2}],['poison','Polvo Veneno',{m:1.1,dur:5,r:1,el:'Veneno'}],['zone','Danza Pétalo',{r:2,m:1.2,dur:3}]]),
@@ -127,7 +154,7 @@ const UNIT_LIST=[
  U('timburr',['Timburr','Gurdurr','Conkeldurr'],[532,533,534],4,'b',['Lucha','Coloso'],[['empower','Ultrapuño',{n:3,m:.6}],['nova','Martillazo',{r:1,m:1.1,stun:1}],['combo','Ultrapuño',{n:5,m:.6}]]),
  U('hatenna',['Hatenna','Hattrem','Hatterene'],[856,857,858],4,'m',['Psíquico','Hada','Hechicero'],[['bolt','Confusión',{m:1.4}],['blast','Brillo Mágico',{r:1,m:1}],['meteor','Velo Mental',{m:.65,stun:.5}]]),
  U('litwick',['Litwick','Lampent','Chandelure'],[607,608,609],4,'m',['Fuego','Fantasma','Hechicero'],[['drain','Infortunio',{m:1.1,h:.6}],['burn','Fuego Fatuo',{m:1,r:1}],['zone','Infierno',{r:2,m:2,dur:3,burn:.03}]]),
- U('rowlet',['Rowlet','Dartrix','Decidueye'],[722,723,724],4,'r',['Planta','Fantasma','Tirador'],[['multi','Hoja Afilada',{n:3,m:.6}],['multi','Hoja Aguda',{n:4,m:.6}],['line','Puntada Sombría',{m:1.8,shred:.4}]]),
+ U('rowlet',['Rowlet','Dartrix','Decidueye'],[722,723,724],4,'r',['Planta','Fantasma','Tirador'],[['multi','Hoja Afilada',{selfAs:0.1,n:3,m:.6}],['multi','Hoja Aguda',{selfAs:0.15,n:4,m:.6}],['line','Puntada Sombría',{selfAs:0.25,m:1.8,shred:.4}]]),
  U('mewtwo',['Mewtwo'],[150],5,'m',['Psíquico','Hechicero','Legendario'],[['blast','Onda Mental',{r:2,m:1.6,stun:.5,grow:.35,mm:85,mana0:20}]]),
  U('rayquaza',['Rayquaza'],[384],5,'r',['Dragón','Tirador','Legendario'],[['line','Ascenso Draco',{m:2.9,refundKill:.6,mm:70,mana0:20}]]),
  U('zapdos',['Zapdos'],[145],5,'r',['Eléctrico','Tirador','Legendario'],[['chain','Electrocañón',{n:6,m:.75,amp:.25,stun:.6,mm:75,mana0:15}]]),
@@ -181,8 +208,34 @@ const TAC_KEYS=Object.keys(TACS);
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander, tacDex=p=>tacOf(p).dex[tacStage(p)];
 
 /* ============================ [ABILITIES] ============================ */
+// Habilidad al estilo TFT: cada número es el valor real (con tus estadísticas) y lleva el icono de lo que lo hace crecer.
+// Al pasar el ratón se ve el ratio (p. ej. «216% ✨»: con 100 de poder base, el valor es 2,16 veces tu poder) y abajo
+// los valores de cada estrella [1★/2★/3★] con la actual resaltada. El poder (✨) se muestra como en TFT: empieza en 100.
+let ABD=null;
+const SCALE_ICON={ap:'✨',ad:'✨⚔️',hp:'✨❤️'};
+const starMul=(cost,s)=>s>=3?ABIL3_BY_COST[cost-1]:ABIL_STAR[s-1];
+function abLabel(before,after){
+ // la palabra clave más cercana al número decide la etiqueta
+ const b=before.toLowerCase(), kw=[['escudo','Escudo'],['cura','Curación'],['drena','Drenaje'],['daño','Daño'],['golpea','Daño'],['inflige','Daño']].map(([w,n])=>[b.lastIndexOf(w),n]).sort((x,y)=>y[0]-x[0])[0]; let lb=kw[0]>=0?kw[1]:'Daño';
+ if(/^ (de daño )?(mágico )?(por golpe|cada uno|cada vez|a cada)/.test(after)) lb+=' por golpe'; else if(/cercanos/.test(after)) lb+=' a los cercanos'; else if(/^ más durante/.test(after)) lb+=' en el tiempo'; else if(/^ al momento/.test(after)) lb+=' al momento';
+ return lb;
+}
+function abHTML(ab,u,star,opt={}){
+ const P=abilPower(u), k=scaleOf(u), ic=SCALE_ICON[k], vals=[];
+ ABD=vals; let t; try{ t=abDesc(ab,P,star); } finally{ ABD=null; }
+ const d=u.d, sm=starMul(u.cost,star), unit=P/sm/(1+u.ap/100); // ratio por estrella: base × factor del rol (sin poder)
+ const same=[1,2,3].map(s=>!d.names||abOf(d,s)[1]===ab[1]), rows=[], seen=new Set();
+ const ratio=x=>`${R0(unit*sm*x)}% ✨${k!=='ap'?` · crece también con ${k==='ad'?'⚔️ el ataque':'❤️ la vida máxima'}`:''}`;
+ t=t.replace(/\u0001(\d+)\u0002/g,(m,i,off,str)=>{ const x=vals[+i], lb=abLabel(str.slice(Math.max(0,off-30),off),str.slice(off+m.length,off+m.length+24));
+   const key=lb+'|'+x; if(!seen.has(key)){ seen.add(key); rows.push([lb,x]); }
+   return `<b class="sv" title="${ratio(x)}">${R0(P*x)}<i>${ic}</i></b>`; });
+ if(opt.short) return t;
+ const list=rows.map(([lb,x])=>`<div class="abv"><span>${lb}</span><span>${[1,2,3].map(s=>same[s-1]?`<b class="${s===star?'on':''}">${R0(P/sm*starMul(u.cost,s)*x)}</b>`:'<b>—</b>').join(' / ')}</span><small>${ratio(x).split(' · ')[0]}</small></div>`).join('');
+ const bonus=u.castBoost>0?`<div class="abBonus">Bonificación actual: <b>+${R0(u.castBoost*100)}%</b> de ${ic}</div>`:'';
+ return `<p>${t}</p>${bonus}${list?`<div class="abList">${list}</div>`:''}`;
+}
 function abDesc(ab,P,star){
- const [k,,p]=ab; const d=x=>R0(P*x); const ex=[];
+ const [k,,p]=ab; const d=x=>ABD?(ABD.push(x),'\u0001'+(ABD.length-1)+'\u0002'):R0(P*x); const ex=[];
  if(p.stun) ex.push(`aturde ${p.stun}s`); if(p.burn&&k!=='zone') ex.push(`quema ${(p.burn*100).toFixed(0)}% de vida máx./s (4s)`); if(p.shred) ex.push(`reduce su resistencia un ${R0(p.shred*100)}%`); if(p.chill&&k!=='zone') ex.push(`le hace atacar un 35% más lento ${p.chill}s`);
  const e=ex.length?` (${ex.join(', ')})`:''; let t='';
  switch(k){
@@ -236,6 +289,7 @@ function abDesc(ab,P,star){
  if(p.revive) t+=` Pasiva: la primera vez que cae, renace con el ${R0(p.revive*100)}% de su vida${p.nova?` y quema a los enemigos cercanos por ${d(p.nova)}`:''}.`;
  if(p.phoenix) t+=` Pasiva: el primer aliado que cae en cada combate renace con el ${R0(p.phoenix*100)}% de su vida.`;
  if(p.grow) t+=` Cada vez que la lanza, su poder crece un ${R0(p.grow*100)}% durante el resto del combate.`;
+ if(p.selfAs&&k!=='dash') t+=` Gana +${R0(p.selfAs*100)}% de vel. de ataque (se acumula durante el combate).`;
  if(star>=3) t+=` ★★★: cada lanzamiento la hace más fuerte (+20%, o +25% en costes 4 y 5), sin límite.`;
  return t;
 }
@@ -289,14 +343,17 @@ const FULL=[
  ['lens','lens','zoom','Lente Zoom+','🔭','+40% de prob. crítica y +30% de daño crítico adicionales.',{crit:.4,critM:.3}],
 ];
 const EMBLEM_OF={claw:'Coloso',wing:'Tirador',spoon:'Hechicero',water:'Agua',coat:'Guardián',goggles:'Hada',club:'Dragón',lens:'Asesino'};
+// Sinergias afines de cada componente (la primera es la de siempre): al forjar Medalla + componente se elige entre ellas
+const FORGE_OF={claw:['Coloso','Depredadores','Lucha'],wing:['Tirador','Eléctrico','Normal'],spoon:['Hechicero','Psíquico','Fuego'],water:['Agua','Sanador','Planta'],
+ coat:['Guardián','Acero','Roca'],goggles:['Hada','Fantasma','Team Rocket'],club:['Dragón','Potencial Evolutivo','Coloso'],lens:['Asesino','Siniestro','Cazatesoros']};
 const STAT_TXT={adPct:v=>`+${R0(v*100)}% daño de ataque`,asPct:v=>`+${R0(v*100)}% vel. de ataque`,ap:v=>`+${v} poder`,mana:v=>`+${v} maná inicial`,df:v=>`+${v} defensa`,mr:v=>`+${v} resistencia`,hp:v=>`+${v} vida`,crit:v=>`+${R0(v*100)}% prob. crítica`,critM:v=>`+${R0(v*100)}% daño crítico`,dmg:v=>`+${R0(v*100)}% daño`,omni:v=>`+${R0(v*100)}% robo de vida`,mpa:v=>`+${v} maná por ataque`,manaRegen:v=>`+${v} maná/s`,regen:v=>`+${(v*100).toFixed(1)}% vida/s`,dodge:v=>`+${R0(v*100)}% esquiva`,range:v=>`+${v} alcance`};
 const sumStats=(...ss)=>{ const o={}; for(const s of ss) for(const k in s) o[k]=(o[k]||0)+s[k]; return o; };
 const ITEMS={}, RECIPE={};
-for(const k of ORDER) ITEMS[k]={...COMPS[k],key:k,comp:true,sp:{},desc:k==='medal'?'Combínala con un componente para crear una Insignia, o con otra Medalla para una Medalla Maestra.':'Componente. Combínalo con otro para crear un objeto.'};
+for(const k of ORDER) ITEMS[k]={...COMPS[k],key:k,comp:true,sp:{},desc:k==='medal'?'Combínala con un componente para forjar una Insignia (eliges entre 3 sinergias afines), o con otra Medalla para una Medalla Maestra. Los emblemas desbloquean el nivel prismático de las sinergias.':'Componente. Combínalo con otro para crear un objeto.'};
 for(const [a,b,id,name,icon,desc,s,sp] of FULL){ ITEMS[id]={key:id,name,icon,desc,s:sumStats(COMPS[a].s,COMPS[b].s,s||{}),sp:sp||{},from:[a,b]}; RECIPE[rk(a,b)]=id; }
 // Cada insignia lleva el arte de una medalla de gimnasio afín a su sinergia (número de sprite en PokeAPI)
 const BADGE_OF={claw:[18,'Puño'],wing:[22,'Pluma'],spoon:[6,'Pantano'],water:[2,'Cascada'],coat:[1,'Roca'],goggles:[4,'Arcoíris'],club:[16,'Dragón'],lens:[5,'Alma']};
-for(const c of BASIC){ const t=EMBLEM_OF[c], id='em_'+c; ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.`,s:{...COMPS[c].s},sp:{},emblem:t,from:[c,'medal']}; RECIPE[rk(c,'medal')]=id; }
+for(const c of BASIC) FORGE_OF[c].forEach((t,j)=>{ const id='em_'+c+(j?'_'+j:''); ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.`,s:{...COMPS[c].s},sp:{},emblem:t,from:[c,'medal'],forge:c}; if(!j) RECIPE[rk(c,'medal')]=id; });
 // Herramienta: no se equipa; devuelve al inventario todos los objetos de un Pokémon (es la única forma de quitarlos)
 ITEMS.magnet={key:'magnet',name:'Imán Removedor',icon:'🧲',desc:'Arrástralo sobre un Pokémon: todos sus objetos vuelven a tu inventario. Se gasta al usarlo. Recibes uno en cada fase contra Pokémon salvajes.',s:{},sp:{},tool:true};
 // Emblema de cada sinergia: el Pokémon que lo lleve cuenta para ella (sin contar dos veces el mismo rasgo)
@@ -345,7 +402,8 @@ function income(p,idx){
 }
 function addXp(p,n){ const l0=p.level; p.xp+=n; while(p.level<10&&p.xp>=XP_NEED[p.level]){ p.xp-=XP_NEED[p.level]; p.level++; } if(p.level>=10) p.xp=0; if(p.level>l0) augFire(p,'levelUp',{level:p.level}); }
 const xpCost=p=>p.mods.xpCost||4;
-function buyXp(p){ if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
+const xpByHp=p=>!!(p.mods.xpHp&&p.hp>20);
+function buyXp(p){ if(p.level<10&&xpByHp(p)){ p.hp-=p.mods.xpHp; addXp(p,4+p.mods.xpBuy); return true; } if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
 function reroll(p){ const free=p.freeRerolls>0; if(free) p.freeRerolls--; else { if(p.gold<2) return false; p.gold-=2; } refreshShop(p); augFire(p,'reroll',{free}); return true; }
 function countSame(p,base,star){ return allUnits(p).filter(u=>u.baseId===base&&u.star===star).length; }
 function canBuy(p,i){
@@ -382,9 +440,16 @@ function addItemToUnit(u,k){
 }
 // Dos componentes del inventario se combinan en un objeto completo (se queda en el sitio del segundo)
 const benchCombo=(p,a,b)=>{ const x=p.items[a], y=p.items[b]; return a!==b&&x&&y&&ITEMS[x].comp&&ITEMS[y].comp?combineKey(x,y):null; };
-function combineBench(p,a,b){ const res=benchCombo(p,a,b); if(!res) return {ok:false,why:'Solo se combinan dos componentes'}; p.items[b]=res; p.items.splice(a,1); return {ok:true,made:res}; }
+function combineBench(p,a,b){ const res=benchCombo(p,a,b); if(!res) return {ok:false,why:'Solo se combinan dos componentes'}; p.items[b]=res; p.items.splice(a,1); forgeOffer(p,res,null); return {ok:true,made:res}; }
+// Forja: al crear una insignia (Medalla + componente) se elige qué sinergia graba entre 3 afines al componente
+function forgeOffer(p,made,u){
+ const I=ITEMS[made]; if(!I||!I.forge||(typeof NET!=='undefined'&&NET.mode==='client')) return;
+ const own=u?DEF[u.defId].traits:[];
+ const opts=FORGE_OF[I.forge].map((t,j)=>({t:'Insignia '+t,i:TRAITS[t].icon,d:TRAITS[t].sum,v:'fg:em_'+I.forge+(j?'_'+j:'')})).filter(o=>!own.includes(ITEMS[o.v.slice(3)].emblem));
+ if(opts.length>1) augOffer(p,'__forge','⚒️ Forja de Insignias','Elige qué sinergia graba la Medalla',opts);
+}
 function useItem(p,idx,u,loc){
- const r=useItem0(p,idx,u,loc); if(r.ok) liveItems(p,u); return r;
+ const r=useItem0(p,idx,u,loc); if(r.ok){ if(r.made) forgeOffer(p,r.made,u); liveItems(p,u); } return r;
 }
 // Si el Pokémon está combatiendo, sus objetos nuevos cuentan ya en ese combate.
 // En solitario se cambia el combate en vivo. En multijugador el servidor apunta un evento (tiempo, lado, casilla, objetos),
@@ -488,7 +553,10 @@ function traitCountsOf(units,extra){
  return c;
 }
 const traitCounts=p=>traitCountsOf(boardUnits(p),p.mods.extraTrait);
-function traitTiers(p){ const c=traitCounts(p),Tt={}; for(const t in c) Tt[t]=TRAITS[t].bp.filter(b=>c[t]>=b).length; return Tt; }
+// Emblemas que cuentan para cada sinergia (un Pokémon que ya la tiene de serie no suma)
+function emblemCountsOf(units){ const e={}; for(const u of units){ const d=DEF[u.defId]; for(const i of u.items){ const t=ITEMS[i]&&ITEMS[i].emblem; if(t&&!d.traits.includes(t)) e[t]=(e[t]||0)+1; } } return e; }
+const tierOf=(t,n,e)=>{ const Tr=TRAITS[t]; let k=Tr.bp.filter(b=>n>=b).length; if(k===Tr.bp.length&&Tr.pr&&e>0&&n>=Tr.pr[0]) k++; return k; };
+function traitTiers(p){ const c=traitCounts(p), e=emblemCountsOf(boardUnits(p)), Tt={}; for(const t in c) Tt[t]=tierOf(t,c[t],e[t]||0); return Tt; }
 function topTrait(p){ const c=traitCountsOf(allUnits(p)); delete c['Legendario']; const e=Object.entries(c).sort((a,b)=>b[1]-a[1]); return e.length?e[0][0]:null; }
 function pushLog(p,msg,t){ p.log.unshift(msg); p.log.length=Math.min(p.log.length,12); if(t){ p.tseq++; p.toasts=p.toasts.concat([[p.tseq,msg]]).slice(-4); } }
 function note(p,msg,toastIt){
@@ -507,32 +575,33 @@ const toGrid=(side,c,r)=>side===0?[c,4+r]:[6-c,3-r];
 const pickR=(cb,a)=>a[Math.floor(cb.rng()*a.length)];
 
 function applyTraits(u,traits,Tt,mods){
- const has=t=>traits.includes(t), tv=(t,arr)=>arr[Tt[t]||0]||0;
+ const has=t=>traits.includes(t), tv=(t,arr)=>arr[Math.min(Tt[t]||0,arr.length-1)]||0;
  // Tipos con identidad propia: incendio, oleadas, sobrecarga, ciclos de maná, escalado dracónico, fortaleza y ejecuciones
- if(has('Fuego')){ u.burnPct+=tv('Fuego',[0,.02,.04,.07]); u.dmgBonus+=tv('Fuego',[0,0,0,.2]); if(Tt['Fuego']){ u.fireSpread=true; u.fireBoom=tv('Fuego',[0,0,0,150]); } }
- if(has('Agua')) u.manaPerAtk+=tv('Agua',[0,3,6,10]);
+ if(has('Fuego')){ u.burnPct+=tv('Fuego',[0,.02,.04,.07,.1]); u.dmgBonus+=tv('Fuego',[0,0,0,.2,.35]); if(Tt['Fuego']){ u.fireSpread=true; u.fireBoom=tv('Fuego',[0,0,0,150,300]); } }
+ if(has('Agua')) u.manaPerAtk+=tv('Agua',[0,3,6,10,14]);
  u.waterTier=Tt['Agua']||0;
- if(has('Planta')) u.regen+=tv('Planta',[0,.015,.035]);
- if(has('Eléctrico')){ u.as*=1+tv('Eléctrico',[0,.2,.4]); u.elecTier=Tt['Eléctrico']||0; }
- if(has('Psíquico')){ u.ap+=tv('Psíquico',[0,15,30,60]); u.psyMana=tv('Psíquico',[0,10,20,35]); }
- u.ap+=tv('Psíquico',[0,0,0,15]);
- if(has('Roca')) u.df+=tv('Roca',[0,25,55,100]);
- u.df+=tv('Roca',[0,0,10,25]);
- if(has('Dragón')){ u.maxHp+=tv('Dragón',[0,150,300,500]); u.dragonRamp=tv('Dragón',[0,.015,.025,.04]); u.dragonCap=tv('Dragón',[0,.3,.5,.8]); }
- if(has('Fantasma')) u.dodge+=tv('Fantasma',[0,.15,.3,.45]);
- u.startShield+=tv('Hada',[0,100,220,400]);
- if(has('Normal')){ u.maxHp+=tv('Normal',[0,120,300,550]); u.as*=1+tv('Normal',[0,.08,.15,.25]); }
- if(has('Acero')){ u.dr+=tv('Acero',[0,.1,.2]); u.fort=tv('Acero',[0,.25,.4]); }
- if(has('Siniestro')&&Tt['Siniestro']){ u.execTh=tv('Siniestro',[0,.12,.2]); u.execBuff=tv('Siniestro',[0,.04,.08]); }
- if(has('Lucha')) u.omni+=tv('Lucha',[0,.12,.25]);
+ if(has('Planta')) u.regen+=tv('Planta',[0,.015,.035,.06]);
+ u.regen+=tv('Planta',[0,0,0,.02]);
+ if(has('Eléctrico')){ u.as*=1+tv('Eléctrico',[0,.2,.4,.7]); u.elecTier=Tt['Eléctrico']||0; }
+ if(has('Psíquico')){ u.ap+=tv('Psíquico',[0,15,30,60,100]); u.psyMana=tv('Psíquico',[0,10,20,35,60]); }
+ u.ap+=tv('Psíquico',[0,0,0,15,40]);
+ if(has('Roca')) u.df+=tv('Roca',[0,25,55,100,160]);
+ u.df+=tv('Roca',[0,0,10,25,50]);
+ if(has('Dragón')){ u.maxHp+=tv('Dragón',[0,150,300,500,800]); u.dragonRamp=tv('Dragón',[0,.015,.025,.04,.06]); u.dragonCap=tv('Dragón',[0,.3,.5,.8,1.5]); }
+ if(has('Fantasma')) u.dodge+=tv('Fantasma',[0,.15,.3,.45,.6]);
+ u.startShield+=tv('Hada',[0,100,220,400,700]);
+ if(has('Normal')){ u.maxHp+=tv('Normal',[0,120,300,550,900]); u.as*=1+tv('Normal',[0,.08,.15,.25,.4]); }
+ if(has('Acero')){ u.dr+=tv('Acero',[0,.1,.2,.35]); u.fort=tv('Acero',[0,.25,.4,.6]); }
+ if(has('Siniestro')&&Tt['Siniestro']){ u.execTh=tv('Siniestro',[0,.12,.2,.3]); u.execBuff=tv('Siniestro',[0,.04,.08,.12]); }
+ if(has('Lucha')){ u.omni+=tv('Lucha',[0,.12,.25,.45]); u.dmgBonus+=tv('Lucha',[0,0,0,.2]); }
  // Clases (inspiradas en TFT): Guardaespaldas, Matones, Tiradores, Académicos, Asesinos, Encantadores, Retadores, Quimtech
- if(has('Guardián')){ const g=tv('Guardián',[0,20,40,70,110]); u.df+=g; u.mr+=g; u.bodyguard=tv('Guardián',[0,.1,.15,.22,.3]); }
- u.maxHp+=tv('Coloso',[0,100,200,350,550])*(has('Coloso')?2:1);
- if(has('Tirador')) u.hexAmp=tv('Tirador',[0,.06,.1,.15]);
- u.ap+=tv('Hechicero',[0,8,15,25,40])*(has('Hechicero')?2:1); if(has('Hechicero')) u.scholar=tv('Hechicero',[0,2,4,7,12]);
- if(has('Asesino')){ u.critC+=tv('Asesino',[0,.15,.3,.45]); u.critM+=tv('Asesino',[0,.1,.2,.35]); if(Tt['Asesino']) u.critAbil=true; }
- u.healAmp=(u.healAmp||0)+tv('Sanador',[0,.2,.4,.7]); u.mr+=tv('Sanador',[0,10,20,35]);
- if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.15,.3,.5]); u.rival=[tv('Depredadores',[0,.4,.6,.9]),tv('Depredadores',[0,2,2.5,3]),tv('Depredadores',[0,.3,.5,1])]; }
+ if(has('Guardián')){ const g=tv('Guardián',[0,20,40,70,110,170]); u.df+=g; u.mr+=g; u.bodyguard=tv('Guardián',[0,.1,.15,.22,.3,.45]); }
+ u.maxHp+=tv('Coloso',[0,100,200,350,550,900])*(has('Coloso')?2:1);
+ if(has('Tirador')){ u.hexAmp=tv('Tirador',[0,.06,.1,.15,.25]); u.range+=tv('Tirador',[0,0,0,0,1]); }
+ u.ap+=tv('Hechicero',[0,8,15,25,40,60])*(has('Hechicero')?2:1); if(has('Hechicero')){ u.scholar=tv('Hechicero',[0,2,4,7,12,18]); u.echo=(Tt['Hechicero']||0)>TRAITS['Hechicero'].bp.length; }
+ if(has('Asesino')){ u.critC+=tv('Asesino',[0,.15,.3,.45,.7]); u.critM+=tv('Asesino',[0,.1,.2,.35,.6]); if(Tt['Asesino']) u.critAbil=true; }
+ u.healAmp=(u.healAmp||0)+tv('Sanador',[0,.2,.4,.7,1.2]); u.mr+=tv('Sanador',[0,10,20,35,60]);
+ if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.15,.3,.5,.8]); u.rival=[tv('Depredadores',[0,.4,.6,.9,1.3]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.3,.5,1,1])]; }
  if(has('Team Rocket')&&Tt['Team Rocket']) u.rocket=Tt['Team Rocket'];
  if(has('Legendario')){ const b=1.2+(mods?mods.legend:0); u.maxHp*=b; u.ad*=b; }
 }
@@ -680,16 +749,18 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
  if(src&&src.sp.execute&&kind!=='true'&&t.hp>0&&t.hp<t.maxHp*src.sp.execute){ t.hp=0; fxText(cb,t,'¡Rematado!','#ff6b6b'); }
  if(src&&src.execTh&&kind!=='true'&&t.hp>0&&t.hp<t.maxHp*src.execTh){ t.hp=0; fxText(cb,t,'¡Ejecutado!','#b07cff'); cb.darkN=cb.darkN||[0,0]; if(cb.darkN[src.side]<5){ cb.darkN[src.side]++; for(const a of cb.units) if(!a.dead&&a.side===src.side) a.dmgBonus+=src.execBuff; } }
  // Team Rocket: la primera vez que bajan del 60% se ponen serios 4 s
- if(t.rocket&&!t.rocketUsed&&t.hp>0&&t.hp<t.maxHp*.6){ t.rocketUsed=true; const R=[null,{dr:.25,as:.5,rg:.03},{dr:.45,as:.8,rg:.05}][t.rocket]||{dr:.25,as:.5,rg:.03}; t.tdr=Math.max(t.tdr,R.dr); t.tdrT=Math.max(t.tdrT,4); t.rushMul=1+R.as; t.rushT=4; t.rocketT=4; t.rocketRg=R.rg; fxText(cb,t,'¡Team Rocket!','#ff4d6d'); fx(cb,{type:'aura',u:t,life:4,color:'#ff4d6d'}); }
+ if(t.rocket&&!t.rocketUsed&&t.hp>0&&t.hp<t.maxHp*.6){ t.rocketUsed=true; const R=[null,{dr:.25,as:.5,rg:.03},{dr:.45,as:.8,rg:.05},{dr:.6,as:1.2,rg:.08}][t.rocket]||{dr:.25,as:.5,rg:.03}; t.tdr=Math.max(t.tdr,R.dr); t.tdrT=Math.max(t.tdrT,4); t.rushMul=1+R.as; t.rushT=4; t.rocketT=4; t.rocketRg=R.rg; fxText(cb,t,'¡Team Rocket!','#ff4d6d'); fx(cb,{type:'aura',u:t,life:4,color:'#ff4d6d'}); }
+ if(t.lowRage&&!t.lowRaged&&t.hp>0&&t.hp<t.maxHp*.5){ t.lowRaged=true; t.as=Math.min(5,t.as*(1+t.lowRage)); fxText(cb,t,'¡Furia!','#ff5a3a'); }
  if(t.berry&&t.hp>0&&t.hp<t.maxHp*.5){ t.berry=false; heal(t,t.maxHp*.35); fxText(cb,t,'Baya Zidra','#4caf50'); }
  if(t.sp.blood&&!t.bloodUsed&&t.hp>0&&t.hp<t.maxHp*.4){ t.bloodUsed=true; t.shield+=t.maxHp*.25; t.shieldT=Math.max(t.shieldT,5); fxText(cb,t,'¡Sed de sangre!','#ff5a5a'); }
  if(t.hp<=0){
    if(t.focus){ t.focus=false; t.hp=1; fxText(cb,t,'¡Aguanta!','#ffb400'); if(t.ghostFocus){ t.stealth=2; t.ghostFocus=false; } }
+   else if(t.rocket>=3&&!t.blasted){ t.blasted=true; t.hp=t.maxHp*.5; t.stealth=2; t.burns=[]; fxText(cb,t,'¡Despegamos!','#ff4d6d'); }
    // Renacer: Moltres renace una vez; con Ho-Oh, el primer aliado que cae renace
    else if(!t.creep&&(t.revive>0||(cb.phoenix&&cb.phoenix[t.side]>0))){ const pct=t.revive>0?t.revive:cb.phoenix[t.side]; if(t.revive>0) t.revive=0; else cb.phoenix[t.side]=0;
      t.hp=t.maxHp*pct; t.stun=0; t.burns=[]; t.mana=Math.max(t.mana,t.maxMana*.5); fxText(cb,t,'¡Renace!','#ffb347'); fx(cb,{type:'area',c:t.c,r:t.r,rad:1.8,color:'#ff8a3a',life:.9,el:'Fuego'});
      if(t.rebirthNova) for(const e of foesOf(cb,t)) if(dU(t,e)<=2) dealDamage(cb,t,e,abilPower(t)*t.rebirthNova,'magic',false); }
-   else { t.hp=0; t.dead=true; spreadFire(cb,t); if(t.creep) (cb.deaths=cb.deaths||[]).push([cb.t,t.c,t.r]); if(src&&src.side!==t.side){ src.kills++; if(src.rival&&src.target===t&&!src.dead){ src.rushMul=1+src.rival[0]; src.rushT=src.rival[1]; if(src.maxMana<9999) src.mana+=src.maxMana*(src.rival[2]||0); const n=nearestEnemy(cb,src,t); if(n){ teleportNear(cb,src,n); src.target=n; } } if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; }
+   else { t.hp=0; t.dead=true; spreadFire(cb,t); if(src&&src.rocket>=3&&!t.creep&&cb.gold[src.side]<12){ cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(t.creep) (cb.deaths=cb.deaths||[]).push([cb.t,t.c,t.r]); if(src&&src.side!==t.side){ src.kills++; if(src.rival&&src.target===t&&!src.dead){ src.rushMul=1+src.rival[0]; src.rushT=src.rival[1]; if(src.maxMana<9999) src.mana+=src.maxMana*(src.rival[2]||0); const n=nearestEnemy(cb,src,t); if(n){ teleportNear(cb,src,n); src.target=n; } } if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; }
  }
  return true;
 }
@@ -752,10 +823,10 @@ const elIcon=el=>TRAITS[el]?TRAITS[el].icon:({Hielo:'❄️',Veneno:'☠️'})[e
 // Efectos de tipo que se disparan con cada habilidad lanzada
 function typeOnCast(cb,u){
  const s=u.side, P=abilPower(u);
- if(u.elecTier){ cb.eC=cb.eC||[0,0]; const need=u.elecTier>=2?2:3; if(++cb.eC[s]>=need){ cb.eC[s]=0; const n=u.elecTier>=2?5:3; let prev=u; const hit=new Set();
-   for(let i=0;i<n;i++){ const e=cb.units.filter(x=>!x.dead&&x.side!==s&&!hit.has(x)).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; if(!e) break; hit.add(e); fx(cb,{type:'zap',fc:prev.c,fr:prev.r,tc:e.c,tr:e.r,color:'#ffe066',life:.4,el:'Eléctrico'}); dealDamage(cb,u,e,P*(u.elecTier>=2?.6:.4),'magic',false); if(u.elecTier>=2&&!e.dead) stunUnit(e,.5); prev=e; }
+ if(u.elecTier){ cb.eC=cb.eC||[0,0]; const need=[3,3,2,1][Math.min(3,u.elecTier)]; if(++cb.eC[s]>=need){ cb.eC[s]=0; const n=[3,3,5,7][Math.min(3,u.elecTier)]; let prev=u; const hit=new Set();
+   for(let i=0;i<n;i++){ const e=cb.units.filter(x=>!x.dead&&x.side!==s&&!hit.has(x)).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; if(!e) break; hit.add(e); fx(cb,{type:'zap',fc:prev.c,fr:prev.r,tc:e.c,tr:e.r,color:'#ffe066',life:.4,el:'Eléctrico'}); dealDamage(cb,u,e,P*(u.elecTier>=2?.6:.4),'magic',false); if(u.elecTier>=2&&!e.dead) stunUnit(e,u.elecTier>=3?1:.5); prev=e; }
    fxText(cb,u,'¡Sobrecarga!','#ffe066'); } }
- if(u.waterTier){ cb.wN=cb.wN||[0,0]; if(++cb.wN[s]%4===0){ const k=u.waterTier, hl=[0,.04,.07,.12][k], dm=[0,60,120,220][k];
+ if(u.waterTier){ cb.wN=cb.wN||[0,0]; if(++cb.wN[s]%(u.waterTier>=4?2:4)===0){ const k=u.waterTier, hl=[0,.04,.07,.12,.18][k], dm=[0,60,120,220,320][k];
    for(const a of cb.units) if(!a.dead){ if(a.side===s) heal(a,a.maxHp*hl); else dealDamage(cb,u,a,dm,'magic',true); }
    fx(cb,{type:'flash',color:'#3b8fe8',life:.4}); fxText(cb,u,'¡Oleada!','#7fc8ff'); } }
  if(u.psyMana){ const a=cb.units.filter(x=>!x.dead&&x.side===s&&x!==u&&x.maxMana<9999).sort((x,y)=>x.mana/x.maxMana-y.mana/y.maxMana)[0]; if(a){ a.mana+=u.psyMana; fx(cb,{type:'proj',fc:u.c,fr:u.r,tc:a.c,tr:a.r,color:'#e0569b',life:.35,heal:true}); } }
@@ -766,7 +837,7 @@ function castAbility(cb,u,ab,depth=0){
  const FX=o=>fx(cb,{el,v:p.v,color:col,...o});
  const foes=foesOf(cb,u), allies=alliesOf(cb,u);
  let t=u.target&&!u.target.dead&&!(u.target.stealth>0)?u.target:nearestEnemy(cb,u);
- if(depth===0){ u.castN=(u.castN||0)+1; typeOnCast(cb,u); for(const a of cb.units) if(a.scholar&&!a.dead&&a.side===u.side) a.ap+=a.scholar; cb.caster=u; HEALER=u; cb.cDmg=0; cb.cHits=new Set(); cb.cHeal=0; cb.cShield=0; cb.cStun=false; cb.cKills=0; cb.cExtra='';
+ if(depth===0){ u.castN=(u.castN||0)+1; if(u.castAp) u.ap+=u.castAp; typeOnCast(cb,u); for(const a of cb.units) if(a.scholar&&!a.dead&&a.side===u.side) a.ap+=a.scholar; cb.caster=u; HEALER=u; cb.cDmg=0; cb.cHits=new Set(); cb.cHeal=0; cb.cShield=0; cb.cStun=false; cb.cKills=0; cb.cExtra='';
    fx(cb,{type:'banner',u,txt:name,color:col,icon:elIcon(el),life:1.3}); u.glow=.6; u.flash=.2; }
  const amp=1+(u.healAmp||0); // Sanadores: curas y escudos más fuertes
  const H=(a,amt)=>{ amt*=amp; const b=a.hp; heal(a,amt); cb.cHeal+=a.hp-b; FX({type:'plus',c:a.c,r:a.r,life:.8}); };
@@ -839,7 +910,8 @@ function castAbility(cb,u,ab,depth=0){
       later2(cb,.3,()=>{ if(u.dead) return; for(const e of near(u.c,u.r,rad)) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:u.c,r:u.r,rad:rad+.5,life:.7,quake:true}); }); cb.cExtra=' · salta al grupo'; } break; }
  }
  if(depth===0){
-   if(p.g){ const g=p.g+(u.star-1); const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+g); if(cb.gold[u.side]>before){ if(u.ref&&!NO_PERMA) u.ref.goldGen=(u.ref.goldGen||0)+cb.gold[u.side]-before; fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
+   if(u.echo&&!u.echoing&&!u.dead){ u.echoing=true; cb.cExtra+=' · ¡doble lanzamiento!'; castAbility(cb,u,ab,1); u.echoing=false; }
+   if(p.g){ const g=p.g+(u.star-1)+(u.payDay||0); const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+g); if(cb.gold[u.side]>before){ if(u.ref&&!NO_PERMA) u.ref.goldGen=(u.ref.goldGen||0)+cb.gold[u.side]-before; fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
    if(p.stk) gainStacks(u,15,2);
    // Crecimiento dentro del combate: las 3★ y algunos legendarios pegan más cada vez que lanzan su habilidad
    const grow=(p.grow||0)+(u.star>=3&&!u.creep?(u.cost>=4?.25:.2):0); if(grow){ u.castBoost=(u.castBoost||0)+grow; cb.cExtra+=` · +${R0(grow*100)}% de poder (${R0(u.castBoost*100)}%)`; }
@@ -847,6 +919,7 @@ function castAbility(cb,u,ab,depth=0){
    if(p.refundKill&&cb.cKills>0){ u.mana+=u.maxMana*p.refundKill*cb.cKills; cb.cExtra+=' · ¡recupera maná!'; }
    if(p.markAll) for(const e of foesOf(cb,u)){ e.markT=Math.max(e.markT||0,p.markDur||5); e.markAmp=Math.max(e.markAmp||0,p.markAll); }
    if(u.sp.healCast) heal(u,u.maxHp*u.sp.healCast);
+   if(p.selfAs&&k!=='dash'){ u.as=Math.min(5,u.as*(1+p.selfAs)); cb.cExtra+=` · +${R0(p.selfAs*100)}% de vel. de ataque`; }
    if(cb.visual){ cb.feed.push({s:u.side,n:u.name,mv:name,ic:elIcon(el)||'🐾',d:R0(cb.cDmg),h:cb.cHits.size,hl:R0(cb.cHeal),sh:R0(cb.cShield),st:cb.cStun,k:cb.cKills,x:cb.cExtra}); if(cb.feed.length>12) cb.feed.shift(); cb.feedV++; }
    cb.caster=null; HEALER=null;
  }
@@ -855,6 +928,7 @@ function stepCombat(cb){
  if(cb.done) return;
  if(!cb.started){
    cb.started=true;
+   for(const f of cb.startFns||[]) f(cb);
    for(const side of cb.huntPend||[]){ const foes=cb.units.filter(e=>e.side!==side); const t=foes.sort((a,b)=>b.maxHp-a.maxHp)[0]; if(t){ t.markT=99; t.markAmp=Math.max(t.markAmp||0,.2); t.hunted=side; } }
    for(const u of cb.units){ if(u.startShield){ u.shield+=u.startShield; u.shieldT=8; } if(u.sp.startShieldPct){ u.shield+=u.maxHp*u.sp.startShieldPct; u.shieldT=8; } }
    for(const u of cb.units) if(u.sp.veil) for(const a of cb.units) if(a!==u&&a.side===u.side&&dU(u,a)<=1){ a.shield+=u.sp.veil; a.shieldT=Math.max(a.shieldT,8); }
@@ -998,7 +1072,7 @@ function grant(p,tok,out){
  const m=tok.match(/^([a-z]+)(\d*)$/); const k=m[1], n=+m[2]||0;
  if(k==='g'){ p.gold+=n; out.push(`${n} de oro`); }
  else if(k==='u'){ const key=drawUnitOfCost(n,threeStarSet(p)); if(key){ giveUnitTo(p,key); out.push(DEF[key].name); } }
- else if(k==='c'){ const it=giveItem(p,pick(BASIC)); out.push(ITEMS[it].icon+' '+ITEMS[it].name); }
+ else if(k==='c'){ const it=giveItem(p,Math.random()<.16?'medal':pick(BASIC)); out.push(ITEMS[it].icon+' '+ITEMS[it].name); }
  else if(k==='m'){ giveItem(p,'medal'); out.push('🏅 Medalla'); }
  else if(k==='mag'){ giveItem(p,'magnet'); out.push('🧲 Imán Removedor'); }
  else if(k==='dup'){ const own=allUnits(p).filter(u=>!DEF[u.baseId].evoOf&&u.star<3&&G.pool[u.baseId]>0); if(own.length){ const u=pick(own); G.pool[u.baseId]--; giveUnitTo(p,u.baseId); out.push('🧬 Copia de '+DEF[u.baseId].name); } else { p.gold+=3; out.push('3 de oro'); } }
@@ -1194,7 +1268,7 @@ function lootTrack(p,fn){
 }
 // Potencial Evolutivo: crecen para siempre al acabar cada ronda en el tablero
 function growPotential(){
- for(const p of alivePlayers()){ const k=traitTiers(p)['Potencial Evolutivo']||0; if(!k) continue; const hp=[0,12,25,45][k], ad=[0,1,2,4][k];
+ for(const p of alivePlayers()){ const k=traitTiers(p)['Potencial Evolutivo']||0; if(!k) continue; const hp=[0,12,25,45,80][k], ad=[0,1,2,4,8][k];
    for(const u of boardUnits(p)) if(unitTraits(u).includes('Potencial Evolutivo')){ const m=u.star>=3?2:1; u.stk.hp+=hp*m; u.stk.ad+=ad*m; } }
 }
 function resolveRound(){
@@ -1227,11 +1301,11 @@ function resolveRound(){
  for(const f of G.fights){ const c=f.c, sides=f.pve?[[f.a,0,null]]:[[f.a,0,f.b],...(f.ghost?[]:[[f.b,1,f.a]])];
    for(const [p,side,o] of sides){ const w=c.winner===side, n=c.units.filter(u=>u.side===side&&!u.dead).length, k=c.units.filter(u=>u.side===side).reduce((a,u)=>a+u.kills,0);
      augFire(p,w?'win':'lose',{pve:!!f.pve,opp:o?o.id:null,streak:p.streak}); augFire(p,'survive',{n}); augFire(p,'kills',{n:k}); if(!w) augFire(p,'damaged',{d:p.lastDmg||0}); augFire(p,'roundEnd',{won:w,pve:!!f.pve}); } }
- // Fortuna: tras cada combate se tira un dado de oro
+ // Cazatesoros: botín tras cada combate (apuntado para la ficha de la sinergia)
  for(const p of alivePlayers()){ const tier=traitTiers(p)['Cazatesoros']||0; if(!tier) continue; const w=won.get(p);
-   lootTrack(p,()=>{ if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),true); } } else p.gold+=tier>=2?2:1; }); }
+   lootTrack(p,()=>{ if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),true); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
  for(const [p,m] of msgs) if(isHuman(p)) note(p,m,true);
- for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Fortuna y habilidades de oro: +${extraGold[p.id]} de oro`,true);
+ for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,true);
  const dead=G.players.filter(p=>p.alive&&p.hp<=0).sort((a,b)=>a.hp-b.hp);
  let n=alivePlayers().length;
  for(const p of dead){
@@ -2075,7 +2149,7 @@ function onReady(){
 /* ---------- tooltips ---------- */
 function unitTip(key){
  const d=DEF[key]; if(!d) return '';
- const forms=[1,2,3].map(s=>{ const u=baseCombatUnit(d,0,s); const ab=abOf(d,s); return `<div class="form"><b>${'★'.repeat(s)} ${nameOf(d,s)}</b> · ${ab[1]} <span class="muted">(${KIND_NAME[ab[0]]})</span><br>${abDesc(ab,abilPower(u),s)}</div>`; }).join('');
+ const forms=[1,2,3].map(s=>{ const u=baseCombatUnit(d,0,s); const ab=abOf(d,s); return `<div class="form"><b>${'★'.repeat(s)} ${nameOf(d,s)}</b> · ${ab[1]} <span class="muted">(${KIND_NAME[ab[0]]})</span><br>${abHTML(ab,u,s,{short:1})}</div>`; }).join('');
  return `<h4>${d.name} <span class="chip" style="color:${COST_HEX[d.cost-1]}">Coste ${d.cost}</span></h4><div class="scope">${d.traits.map(t=>TRAITS[t].icon+' '+t).join(' · ')} · ${ROLE_NAME[d.role]}</div><div class="units">📈 Habilidad: escala con ${SCALE_TXT[SCALE_BY_ROLE[d.role]||'ap']} (números sin objetos)</div>${forms}`;
 }
 // Botín acumulado por Cazatesoros en esta partida (oro, Pokémon, objetos y su valor total en oro)
@@ -2085,14 +2159,14 @@ function tipHTML(spec){
  const i=spec.indexOf(':'), type=spec.slice(0,i), key=spec.slice(i+1);
  if(type==='unit') return unitTip(key);
  if(type==='shop') return shopTip(key);
- if(type==='form'){ const [k,s]=key.split('|'); const d=DEF[k]; if(!d) return ''; const st=+s; const ab=abOf(d,st); return `<h4>${nameOf(d,st)} ${'★'.repeat(st)}</h4><div class="scope">${ab[1]} · ${KIND_NAME[ab[0]]}</div><div>${abDesc(ab,abilPower(baseCombatUnit(d,0,st)),st)}</div>`; }
+ if(type==='form'){ const [k,s]=key.split('|'); const d=DEF[k]; if(!d) return ''; const st=+s; const ab=abOf(d,st); return `<h4>${nameOf(d,st)} ${'★'.repeat(st)}</h4><div class="scope">${ab[1]} · ${KIND_NAME[ab[0]]}</div><div>${abHTML(ab,baseCombatUnit(d,0,st),st)}</div>`; }
  if(type==='trait'){
    const Tr=TRAITS[key]; if(!Tr) return '';
-   const c=(G&&G.me&&G.players&&G.players.length)?(traitCounts(G.me)[key]||0):0, tier=Tr.bp.filter(b=>c>=b).length;
+   const live=G&&G.me&&G.players&&G.players.length, c=live?(traitCounts(G.me)[key]||0):0, e=live?(emblemCountsOf(boardUnits(G.me))[key]||0):0, tier=tierOf(key,c,e);
    const units=UNIT_LIST.filter(u=>u.traits.includes(key));
    const onBoard=new Set(G&&G.me?boardUnits(G.me).map(u=>u.defId):[]);
    return `<h4>${Tr.icon} ${key} <span class="small muted">${c}/${Tr.bp.find(b=>b>c)||Tr.bp[Tr.bp.length-1]}</span></h4><div class="scope">${Tr.scope}</div><div>${Tr.sum}</div>
-     <div style="margin-top:6px">${Tr.lv.map((t,j)=>`<div class="tl ${tier>j?'on':''}"><b>(${Tr.bp[j]})</b> ${t}</div>`).join('')}</div>
+     <div style="margin-top:6px">${Tr.lv.map((t,j)=>`<div class="tl ${tier>j?'on':''}"><b>(${Tr.bp[j]})</b> ${t}</div>`).join('')}${Tr.pr?`<div class="tl pr ${tier>Tr.bp.length?'on':''}"><b>(${Tr.pr[0]})</b> 🌈 ${Tr.pr[1]}${e?'':' <i>🔒 Solo con al menos un emblema</i>'}</div>`:''}</div>
      <div class="units">Pokémon (${units.length}): ${units.map(u=>onBoard.has(u.key)?`<b>${u.name}</b>`:u.name).join(', ')}</div>${key==='Cazatesoros'?lootHTML():''}`;
  }
  if(type==='item'){
@@ -2453,7 +2527,7 @@ function renderShop(){
  $('xpbar').parentElement.style.setProperty('--seg',me.level>=10?'100%':(4/XP_NEED[me.level]*100)+'%');
  $('gold').textContent=me.gold;
  $('odds').innerHTML=SHOP_ODDS[me.level].map((o,i)=>`<span style="color:${COST_HEX[i]}" title="Coste ${i+1}">${o}%</span>`).join('');
- $('xpBtn').disabled=me.gold<xpCost(me)||me.level>=10||!me.alive; $('xpBtn').querySelector('span').textContent=`${xpCost(me)} de oro`;
+ $('xpBtn').disabled=(me.gold<xpCost(me)&&!xpByHp(me))||me.level>=10||!me.alive; $('xpBtn').querySelector('span').textContent=xpByHp(me)?`${me.mods.xpHp} de vida`:`${xpCost(me)} de oro`;
  $('rerollBtn').innerHTML=me.freeRerolls>0?`<b>🔄 Gratis</b><span>quedan ${me.freeRerolls}</span>`:'<b>🔄 Tienda</b><span>2 de oro</span>';
  $('rerollBtn').disabled=(me.freeRerolls<=0&&me.gold<2)||!me.alive;
  $('lockBtn').textContent=me.locked?'🔒':'🔓'; $('lockBtn').setAttribute('aria-pressed',me.locked);
@@ -2487,15 +2561,17 @@ function renderShop(){
 function shopTip(key){
  const d=DEF[key]; if(!d) return ''; const u=baseCombatUnit(d,0,1), ab=abOf(d,1), el=elemOf(d), ic=elIcon(ab[2].el||el)||TRAITS[el].icon;
  return `<div class="stHead" style="--tc:${TRAITS[el].color}"><span class="stIco">${ic}</span><div><div class="stName">${esc(ab[1])}</div><div class="stMana">💧 ${R0(u.mana)}/${u.maxMana>=9999?'—':u.maxMana} de maná · ${KIND_NAME[ab[0]]}</div></div></div>
-  <div class="stBody"><p>${abDesc(ab,abilPower(u),1)}</p><div class="stMeta">${esc(d.name)} · ${ROLE_NAME[d.role]} · ❤️ ${R0(u.maxHp)} · ⚔️ ${R0(u.ad)} · 🎯 ${u.range}</div></div>`;
+  <div class="stBody">${abHTML(ab,u,1)}<div class="stMeta">${esc(d.name)} · ${ROLE_NAME[d.role]} · ❤️ ${R0(u.maxHp)} · ⚔️ ${R0(u.ad)} · 🎯 ${u.range}</div></div>`;
 }
 // Nivel de una sinergia: 1 bronce, 2 plata, 3 oro y el máximo prismático (si tiene 3 niveles o más)
-function traitClass(Tr,tier){ if(!tier) return 'off'; const n=Tr.bp.length; if(tier>=n) return n>=3?'t4':'t3'; return 't'+tier; }
+function traitClass(Tr,tier){ if(!tier) return 'off'; const n=Tr.bp.length; if(tier>n) return 't4'; if(tier>=n) return 't3'; return 't'+Math.min(tier,2); }
+// Escalón prismático en la lista de niveles: 🔒 sin emblema, 🌈 si ya cuenta alguno
+const prismTag=(Tr,n,e)=>Tr.pr?` › <i class="pz${e?' on':''}${n>=Tr.pr[0]&&e?' got':''}" title="Prismático: ${e?'':'necesita al menos un emblema · '}${esc(Tr.pr[1])}">${e?'🌈':'🔒'}${Tr.pr[0]}</i>`:'';
 function renderTraits(){
- const c=traitCounts(viewedPlayer()); // las del tablero que se está mirando
- const rows=Object.entries(c).map(([t,n])=>({t,n,tier:TRAITS[t].bp.filter(b=>n>=b).length})).sort((a,b)=>b.tier-a.tier||(b.tier?b.n-a.n:b.n/TRAITS[b.t].bp[0]-a.n/TRAITS[a.t].bp[0]));
+ const c=traitCounts(viewedPlayer()), em=emblemCountsOf(boardUnits(viewedPlayer())); // las del tablero que se está mirando
+ const rows=Object.entries(c).map(([t,n])=>({t,n,e:em[t]||0,tier:tierOf(t,n,em[t]||0)})).sort((a,b)=>b.tier-a.tier||(b.tier?b.n-a.n:b.n/TRAITS[b.t].bp[0]-a.n/TRAITS[a.t].bp[0]));
  $('traits').innerHTML=rows.length?rows.map(r=>{ const Tr=TRAITS[r.t], next=Tr.bp.find(b=>b>r.n)||Tr.bp[Tr.bp.length-1];
-   return r.tier?`<div class="trait ${traitClass(Tr,r.tier)}" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc">${r.n}</span><span class="tn">${r.t}<div class="tb">${Tr.bp.map(b=>r.n>=b?`<b>${b}</b>`:b).join(' › ')}</div></span></div>`
+   return r.tier?`<div class="trait ${traitClass(Tr,r.tier)}" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc">${r.n}</span><span class="tn">${r.t}<div class="tb">${Tr.bp.map(b=>r.n>=b?`<b>${b}</b>`:b).join(' › ')}${prismTag(Tr,r.n,r.e)}</div></span></div>`
      :`<div class="trait off" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc"></span><span class="tn">${r.t}<div class="tb">${r.n} / ${next}</div></span></div>`;
  }).join(''):'<p class="muted small">Coloca Pokémon en el tablero para activar sinergias. Pasa el cursor por una sinergia para ver qué le da a tu equipo.</p>';
  renderAugs();
@@ -2572,18 +2648,23 @@ function renderCard(){
  const traits=inst?unitTraits(inst):(d.traits||[]);
  const mineSide=curFlip()?1:0;
  const who=live?(cu.side===mineSide?'Tu Pokémon':'Rival'):`Coste ${d.cost||'—'} · ${ROLE_NAME[d.role]||'Salvaje'}`;
- const stats=[['❤️ Vida',live?`${R0(cu.hp)}/${R0(cu.maxHp)}`:R0(cu.maxHp)],['⚔️ Ataque',R0(cu.ad)],['⚡ Vel. ataque',cu.as.toFixed(2)],['🎯 Alcance',cu.range],['🛡️ Defensa',R0(cu.df)],['🔰 Resistencia',R0(cu.mr)],['✨ Poder',R0(cu.ap)],['💧 Maná',`${R0(cu.mana)}/${cu.maxMana>=9999?'—':cu.maxMana}`],['💥 Crítico',R0(cu.critC*100)+'%'],['🌀 Esquiva',R0(cu.dodge*100)+'%']];
+ const pct=v=>R0(v*100)+'%';
+ const stats=[['⚔️','Ataque',R0(cu.ad)],['✨','Poder',R0(100+cu.ap)],['🛡️','Defensa',R0(cu.df)],['🔰','Resistencia',R0(cu.mr)],['⚡','Vel. de ataque',cu.as.toFixed(2)],['💥','Prob. crítica',pct(Math.min(1,cu.critC))],['💢','Daño crítico',pct(cu.critM)],['🩸','Omnivampirismo',pct(cu.omni)],['🧱','Reducción de daño',pct(Math.min(.75,cu.dr))],['🌀','Esquiva',pct(cu.dodge)]];
+ const mpS=((10+cu.manaPerAtk)*cu.as+cu.manaRegen).toFixed(1).replace('.',','), hp=live?cu.hp:cu.maxHp, noMana=cu.maxMana>=9999;
+ const POS={"t":"Delante","b":"Delante","a":"Atrás (salta)","r":"Atrás","m":"Atrás","h":"Atrás"};
  const evo=d.names&&!d.evoOf?`<div class="uc-evo">${[1,2,3].map(s=>`<div class="f ${s===star?'on':''}" data-tip="form:${d.key}|${s}">${spriteHTML(d,40,s)}<b>${'★'.repeat(s)}</b>${esc(nameOf(d,s))}<span class="muted">${esc(abOf(d,s)[1])}</span></div>`).join('')}</div>`:'';
- const items=inst?`<div class="uc-items">${[0,1,2].map(i=>{ const it=inst.items[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}</div>`; }).join('')}</div>`:(cu.items.length?`<div>${cu.items.map(i=>ITEMS[i]?`<span class="chip" data-tip="item:${i}">${itemHTML(i,18)} ${ITEMS[i].name}</span>`:'').join('')}</div>`:'');
+ const items=inst||cu.items?`<div class="uc-items">${[0,1,2].map(i=>{ const it=(inst?inst.items:cu.items)[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; if(!I) return `<div class="slot">Vacío</div>`; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}</div>`; }).join('')}</div>`:'';
  const gab=abOf(d,star), goldLine=inst&&gab[2]&&gab[2].g?`<p class="small goldGen">💰 Oro generado por ${esc(gab[1])}: <b>${inst.goldGen||0}</b></p>`:'';
  const stacks=live?[cu.sp.rage?`😤 Cinta Furia: <b>${cu.rageN||0}</b> cargas (vel. de ataque ${cu.as.toFixed(2)})`:'',cu.sp.rampAp?`🌙 Piedra Lunar: <b>+${R0(cu.apGain||0)}</b> de poder`:'',cu.sp.titan?`🦾 Coraza Titán: <b>${cu.titanN||0}</b>/25 cargas`:''].filter(Boolean).map(t=>`<p class="small">${t}</p>`).join(''):'';
  const extra=inst&&inst.defId==='eevee'?`<p class="small">🌀 Evoluciona al derrotar ${me.mods.eeveeKills} enemigos: <b>${Math.min(inst.kills,me.mods.eeveeKills)}/${me.mods.eeveeKills}</b></p>`:'';
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad)?`<p class="small">♾️ Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque</p>`:'';
  el.innerHTML=`<div class="uc-head">${spriteHTML(d,64,star)}<div><div class="uc-name">${esc(cu.name)} <span style="color:${star===3?'#d9a400':star===2?'#8e9bb0':'#b07a45'}">${'★'.repeat(star)}</span></div><div class="uc-sub">${who}</div></div><button class="uc-x" aria-label="Cerrar ficha">✕</button></div>
-  ${live?`<div class="uc-hp"><i style="width:${clamp(cu.hp/cu.maxHp*100,0,100)}%"></i></div>`:''}
+  <div class="uc-bar hp"><i style="width:${clamp(hp/cu.maxHp*100,0,100)}%"></i><span>❤️ ${R0(hp)} / ${R0(cu.maxHp)}</span></div>
+  <div class="uc-bar mp"><i style="width:${noMana?0:clamp(cu.mana/cu.maxMana*100,0,100)}%"></i><span>💧 ${noMana?'Sin maná':`${R0(cu.mana)} / ${cu.maxMana}`}</span><em>💧 ${mpS}/seg</em></div>
+  <div class="uc-pos"><span>📍 ${POS[d.role]||'—'}</span><span>🎯 ${cu.range} hex.</span><span>${ROLE_NAME[d.role]||'Salvaje'}</span></div>
   <div>${traits.map(t=>TRAITS[t]?`<span class="chip" data-tip="trait:${t}">${TRAITS[t].icon} ${t}</span>`:'').join('')}</div>
-  <div class="uc-ab"><div class="t">${esc(ab[1])}</div><div class="m">${KIND_NAME[ab[0]]} · se lanza al llenar el maná (${cu.maxMana>=9999?'—':cu.maxMana})</div><div class="m">📈 Escala con ${SCALE_TXT[scaleOf(cu)]}${live||inst?' · números con tus estadísticas actuales':''}</div><p>${abDesc(ab,P,star)}</p></div>
-  <div class="uc-stats">${stats.map(([a,b])=>`<div><span>${a}</span><b>${b}</b></div>`).join('')}</div>
+  <div class="uc-ab"><div class="t"><span class="abIco">${elIcon(ab[2]&&ab[2].el||elemOf(d))||'✨'}</span>${esc(ab[1])}<span class="abMana">💧 ${cu.maxMana>=9999?'—':cu.maxMana}</span></div><div class="m">${KIND_NAME[ab[0]]} · escala con ${SCALE_TXT[scaleOf(cu)]} · pasa el ratón por un número para ver su ratio</div>${abHTML(ab,cu,star)}</div>
+  <div class="uc-stats">${stats.map(([i,a,b])=>`<div title="${a}"><span>${i} ${a}</span><b>${b}</b></div>`).join('')}</div>
   ${goldLine}${evo}${items}${stacks}${extra}${stk}
   ${inst?`<button class="btn sm" id="ucSell">Vender por ${sellValue(inst)} de oro</button>`:''}`;
  hydrate(el);
@@ -2898,4 +2979,6 @@ function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.
 
 if(HEADLESS){ module.exports={serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
-  AUG_BY,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound}; } else boot();
+  AUG_BY,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
+  // Para test/sinergias.js
+  TRAITS,PRISM,FORGE_OF,tierOf,emblemCountsOf,useItem,combineBench,makeCombatUnit,lootTrack,growPotential,boardUnits}; } else boot();

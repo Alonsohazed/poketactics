@@ -9,11 +9,12 @@
     "dev": "node --watch server.js",
     "test": "node test/smoke.js",
     "test:aug": "node test/augments.js",
+    "test:sin": "node test/sinergias.js",
     "test:e2e": "playwright test",
-    "test:all": "node test/smoke.js && node test/augments.js && playwright test --grep @rapido",
+    "test:all": "node test/smoke.js && node test/augments.js && node test/sinergias.js && playwright test --grep @rapido",
     "check": "node -e \"for(const f of ['public/augments.js','public/game.js'])require('vm').createScript(require('fs').readFileSync(f,'utf8'),{filename:f})\" && node --no-warnings --experimental-vm-modules -e \"new (require('vm').SourceTextModule)(require('fs').readFileSync('public/board3d.js','utf8'),{identifier:'board3d.js'})\" && echo sintaxis-ok",
     "test:e2e:rapido": "playwright test --grep @rapido",
-    "test:completo": "node test/smoke.js && node test/augments.js && playwright test"
+    "test:completo": "node test/smoke.js && node test/augments.js && node test/sinergias.js && playwright test"
   },
   "engines": {
     "node": ">=18"
