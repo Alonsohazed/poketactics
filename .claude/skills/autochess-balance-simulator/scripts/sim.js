@@ -91,8 +91,10 @@ async function modeGames() {
     E.newGame({ auto: true, diff });
     const G0 = E.G;
     await new Promise(res => { const t0 = Date.now(); const iv = setInterval(() => { if (E.G !== G0 || G0.over || Date.now() - t0 > 60000) { clearInterval(iv); res(); } }, 5); });
+    // La partida automática acaba cuando cae el jugador 0: los que siguen vivos se ordenan por vida
+    const alive = G0.players.filter(p => !p.place).sort((a, b) => b.hp - a.hp); alive.forEach((p, i) => { p.place = i + 1; });
     for (const p of G0.players) {
-      const place = p.place || 1; places.push(place);
+      const place = p.place; places.push(place);
       for (const a of p.augments) (byAug[a] = byAug[a] || []).push(place);
       const c = {}; for (const u of Object.values(p.board)) for (const t of E.DEF[u.defId].traits) c[t] = (c[t] || 0) + 1;
       const top = Object.entries(c).filter(e => e[0] !== 'Legendario').sort((x, y) => y[1] - x[1])[0];
