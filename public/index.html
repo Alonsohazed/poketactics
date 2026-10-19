@@ -93,22 +93,28 @@ img{-webkit-user-drag:none}
 /* ---------- sinergias ---------- */
 /* Hexágono con el color del nivel: bronce, plata, oro y prismático (nivel máximo) */
 .traitsPanel{padding:10px 8px}
-.trait{display:grid;grid-template-columns:34px auto minmax(0,1fr);align-items:center;gap:6px;padding:3px 8px 3px 3px;border-radius:9px;margin-bottom:4px;cursor:help;
-  background:linear-gradient(90deg,rgba(8,12,28,.85),rgba(8,12,28,.35));border:1px solid rgba(255,255,255,.06)}
-.trait .ti{width:32px;height:36px;display:grid;place-items:center;font-size:16px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:#3b4359;filter:grayscale(.6) brightness(.85)}
-.trait.t1 .ti{background:linear-gradient(160deg,#f0b27a,#a5602c 55%,#6b3814);filter:none}
-.trait.t2 .ti{background:linear-gradient(160deg,#ffffff,#b9c6d6 50%,#6f7d92);filter:none}
-.trait.t3 .ti{background:linear-gradient(160deg,#fff1a8,#f2c23c 50%,#a87406);filter:none}
-.trait.t4 .ti{background:conic-gradient(from 0deg,#ff8ad8,#9f8bff,#6fd8ff,#8cffb4,#fff38a,#ffa86f,#ff8ad8);filter:none;animation:prism 3s linear infinite}
-@keyframes prism{to{filter:hue-rotate(360deg)}}
-.trait .tc{font-family:var(--display);font-size:15px;min-width:24px;text-align:center;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12)}
-.trait.t1 .tc{border-color:#c98447}.trait.t2 .tc{border-color:#c7d2e0}.trait.t3 .tc{border-color:#f2c23c}.trait.t4 .tc{border-color:#c7a2ff}
-.trait .tn{font-weight:900;min-width:0;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trait .tb{font-size:11px;color:var(--muted);font-weight:800}
+/* Fila sin recuadro: hexágono metálico con el símbolo, número y nombre con sombra para leerse sobre el campo */
+.trait{display:grid;grid-template-columns:40px auto minmax(0,1fr);align-items:center;gap:7px;padding:2px 4px;margin-bottom:5px;cursor:help;background:none;border:0;
+  text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 6px rgba(0,0,0,.6)}
+.trait .ti{position:relative;width:38px;height:43px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+  --h1:#5a6278;--h2:#2a3044;--hg:#cfd6e6;background:linear-gradient(160deg,#9aa2b8,#3a4052);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.trait .ti::before{content:"";position:absolute;inset:3px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:radial-gradient(120% 90% at 35% 20%,var(--h1),var(--h2))}
+.trait .ti svg{position:relative;width:22px;height:22px;fill:var(--hg);filter:drop-shadow(0 1px 0 rgba(255,255,255,.25))}
+.trait.t1 .ti{background:linear-gradient(160deg,#ffd2a4,#8a4a1e);--h1:#e6a066;--h2:#9c5a28;--hg:#3a1e08}
+.trait.t2 .ti{background:linear-gradient(160deg,#ffffff,#7f8ea4);--h1:#f4f8ff;--h2:#9aa8bc;--hg:#2a3346}
+.trait.t3 .ti{background:linear-gradient(160deg,#fff4b8,#a87406);--h1:#ffe589;--h2:#d29b1c;--hg:#4a3005}
+.trait.t4 .ti{background:conic-gradient(from 30deg,#ff9ad8,#a594ff,#7fe0ff,#9cffc2,#fff59a,#ffb37a,#ff9ad8);--h1:#fff;--h2:#d9c8ff;--hg:#3a2460;animation:prism 3s linear infinite}
+@keyframes prism{to{filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)) hue-rotate(360deg)}}
+.trait .tc{font-family:var(--display);font-size:16px;min-width:22px;text-align:center;color:#fff}
+.trait.t1 .tc{color:#ffc58f}.trait.t2 .tc{color:#eef4ff}.trait.t3 .tc{color:#ffe17a}.trait.t4 .tc{color:#e3d4ff}
+.trait .tn{font-weight:900;min-width:0;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.trait .tb{font-size:11px;color:#c2cbe6;font-weight:800}
 .trait .tb b{color:#fff}
-.trait.off{background:rgba(8,12,28,.45)}
-.trait.off .tn{color:var(--muted)}
-.trait.off .tc{background:transparent;border-color:transparent;font-family:inherit;font-size:12px;color:var(--muted);font-weight:800}
+.trait.off{opacity:.85}
+.trait.off .tn{color:#d4dbef}
+.trait.off .tc{display:none}
+.trait.off{grid-template-columns:40px minmax(0,1fr)}
+body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;padding:4px}
 .augs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
 .aug{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:19px;border:2px solid var(--tc);background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--tc) 35%,var(--panel2)),var(--panel));cursor:help;box-shadow:0 0 10px color-mix(in srgb,var(--tc) 35%,transparent)}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;background:var(--panel3);border:1px solid var(--line2);margin:2px 2px 0 0}
@@ -130,7 +136,14 @@ img{-webkit-user-drag:none}
 .item:hover{transform:translateY(-3px) scale(1.06)}
 .item .ii{--is:44px}
 .islot{width:var(--is,44px);height:var(--is,44px);border-radius:10px;border:2px dashed rgba(255,255,255,.14)}
-.item.target .ii{outline:3px solid var(--gold);outline-offset:2px;box-shadow:0 0 16px var(--gold)}
+.item{position:relative}
+.item.target .ii{box-shadow:0 0 16px var(--gold)}
+/* Círculo de carga al mantener un componente encima de otro */
+.item.target::after{content:"";position:absolute;inset:-6px;border-radius:50%;pointer-events:none;background:conic-gradient(#ffd75e calc(var(--p,0)*1turn),rgba(255,255,255,.18) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));filter:drop-shadow(0 0 4px #ffb400)}
+#tip .combRes{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+#tip .combRes h4{margin:0;font-size:19px}
+#tip .combRes .scope{margin:0}
 @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:none;opacity:1}}
 
 /* ---------- ficha del Pokémon ---------- */
@@ -224,13 +237,16 @@ img{-webkit-user-drag:none}
 .odds span::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
 .gold{font-family:var(--display);font-size:24px;color:var(--gold);display:flex;align-items:center;gap:7px;text-shadow:0 2px 0 rgba(0,0,0,.35);margin-left:auto;padding:0 14px;border-radius:999px;background:rgba(8,12,28,.55);border:1px solid var(--line)}
 .coin{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#f6c544 45%,#c58a12);border:2px solid #8d5f05;box-shadow:0 2px 0 rgba(0,0,0,.3)}
-.shopTop #lockBtn{margin-right:auto}
+.shopTop .gold{margin:0 auto}
+.cardsWrap{position:relative;width:min(100%,1190px);justify-self:center}
+.lockCorner{position:absolute;right:0;top:-40px;z-index:3}
+.lockCorner[aria-pressed="true"]{background:linear-gradient(180deg,#ffe08a,var(--gold) 55%,#e0a524);color:#3b2604;border-color:#ffe9a8}
 .shopMain{display:grid;grid-template-columns:140px minmax(0,1fr);gap:10px}
 .sbtns{display:flex;flex-direction:column;gap:8px}
 .sbtns .btn{flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:6px 12px;text-align:left}
 .sbtns .btn b{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.02em}
 .sbtns .btn span{font-size:11px;opacity:.8}
-.cards{display:grid;grid-template-columns:repeat(5,minmax(0,230px));justify-content:center;gap:10px}
+.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 /* Carta: arte del tipo a todo lo alto, retrato del Pokémon, sinergias con nombre y barra inferior con nombre y coste */
 .card{position:relative;height:var(--ch,158px);border:2px solid var(--cc);border-radius:12px;padding:0;cursor:pointer;text-align:left;overflow:hidden;isolation:isolate;
   box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),inset 0 0 0 1px rgba(0,0,0,.4);transition:transform .12s,box-shadow .12s;background:#141a30}
@@ -240,21 +256,24 @@ img{-webkit-user-drag:none}
 .card.off:hover{transform:none}
 .card.owned{animation:owned 1.6s ease-in-out infinite}
 @keyframes owned{50%{box-shadow:0 4px 0 color-mix(in srgb,var(--cc) 45%,#000),0 0 0 3px var(--gold),0 0 22px var(--gold)}}
-.card.empty{border-style:dashed;border-color:var(--line2);background:var(--panel);box-shadow:none;cursor:default;display:grid;place-items:center;color:var(--muted)}
+.card.empty{border:2px dashed rgba(255,255,255,.14);box-shadow:inset 0 0 24px rgba(0,0,0,.45);cursor:default;display:grid;place-items:center;color:transparent;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.13' stroke-width='6'%3E%3Ccircle cx='50' cy='50' r='40'/%3E%3Cpath d='M10 50h28M62 50h28'/%3E%3Ccircle cx='50' cy='50' r='12'/%3E%3C/g%3E%3C/svg%3E") no-repeat center/auto 46%,linear-gradient(180deg,rgba(28,38,72,.55),rgba(8,12,28,.7))}
+.card.empty::after{display:none}
 .card .art{position:absolute;inset:0;z-index:-1;overflow:hidden}
 .card .art::before,.card .art::after{content:"";position:absolute;inset:0;pointer-events:none}
-/* El Pokémon (medio cuerpo) ocupa la mitad derecha; se funde por la izquierda con el fondo, donde van las sinergias */
-.card .pic{position:absolute;top:0;bottom:24px;right:0;width:64%;display:flex;justify-content:flex-end;align-items:flex-end;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24%);mask-image:linear-gradient(90deg,transparent,#000 24%)}
-.card .pic img{height:100%;width:100%;object-fit:cover;object-position:50% 40%;filter:drop-shadow(-4px 6px 8px rgba(0,0,0,.55))}
-.card .pic img.px{image-rendering:pixelated;object-fit:contain;object-position:100% 100%;height:112%}
-.card .tr{position:absolute;left:5px;bottom:29px;display:flex;flex-direction:column;gap:3px;z-index:2}
-.card .tr span{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:900;color:#fff;line-height:1;padding:2px 7px 2px 2px;border-radius:7px;background:rgba(6,9,22,.72);border:1px solid rgba(255,255,255,.14);text-shadow:0 1px 1px #000;width:max-content;max-width:100%}
-.card .tr i{font-style:normal;width:17px;height:17px;display:grid;place-items:center;font-size:11px;border-radius:5px;background:var(--tc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
-.card .cbot{position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(90deg,rgba(5,8,20,.95),rgba(5,8,20,.82));padding:0 8px;display:flex;align-items:center;gap:6px;border-top:2px solid var(--cc);z-index:2}
-.card .cn{font-weight:900;font-size:13px;color:#fff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .cc{font-family:var(--display);color:#ffe18a;font-size:15px;display:flex;align-items:center;gap:3px}
+/* Al estilo de las cartas de TFT: arte a todo el ancho con el Pokémon a la derecha, nombre arriba, sinergias debajo y coste en la esquina */
+.card .pic{position:absolute;top:0;bottom:0;right:0;width:66%;z-index:1;display:flex;justify-content:flex-end;align-items:flex-end;-webkit-mask-image:linear-gradient(90deg,transparent,#000 22%);mask-image:linear-gradient(90deg,transparent,#000 22%)}
+.card .pic img{height:100%;width:100%;object-fit:contain;object-position:100% 100%;filter:drop-shadow(-4px 6px 8px rgba(0,0,0,.55))}
+.card .pic img.px{image-rendering:pixelated;height:105%}
+.card .cn{position:absolute;left:9px;top:6px;right:30%;z-index:2;font-family:var(--display);font-size:17px;line-height:1.1;color:#fff;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6)}
+.card .tr{position:absolute;left:7px;bottom:7px;display:flex;flex-direction:column;gap:3px;z-index:2}
+.card .tr span{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:900;color:#fff;line-height:1;text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.8);width:max-content;max-width:100%}
+.card .tr i{flex:none;width:19px;height:21px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:linear-gradient(160deg,#f4d58a,#8a5a14)}
+.card .tr i::before{content:none}
+.card .tr i svg{width:12px;height:12px;fill:#2a1a04}
+.card .cc{position:absolute;right:6px;bottom:6px;z-index:2;font-family:var(--display);color:#ffe18a;font-size:15px;display:flex;align-items:center;gap:4px;padding:1px 7px;border-radius:7px;background:rgba(6,9,22,.82);border:1px solid var(--cc)}
 .card .cc::before{content:"";width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#f6c544 45%,#c58a12)}
-.card .own{position:absolute;top:5px;right:5px;font-size:10px;font-weight:900;background:var(--gold);color:#3b2604;border-radius:6px;padding:1px 5px;z-index:2}
+.card .own{position:absolute;top:6px;right:6px;font-size:10px;font-weight:900;background:var(--gold);color:#3b2604;border-radius:6px;padding:1px 5px;z-index:2}
 .c1{--cc:var(--c1)}.c2{--cc:var(--c2)}.c3{--cc:var(--c3)}.c4{--cc:var(--c4)}.c5{--cc:var(--c5)}
 
 /* Fondos de las cartas según el tipo (animados con capas y SVG en línea) */
@@ -316,7 +335,7 @@ img{-webkit-user-drag:none}
 .card .fx::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 45%,transparent 60%) no-repeat;background-size:250% 100%;background-position:130% 0;opacity:0}
 .card:hover .fx::after{animation:cardShine .9s ease-out;opacity:1}
 .card::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit;
-  background:radial-gradient(130% 110% at 65% 45%,transparent 55%,rgba(0,0,0,.6)),linear-gradient(180deg,rgba(255,255,255,.22),transparent 14%),linear-gradient(0deg,rgba(0,0,0,.45),transparent 40%)}
+  background:radial-gradient(130% 110% at 65% 45%,transparent 55%,rgba(0,0,0,.6)),linear-gradient(180deg,rgba(255,255,255,.22),transparent 14%),linear-gradient(0deg,rgba(0,0,0,.45),transparent 40%),linear-gradient(90deg,rgba(0,0,0,.5),transparent 55%)}
 .card .pic{z-index:1}
 @keyframes fxPulse{from{opacity:.65}to{opacity:1}}
 @keyframes raySpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
@@ -471,12 +490,15 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
 }
 /* Campo a pantalla completa (escritorio, lo activa layout() con la clase fullField): el tablero 3D queda detrás de todo
    y los paneles flotan encima, semitransparentes; los huecos vacíos dejan pasar el ratón al tablero */
+body.fullField .top,body.fullField .layout,body.fullField .shop{--ink:#eef2ff;--muted:#a7b3d8;--panel:#141c36;--panel2:#1b2548;--panel3:#243161;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);--btn1:#2b3a70;--btn2:#1d2851;--btnEdge:#090e20;color:var(--ink);color-scheme:dark}
+/* La ficha del Pokémon flota a la izquierda del panel de entrenadores, sin empujarlo */
+body.fullField .ucard{position:fixed;top:64px;right:calc(14px + 290px + 10px);width:310px;max-height:calc(100vh - 300px);z-index:6}
 body.fullField #boardStack{position:fixed;inset:0;z-index:0;border-radius:0;box-shadow:none;max-width:none;pointer-events:auto}
 body.fullField .layout{position:relative;z-index:2;pointer-events:none;align-items:start}
 body.fullField .traitsPanel,body.fullField .right,body.fullField .boardInfo span,body.fullField .viewInfo{pointer-events:auto;position:relative;z-index:1}
 body.fullField #boardWrap .items{pointer-events:auto}
 body.fullField .right{max-height:100%}
-body.fullField .traitsPanel{max-height:100%;background:linear-gradient(180deg,rgba(8,12,28,.62),rgba(8,12,28,.38));border-color:rgba(255,255,255,.1);box-shadow:none;backdrop-filter:blur(3px)}
+body.fullField .traitsPanel{max-height:100%;background:none;border:0;box-shadow:none;backdrop-filter:none;padding:4px}
 body.fullField .traitsPanel:not(:has(.trait)){visibility:hidden}
 body.fullField .traitsPanel{grid-column:1} body.fullField .center{grid-column:2} body.fullField .right{grid-column:3}
 body.fullField .side{background:linear-gradient(180deg,rgba(8,12,28,.66),rgba(8,12,28,.42));backdrop-filter:blur(3px)}
@@ -513,15 +535,16 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   .shop{padding:4px 8px calc(6px + env(safe-area-inset-bottom,0px))}
   .shopTop{gap:6px;margin-bottom:4px} .lvl{flex:1 1 120px;gap:5px;font-size:12px} .gold{font-size:17px;padding:0 8px} .coin{width:14px;height:14px}
   .odds{order:5;flex:1 1 100%;justify-content:center;font-size:10px;gap:8px;padding:1px 6px}
-  .shopTop #lockBtn{margin-right:0;padding:3px 6px;min-width:30px}
+  .lockCorner{padding:3px 6px;min-width:30px;top:-30px}
   .shopMain{grid-template-columns:62px minmax(0,1fr);gap:5px}
   .sbtns{gap:5px} .sbtns .btn{padding:4px 6px} .sbtns .btn b{font-size:12px} .sbtns .btn span{font-size:9.5px}
   .cards{gap:4px}
   .card{--ch:92px;border-radius:9px}
-  .card .tr{left:2px;bottom:22px;gap:2px} .card .tr span{font-size:0;padding:1px;gap:0} .card .tr i{width:14px;height:14px;font-size:9px}
-  .card .cbot{height:19px;padding:0 4px;gap:2px} .card .pic{bottom:19px} .card .cn{font-size:9.5px} .card .cc{font-size:11px} .card .cc::before{width:8px;height:8px}
+  .card .tr{left:2px;bottom:3px;gap:2px} .card .tr span{font-size:0;gap:0} .card .tr i{width:14px;height:16px} .card .tr i svg{width:9px;height:9px}
+  .card .cn{font-size:10px;left:4px;top:3px;right:2px}
+  .card .cc{font-size:10px;padding:0 4px;right:2px;bottom:2px} .card .cc::before{width:8px;height:8px}
   .card .own{top:2px;right:2px;font-size:9px;padding:0 3px}
-  .card .pic{width:100%;-webkit-mask-image:none;mask-image:none}
+  .card .pic{width:100%;top:12px;-webkit-mask-image:none;mask-image:none}
 }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
@@ -577,14 +600,13 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
     <div class="lvl"><span class="lvN">Nv. <span class="px" id="lvl">1</span></span><div class="xpbar"><i id="xpbar"></i></div><span class="small" id="xpTxt"></span></div>
     <div class="odds" id="odds" title="Probabilidad de cada coste en tu nivel"></div>
     <div class="gold"><span class="coin"></span><span id="gold">0</span></div>
-    <button class="btn icon" id="lockBtn" title="Bloquear tienda para la siguiente ronda">🔓</button>
   </div>
   <div class="shopMain">
     <div class="sbtns">
       <button class="btn" id="xpBtn" title="Comprar 4 de EXP (tecla F)"><b>⬆ EXP</b><span>4 de oro</span></button>
       <button class="btn" id="rerollBtn" title="Nueva tienda (tecla D)"><b>🔄 Tienda</b><span>2 de oro</span></button>
     </div>
-    <div class="cards" id="cards"></div>
+    <div class="cardsWrap"><button class="btn icon lockCorner" id="lockBtn" title="Bloquear tienda para la siguiente ronda">🔓</button><div class="cards" id="cards"></div></div>
   </div>
 </footer>
 

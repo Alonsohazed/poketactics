@@ -274,6 +274,8 @@ for(const [a,b,id,name,icon,desc,s,sp] of FULL){ ITEMS[id]={key:id,name,icon,des
 // Cada insignia lleva el arte de una medalla de gimnasio afín a su sinergia (número de sprite en PokeAPI)
 const BADGE_OF={claw:[18,'Puño'],wing:[22,'Pluma'],spoon:[6,'Pantano'],water:[2,'Cascada'],coat:[1,'Roca'],goggles:[4,'Arcoíris'],club:[16,'Dragón'],lens:[5,'Alma']};
 for(const c of BASIC){ const t=EMBLEM_OF[c], id='em_'+c; ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.`,s:{...COMPS[c].s},sp:{},emblem:t,from:[c,'medal']}; RECIPE[rk(c,'medal')]=id; }
+// Herramienta: no se equipa; devuelve al inventario todos los objetos de un Pokémon (es la única forma de quitarlos)
+ITEMS.magnet={key:'magnet',name:'Imán Removedor',icon:'🧲',desc:'Arrástralo sobre un Pokémon: todos sus objetos vuelven a tu inventario. Se gasta al usarlo. Recibes uno en cada fase contra Pokémon salvajes.',s:{},sp:{},tool:true};
 ITEMS.master={key:'master',name:'Medalla Maestra',icon:'🏆',desc:'+1 espacio en el tablero mientras la lleve un Pokémon colocado en el tablero.',s:{},sp:{teamsize:1},from:['medal','medal']}; RECIPE['medal+medal']='master';
 const FULL_KEYS=FULL.map(f=>f[2]);
 const statLine=s=>Object.entries(s).map(([k,v])=>STAT_TXT[k]?STAT_TXT[k](v):'').filter(Boolean).join(' · ');
@@ -285,7 +287,7 @@ let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:
 const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
-   streak:0,augments:[],mods:defaultMods(),items:[],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
+   streak:0,augments:[],mods:defaultMods(),items:[],orbs:[],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
 }
 const makeInst=key=>({uid:UID++,defId:key,baseId:DEF[key].evoOf||key,star:1,kills:0,items:[],stk:{hp:0,ad:0}});
 const boardUnits=p=>Object.values(p.board);
@@ -344,6 +346,7 @@ function giveUnitTo(p,key){
 function giveItem(p,it){ it=it||pick(BASIC); if(p.items.length<MAX_ITEMS_BENCH) p.items.push(it); else { p.gold+=2; note(p,'Inventario lleno: objeto convertido en 2 de oro'); } return it; }
 function addItemToUnit(u,k){
  const I=ITEMS[k]; if(!I) return {ok:false,why:'Objeto no válido'};
+ if(I.tool) return {ok:false,why:'Eso no se equipa'};
  if(I.comp){ const j=u.items.findIndex(x=>ITEMS[x].comp); if(j>=0){ const res=combineKey(u.items[j],k); const em=ITEMS[res].emblem; if(em&&DEF[u.defId].traits.includes(em)) return {ok:false,why:`Ya es ${em}`}; u.items[j]=res; return {ok:true,made:res}; } }
  if(u.items.length>=3) return {ok:false,why:'Ya lleva 3 objetos'};
  if(I.emblem&&unitTraits(u).includes(I.emblem)) return {ok:false,why:`Ya es ${I.emblem}`};
@@ -352,6 +355,16 @@ function addItemToUnit(u,k){
 // Dos componentes del inventario se combinan en un objeto completo (se queda en el sitio del segundo)
 const benchCombo=(p,a,b)=>{ const x=p.items[a], y=p.items[b]; return a!==b&&x&&y&&ITEMS[x].comp&&ITEMS[y].comp?combineKey(x,y):null; };
 function combineBench(p,a,b){ const res=benchCombo(p,a,b); if(!res) return {ok:false,why:'Solo se combinan dos componentes'}; p.items[b]=res; p.items.splice(a,1); return {ok:true,made:res}; }
+function useItem(p,idx,u,loc){
+ const it=p.items[idx]; if(!it||!u) return {ok:false};
+ if(G.phase==='combat'&&loc&&loc.b!==undefined) return {ok:false,why:'No puedes cambiar objetos en pleno combate'};
+ if(it==='magnet'){
+   if(!u.items.length) return {ok:false,why:'Ese Pokémon no lleva objetos'};
+   if(p.items.length-1+u.items.length>MAX_ITEMS_BENCH) return {ok:false,why:'No caben sus objetos en tu inventario'};
+   p.items.splice(idx,1); p.items.push(...u.items); u.items=[]; return {ok:true,removed:true};
+ }
+ const r=addItemToUnit(u,it); if(r.ok) p.items.splice(idx,1); return r;
+}
 function removeItem(p,u,idx){
  if(!u.items[idx]) return {ok:false,why:'No hay objeto ahí'};
  if(p.items.length>=MAX_ITEMS_BENCH) return {ok:false,why:'Tu inventario está lleno (10 objetos)'};
@@ -896,10 +909,20 @@ function grant(p,tok,out){
  else if(k==='u'){ const key=drawUnitOfCost(n,threeStarSet(p)); if(key){ giveUnitTo(p,key); out.push(DEF[key].name); } }
  else if(k==='c'){ const it=giveItem(p,pick(BASIC)); out.push(ITEMS[it].icon+' '+ITEMS[it].name); }
  else if(k==='m'){ giveItem(p,'medal'); out.push('🏅 Medalla'); }
+ else if(k==='mag'){ giveItem(p,'magnet'); out.push('🧲 Imán Removedor'); }
  else if(k==='dup'){ const own=allUnits(p).filter(u=>!DEF[u.baseId].evoOf&&u.star<3&&G.pool[u.baseId]>0); if(own.length){ const u=pick(own); G.pool[u.baseId]--; giveUnitTo(p,u.baseId); out.push('🧬 Copia de '+DEF[u.baseId].name); } else { p.gold+=3; out.push('3 de oro'); } }
  else if(k==='ca'||k==='fa'){ const opts=shuffle((k==='ca'?BASIC:FULL_KEYS).slice()).slice(0,4);
-   if(p===G.me&&!p.isBot&&!G.auto){ G.anvils.push({kind:k,opts}); out.push(k==='ca'?'⚒️ Yunque de componentes':'⚒️ Yunque de objeto'); }
+   if(p===G.me&&!p.isBot&&!G.auto&&!NO_ANVIL){ G.anvils.push({kind:k,opts}); out.push(k==='ca'?'⚒️ Yunque de componentes':'⚒️ Yunque de objeto'); }
    else { const it=giveItem(p,pick(opts)); out.push('⚒️ '+ITEMS[it].name); } }
+}
+let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques eligen solos
+// Orbe de botín: color según lo bueno que es (gris, dorado o prismático) y contenido ya decidido al soltarlo
+const ORB_TIER=k=>k==='prism'?'prism':/^(gray|c$|mag$)/.test(k)?'gray':'gold';
+function dropOrb(p,key){ const toks=ORBS[key]?weighted(ORBS[key].t):[key]; G.orbSeq=(G.orbSeq||0)+1; p.orbs.push({id:G.orbSeq,tier:ORB_TIER(key),toks}); }
+function openPlayerOrb(p,id,quick){
+ const i=p.orbs.findIndex(o=>o.id===id); if(i<0) return null;
+ const o=p.orbs.splice(i,1)[0], out=[]; NO_ANVIL=!!quick; for(const t of o.toks) grant(p,t,out); NO_ANVIL=false;
+ note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,true); return o;
 }
 function openOrb(p,key,out){ const O=ORBS[key]; const sub=[]; for(const t of weighted(O.t)) grant(p,t,sub); out.push(`${O.icon} ${sub.join(', ')}`); }
 function pveLoot(p,R,won){
@@ -910,6 +933,8 @@ function pveLoot(p,R,won){
  else if(s===4){ orbs=['blue4',Math.random()<.4?'gold4':'blue4']; extra=['fa']; }
  else { orbs=['gold4',Math.random()<.15?'prism':'blue4']; extra=['ca']; }
  if(!won){ orbs=orbs.slice(0,1); comps=Math.min(comps,1); extra=[]; }
+ // Las personas reciben orbes para recoger en el tablero; los bots, el botín directamente
+ if(isHuman(p)&&!G.auto){ const all=[...(s>1||n===3?['mag']:[]),...Array(comps).fill('c'),...extra,...orbs]; for(const k of all) dropOrb(p,k); return [`${all.length} orbes de botín (tócalos para abrirlos)`]; }
  const out=[]; for(let i=0;i<comps;i++) grant(p,'c',out); for(const t of extra) grant(p,t,out); for(const o of orbs) openOrb(p,o,out);
  return out;
 }
@@ -985,6 +1010,7 @@ function autoFill(p){
 function startCombat(){
  if(G.phase!=='planning') return;
  const R=G.round, me=G.me;
+ for(const p of alivePlayers()) for(const o of p.orbs.slice()) openPlayerOrb(p,o.id,true);
  for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
  G.phase='combat'; G.acc=0; G.resolving=false;
  const alive=alivePlayers(); G.fights=[];
@@ -1135,9 +1161,10 @@ function applyAct(p,a){
   case 'lock': p.locked=!p.locked; return {ok:true};
   case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:'No puedes vender eso ahora'}; }
   case 'move': { const f=normLoc(a.from), to=normLoc(a.to); if(!f||!to) return {ok:false}; if((ph==='combat'||ph==='carousel')&&(f.b!==undefined||to.b!==undefined)) return {ok:false}; return {ok:moveTo(p,f,to)}; }
-  case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc), it=p.items[idx(a.idx)]; if(!u||!it) return {ok:false}; if(ph==='combat'&&loc.b!==undefined) return {ok:false,why:'No puedes equipar en pleno combate'}; const r=addItemToUnit(u,it); if(r.ok){ p.items.splice(idx(a.idx),1); if(r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); } return r; }
+  case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
+  case 'orb': { if(ph==='combat') return {ok:false}; return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
   case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,true); return r; }
-  case 'rmitem': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; return removeItem(p,u,idx(a.idx)); }
+  case 'rmitem': return {ok:false,why:'Para quitar objetos usa un 🧲 Imán Removedor'};
   case 'ready': if(ph==='planning') p.ready=true; return {ok:true};
   case 'aug': { if(ph!=='augment'||!p.augChoices||p.augPicked) return {ok:false}; const id=p.augChoices[idx(a.i)]; if(!id) return {ok:false}; applyAugment(p,AUG_BY[id]); p.augPicked=true; checkAugDone(); return {ok:true}; }
   case 'augrr': { if(ph!=='augment'||p.augPicked||p.augRerolled) return {ok:false}; p.augChoices=augmentChoices(p,G.augTiers[G.round.aug]); p.augRerolled=true; return {ok:true}; }
@@ -1163,7 +1190,7 @@ function makePub(){
 function makePriv(p){
  const d={to:p.peer,id:p.id,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
-   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRerolled?1:0,lg:p.log.slice(0,8),ts:p.toasts};
+   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRerolled?1:0,lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier])};
  if(JSON.stringify(d).length>3900){ d.lg=d.lg.slice(0,2); d.ts=d.ts.slice(-1); }
  return d;
 }
@@ -1307,6 +1334,7 @@ function applyPriv(d){
  const me=G.me;
  Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,MAX_ITEMS_BENCH)});
  me.mods=Object.assign(defaultMods(),d.md||{}); me.po=Array.isArray(d.po)?d.po.slice(0,8):null;
+ me.orbs=Array.isArray(d.ob)?d.ob.slice(0,12).filter(o=>Array.isArray(o)&&['gray','gold','prism'].includes(o[1])).map(([id,tier])=>({id:+id,tier,toks:[]})):[];
  const selUid=selected&&selected.uid;
  me.bench=Array(BENCH).fill(null).map((_,i)=>d.be&&d.be[i]?unpackInst(d.be[i]):null);
  me.board={}; for(const row of d.bo||[]){ const u=unpackInst(row[1]); if(u&&/^[0-6],[0-3]$/.test(row[0])) me.board[row[0]]=u; }
@@ -1468,12 +1496,12 @@ const ITEM_ART={claw:'razor-claw',wing:'swift-wing',spoon:'twisted-spoon',water:
  band:'choice-band',expert:'expert-belt',shellbell:'shell-bell',mental:'mental-herb',sash:'focus-sash',blood:'big-root',sitrus:'sitrus-berry',sharp:'scope-lens',scarf:'choice-scarf',rage:'muscle-band',
  light:'light-ball',titan:'protector',twin:'quick-claw',quick:'quick-powder',razorfang:'razor-fang',specs:'choice-specs',moon:'moon-stone',royal:'kings-rock',veil:'light-clay',charcoal:'charcoal',
  wise:'wise-glasses',soothe:'soothe-bell',energy:'energy-root',holy:'fresh-water',cure:'lum-berry',justice:'life-orb',helmet:'rocky-helmet',vest:'assault-vest',flame:'flame-orb',sturdy:'eviolite',
- scale:'dragon-scale',bright:'bright-powder',whiteherb:'white-herb',leftovers:'leftovers',hook:'grip-claw',zoom:'wide-lens',master:'master-ball'};
+ scale:'dragon-scale',bright:'bright-powder',whiteherb:'white-herb',leftovers:'leftovers',hook:'grip-claw',zoom:'wide-lens',master:'master-ball',magnet:'magnet'};
 const BADGE_SPRITE=n=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${n}.png`;
 const itemSrc=k=>ITEMS[k]&&ITEMS[k].badge?BADGE_SPRITE(ITEMS[k].badge):ITEM_ART[k]?ITEM_SPRITE(ITEM_ART[k]):'';
 const getItemImg=k=>itemSrc(k)?loadImg('it:'+k,itemSrc(k)):{status:'fail'};
-const itemTier=I=>I.comp?'comp':I.emblem?'emb':'full';
-const itemColor=I=>I.emblem&&TRAITS[I.emblem]?TRAITS[I.emblem].color:I.comp?'#aab4c8':'#f4c04e';
+const itemTier=I=>I.comp||I.tool?'comp':I.emblem?'emb':'full';
+const itemColor=I=>I.tool?'#ff6a5f':I.emblem&&TRAITS[I.emblem]?TRAITS[I.emblem].color:I.comp?'#aab4c8':'#f4c04e';
 function itemHTML(k,size){
  const I=ITEMS[k]; if(!I) return '';
  const art=itemSrc(k)&&getItemImg(k).status!=='fail';
@@ -1736,6 +1764,7 @@ function bindEvents(){
  document.addEventListener('pointerdown',()=>Music.init());
  cv.addEventListener('pointerdown',e=>{
    if(!G||!G.players||!G.players.length) return; const [x,y]=canvasPos(e);
+   const ob=b3On()&&G.me.alive&&orbAt(); if(ob){ doAct({t:'orb',id:ob.id},()=>{ G.me.orbs=G.me.orbs.filter(o=>o.id!==ob.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } return; }
    if(hitMyTrainer(x,y)){ trEmote={t0:performance.now(),txt:pick(EMOTES)}; return; }
    if(G.phase==='carousel'&&G.carousel&&G.me.alive){
      const C=G.carousel, a=C.av[G.me.id];
@@ -1762,17 +1791,20 @@ function bindEvents(){
  });
  $('items').addEventListener('pointerdown',e=>{
    const el=e.target.closest('.item'); if(!el||!inGame()) return; e.preventDefault();
-   itemDrag={idx:+el.dataset.i,sx:e.clientX,sy:e.clientY,moved:false}; $('ghost').innerHTML=itemHTML(G.me.items[itemDrag.idx],48);
+   itemDrag={idx:+el.dataset.i,sx:e.clientX,sy:e.clientY,moved:false,target:-1,t0:0}; $('ghost').innerHTML=itemHTML(G.me.items[itemDrag.idx],48);
+   setTimeout(holdTick,30);
  });
  window.addEventListener('pointermove',e=>{
    if(itemDrag){ if(Math.hypot(e.clientX-itemDrag.sx,e.clientY-itemDrag.sy)>5) itemDrag.moved=true;
      const g=$('ghost'); g.style.display=itemDrag.moved?'block':'none'; g.style.left=e.clientX+'px'; g.style.top=e.clientY+'px';
      if(itemDrag.moved){
-       // Encima de otro componente del inventario: se marca y se ve qué objeto saldría al soltar
+       // Encima de otro componente del inventario: hay que mantenerlo 1 s (círculo de carga) para combinarlos
        const el=document.elementFromPoint(e.clientX,e.clientY), it=el&&el.closest&&el.closest('#items .item'), j=it?+it.dataset.i:-1, res=j>=0?benchCombo(G.me,itemDrag.idx,j):null;
        document.querySelectorAll('#items .item.target').forEach(x=>{ if(x!==it) x.classList.remove('target'); });
-       itemDrag.target=res?j:-1;
-       if(res){ it.classList.add('target'); const t=$('tip'); t.classList.remove('shopTip'); tipAnchor=null; t.innerHTML='<div class="scope">Al soltar se combinan en:</div>'+tipHTML('item:'+res); t.style.display='block'; tipOn=true; }
+       if((res?j:-1)!==itemDrag.target){ itemDrag.target=res?j:-1; itemDrag.t0=performance.now(); }
+       if(res){ it.classList.add('target'); const I=ITEMS[res], t=$('tip'), sl=statLine(I.s); t.classList.remove('shopTip'); tipAnchor=null;
+         t.innerHTML=`<div class="combRes">${itemHTML(res,64)}<div><div class="scope">Mantén 1 segundo para crear</div><h4>${esc(I.name)}</h4></div></div>${sl?`<div class="scope">${sl}</div>`:''}<div>${I.desc}</div>`;
+         t.style.display='block'; tipOn=true; }
        else hideTip();
      } }
    moveTip(e);
@@ -1780,12 +1812,11 @@ function bindEvents(){
  window.addEventListener('pointerup',e=>{
    if(!itemDrag) return; const d=itemDrag; itemDrag=null; $('ghost').style.display='none'; const me=G.me;
    document.querySelectorAll('#items .item.target').forEach(x=>x.classList.remove('target')); hideTip();
-   if(!d.moved) return;
-   if(d.target>=0){ doAct({t:'icomb',a:d.idx,b:d.target},()=>combineBench(me,d.idx,d.target)); return; }
+   if(!d.moved||d.target>=0) return; // soltarlo encima de otro objeto antes de tiempo no hace nada
    const b=cv.getBoundingClientRect();
    if(e.clientX>=b.left&&e.clientX<=b.right&&e.clientY>=b.top&&e.clientY<=b.bottom){
      const [x,y]=canvasPos(e); const hit=unitAt(x,y);
-     if(hit){ const it=me.items[d.idx]; doAct({t:'item',idx:d.idx,loc:hit.loc},()=>{ const r=addItemToUnit(hit.u,it); if(r.ok) me.items.splice(d.idx,1); }); selected=hit.u; selCombat=null; renderUI(); }
+     if(hit){ doAct({t:'item',idx:d.idx,loc:hit.loc},()=>useItem(me,d.idx,hit.u,hit.loc)); selected=hit.u; selCombat=null; renderUI(); }
    }
  });
  $('cards').addEventListener('click',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||!inGame()) return; hideTip(); doAct({t:'buy',i:+el.dataset.i}); });
@@ -1935,6 +1966,12 @@ function drawHud(a){
 // Posición en pantalla y tamaño de un entrenador colocado en (x,y) del tablero con altura s (px de tablero)
 function trScreen(x,y,s){ const [sx,sy]=scr(x,y,0), [,ty]=scr(x,y,s*1.35/geo.R); return [sx,sy,Math.max(10,sy-ty)]; }
 // Qué se ve en cada momento: lista de Pokémon para board3d.js
+// Orbes en tu mitad del tablero, en casillas fijas según su número
+function orbList(){
+ if(!G.me.orbs||!G.me.orbs.length||G.phase==='combat'||G.phase==='carousel'||(G.view&&G.view.board)) return [];
+ return G.me.orbs.map((o,i)=>{ const [x,y]=cellXY([1,5,3,0,6,2,4][i%7],4+(i*3)%4); return {id:o.id,tier:o.tier,x,y}; });
+}
+function orbAt(){ const [px,py]=ptr; let best=null,bd=geo.R*.95; for(const o of orbList()){ const [sx,sy]=B3.project(o.x,o.y,.7); const d=Math.hypot(px-sx,py-sy); if(d<bd){ bd=d; best=o; } } return best; }
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
  if(inCombat){
@@ -1950,11 +1987,11 @@ function sceneActors(){
  } else {
    const who=viewedPlayer(), mine=who===me;
    for(const k in who.board){ const u=who.board[k]; if(drag&&drag.moved&&drag.u===u) continue; const [c,r]=k.split(',').map(Number); const [x,y]=cellXY(c,4+r), st=mine?planStats(u):null, d=DEF[u.defId];
-     A.push({key:u,u,loc:{b:k},dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
+     A.push({key:u,u,loc:{b:k},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
    if(G.preview&&G.phase==='planning') for(const cr of G.preview){ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:cr,dex:cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:1,hud:{creep:true}}); }
  }
  const benchOf=inCombat||inCar?me:viewedPlayer();
- benchOf.bench.forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
+ benchOf.bench.forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
@@ -1968,7 +2005,7 @@ function draw(){
  // Con el menú o el login delante (pantalla completa) no se ve el tablero: no se pinta, y el móvil lo agradece
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')) return;
  const A=playing?sceneActors():[];
- B3.render({arena:playing?bgKind():'stadium',actors:A,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
+ B3.render({arena:playing?bgKind():'stadium',actors:A,orbs:playing?orbList():[],fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A;
  if(!playing) return;
  if(inCar) drawCarouselHud(); else drawBoardTrainers();
@@ -2087,6 +2124,31 @@ function renderTop(){
  $('pills').innerHTML=ROUNDS.filter(x=>x.s===R.s).map(x=>`<span class="pill ${x===R?'cur':''} ${x.n<R.n?'past':''}" title="${x.type==='pve'?'PvE':x.type==='carousel'?'Carrusel':'PvP'}${x.aug>=0?' + aumento '+TIER_NAME[G.augTiers[x.aug]]:''}">${x.type==='pve'?'🐾':x.type==='carousel'?'🎠':'⚔️'}${x.aug>=0?'✨':''}</span>`).join('');
  $('speedBtn').textContent=`x${G.speed}`; lastPhaseTxt=''; updatePhase(); updateNetTag();
 }
+// Iconos de las sinergias: un símbolo de un solo color (SVG 24×24) que va dentro de un hexágono metálico, al estilo de TFT
+const TRAIT_SVG={
+ 'Fuego':'M12 2c.6 3.6 4.8 5.6 4.8 10.6a4.8 4.8 0 0 1-9.6 0c0-2.4 1.3-3.9 2.4-5.5.4 1.9 1.4 3 2.6 3.4.9-2.4.4-5.4-.2-8.5z',
+ 'Agua':'M12 2.5C9.2 7 6 10.2 6 14.4a6 6 0 0 0 12 0C18 10.2 14.8 7 12 2.5zm-2.6 11.2c.3 1.6 1.2 2.6 2.6 3-1.9.4-3.2-1-2.6-3z',
+ 'Planta':'M4 20.5C4 10.8 10.4 4 20.5 3.5 20 13.6 13.2 20 4 20.5zm1.6-1.6 9-9-.7-.7-9 9z',
+ 'Eléctrico':'M13.5 2 4.5 13.5h6l-1.5 8.5 10-12h-6.2z',
+ 'Psíquico':'M12 5C6.5 5 2.5 12 2.5 12S6.5 19 12 19s9.5-7 9.5-7S17.5 5 12 5zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2.2a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z',
+ 'Roca':'M8 3.5 3 11l2.6 9.5h12.8L21 12l-4.6-8.5zm1 2h3.6l-2.4 5.2L6 12z',
+ 'Dragón':'M3 21c4.2-1.4 7-5 7.6-10.2L14 15c1.6-1.8 2.4-4.4 2-7.4 1.8 1.4 3 3.6 3 6.4 2-2.4 2.4-6.6 0-10.5-1.6 2-3.8 2.6-6.6 2.2-4.4-.6-8.2 2.6-8.8 7.3-.4 3.2.2 5.8 2.4 8z',
+ 'Fantasma':'M12 2.5a7 7 0 0 0-7 7v12l2.3-2 2.4 2 2.3-2 2.3 2 2.4-2 2.3 2v-12a7 7 0 0 0-7-7zM9.5 8.5a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zm5 0a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z',
+ 'Hada':'M12 2l2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3zM19 2l.8 2.2L22 5l-2.2.8L19 8l-.8-2.2L16 5l2.2-.8z',
+ 'Normal':'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 3.2a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+ 'Acero':'M12 2l8.7 5v10L12 22l-8.7-5V7zm0 6.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z',
+ 'Siniestro':'M14.5 2.5a9.5 9.5 0 1 0 7 15.4A8 8 0 0 1 14.5 2.5z',
+ 'Lucha':'M7 6.5a2 2 0 0 1 4 0V8a2 2 0 0 1 4 0v.5a2 2 0 0 1 4 .5v5.5c0 4-3 7-7 7s-7-3-7-7V10a2 2 0 0 1 2-2zM9 13h6.5v-1.5H9z',
+ 'Guardián':'M12 2 4 5.2v6c0 5 3.4 9.4 8 10.8 4.6-1.4 8-5.8 8-10.8v-6zm0 3.2 4.8 2v4c0 3.2-2 6.2-4.8 7.4z',
+ 'Coloso':'M2 20.5 8.5 7l3.8 6.2L15 9l7 11.5zm6.5-9.2-1.6 3.4h3.4z',
+ 'Tirador':'M11 1.5h2v4h-2zm0 17h2v4h-2zM1.5 11h4v2h-4zm17 0h4v2h-4zM12 6.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm0 3a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z',
+ 'Hechicero':'M13.6 2C10 4.6 6.8 10.6 6 17h12c-.6-3.4-1.6-6.2-1-9.2-1 .8-2.2.8-3.2-.2 1.2-1.8 1.2-3.6-.2-5.6zM2.5 18h19v3.5h-19z',
+ 'Asesino':'M12 1.5l3 10.5h-2v4h3.5v2H13v4.5h-2V18H7.5v-2H11v-4H9z',
+ 'Sanador':'M12 21.3 3.6 12.9A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 8.4 6.9zM11 9.5v2.5H8.5v2H11v2.5h2V14h2.5v-2H13V9.5z',
+ 'Fortuna':'M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19zm0 4 4.5 5.5L12 17.5 7.5 12z',
+ 'Legendario':'M3 17.5 2 6.5l5.5 4.5L12 3.5l4.5 7.5L22 6.5l-1 11zM3 19h18v2.5H3z',
+};
+const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="${TRAIT_SVG[t]}"/></svg>`:(TRAITS[t]?TRAITS[t].icon:'');
 // Tipo elemental de un Pokémon: pinta el fondo de su carta
 const ELEMS=['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dragón','Fantasma','Hada','Normal','Acero','Siniestro','Lucha'];
 const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
@@ -2111,13 +2173,14 @@ function renderShop(){
  const key=me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0):'_').join();
  if(key!==renderShop.key){ renderShop.key=key;
    $('cards').innerHTML=me.shop.map((k,i)=>{
-     if(!k||!DEF[k]) return `<div class="card empty">—</div>`;
+     if(!k||!DEF[k]) return `<div class="card empty"></div>`;
      const d=DEF[k], can=canBuy(me,i)&&me.alive;
      return `<button class="card c${d.cost} ${can?'':'off'} ${owned[k]?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
        <span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>
        ${owned[k]?`<span class="own">${owned[k]}/3</span>`:''}
-       <span class="tr">${d.traits.map(t=>`<span title="${t}"><i style="--tc:${TRAITS[t].color}">${TRAITS[t].icon}</i>${t}</span>`).join('')}</span>
-       <span class="cbot"><span class="cn">${d.name}</span><span class="cc">${d.cost}</span></span></button>`;
+       <span class="cn">${d.name}</span>
+       <span class="tr">${d.traits.map(t=>`<span title="${t}"><i>${traitIcon(t)}</i>${t}</span>`).join('')}</span>
+       <span class="cc">${d.cost}</span></button>`;
    }).join('');
  }
  const inc=income(me,G.roundIdx+1);
@@ -2137,8 +2200,8 @@ function renderTraits(){
  const c=traitCounts(viewedPlayer()); // las del tablero que se está mirando
  const rows=Object.entries(c).map(([t,n])=>({t,n,tier:TRAITS[t].bp.filter(b=>n>=b).length})).sort((a,b)=>b.tier-a.tier||(b.tier?b.n-a.n:b.n/TRAITS[b.t].bp[0]-a.n/TRAITS[a.t].bp[0]));
  $('traits').innerHTML=rows.length?rows.map(r=>{ const Tr=TRAITS[r.t], next=Tr.bp.find(b=>b>r.n)||Tr.bp[Tr.bp.length-1];
-   return r.tier?`<div class="trait ${traitClass(Tr,r.tier)}" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${Tr.icon}</span><span class="tc">${r.n}</span><span class="tn">${r.t}<div class="tb">${Tr.bp.map(b=>r.n>=b?`<b>${b}</b>`:b).join(' › ')}</div></span></div>`
-     :`<div class="trait off" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${Tr.icon}</span><span class="tc"></span><span class="tn">${r.t}<div class="tb">${r.n} / ${next}</div></span></div>`;
+   return r.tier?`<div class="trait ${traitClass(Tr,r.tier)}" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc">${r.n}</span><span class="tn">${r.t}<div class="tb">${Tr.bp.map(b=>r.n>=b?`<b>${b}</b>`:b).join(' › ')}</div></span></div>`
+     :`<div class="trait off" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc"></span><span class="tn">${r.t}<div class="tb">${r.n} / ${next}</div></span></div>`;
  }).join(''):'<p class="muted small">Coloca Pokémon en el tablero para activar sinergias. Pasa el cursor por una sinergia para ver qué le da a tu equipo.</p>';
  $('augWrap').innerHTML=G.me.augments.length?`<h2 style="margin-top:12px">Aumentos</h2><div class="augs">${G.me.augments.map(id=>{const a=AUG_BY[id];return a?`<span class="aug tier${a.tier}" data-tip="aug:${a.id}">${a.icon}</span>`:'';}).join('')}</div>`:'';
 }
@@ -2184,6 +2247,14 @@ function renderDmg(){
  $('dmgList').innerHTML=us.map(({u,v})=>`<div class="dmgRow ${dmgMode}" style="--cc:${u.creep?'#8a8a8a':COST_HEX[(u.d.cost||1)-1]}"><span class="pic">${portraitImg(u.creep?u.d.dex:dexOf(u.d,u.star))}</span>
    <div><div class="nm"><span>${esc(u.name)} ${u.creep?'':'★'.repeat(u.star)}</span><b>${v}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div></div>`).join('');
 }
+// Combinación en la banca: el círculo se llena en 1 s y entonces se crea el objeto
+function holdTick(){
+ const d=itemDrag; if(!d) return;
+ const el=d.target>=0&&document.querySelector(`#items .item[data-i="${d.target}"]`);
+ if(el){ const p=Math.min(1,(performance.now()-d.t0)/1000); el.style.setProperty('--p',p);
+   if(p>=1){ const me=G.me; itemDrag=null; $('ghost').style.display='none'; el.classList.remove('target'); hideTip(); doAct({t:'icomb',a:d.idx,b:d.target},()=>combineBench(me,d.idx,d.target)); return; } }
+ setTimeout(holdTick,30);
+}
 function setSideTab(t){ sideTab=t; document.querySelectorAll('.sideTabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); $('tabPl').hidden=t!=='pl'; $('tabDmg').hidden=t!=='dmg'; $('tabLog').hidden=t!=='log'; renderDmg(); }
 function renderLog(){ $('log').innerHTML=G.log.slice(0,16).map(l=>`<li>${esc(l)}</li>`).join(''); }
 function renderCard(){
@@ -2199,7 +2270,7 @@ function renderCard(){
  const who=live?(cu.side===mineSide?'Tu Pokémon':'Rival'):`Coste ${d.cost||'—'} · ${ROLE_NAME[d.role]||'Salvaje'}`;
  const stats=[['❤️ Vida',live?`${R0(cu.hp)}/${R0(cu.maxHp)}`:R0(cu.maxHp)],['⚔️ Ataque',R0(cu.ad)],['⚡ Vel. ataque',cu.as.toFixed(2)],['🎯 Alcance',cu.range],['🛡️ Defensa',R0(cu.df)],['🔰 Resistencia',R0(cu.mr)],['✨ Poder',R0(cu.ap)],['💧 Maná',`${R0(cu.mana)}/${cu.maxMana>=9999?'—':cu.maxMana}`],['💥 Crítico',R0(cu.critC*100)+'%'],['🌀 Esquiva',R0(cu.dodge*100)+'%']];
  const evo=d.names&&!d.evoOf?`<div class="uc-evo">${[1,2,3].map(s=>`<div class="f ${s===star?'on':''}" data-tip="form:${d.key}|${s}">${spriteHTML(d,40,s)}<b>${'★'.repeat(s)}</b>${esc(nameOf(d,s))}<span class="muted">${esc(abOf(d,s)[1])}</span></div>`).join('')}</div>`:'';
- const items=inst?`<div class="uc-items">${[0,1,2].map(i=>{ const it=inst.items[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}<button class="rm" data-rm="${i}" aria-label="Quitar ${esc(I.name)}" title="Quitar">✕</button></div>`; }).join('')}</div>`:(cu.items.length?`<div>${cu.items.map(i=>ITEMS[i]?`<span class="chip" data-tip="item:${i}">${itemHTML(i,18)} ${ITEMS[i].name}</span>`:'').join('')}</div>`:'');
+ const items=inst?`<div class="uc-items">${[0,1,2].map(i=>{ const it=inst.items[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}</div>`; }).join('')}</div>`:(cu.items.length?`<div>${cu.items.map(i=>ITEMS[i]?`<span class="chip" data-tip="item:${i}">${itemHTML(i,18)} ${ITEMS[i].name}</span>`:'').join('')}</div>`:'');
  const extra=inst&&inst.defId==='eevee'?`<p class="small">🌀 Evoluciona al derrotar ${me.mods.eeveeKills} enemigos: <b>${Math.min(inst.kills,me.mods.eeveeKills)}/${me.mods.eeveeKills}</b></p>`:'';
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad)?`<p class="small">♾️ Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque</p>`:'';
  el.innerHTML=`<div class="uc-head">${spriteHTML(d,64,star)}<div><div class="uc-name">${esc(cu.name)} <span style="color:${star===3?'#d9a400':star===2?'#8e9bb0':'#b07a45'}">${'★'.repeat(star)}</span></div><div class="uc-sub">${who}</div></div><button class="uc-x" aria-label="Cerrar ficha">✕</button></div>
@@ -2230,7 +2301,7 @@ function showHow(){
  <h3>Habilidades</h3><ul class="help"><li>Cada Pokémon llena su barra azul de maná al atacar y recibir golpes. Al llenarla lanza su habilidad: verás el nombre sobre él, el efecto en el tablero y una línea en «Habilidades en este combate».</li><li>Toca cualquier Pokémon (también los rivales en pleno combate) para ver su ficha completa a la derecha.</li></ul>
  <h3>Economía</h3><ul class="help"><li>Ingreso por ronda: 0 · 2 · 3 en la fase 1, 4 en la 2-1 y 5 desde entonces.</li><li>Interés: +1 por cada 10 de oro (máx. 5). Rachas de 2+ victorias o derrotas dan +1 a +3.</li></ul>
  <h3>Pokémon</h3><ul class="help"><li>3 copias = 2★ y evoluciona con una habilidad nueva. 3 de 2★ = 3★. A 3★ deja de salir en tu tienda.</li><li>Eevee acumula vida y ataque para siempre y evoluciona al derrotar enemigos.</li></ul>
- <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. Quita cualquier objeto con la ✕ de su casilla en la ficha.</li></ul>
+ <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, mantén un componente 1 segundo sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el 🧲 Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
  <h3>Multijugador</h3><ul class="help"><li>Crea una sala, comparte el código y empieza cuando quieras: los asientos vacíos los ocupan bots.</li></ul>
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · toca a tu entrenador para saludar</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Entrenadores: Pokémon Showdown. Música original.</p>`,{closable:true});
