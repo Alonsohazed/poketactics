@@ -8,9 +8,10 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node test/smoke.js",
+    "test:aug": "node test/augments.js",
     "test:e2e": "playwright test",
-    "test:all": "node test/smoke.js && playwright test",
-    "check": "node -e \"require('vm').createScript(require('fs').readFileSync('public/game.js','utf8'))\" && echo sintaxis-ok"
+    "test:all": "node test/smoke.js && node test/augments.js && playwright test",
+    "check": "node -e \"for(const f of ['public/augments.js','public/game.js'])require('vm').createScript(require('fs').readFileSync(f,'utf8'),{filename:f})\" && node --no-warnings --experimental-vm-modules -e \"new (require('vm').SourceTextModule)(require('fs').readFileSync('public/board3d.js','utf8'),{identifier:'board3d.js'})\" && echo sintaxis-ok"
   },
   "engines": {
     "node": ">=18"

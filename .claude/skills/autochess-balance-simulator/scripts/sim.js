@@ -21,7 +21,9 @@ const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 function loadEngine() {
   const ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval };
   vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync(path.join(ROOT, 'public', 'game.js'), 'utf8'), ctx, { filename: 'game.js' });
+  // augments.js + game.js juntos, igual que server.js
+  const src = ['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8')).join(String.fromCharCode(10));
+  vm.runInContext(src, ctx, { filename: 'game.js' });
   return ctx.module.exports;
 }
 const E = loadEngine();

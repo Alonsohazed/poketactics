@@ -7,11 +7,18 @@ when_to_use: Cuando se pidan aumentos, sinergias o rasgos nuevos, rebalancear lo
 # Diseñador de aumentos y sinergias
 
 ## Lo que ya existe (no lo dupliques)
-- `AUGS` en la sección `[AUGMENTS]` de `public/game.js` contiene 37 aumentos: `A(id, rareza 'S'|'G'|'P', nombre, icono, descripción, apply(p))`. `TIER_NAME`: S = Plata, G = Oro, P = Prismático.
-- Se ofrecen 3 opciones (`augmentChoices`) más **un cambio** (`augrr`), en las rondas 2-1, 3-2 y 4-2. Las rarezas de la partida salen de `rollAugTiers()` y son las mismas para todos los jugadores.
-- Palancas disponibles en `defaultMods()`: `income, maxInterest, winStreakMult, lossStreakMult, lossBonus, xpRound, xpBuy, freeRerolls, hpPct, adPct, ap, asPct, def, mr, allFocus, extraTrait, winGold, winHeal, boardBonus, eeveeKills, legend`.
-- Patrones ya cubiertos: economía (Amuleto Moneda, Interés Compuesto, Día de Pago, Plan Rocket), EXP (Repartir Exp., Caramelo Raro, Entrenamiento Intensivo), stats de equipo (Danza Espada, Maquinación, Agilidad, Defensa Férrea, Vitalidad), objetos (Bolsas, Cofre), unidades (Guardería, Ultra Ball, Master Ball), rerolls (Ruleta), tamaño del tablero (Nuevo Recluta), insignias (Medallas), Eevee (Piedra Evolutiva) y legendarios (Legado).
-- Antes de proponer algo, lista los aumentos actuales con `grep -n "^ A('" public/game.js`.
+- **Dónde**: `public/augments.js`, un catálogo declarativo que se carga antes que `game.js`. Tiene 80 aumentos: 25 de Plata (S), 37 de Oro (G) y 18 Prismáticos (P).
+- **Categorías** (`AUG_CAT`): `classic, econ, reroll, slow, fast, streak, emblem, trait, evo, carry, risk, chaos, rules, quest, hybrid`. **Ya existe** un "Call to Chaos": `llamada_caos` (Oro) y `caos_absoluto` (Prismático).
+- **Formato** de cada entrada: `AG({id, tier, cat, tags, w (peso de aparición), ex (grupo excluyente), req(p), name, icon, desc, on:{evento:c=>…}, combat(units,prm,cb,side), snap(c), ui(c)})`.
+- **Eventos** que lanza `game.js` con `augFire(p,evento,datos)`: `select, roundStart, combatStart, win, lose, roundEnd, buy, sell, reroll, gain, starUp, levelUp, kills, survive, damaged, pick`.
+- **Contexto** `c` que recibe cada efecto:
+  - `c.p` (jugador) y `c.st` (estado persistente del aumento, en `p.augSt`);
+  - `c.gold(n, tope)`, `c.xp`, `c.item`, `c.comp`, `c.full`, `c.unit(coste)`;
+  - `c.once(clave)`, `c.offer(título, desc, opciones)` (elección del jugador, respondida con la acción `pick`) y `c.say`.
+- **Combate**: `snap(c)` calcula los parámetros que viajan en `teamSnap().ag` y `combat(units,prm,cb,side)` los aplica de forma **determinista** (`augSnap`/`augCombat`).
+- **Ofertas**: `augmentChoices` da 3 opciones que respetan `ex` y `req` y no repiten categoría, más **un cambio** (`augrr`), en las rondas 2-1, 3-2 y 4-2. La rareza la sortea `rollAugTiers()` y es la misma para todos.
+- Hay protección contra cadenas de eventos (`AUG_MAX_DEPTH=3`) y topes de oro por aumento (`c.gold(n, tope)`).
+- **Pruebas**: `test/augments.js` (`npm run test:aug`, unas 2.300 comprobaciones). Antes de proponer, lista los ids con `grep -o "AG({id:'[a-z0-9_]*'" public/augments.js`.
 
 ## Plantilla obligatoria para cada propuesta
 ```
@@ -22,7 +29,7 @@ when_to_use: Cuando se pidan aumentos, sinergias o rasgos nuevos, rebalancear lo
 - Efecto y duración: valores concretos; cuánto dura (instantáneo, resto de la partida, N rondas).
 - Interacciones: con sinergias, objetos, insignias, Eevee, legendarios y otros aumentos (lista los que lo potencian o lo rompen).
 - Límites y antiabuso: topes, qué pasa con el banquillo o el inventario lleno, si se apila consigo mismo, si hay que excluirlo con otro.
-- Implementación: campos de `p.mods` nuevos o existentes, en qué funciones se lee (`income`, `nextRound`, `resolveRound`, `makeCombatUnit`, `applyTraits`…), si hay que ampliar `teamSnap`/`snapPlayer`, y si necesita interfaz.
+- Implementación: entrada `AG({...})` con sus eventos (`on`), `snap`/`combat` si actúa en combate, `ui` si tiene progreso, `ex`/`req` si se excluye o tiene requisitos, y si necesita un evento nuevo en `game.js`.
 - Pruebas: casos concretos (entrada → resultado esperado) para `test/smoke.js` o `tests/e2e`.
 - Balance: impacto estimado y cómo medirlo con `autochess-balance-simulator` (modo `games` para el puesto medio y modo `comp` para la fuerza en combate). Indica si es una estimación o una medición.
 ```
@@ -40,10 +47,11 @@ when_to_use: Cuando se pidan aumentos, sinergias o rasgos nuevos, rebalancear lo
 - Un aumento que da unidades u objetos debe respetar `giveUnitTo` (con el banquillo lleno las convierte en oro) y `giveItem` (con el inventario lleno, 2 de oro).
 
 ## Cómo implementarlo
-1. Añade la entrada a `AUGS`. Si hace falta, crea un campo en `defaultMods()` y léelo donde corresponda.
-2. Si afecta al combate: añade el campo a `teamSnap()` (clave corta) y a `snapPlayer()`, y aplícalo en `makeCombatUnit` o `applyTraits`.
-3. Comprueba que los bots también lo pueden elegir (en `nextRound` eligen al azar entre sus opciones).
-4. Ejecuta `npm test` y `npm run test:e2e`, y mide con el simulador: `node .claude/skills/autochess-balance-simulator/scripts/sim.js games --n 60`.
+1. Añade un `AG({...})` en `public/augments.js`, en el bloque de su categoría, con `desc` exacta y `ui` si tiene progreso. **No hace falta tocar el motor de `game.js`** salvo que necesites un evento nuevo (lánzalo con `augFire` en el sitio adecuado).
+2. Si afecta al combate: `snap` (solo datos serializables y pequeños) + `combat` (usa `cb.rng`, nunca `Math.random()`). Para efectos retardados en combate, `later2(cb,seg,fn)`.
+3. Para elecciones del jugador, usa `c.offer(...)` y el evento `pick`. Funciona igual en solitario y en multijugador (acción `pick` validada en `resolvePick`).
+4. Los bots también pueden recibirlo: comprueba que su efecto no rompe a un bot (`p.isBot`).
+5. Añade casos a `test/augments.js` y ejecuta `npm run test:all`. Mide con `node .claude/skills/autochess-balance-simulator/scripts/sim.js games --n 60`.
 
 ## Sinergias nuevas
 Usa la misma ficha, más: breakpoints (`bp`), los textos por nivel (`lv`), su alcance (`scope`), qué Pokémon la llevan (con al menos los Pokémon necesarios para el breakpoint máximo, contando insignias) y su efecto en `applyTraits`. Si tiene insignia, asígnale una medalla en `BADGE_OF` (sprites `sprites/badges/N.png` de PokeAPI: 1-8 Kanto, 9-16 Johto, 17-24 Hoenn…).

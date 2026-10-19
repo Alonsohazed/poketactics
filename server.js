@@ -18,7 +18,8 @@ const { createAuth } = require('./auth');
 const PORT = process.env.PORT || 3000;
 const MAX_ROOMS = +process.env.MAX_ROOMS || 50;
 const TICK_MS = 50;
-const GAME_SRC = fs.readFileSync(path.join(__dirname, 'public', 'game.js'), 'utf8');
+// Cada sala ejecuta los aumentos (augments.js) y el juego (game.js) juntos, como en el navegador
+const GAME_SRC = ['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirname, 'public', f), 'utf8')).join('\n');
 const GAME_SCRIPT = new vm.Script(GAME_SRC, { filename: 'game.js' });
 const DIFFS = ['facil', 'normal', 'dificil'];
 const TRAINER_KEYS = makeGame().TRAINERS.map(t => t.key);

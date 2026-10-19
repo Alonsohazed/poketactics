@@ -12,12 +12,16 @@ poke-tactics/
 ├── db.js              Guarda cuentas en PostgreSQL (o en data/db.json en local)
 ├── public/
 │   ├── index.html     Interfaz del juego
+│   ├── board3d.js     Tablero 3D: arenas, modelos de los Pokémon y efectos (three.js, solo navegador)
 │   └── game.js        Motor del juego (lo usan el navegador Y el servidor)
 ├── test/smoke.js      Prueba automática: 2 jugadores juegan 12 rondas
 ├── render.yaml        Configuración para Render
 └── package.json
 ```
 
+- **Tablero 3D**: el tablero, las arenas y los Pokémon se pintan en 3D con [three.js](https://threejs.org)
+  (se carga desde jsDelivr, no hace falta instalar nada). Los modelos de los Pokémon salen de
+  [Pokemon-3D-api](https://github.com/Pokemon-3D-api/assets) y se descargan según hacen falta.
 - **Solitario**: todo se ejecuta en el navegador.
 - **Multijugador**: el servidor es quien manda. Cada sala ejecuta su propia copia del motor
   (`public/game.js`) aislada en el servidor; los jugadores solo envían acciones (comprar, mover, listo…)
@@ -103,3 +107,4 @@ guardan en `data/db.json` (no se sube a GitHub).
 Pokémon y sus personajes son marcas de Nintendo, Game Freak y The Pokémon Company.
 Este proyecto es un fangame gratuito sin afiliación oficial. La música es original.
 Sprites de Pokémon y objetos: PokeAPI/sprites. Sprites de entrenadores: Pokémon Showdown.
+Modelos 3D de los Pokémon: recopilados por Pokemon-3D-api (propiedad de Nintendo, Creatures Inc. y GAME FREAK inc.).

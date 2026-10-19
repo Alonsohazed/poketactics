@@ -46,16 +46,27 @@ async function startSolo(page, diff = 'normal') {
   await page.locator('#playBtn').click();
   await page.locator(`.choice[data-d="${diff}"]`).click();
   await expect(page.locator('#menu')).toBeHidden();
+  await pickTac(page);
   await page.evaluate(() => { G.timer = Infinity; });
   await expect(page.locator('#cards .card')).toHaveCount(5);
 }
 
-// Convierte coordenadas del tablero (píxeles CSS del canvas) a coordenadas de la página
+// Al empezar la partida se elige la minileyenda (se recuerda en el navegador)
+async function pickTac(page) {
+  const opt = page.locator('.tacOpt').first();
+  await expect(opt).toBeVisible();
+  await opt.click();
+  await expect(page.locator('#modal')).toBeHidden();
+}
+
+// Convierte coordenadas del tablero ("píxeles de tablero" 2D) a coordenadas de la página.
+// Con el tablero 3D activo, scr() las proyecta con la cámara; sin 3D devuelve las mismas.
 async function canvasPoint(page, fnBody, ...args) {
   return page.evaluate(([body, a]) => {
     const [x, y] = new Function('...a', body)(...a);
+    const [sx, sy] = scr(x, y);
     const r = cv.getBoundingClientRect();
-    return { x: r.left + x * r.width / geo.W, y: r.top + y * r.height / geo.H };
+    return { x: r.left + sx * r.width / view.W, y: r.top + sy * r.height / view.H };
   }, [fnBody, args]);
 }
 const benchPoint = (page, i) => canvasPoint(page, 'return benchXY(a[0]);', i);
@@ -74,4 +85,4 @@ async function jumpToRound(page, idx) {
   await page.evaluate(i => { closeModal(); G.roundIdx = i - 1; G.phase = 'idle'; nextRound(); G.timer = Infinity; renderUI(); }, idx);
 }
 
-module.exports = { test, expect, register, startSolo, uniqueUser, PASS, benchPoint, cellPoint, drag, jumpToRound };
+module.exports = { test, expect, register, startSolo, pickTac, uniqueUser, PASS, benchPoint, cellPoint, drag, jumpToRound };

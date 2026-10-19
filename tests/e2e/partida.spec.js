@@ -90,17 +90,19 @@ test('rasgos: colocar Pokémon activa sus sinergias en el panel', async ({ page 
   await page.evaluate(() => { G.me.level = 4; G.me.board = { '1,3': makeInst('charmander'), '2,3': makeInst('growlithe') }; renderUI(); });
   const traits = await page.evaluate(() => traitCounts(G.me));
   expect(traits['Fuego']).toBe(2);
-  await expect(page.locator('#traits .trait.on', { hasText: 'Fuego' })).toBeVisible();
+  await expect(page.locator('#traits .trait:not(.off)', { hasText: 'Fuego' })).toBeVisible();
 });
 
 test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page }) => {
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
   await expect(page.locator('#mbox h1')).toContainText('Aumento 1 de 3');
-  await expect(page.locator('#mbox .choice')).toHaveCount(3);
-  await page.locator('#mbox .choice').first().click();
+  await expect(page.locator('#mbox .augCard')).toHaveCount(3);
+  await expect(page.locator('#augOk')).toBeDisabled(); // hay que elegir y confirmar
+  await page.locator('#mbox .augCard').first().click();
+  await page.locator('#augOk').click();
   await expect(page.locator('#modal')).toBeHidden();
   expect((await me(page)).augs).toHaveLength(1);
-  await expect(page.locator('#augWrap .aug')).toHaveCount(1);
+  await expect(page.locator('#augBar .aug')).toHaveCount(1); // tira de aumentos sobre el tablero
 });
 
 test('PvP: barras visibles, posibles rivales y ver el combate de otro entrenador', async ({ page }) => {

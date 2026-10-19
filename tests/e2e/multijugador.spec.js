@@ -1,5 +1,5 @@
 // Multijugador: dos navegadores con cuentas distintas crean una sala, juegan y el servidor manda
-const { test, expect, register } = require('./helpers');
+const { test, expect, register, pickTac } = require('./helpers');
 
 test('dos jugadores crean sala, se unen con código y juegan', async ({ browser }) => {
   const ctxA = await browser.newContext(), ctxB = await browser.newContext();
@@ -26,6 +26,7 @@ test('dos jugadores crean sala, se unen con código y juegan', async ({ browser 
   await A.locator('#rmStart').click();
   for (const p of [A, B]) {
     await expect(p.locator('#menu')).toBeHidden();
+    await pickTac(p);
     await expect.poll(() => p.evaluate(() => NET.mode)).toBe('client');
     await expect(p.locator('#cards .card')).toHaveCount(5);
   }

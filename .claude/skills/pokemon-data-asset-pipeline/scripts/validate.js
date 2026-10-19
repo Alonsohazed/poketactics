@@ -11,7 +11,8 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
-const src = fs.readFileSync(path.join(ROOT, 'public', 'game.js'), 'utf8');
+// augments.js + game.js juntos, igual que server.js
+const src = ['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8')).join(String.fromCharCode(10));
 const ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval };
 vm.createContext(ctx);
 vm.runInContext(src + '\n;module.exports.__extra={TRAITS,ROLE,KIND_NAME,ITEM_ART:typeof ITEM_ART!=="undefined"?ITEM_ART:null,BADGE_OF,EVOS,POOL_SIZE,SPRITE,ITEM_SPRITE,TRAINER_SPRITE,BADGE_SPRITE:typeof BADGE_SPRITE!=="undefined"?BADGE_SPRITE:null,GEN3:typeof GEN3!=="undefined"?GEN3:null};', ctx, { filename: 'game.js' });

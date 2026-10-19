@@ -17,12 +17,14 @@ when_to_use: Al añadir o cambiar Pokémon, formas, objetos, entrenadores o spri
 ## Recursos (todos se cargan en caliente; no hay imágenes en el repo)
 | Recurso | URL | Dónde se define |
 |---|---|---|
-| Pokémon | `raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/<dex>.png` | `SPRITE` |
+| Pokémon (2D: tienda, paneles y reserva del 3D) | `raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/<dex>.png` | `SPRITE` |
+| Pokémon (modelos 3D del tablero) | `cdn.jsdelivr.net/gh/Pokemon-3D-api/assets@main/models/opt/regular/<dex>.glb` (Draco + WebP) | `MODEL_URL` en `board3d.js` |
 | Objetos | `…/sprites/items/<nombre-pokeapi>.png` | `ITEM_SPRITE`, tabla `ITEM_ART` |
-| Medallas | `…/sprites/badges/<n>.png` | `BADGE_SPRITE`, `BADGE_OF` |
+| Medallas | `…/sprites/badges/<n>.png` (solo 8 de las 28 insignias tienen medalla; el resto usa el icono de su sinergia) | `BADGE_SPRITE`, `BADGE_OF` |
 | Sprites de 3.ª gen (menú) | `…/sprites/pokemon/versions/generation-iii/emerald/<dex>.png` | `GEN3` |
 | Entrenadores | `play.pokemonshowdown.com/sprites/trainers/<clave>.png` | `TRAINER_SPRITE`, `TRAINERS` |
 
+- Modelos 3D: `board3d.js` los carga bajo demanda, como mucho 4 a la vez. Mientras llegan, o si fallan, se ve el sprite 2D. Las animaciones se eligen por nombre (`RX`: reposo, andar, ataque, habilidad, debilitado) porque cada modelo las llama distinto. Al añadir un Pokémon, comprueba que existe su `.glb` (`curl -I`) y cómo se ve en el tablero.
 - Caché: `loadImg(clave,url)` guarda cada imagen una sola vez en `imgCache` (`getImg`, `getTrImg`, `getItemImg`). **No** crees `new Image()` sueltos: reutiliza `loadImg`.
 - Fallos de carga:
   - Pokémon: la ficha HTML (`hydrate`) muestra un círculo con iniciales y el canvas (`drawToken`) dibuja ese mismo círculo;

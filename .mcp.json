@@ -9,7 +9,7 @@
         "--isolated",
         "--viewport-size", "1280,860",
         "--output-dir", "test-results/mcp",
-        "--allowed-origins", "http://localhost:3000;http://localhost:3100;https://poke-tactics.onrender.com;https://raw.githubusercontent.com;https://play.pokemonshowdown.com;https://fonts.googleapis.com;https://fonts.gstatic.com"
+        "--allowed-origins", "http://localhost:3000;http://localhost:3100;https://poke-tactics.onrender.com;https://raw.githubusercontent.com;https://play.pokemonshowdown.com;https://fonts.googleapis.com;https://fonts.gstatic.com;https://cdn.jsdelivr.net"
       ]
     }
   }

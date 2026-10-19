@@ -6,13 +6,25 @@ when_to_use: Al añadir o modificar combate, habilidades, sinergias, economía, 
 
 # Arquitecto de sistemas de autochess (Poké Tactics)
 
-Todo vive en `public/game.js`, un único script que se ejecuta **en el navegador y en el servidor** (en un `vm` por sala). Busca las secciones por su cabecera `/* ==== [NOMBRE] ==== */`.
+La lógica vive en dos scripts que se ejecutan **en el navegador y en el servidor** (en el servidor, concatenados en un `vm` por sala, primero `augments.js` y después `game.js`):
+- `public/game.js`: el juego. Busca las secciones por su cabecera `/* ==== [NOMBRE] ==== */`.
+- `public/augments.js`: el catálogo de aumentos y su motor de eventos (ver la skill `tft-augments-traits-designer`).
+
+`public/board3d.js` es **solo presentación**: un módulo ES con three.js que pinta el tablero 3D a partir de lo que le pasa `draw()` (`B3.render`). Nunca pongas lógica de juego ahí.
 
 ## Reglas que no se rompen
 1. **El combate es determinista.** Dentro de `[COMBAT]` usa siempre `cb.rng()`, nunca `Math.random()`. `Math.random()` solo se permite en efectos visuales (`fx`, `fxText`), que no cambian el resultado. Si algo nuevo cambia el resultado y usa `Math.random()`, el combate que ve cada cliente será distinto del que resuelve el servidor, y el modo espectador (`spectate()`) mostrará otra cosa.
 2. **Fuera de `[UI]` no se usa `document` ni `window`**, porque el servidor ejecuta este mismo archivo sin DOM (`HEADLESS`).
-3. Si una mejora de jugador (`p.mods`) afecta al combate, tiene que viajar en `teamSnap()` y leerse en `snapPlayer()`. Hoy solo viajan `hpPct, adPct, ap, asPct, def, mr, allFocus, legend, extraTrait`. Una mejora que no esté ahí **no se aplica** en el combate real.
-4. Toda acción de un jugador pasa por `applyAct(p,a)`, que valida la fase, los índices y el oro. Nunca confíes en datos del cliente.
+3. Todo lo que afecte al combate tiene que viajar en `teamSnap()` y leerse al crear el combate:
+   - de `p.mods` viajan `hpPct, adPct, ap, asPct, def, mr, allFocus, legend, extraTrait`, leídos en `snapPlayer()`;
+   - los efectos de combate de los aumentos viajan en `ag: augSnap(p)` y se aplican con `combat()`/`augCombat`.
+   Una mejora que no esté ahí **no se aplica** en el combate real.
+4. Lo que ocurre más tarde dentro de un combate se programa con `later2(cb,segundos,fn)` (cola `cb.pend`). **Nunca** uses `setTimeout` en la lógica de combate.
+5. Toda acción de un jugador pasa por `applyAct(p,a)`, que valida la fase, los índices y el oro. Nunca confíes en datos del cliente. Acciones actuales:
+   - tienda y tablero: `buy, reroll, xp, lock, sell, move, ready`;
+   - objetos: `item`, `icomb` (combinar dos componentes en el inventario) y `rmitem` (desactivada: los objetos se quitan con el 🧲 Imán Removedor);
+   - aumentos: `aug, augrr`, más `pick` (responder a las elecciones que ofrece un aumento con `augOffer`);
+   - otras: `tac` (elegir minileyenda), `orb` (abrir un orbe de botín) y `car` (carrusel).
 
 ## Mapa del combate (`[COMBAT]`)
 - Tick fijo `DT=0.05` s. `stepCombat(cb)` avanza un tick. `simulate(cb)` llega hasta el final (máx. 40 s: luego empate).
@@ -27,7 +39,11 @@ Todo vive en `public/game.js`, un único script que se ejecuta **en el navegador
   - el escudo absorbe primero y la esquiva solo vale contra el daño físico;
   - el objetivo gana maná `min(daño×0,04, 12)`;
   - robo de vida `omni`.
-- Habilidad: al llegar a `maxMana` se ejecuta `castAbility(cb,u,u.ab)`. Su poder es `abilPower = ABIL_BASE[coste-1] × ABIL_STAR[estrellas-1] × (1+ap/100)`. Los tipos (`bolt, burn, blast, nova, line, chain, multi, dash, execute, meteor, shield, taunt, heal, teamShield…`) están en `KIND_NAME` y su texto en `abDesc`.
+- Habilidad: al llegar a `maxMana` se ejecuta `castAbility(cb,u,u.ab)`. Su poder es `abilPower = ABIL_BASE[coste-1] × ABIL_STAR[estrellas-1] × (1+ap/100)`.
+  - Hay 39 tipos en `KIND_NAME`; su texto está en `abDesc`.
+  - Clásicos: `bolt, burn, blast, nova, line, chain, multi, dash, execute, meteor, shield, taunt, heal, teamShield…`.
+  - Con posición y tiempo: `cone, wave, strike, zone, knock/pull` (con `shove()`), `seed, poison, mark, spin, slam`.
+  - Los efectos visuales llevan `el` (elemento) y `p.v` (estilo) para que `board3d.js` los pinte; no cambian el resultado.
 - Estados: `stun` (y `sleepT`), `burns` (daño `true` por segundo), `shield`/`shieldT`, `stealth`, `tdr`, `reflT`.
 - Al perder, el jugador recibe `STAGE_DMG[fase]` + `survivors()` (los Pokémon de 3★ cuentan doble). Ver `resolveRound`.
 
@@ -49,18 +65,22 @@ Todo vive en `public/game.js`, un único script que se ejecuta **en el navegador
   - fases 2-9: siete rondas cada una (la n=4 es carrusel, la n=7 es PvE y el resto PvP);
   - aumentos en 2-1, 3-2 y 4-2.
 - Emparejamiento: `makeFights` y `pairCost`, al estilo TFT. Con número impar de jugadores hay un combate contra un "fantasma".
-- Botín PvE: orbes de `[LOOT]` (`ORBS`, `pveLoot`).
+- Botín PvE: orbes de `[LOOT]` (`ORBS`, `pveLoot`). El jugador los abre al recogerlos con su **minileyenda** (`TACS`: Charmander, Bulbasaur o Squirtle, que evolucionan a nivel 6 y se mueven con clic derecho) mediante la acción `orb` → `openPlayerOrb`.
 
 ## Objetos (`[ITEMS]`)
-- Hay 8 componentes (`BASIC`) más la `medal`. Las combinaciones están en `FULL` (fila `[a,b,id,nombre,icono,desc,stats,sp]`). Las insignias son componente + `medal`; `master` es medal + medal.
-- Cada unidad lleva como máximo 3 objetos y el inventario admite 10. `addItemToUnit` combina dos componentes en el mismo Pokémon.
+- Hay 75 objetos en total: 8 componentes (`BASIC`) más la `medal`, 37 completos, 28 insignias y el `magnet` (Imán Removedor).
+  - Las combinaciones están en `FULL` (fila `[a,b,id,nombre,icono,desc,stats,sp]`).
+  - Algunas insignias se fabrican con componente + `medal`; `master` es medal + medal.
+  - Para ver cómo se consigue cada insignia, consulta `ITEMS` y `RECIPE`.
+- Cada unidad lleva como máximo 3 objetos y el inventario admite 10. `addItemToUnit` combina dos componentes en el mismo Pokémon, y `combineBench` (acción `icomb`) los combina en el inventario.
 - Los efectos especiales van en `sp` y se leen en el combate (`u.sp.xxx`).
 
 ## Cómo implementar una mecánica nueva (pasos)
 1. Datos en `[DATA]`, `[ITEMS]` o `[AUGMENTS]`. Efecto en `[COMBAT]` (determinista) o en `p.mods` (con `teamSnap`/`snapPlayer` si afecta al combate).
 2. Si el jugador debe verlo: el texto de la ficha (`abDesc`, `tipHTML`) y el panel correspondiente de `[UI]`.
 3. Si es una acción nueva: un caso en `applyAct` con validación (fase, índices, oro) y una llamada en la interfaz con `doAct`.
-4. Verificación: `npm run check`, `npm test` y `npm run test:e2e`. Para comprobar el balance, usa la skill `autochess-balance-simulator`.
+4. Si tiene un efecto visual: emite `fx` con su elemento y estilo y, si hace falta, añade su representación en `board3d.js` (sin tocar la simulación).
+5. Verificación: `npm run check` y `npm run test:all` (humo, aumentos y E2E). Para comprobar el balance, usa la skill `autochess-balance-simulator`.
 
 ## Criterios de aceptación
 - `npm test` y `npm run test:e2e` pasan.

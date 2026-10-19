@@ -14,6 +14,11 @@ when_to_use: Al tocar server.js, auth.js, la sección [NET] o applyAct de public
   - `cmb`: su combate;
   - `cmbs`: todos los combates;
   - `car`: el carrusel.
+- Acciones que acepta `applyAct`:
+  - tienda y tablero: `buy, reroll, xp, lock, sell, move, ready`;
+  - objetos: `item`, `icomb` (combinar en el inventario) y `rmitem` (siempre devuelve `ok:false`: los objetos se quitan con el Imán Removedor);
+  - aumentos: `aug, augrr`, y `pick` (respuestas a ofertas de aumentos, `resolvePick`);
+  - otras: `tac` (minileyenda), `orb` (abrir un orbe de botín, `openPlayerOrb`) y `car` (carrusel).
 - Los clientes son espejos (`G.mirror`, `NET.mode==='client'`): `applyPub`, `applyPriv`, `applyCmb` y `applyCar`.
 - Combates: el servidor fija la semilla y los equipos y los envía. El cliente los reproduce de forma determinista; el resultado que cuenta es el del servidor (`resolveRound`).
 - Protecciones existentes:
@@ -26,7 +31,7 @@ when_to_use: Al tocar server.js, auth.js, la sección [NET] o applyAct de public
 
 ## Lista de comprobación al cambiar algo del multijugador
 1. ¿Cada acción nueva está en `applyAct` con validación de fase, índices, oro y espacio? ¿Responde `{ok:false}` sin efectos secundarios cuando no es válida?
-2. Duplicación: ¿se puede vender o mover en combate, comprar con el banquillo lleno, elegir dos veces el aumento (`augPicked`) o el Pokémon del carrusel (`av.done`), o sacar más objetos de los que hay? Todo debe devolver `{ok:false}`.
+2. Duplicación: ¿se puede vender o mover en combate, comprar con el banquillo lleno, elegir dos veces el aumento (`augPicked`), responder dos veces a la misma oferta (`pick`), abrir dos veces el mismo orbe (`orb`), elegir dos veces el Pokémon del carrusel (`av.done`), o combinar o sacar más objetos de los que hay (`icomb`)? Todo debe devolver `{ok:false}`.
 3. ¿Los datos nuevos que viajan al cliente están en `makePub`/`makePriv` y se **sanean** en `applyPub`/`applyPriv` (tipos, longitudes, claves que existen en `DEF`/`ITEMS`)?
 4. Si un cambio afecta al combate, ¿el cliente y el servidor calculan lo mismo? Prueba con la misma semilla con `visual:true` y `visual:false`, y comprueba que `spectate()` muestra el mismo ganador.
 5. ¿Las estadísticas se apuntan una sola vez por asiento (`recordPlaces`, `seat.recorded`)?
@@ -35,6 +40,7 @@ when_to_use: Al tocar server.js, auth.js, la sección [NET] o applyAct de public
 ## Pruebas existentes (ejecútalas siempre)
 ```bash
 npm test             # test/smoke.js: cuentas, seguridad, emparejamiento, 2 bots-cliente por Socket.io durante 12 rondas
+npm run test:aug     # test/augments.js: ofertas, elecciones, topes de oro y combates deterministas con aumentos
 npm run test:e2e     # Playwright: incluye tests/e2e/multijugador.spec.js (2 navegadores, sala, código, validación en servidor)
 ```
 - Para probar a mano: `npm start` y dos ventanas (una en incógnito) con cuentas distintas. El MCP `playwright` del proyecto (`.mcp.json`) abre contextos aislados.
