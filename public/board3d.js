@@ -269,6 +269,9 @@ function prepModel(m,gl,dex){
  const clips=gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
  m.clips={idle:pick(RX.idle),walk:pick(RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
  if(!m.clips.idle){ const c2=clips.find(k=>!BAD_IDLE.test(k.name)&&k!==m.clips.attack&&k!==m.clips.ko); m.clips.idle=c2||null; }
+ // Sin desplazamiento de la raíz: algunas animaciones mueven el modelo hacia un lado y al repetirse vuelve de golpe (un "tic")
+ const roots=new Set(); root.traverse(o=>{ if(o.isBone&&!(o.parent&&o.parent.isBone)) roots.add(o.name); });
+ for(const c of clips) for(const tr of c.tracks){ const i=tr.name.lastIndexOf('.'); if(tr.name.slice(i+1)!=='position'||!roots.has(tr.name.slice(0,i))) continue; const v=tr.values; for(let k=3;k<v.length;k+=3){ v[k]=v[0]; v[k+2]=v[2]; } }
  // Se mide en la pose de reposo real: la animación de espera o, si no hay, la pose que le damos por código
  if(m.clips.idle){ const mx=new THREE.AnimationMixer(root); mx.clipAction(m.clips.idle).play(); mx.update(.4); root.updateMatrixWorld(true); }
  else { m.proc=rigPose(root,dex); root.updateMatrixWorld(true); }
@@ -298,12 +301,12 @@ function aimBone(b,dir,k=1){ const d=dirOf(b); const q=new THREE.Quaternion().se
 function rigPose(root,dex){
  const B=bonesOf(root); if(!Object.keys(B).length) return null; root.updateMatrixWorld(true);
  const proc=[], X=new THREE.Vector3(1,0,0), Y=new THREE.Vector3(0,1,0), Z=new THREE.Vector3(0,0,1);
- const add=(b,ax,amp,f,ph)=>{ if(b) proc.push({n:b.name,ax:localAxis(b,ax).toArray(),amp,f,ph}); };
+ const add=(b,ax,amp,f,ph,w=0)=>{ if(b) proc.push({n:b.name,ax:localAxis(b,ax).toArray(),amp,f,ph,w}); };
  // Brazos en T: se bajan hacia los lados (solo si están casi horizontales; las patas de los cuadrúpedos ya miran abajo)
  // (Machamp tiene dos pares: LArm y LArm2)
  for(const n of Object.keys(B).filter(n=>/^[LR](Upper)?Arm\d*$/.test(n))){ const arm=B[n], d=dirOf(arm);
    if(Math.abs(d.y)<.7){ const out=new THREE.Vector3(Math.sign(d.x)||1,0,0); aimBone(arm,out.multiplyScalar(.45).add(new THREE.Vector3(0,-1,.15)),.85); }
-   add(arm,X,.06,1.6,n[0]==='L'?0:Math.PI); }
+   add(arm,X,.12,1.4,n[0]==='L'?0:Math.PI); add(arm,Z,.06,1.1,n[0]==='L'?0:Math.PI); }
  const tail=chainOf(B,/^Tail\d*$/), spine=chainOf(B,/^Spine\d*$/), head=B.Head, neck=B.Neck||B.Neck1;
  if(COIL.has(dex)&&tail.length>=4){
    // Serpiente: desde la cadera, la cola se tumba en el suelo y da algo más de una vuelta en espiral
@@ -313,10 +316,13 @@ function rigPose(root,dex){
    segs.forEach((b,i)=>{ if(!lens[i]) return; const r=r0*(1-.35*s/Lt); a+=lens[i]/r*.5; aimBone(b,new THREE.Vector3(Math.sin(a),i?-.04:-.5,-Math.cos(a))); a+=lens[i]/r*.5; s+=lens[i]; });
    const ns=spine.length; spine.forEach((b,i)=>{ const th=-.2+1.25*(i/Math.max(1,ns-1))**1.4; aimBone(b,new THREE.Vector3(0,Math.cos(th),Math.sin(th))); });
    tail.forEach((b,i)=>add(b,Y,.03,1.2,i*.5)); spine.forEach((b,i)=>add(b,X,.04,1.1,i*.4));
- } else tail.forEach((b,i)=>add(b,Y,.12+i*.02,2.2,i*.55));
- spine.forEach((b,i)=>add(b,X,.025,1.4,i*.3));
- add(neck,X,.04,1.4,.6); add(head,X,.05,1.4,.9); add(head,Y,.06,.5,0);
- add(B.Jaw,X,.04,1.4,1.2); add(B.LEar,Z,.08,2.4,0); add(B.REar,Z,.08,2.4,1);
+ } else tail.forEach((b,i)=>add(b,Y,.18+i*.03,2,i*.55));
+ spine.forEach((b,i)=>{ add(b,X,.05,1.3,i*.3); add(b,Z,.03,.7,i*.4); });
+ add(neck,X,.06,1.3,.6); add(head,X,.09,1.3,.9); add(head,Y,.14,.45,0);
+ // Al andar: piernas y brazos en vaivén alterno (en los cuadrúpedos, en diagonal)
+ for(const [n,ph] of [['LThigh',0],['RThigh',Math.PI],['LArm',Math.PI],['RArm',0],['LArm2',0],['RArm2',Math.PI]]) add(B[n],X,.55,4.2,ph,1);
+ for(const [n,ph] of [['LLeg',.6],['RLeg',Math.PI+.6]]) add(B[n],X,.35,4.2,ph,1);
+ add(B.Jaw,X,.06,1.4,1.2); for(const n of ['LThigh','RThigh']) add(B[n],X,.04,1.3,n[0]==='L'?0:Math.PI); add(B.LEar,Z,.08,2.4,0); add(B.REar,Z,.08,2.4,1);
  return proc.length?proc:null;
 }
 const spriteTex={};
@@ -332,6 +338,10 @@ const starGeo=new THREE.OctahedronGeometry(.08,0);
 // Estrella dorada con halo (sprite) para el efecto de subir de estrellas
 const starTex=canvasTex(64,64,g=>{ const r=g.createRadialGradient(32,32,0,32,32,32); r.addColorStop(0,'rgba(255,240,170,.9)'); r.addColorStop(.45,'rgba(255,200,60,.28)'); r.addColorStop(1,'rgba(255,200,60,0)'); g.fillStyle=r; g.fillRect(0,0,64,64);
  g.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?9:23; g.lineTo(32+Math.cos(a)*rr,32+Math.sin(a)*rr); } g.closePath(); g.shadowColor='#ffcf33'; g.shadowBlur=8; g.fillStyle='#fff6c8'; g.fill(); },false);
+// Poké Ball que se ve mientras llega el modelo 3D
+const ballMats=[new THREE.MeshStandardMaterial({color:'#e8402e',roughness:.35}),new THREE.MeshStandardMaterial({color:'#f4f4f4',roughness:.35}),new THREE.MeshStandardMaterial({color:'#1a1a22',roughness:.5})];
+const ballTop=new THREE.SphereGeometry(.24,24,12,0,TAU,0,Math.PI/2), ballBot=new THREE.SphereGeometry(.24,24,12,0,TAU,Math.PI/2,Math.PI/2), ballBand=new THREE.CylinderGeometry(.245,.245,.04,24), ballBtn=new THREE.CylinderGeometry(.07,.07,.05,16);
+function pokeBall(){ const g=new THREE.Group(), a=new THREE.Mesh(ballTop,ballMats[0]), b=new THREE.Mesh(ballBot,ballMats[1]), c=new THREE.Mesh(ballBand,ballMats[2]), d=new THREE.Mesh(ballBtn,ballMats[1]); d.rotation.x=Math.PI/2; d.position.z=.24; g.add(a,b,c,d); g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.position.y=.25; return g; }
 class Actor{
  constructor(spec){
    this.root=new THREE.Group(); this.body=new THREE.Group(); this.root.add(this.body);
@@ -344,19 +354,22 @@ class Actor{
  setDex(dex){
    if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(dex);
  }
- clearModel(){ if(this.model){ this.body.remove(this.model); this.model=null; this.mixer=null; this.cur=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
+ clearModel(){ if(this.ball){ this.body.remove(this.ball); this.ball=null; } if(this.model){ this.body.remove(this.model); this.model=null; this.mixer=null; this.cur=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
  ensure(){
    const m=this.m; if(!m) return;
    if(m.status==='ok'&&!this.model){
      if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; }
+     if(this.ball){ this.body.remove(this.ball); this.ball=null; }
      const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(m.k); holder.userData.k=m.k;
      this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); this.mats.push(mt); } } });
      this.model=holder; this.body.add(holder); this.mixer=new THREE.AnimationMixer(inst); this.acts={};
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
-     this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph}; }).filter(Boolean):null;
+     this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;
      for(const k in m.clips) if(m.clips[k]) this.acts[k]=this.mixer.clipAction(m.clips[k]);
      this.play('idle',true);
-   } else if(m.status!=='ok'&&!this.sprite){
+   } else if(m.status!=='ok'&&m.status!=='fail'&&!this.ball){
+     this.ball=pokeBall(); this.body.add(this.ball);
+   } else if(m.status==='fail'&&!this.sprite){ if(this.ball){ this.body.remove(this.ball); this.ball=null; }
      const s=new THREE.Sprite(new THREE.SpriteMaterial({map:getSpriteTex(this.dex),transparent:true,alphaTest:.3})); s.center.set(.5,.12); s.scale.set(1.9,1.9,1); this.sprite=s; this.body.add(s);
    }
  }
@@ -369,7 +382,7 @@ class Actor{
  }
  update(spec,dt,t){
    this.ensure();
-   if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star); this.star=spec.star; }
+   if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star,!!spec.tac); this.star=spec.star; }
    const p=W3(spec.x,spec.y,0);
    const moving=this.lastPos&&Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z)>.004; this.moveT=moving?.15:Math.max(0,this.moveT-dt);
    if(moving&&!spec.drag){ const dx=p.x-this.lastPos.x, dz=p.z-this.lastPos.z; this.face=Math.atan2(dx,dz); }
@@ -380,14 +393,16 @@ class Actor{
    // giro suave hacia donde mira
    let dr=this.face-this.body.rotation.y; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); this.body.rotation.y+=dr*Math.min(1,dt*10);
    // Evolución: late (crece y vuelve) mientras brilla en blanco
-   const ev=this.evoFx?this.evoT:9, evoGlow=ev<1?Math.sin(ev*Math.PI):0;
-   this.body.scale.setScalar(sc*1.35*(1+(ev<.8?.22*Math.sin(ev/.8*Math.PI):0))); this.h=1.35*sc;
+   // Evolución: late (crece y vuelve) mientras brilla en blanco; la de la minileyenda además gira
+   const ev=this.evoFx?this.evoT:9, evL=this.evoBig?1.6:1, evoGlow=ev<evL?Math.sin(ev/evL*Math.PI):0;
+   this.body.scale.setScalar(sc*1.35*(1+(ev<.8*evL?(this.evoBig?.35:.22)*Math.sin(ev/(.8*evL)*Math.PI):0))); this.h=1.35*sc;
+   if(this.evoBig&&ev<evL) this.face+=dt*14*Math.sin(ev/evL*Math.PI);
    this.ring.material.color.set(spec.ring||'#ffffff'); this.ring.visible=!spec.hideRing; this.ring.scale.setScalar(spec.sel?1.25+.06*Math.sin(t*8):1);
    // ataque y habilidad (contadores que suben en la simulación)
    if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
    if((spec.cast||0)>this.lastCast){ this.lastCast=spec.cast; this.castT=0; this.play('cast',false); }
    this.atkT+=dt; this.castT+=dt;
-   let lift=TOP, lean=0, fwd=0, breath=0;
+   let lift=TOP, lean=0, fwd=0, breath=0, sway=0;
    if(spec.dead){
      if(this.deadT<0){ this.deadT=0; if(!this.play('ko',false)) this.noKo=true; }
      this.deadT+=dt; const k=clamp(this.deadT/1.1,0,1);
@@ -398,18 +413,21 @@ class Actor{
      if(!this.cur||this.curName==='idle'||this.curName==='walk'){ if(this.moveT>0&&this.acts&&this.acts.walk) this.play('walk',true); else this.play('idle',true); }
      if(this.atkT<.3) fwd=Math.sin(this.atkT/.3*Math.PI)*.35;
      if(this.castT<.5){ lift+=Math.sin(this.castT/.5*Math.PI)*.35; }
-     if(!this.acts||!this.acts.idle){ lift+=(Math.sin(t*2.2+this.root.id)*.5+.5)*.035; breath=Math.sin(t*2.6+this.root.id)*.025; }
-     if(this.moveT>0&&!(this.acts&&this.acts.walk)) lift+=Math.abs(Math.sin(t*14))*.12;
+     if(!this.acts||!this.acts.idle){ const ph=t+this.root.id; lift+=(Math.sin(ph*2.2)*.5+.5)*(this.proc?.04:.07); breath=Math.sin(ph*2.6)*(this.proc?.03:.05); sway=Math.sin(ph*.9)*(this.proc?.08:.16); lean=Math.sin(ph*1.3)*(this.proc?.02:.05); }
+     if(this.moveT>0&&!(this.acts&&this.acts.walk)) lift+=Math.abs(Math.sin(t*13.2))*(this.proc?.07:.12);
      if(spec.drag) lift+=.5;
      this.setAlpha(spec.alpha!=null?spec.alpha:1);
    }
-   this.body.position.set(Math.sin(this.face)*fwd,lift,Math.cos(this.face)*fwd); this.body.rotation.x=0; this.body.rotation.z=lean;
+   this.body.position.set(Math.sin(this.face)*fwd,lift,Math.cos(this.face)*fwd); this.body.rotation.x=0; this.body.rotation.z=lean; if(this.model) this.model.rotation.y=sway;
    if(this.sprite){ this.sprite.material.rotation=-lean; }
+   if(this.ball){ this.ball.rotation.y=t*3; this.ball.position.y=.25+Math.abs(Math.sin(t*4))*.12; }
    // destello al recibir daño y brillo al lanzar
    const fl=clamp((spec.flash||0)/.12,0,1), gl=spec.glow||0;
    if(this.mats) for(const mt of this.mats) if(mt.emissive){ const e=Math.max(fl*.12,gl*.3,evoGlow*.9), w=fl*.12>gl*.3||evoGlow*.9>gl*.3, e0=mt.userData.e0; mt.emissive.setRGB(e0.r+e*(w?1:spec.glowCol.r),e0.g+e*(w?1:spec.glowCol.g),e0.b+e*(w?1:spec.glowCol.b)); }
    if(this.mixer) this.mixer.update(dt*(spec.stun>0&&!spec.dead?.15:1));
-   if(this.proc&&!spec.dead){ const k=spec.stun>0?.2:1; for(const p of this.proc) p.b.quaternion.copy(p.rest).multiply(_q.setFromAxisAngle(p.ax,p.amp*k*Math.sin(t*p.f*Math.PI+p.ph+this.root.id))); }
+   // Peso de la animación de andar: sube al moverse y baja al pararse, sin saltos
+   this.wf=lerp(this.wf||0,this.moveT>0&&!spec.dead?1:0,Math.min(1,dt*8));
+   if(this.proc&&!spec.dead){ const k=spec.stun>0?.2:1, wf=this.wf; for(const p of this.proc){ const a=p.w?p.amp*wf*Math.sin(t*p.f*Math.PI+p.ph):p.amp*k*(1-wf*.6)*Math.sin(t*p.f*Math.PI+p.ph+this.root.id); p.b.quaternion.copy(p.rest).multiply(_q.setFromAxisAngle(p.ax,a)); } }
    if(this.model) this.model.scale.set(this.model.userData.k,this.model.userData.k*(1+breath),this.model.userData.k);
    // escudo, aturdimiento
    if(spec.shield>0&&!spec.dead){ if(!this.shieldM){ this.shieldM=new THREE.Mesh(shieldGeo,new THREE.MeshStandardMaterial({color:'#bfe6ff',emissive:'#3a7bd5',emissiveIntensity:.4,transparent:true,opacity:.22,depthWrite:false})); this.root.add(this.shieldM); }
@@ -422,13 +440,14 @@ class Actor{
    this.blob.visible=!spec.dead&&(!this.model||!sun.castShadow); if(!spec.dead) this.root.visible=true;
  }
  // Subida de estrellas: pilar de luz dorada, estallido de chispas y estrellas que suben girando (más cuantas más estrellas)
- evolve(star){
-   if(this.evoFx) this.endEvo(); this.evoT=0;
-   const g=new THREE.Group(), n=6*star+2; this.root.add(g); this.evoFx=g;
+ evolve(star,big){
+   if(this.evoFx) this.endEvo(); this.evoT=0; this.evoBig=!!big;
+   const g=new THREE.Group(), n=big?34:6*star+2; this.root.add(g); this.evoFx=g;
    for(let i=0;i<n;i++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:starTex,color:star>=3?'#ffe58a':'#ffd24a',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false})); sp.userData={a:i/n*TAU,r:.3+Math.random()*.35,v:1+Math.random()*1.3,s:.26+Math.random()*.2+star*.05,d:Math.random()*.3}; sp.scale.setScalar(.01); g.add(sp); }
    const pil=new THREE.Mesh(new THREE.CylinderGeometry(.5,.75,5,24,1,true),addMat('#ffd24a')); pil.position.y=2.5; g.add(pil); g.userData.pil=pil;
    const ring=new THREE.Mesh(new THREE.RingGeometry(.4,.62,40),addMat('#fff3b0')); ring.rotation.x=-Math.PI/2; ring.position.y=TOP+.03; g.add(ring); g.userData.ring=ring;
-   burst(this.root.position.clone().setY(TOP+.7),['#fff3b0','#ffd24a','#ffffff'],12+star*10,3.2,{up:3,size:.3});
+   burst(this.root.position.clone().setY(TOP+.7),['#fff3b0','#ffd24a','#ffffff'],big?60:12+star*10,big?4.2:3.2,{up:3,size:.3});
+   if(big){ shake=Math.max(shake,.12); const sph=new THREE.Mesh(new THREE.SphereGeometry(.9,24,16),addMat('#ffffff')); sph.position.y=.8; g.add(sph); g.userData.sph=sph; }
  }
  stepEvo(dt){
    const g=this.evoFx, T=this.evoT+=dt;
@@ -436,7 +455,8 @@ class Actor{
      sp.position.set(Math.cos(a)*r,TOP+.25+t*u.v,Math.sin(a)*r); sp.material.opacity=clamp(1-(t-.6)/.9,0,1); sp.scale.setScalar(u.s*clamp(t/.15,0,1)); sp.material.rotation=t*3; }
    const pil=g.userData.pil, ring=g.userData.ring; pil.material.opacity=.55*clamp(1-T/.9,0,1); pil.scale.set(1+T*.4,1,1+T*.4);
    ring.scale.setScalar(1+T*2.2); ring.material.opacity=clamp(1-T/.8,0,1);
-   if(T>1.7) this.endEvo();
+   if(g.userData.sph){ const k=T/1.6; g.userData.sph.scale.setScalar(.3+Math.sin(Math.min(1,k)*Math.PI)*1.1); g.userData.sph.material.opacity=.7*Math.sin(Math.min(1,k)*Math.PI); }
+   if(T>(this.evoBig?2.2:1.7)) this.endEvo();
  }
  endEvo(){ const g=this.evoFx; if(!g) return; this.root.remove(g); g.traverse(o=>{ if(o.material) o.material.dispose(); if(o.isMesh) o.geometry.dispose(); }); this.evoFx=null; }
  setAlpha(a){

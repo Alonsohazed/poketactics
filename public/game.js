@@ -24,10 +24,10 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const POOL_SIZE=[30,25,18,10,9];
 const SHOP_ODDS={1:[100,0,0,0,0],2:[100,0,0,0,0],3:[75,25,0,0,0],4:[55,30,15,0,0],5:[45,33,20,2,0],6:[30,40,25,5,0],7:[16,30,43,10,1],8:[15,20,32,30,3],9:[10,17,25,33,15],10:[5,10,20,40,25]};
 const XP_NEED={1:2,2:2,3:6,4:10,5:20,6:36,7:56,8:68,9:68};
-const BASE_INCOME=[0,2,3,4], PASSIVE_XP=[0,2,0,2];
+const BASE_INCOME=[0,2,3,4], PASSIVE_XP=[0,2,2]; // 1-2: nivel 2; 1-3: nivel 3 (tres fichas); después +2 por ronda
 const STAGE_DMG={1:1,2:2,3:4,4:6,5:9,6:11,7:15,8:18,9:22};
 const COST_HEX=['#7d8593','#23964a','#2f6fde','#9446cf','#d99a00'];
-const BENCH=9, MAX_ITEMS_BENCH=10;
+const BENCH=9, MAX_ITEMS_BENCH=14;
 
 const T=(icon,color,bp,scope,sum,lv)=>({icon,color,bp,scope,sum,lv});
 const TRAITS={
@@ -165,6 +165,10 @@ const TRAINERS=[
  ['giovanni','Giovanni','Rocket'],['oak','Prof. Oak','Profesor'],
 ].map(([key,name,from])=>({key,name,from}));
 const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
+// Minileyendas: el Pokémon que te representa en el tablero (evoluciona al llegar a nivel 6)
+const TACS={charmander:{name:'Charmander',evo:'Charmeleon',dex:[4,5]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur',dex:[1,2]},squirtle:{name:'Squirtle',evo:'Wartortle',dex:[7,8]}};
+const TAC_KEYS=Object.keys(TACS);
+const tacOf=p=>TACS[p&&p.tac]||TACS.charmander, tacDex=p=>tacOf(p).dex[p&&p.level>=6?1:0];
 
 /* ============================ [ABILITIES] ============================ */
 function abDesc(ab,P,star){
@@ -276,6 +280,8 @@ const BADGE_OF={claw:[18,'Puño'],wing:[22,'Pluma'],spoon:[6,'Pantano'],water:[2
 for(const c of BASIC){ const t=EMBLEM_OF[c], id='em_'+c; ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.`,s:{...COMPS[c].s},sp:{},emblem:t,from:[c,'medal']}; RECIPE[rk(c,'medal')]=id; }
 // Herramienta: no se equipa; devuelve al inventario todos los objetos de un Pokémon (es la única forma de quitarlos)
 ITEMS.magnet={key:'magnet',name:'Imán Removedor',icon:'🧲',desc:'Arrástralo sobre un Pokémon: todos sus objetos vuelven a tu inventario. Se gasta al usarlo. Recibes uno en cada fase contra Pokémon salvajes.',s:{},sp:{},tool:true};
+// Emblema de cada sinergia: el Pokémon que lo lleve cuenta para ella (sin contar dos veces el mismo rasgo)
+for(const t in TRAITS) if(t!=='Legendario') ITEMS['emb_'+t]={key:'emb_'+t,name:'Emblema '+t,icon:TRAITS[t].icon,desc:`El portador gana la sinergia ${t}. No se combina.`,s:{},sp:{},emblem:t};
 ITEMS.master={key:'master',name:'Medalla Maestra',icon:'🏆',desc:'+1 espacio en el tablero mientras la lleve un Pokémon colocado en el tablero.',s:{},sp:{teamsize:1},from:['medal','medal']}; RECIPE['medal+medal']='master';
 const FULL_KEYS=FULL.map(f=>f[2]);
 const statLine=s=>Object.entries(s).map(([k,v])=>STAT_TXT[k]?STAT_TXT[k](v):'').filter(Boolean).join(' · ');
@@ -284,10 +290,10 @@ const combineKey=(a,b)=>RECIPE[rk(a,b)];
 /* =============================== [CORE] =============================== */
 let G=null, UID=1;
 let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal'};
-const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0});
+const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0,xpCost:4,oddsSave:0,cheapCombine:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
-   streak:0,augments:[],mods:defaultMods(),items:[],orbs:[],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
+   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(TAC_KEYS),alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
 }
 const makeInst=key=>({uid:UID++,defId:key,baseId:DEF[key].evoOf||key,star:1,kills:0,items:[],stk:{hp:0,ad:0}});
 const boardUnits=p=>Object.values(p.board);
@@ -310,7 +316,7 @@ function drawUnitOfCost(cost,excl){
  }
  return null;
 }
-function refreshShop(p){ for(const k of p.shop) if(k) returnToPool(k,1); const ex=threeStarSet(p); p.shop=[0,0,0,0,0].map(()=>drawUnitOfCost(rollCost(p.level),ex)); }
+function refreshShop(p){ for(const k of p.shop) if(k) returnToPool(k,1); const ex=threeStarSet(p), lv=Math.min(10,p.level+(p.mods.oddsSave&&p.gold>=p.mods.oddsSave?1:0)); p.shop=[0,0,0,0,0].map(()=>drawUnitOfCost(rollCost(lv),ex)); }
 function income(p,idx){
  const base=idx<BASE_INCOME.length?BASE_INCOME[idx]:5;
  const interest=Math.min(p.mods.maxInterest,Math.floor(p.gold/10));
@@ -318,17 +324,20 @@ function income(p,idx){
  if(st){ if(p.streak>0) st*=p.mods.winStreakMult; else st=st*p.mods.lossStreakMult+p.mods.lossBonus; }
  return {base,interest,streak:st,bonus:p.mods.income,total:base+interest+st+p.mods.income};
 }
-function addXp(p,n){ p.xp+=n; while(p.level<10&&p.xp>=XP_NEED[p.level]){ p.xp-=XP_NEED[p.level]; p.level++; } if(p.level>=10) p.xp=0; }
-function buyXp(p){ if(p.level>=10||p.gold<4) return false; p.gold-=4; addXp(p,4+p.mods.xpBuy); return true; }
-function reroll(p){ if(p.freeRerolls>0) p.freeRerolls--; else { if(p.gold<2) return false; p.gold-=2; } refreshShop(p); return true; }
+function addXp(p,n){ const l0=p.level; p.xp+=n; while(p.level<10&&p.xp>=XP_NEED[p.level]){ p.xp-=XP_NEED[p.level]; p.level++; } if(p.level>=10) p.xp=0; if(p.level>l0) augFire(p,'levelUp',{level:p.level}); }
+const xpCost=p=>p.mods.xpCost||4;
+function buyXp(p){ if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
+function reroll(p){ const free=p.freeRerolls>0; if(free) p.freeRerolls--; else { if(p.gold<2) return false; p.gold-=2; } refreshShop(p); augFire(p,'reroll',{free}); return true; }
 function countSame(p,base,star){ return allUnits(p).filter(u=>u.baseId===base&&u.star===star).length; }
 function canBuy(p,i){
  const k=p.shop[i]; if(!k||!DEF[k]) return false; const d=DEF[k]; if(p.gold<d.cost) return false;
  if(p.bench.some(x=>!x)) return true;
  return p.bench.filter(u=>u&&u.baseId===k&&u.star===1).length+(G.phase!=='combat'?boardUnits(p).filter(u=>u.baseId===k&&u.star===1).length:0)>=2;
 }
-function buy(p,i){ if(!canBuy(p,i)) return false; const k=p.shop[i]; p.gold-=DEF[k].cost; p.shop[i]=null; addUnitToBench(p,makeInst(k)); return true; }
+function buy(p,i){ if(!canBuy(p,i)) return false; const k=p.shop[i]; p.gold-=DEF[k].cost; p.shop[i]=null; augFire(p,'buy',{key:k,cost:DEF[k].cost}); addUnitToBench(p,makeInst(k)); return true; }
 function addUnitToBench(p,inst){
+ const dup=allUnits(p).some(u=>u.baseId===inst.baseId);
+ augFire(p,'gain',{key:inst.baseId,dup});
  const idx=p.bench.findIndex(x=>!x);
  if(idx>=0){ p.bench[idx]=inst; combine(p); return true; }
  p.bench.push(inst); combine(p);
@@ -357,7 +366,6 @@ const benchCombo=(p,a,b)=>{ const x=p.items[a], y=p.items[b]; return a!==b&&x&&y
 function combineBench(p,a,b){ const res=benchCombo(p,a,b); if(!res) return {ok:false,why:'Solo se combinan dos componentes'}; p.items[b]=res; p.items.splice(a,1); return {ok:true,made:res}; }
 function useItem(p,idx,u,loc){
  const it=p.items[idx]; if(!it||!u) return {ok:false};
- if(G.phase==='combat'&&loc&&loc.b!==undefined) return {ok:false,why:'No puedes cambiar objetos en pleno combate'};
  if(it==='magnet'){
    if(!u.items.length) return {ok:false,why:'Ese Pokémon no lleva objetos'};
    if(p.items.length-1+u.items.length>MAX_ITEMS_BENCH) return {ok:false,why:'No caben sus objetos en tu inventario'};
@@ -367,7 +375,7 @@ function useItem(p,idx,u,loc){
 }
 function removeItem(p,u,idx){
  if(!u.items[idx]) return {ok:false,why:'No hay objeto ahí'};
- if(p.items.length>=MAX_ITEMS_BENCH) return {ok:false,why:'Tu inventario está lleno (10 objetos)'};
+ if(p.items.length>=MAX_ITEMS_BENCH) return {ok:false,why:`Tu inventario está lleno (${MAX_ITEMS_BENCH} objetos)`};
  const loc=findLoc(p,u); if(G.phase==='combat'&&loc&&loc.b!==undefined) return {ok:false,why:'No puedes quitar objetos en pleno combate'};
  p.items.push(u.items.splice(idx,1)[0]); return {ok:true};
 }
@@ -382,12 +390,12 @@ function combine(p){
    if(boardOk) for(const k in p.board) add(p.board[k],{b:k});
    p.bench.forEach((u,i)=>u&&add(u,{i}));
    for(const g in groups){
-     const arr=groups[g]; if(arr.length<3||arr[0].u.star>=3) continue;
-     const three=arr.slice(0,3), keep=three[0], evolved=three.find(x=>DEF[x.u.defId].evoOf);
+     const arr=groups[g], need=p.mods.cheapCombine&&DEF[arr[0].u.baseId].cost===1?2:3; if(arr.length<need||arr[0].u.star>=3) continue;
+     const three=arr.slice(0,need), keep=three[0], evolved=three.find(x=>DEF[x.u.defId].evoOf);
      const before=nameOf(DEF[keep.u.defId],keep.u.star);
      keep.u.star++; if(evolved) keep.u.defId=evolved.u.defId;
      for(const o of three.slice(1)){
-       keep.u.kills+=o.u.kills; keep.u.stk.hp+=o.u.stk.hp; keep.u.stk.ad+=o.u.stk.ad;
+       keep.u.kills+=o.u.kills; keep.u.goldGen=(keep.u.goldGen||0)+(o.u.goldGen||0); keep.u.stk.hp+=o.u.stk.hp; keep.u.stk.ad+=o.u.stk.ad;
        for(const it of o.u.items){ const r=addItemToUnit(keep.u,it); if(!r.ok) giveItem(p,it); }
        setAt(p,o.loc,null);
      }
@@ -396,6 +404,7 @@ function combine(p){
      note(p,before!==after?`✨ ¡${before} evolucionó en ${after}! Nueva habilidad: ${abOf(DEF[keep.u.defId],keep.u.star)[1]}`:`⭐ ${after} sube a ${keep.u.star} estrellas`,true);
      // Aviso para la lista de jugadores: foto del Pokémon y estrellas a las que sube
      p.upSeq=(p.upSeq||0)+1; p.lastUp=[dexOf(DEF[keep.u.defId],keep.u.star),keep.u.star,p.upSeq];
+     augFire(p,'starUp',{key:keep.u.baseId,star:keep.u.star});
      changed=true; break;
    }
  }
@@ -404,7 +413,7 @@ function sellValue(u){ const c=DEF[u.defId].cost; return u.star===1?c:c*Math.pow
 function sellAt(p,loc){
  const u=getAt(p,loc); if(!u) return false;
  if(loc.b!==undefined&&G.phase==='combat') return false;
- p.gold+=sellValue(u); returnToPool(u.baseId,Math.pow(3,u.star-1));
+ p.gold+=sellValue(u); returnToPool(u.baseId,Math.pow(3,u.star-1)); augFire(p,'sell',{key:u.baseId,star:u.star,cost:DEF[u.defId].cost});
  for(const it of u.items) giveItem(p,it);
  setAt(p,loc,null); return true;
 }
@@ -491,13 +500,13 @@ function makeCombatUnit(inst,p,Tt,side,rand){
  for(const it of inst.items){ const I=ITEMS[it]; if(!I) continue; applyStats(u,I.s); for(const k in I.sp) u.sp[k]=(u.sp[k]||0)+I.sp[k]; }
  if(u.sp.focus) u.focus=true; if(u.sp.berry) u.berry=true;
  if(u.sp.blood&&u.range===1) u.omni+=.1;
- u.items=inst.items.slice(); u.hp=u.maxHp; u.as=Math.min(u.as,3);
+ u.items=inst.items.slice(); u.traits=unitTraits(inst); u.hp=u.maxHp; u.as=Math.min(u.as,3);
  return u;
 }
 const abilPower=u=>ABIL_BASE[u.cost-1]*ABIL_STAR[u.star-1]*(1+u.ap/100);
 
 // Instantánea compacta de un equipo: es lo que se envía por red y lo que usa la simulación
-function teamSnap(p){ const m=p.mods; return {m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items.slice(),R0(u.stk.hp),R0(u.stk.ad)])}; }
+function teamSnap(p){ const m=p.mods; return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items.slice(),R0(u.stk.hp),R0(u.stk.ad)])}; }
 function snapPlayer(snap){
  const m=snap&&snap.m||{}; const mods=Object.assign(defaultMods(),{hpPct:+m.hp||0,adPct:+m.ad||0,ap:+m.ap||0,asPct:+m.as||0,def:+m.df||0,mr:+m.mr||0,allFocus:!!m.f,legend:+m.lg||0,extraTrait:(m.x&&typeof m.x==='object')?m.x:{}});
  const board={};
@@ -518,8 +527,10 @@ function addTeamSnap(cb,snap,side,refs){
  const p=snapPlayer(snap), Tt=traitTiers(p);
  for(const k in p.board){
    const [c,r]=k.split(',').map(Number); const u=makeCombatUnit(p.board[k],p,Tt,side,cb.rng);
-   [u.c,u.r]=toGrid(side,c,r); u.pc=u.c; u.pr=u.r; u.ref=refs&&refs[k]||null; cb.units.push(u);
+   [u.c,u.r]=toGrid(side,c,r); u.pc=u.c; u.pr=u.r; u.ref=refs&&refs[k]||null; u.bk=k; cb.units.push(u);
  }
+ // Efectos de combate de los aumentos (deterministas: salen de los parámetros del teamSnap)
+ augCombat(cb,side,cb.units.filter(u=>u.side===side),snap&&snap.ag);
 }
 const CREEP=(dex,name,hp,ad,c,r,extra={})=>({dex,name,hp,ad,c,r,...extra});
 function pveWave(s,n){
@@ -593,8 +604,8 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
  if(t.berry&&t.hp>0&&t.hp<t.maxHp*.5){ t.berry=false; heal(t,t.maxHp*.35); fxText(cb,t,'Baya Zidra','#4caf50'); }
  if(t.sp.blood&&!t.bloodUsed&&t.hp>0&&t.hp<t.maxHp*.4){ t.bloodUsed=true; t.shield+=t.maxHp*.25; t.shieldT=Math.max(t.shieldT,5); fxText(cb,t,'¡Sed de sangre!','#ff5a5a'); }
  if(t.hp<=0){
-   if(t.focus){ t.focus=false; t.hp=1; fxText(cb,t,'¡Aguanta!','#ffb400'); }
-   else { t.hp=0; t.dead=true; if(src&&src.side!==t.side) src.kills++; fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; }
+   if(t.focus){ t.focus=false; t.hp=1; fxText(cb,t,'¡Aguanta!','#ffb400'); if(t.ghostFocus){ t.stealth=2; t.ghostFocus=false; } }
+   else { t.hp=0; t.dead=true; if(src&&src.side!==t.side){ src.kills++; if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; }
  }
  return true;
 }
@@ -716,7 +727,7 @@ function castAbility(cb,u,ab,depth=0){
       later2(cb,.3,()=>{ if(u.dead) return; for(const e of near(u.c,u.r,rad)) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:u.c,r:u.r,rad:rad+.5,life:.7,quake:true}); }); cb.cExtra=' · salta al grupo'; } break; }
  }
  if(depth===0){
-   if(p.g){ const g=p.g+(u.star-1); const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+g); if(cb.gold[u.side]>before){ fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
+   if(p.g){ const g=p.g+(u.star-1); const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+g); if(cb.gold[u.side]>before){ if(u.ref) u.ref.goldGen=(u.ref.goldGen||0)+cb.gold[u.side]-before; fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
    if(p.stk) gainStacks(u,15,2);
    if(u.sp.healCast) heal(u,u.maxHp*u.sp.healCast);
    if(cb.visual){ cb.feed.push({s:u.side,n:u.name,mv:name,ic:elIcon(el)||'🐾',d:R0(cb.cDmg),h:cb.cHits.size,hl:R0(cb.cHeal),sh:R0(cb.cShield),st:cb.cStun,k:cb.cKills,x:cb.cExtra}); if(cb.feed.length>12) cb.feed.shift(); cb.feedV++; }
@@ -727,6 +738,7 @@ function stepCombat(cb){
  if(cb.done) return;
  if(!cb.started){
    cb.started=true;
+   for(const side of cb.huntPend||[]){ const foes=cb.units.filter(e=>e.side!==side); const t=foes.sort((a,b)=>b.maxHp-a.maxHp)[0]; if(t){ t.markT=99; t.markAmp=Math.max(t.markAmp||0,.2); t.hunted=side; } }
    for(const u of cb.units){ if(u.startShield){ u.shield+=u.startShield; u.shieldT=8; } if(u.sp.startShieldPct){ u.shield+=u.maxHp*u.sp.startShieldPct; u.shieldT=8; } }
    for(const u of cb.units) if(u.sp.veil) for(const a of cb.units) if(a!==u&&a.side===u.side&&dU(u,a)<=1){ a.shield+=u.sp.veil; a.shieldT=Math.max(a.shieldT,8); }
    for(const u of cb.units){
@@ -841,47 +853,7 @@ function botPlan(p){
 
 /* ============================ [AUGMENTS] ============================ */
 function giveRandom(p,cost){ const k=drawUnitOfCost(cost,threeStarSet(p)); if(k) giveUnitTo(p,k); return k; }
-const A=(id,tier,name,icon,desc,apply)=>({id,tier,name,icon,desc,apply});
-const AUGS=[
- A('amuleto1','S','Amuleto Moneda I','🪙','+1 de oro al inicio de cada ronda. Recibes 3 de oro.',p=>{p.mods.income+=1;p.gold+=3;}),
- A('exp1','S','Repartir Exp. I','📡','+1 de EXP extra por ronda y +4 de EXP ahora.',p=>{p.mods.xpRound+=1;addXp(p,4);}),
- A('bolsa1','S','Bolsa de Objetos I','👜','Recibes 1 componente y 2 de oro.',p=>{giveItem(p,pick(BASIC));p.gold+=2;}),
- A('danza1','S','Danza Espada I','⚔️','Tu equipo gana +8% de daño de ataque.',p=>p.mods.adPct+=.08),
- A('maquina1','S','Maquinación I','🧠','Tu equipo gana +12 de poder de habilidad.',p=>p.mods.ap+=12),
- A('agilidad1','S','Agilidad I','💨','Tu equipo gana +8% de velocidad de ataque.',p=>p.mods.asPct+=.08),
- A('ferrea1','S','Defensa Férrea I','🛡️','Tu equipo gana +12 de defensa y +12 de resistencia.',p=>{p.mods.def+=12;p.mods.mr+=12;}),
- A('vital1','S','Vitalidad I','❤️','Tu equipo gana +6% de vida y recuperas 8 de vida de entrenador.',p=>{p.mods.hpPct+=.06;p.hp=Math.min(100,p.hp+8);}),
- A('guarde1','S','Guardería I','🥚','Recibes 2 Pokémon aleatorios de coste 1 y 2 de oro.',p=>{giveRandom(p,1);giveRandom(p,1);p.gold+=2;}),
- A('ruleta1','S','Ruleta Pokémon I','🎰','1 tienda gratis cada ronda.',p=>{p.mods.freeRerolls+=1;p.freeRerolls+=1;}),
- A('medalla1','S','Medalla de Bronce','🏅','Recibes una Medalla para crear una Insignia de sinergia.',p=>giveItem(p,'medal')),
- A('rocket1','S','Plan Rocket I','🚀','Recibes 5 de oro. Tus rachas de derrotas dan +1 de oro extra.',p=>{p.gold+=5;p.mods.lossBonus+=1;}),
- A('amuleto2','G','Amuleto Moneda II','🪙','+2 de oro al inicio de cada ronda. Recibes 4 de oro.',p=>{p.mods.income+=2;p.gold+=4;}),
- A('interes','G','Interés Compuesto','🏦','El interés máximo sube de 5 a 7 de oro.',p=>p.mods.maxInterest=Math.max(p.mods.maxInterest,7)),
- A('caramelo','G','Caramelo Raro','🍬','Subes 1 nivel al instante.',p=>{ if(p.level<10){p.level++;p.xp=0;} }),
- A('exp2','G','Repartir Exp. II','📡','+2 de EXP extra por ronda y +6 de EXP ahora.',p=>{p.mods.xpRound+=2;addXp(p,6);}),
- A('entreno','G','Entrenamiento Intensivo','🏋️','Comprar EXP te da 2 de EXP extra.',p=>p.mods.xpBuy+=2),
- A('danza2','G','Danza Espada II','⚔️','Tu equipo gana +15% de daño de ataque.',p=>p.mods.adPct+=.15),
- A('maquina2','G','Maquinación II','🧠','Tu equipo gana +25 de poder de habilidad.',p=>p.mods.ap+=25),
- A('agilidad2','G','Agilidad II','💨','Tu equipo gana +15% de velocidad de ataque.',p=>p.mods.asPct+=.15),
- A('aguante','G','Aguante','🎀','Cada aliado sobrevive una vez a un golpe letal.',p=>p.mods.allFocus=true),
- A('bolsa2','G','Bolsa de Objetos II','🎒','Recibes 2 componentes.',p=>{giveItem(p,pick(BASIC));giveItem(p,pick(BASIC));}),
- A('ultraball','G','Ultra Ball','🟡','Recibes un Pokémon aleatorio de coste 4.',p=>giveRandom(p,4)),
- A('campeon','G','Racha de Campeón','🏆','El oro por racha de victorias se duplica y cada victoria te cura 2 de vida.',p=>{p.mods.winStreakMult=2;p.mods.winHeal+=2;}),
- A('rocket2','G','Plan Rocket II','🚀','El oro por racha de derrotas se duplica. Recibes 6 de oro.',p=>{p.mods.lossStreakMult=2;p.gold+=6;}),
- A('paga','G','Día de Pago','💸','+3 de oro por cada victoria PvP. Recibes 4 de oro.',p=>{p.mods.winGold+=3;p.gold+=4;}),
- A('piedra','G','Piedra Evolutiva','💎','Recibes un Eevee. Tus Eevee evolucionan tras derrotar a 1 enemigo.',p=>{p.mods.eeveeKills=1; if(G.pool.eevee>0){G.pool.eevee--;giveUnitTo(p,'eevee');}}),
- A('medalla2','G','Medalla de Plata','🥈','+1 a la sinergia de la que tienes más Pokémon.',p=>{ const t=topTrait(p)||pick(Object.keys(TRAITS).filter(x=>x!=='Legendario')); p.mods.extraTrait[t]=(p.mods.extraTrait[t]||0)+1; note(p,`🥈 Medalla de Plata: +1 a ${t}`,true); }),
- A('amuleto3','P','Amuleto Moneda III','💰','+3 de oro al inicio de cada ronda. Recibes 10 de oro.',p=>{p.mods.income+=3;p.gold+=10;}),
- A('master','P','Master Ball','🟣','Recibes un Legendario aleatorio y 1 componente.',p=>{giveRandom(p,5);giveItem(p,pick(BASIC));}),
- A('recluta','P','Nuevo Recluta','➕','+1 espacio en el tablero para el resto de la partida.',p=>p.mods.boardBonus+=1),
- A('caramelos','P','Caramelos Raros','🍭','Subes 1 nivel y recibes 8 de EXP.',p=>{ if(p.level<10){p.level++;p.xp=0;} addXp(p,8); }),
- A('oculto','P','Poder Oculto','🌀','Tu equipo gana +18% de daño de ataque y +30 de poder.',p=>{p.mods.adPct+=.18;p.mods.ap+=30;}),
- A('cofre','P','Cofre del Profesor','🧰','Recibes 2 objetos completos aleatorios.',p=>{giveItem(p,pick(FULL_KEYS));giveItem(p,pick(FULL_KEYS));}),
- A('legado','P','Legado Legendario','👑','Tus Legendarios ganan +40% de vida y daño. Recibes un Legendario aleatorio.',p=>{p.mods.legend+=.4;giveRandom(p,5);}),
- A('vital3','P','Vitalidad III','💖','Tu equipo gana +20% de vida y recuperas 20 de vida de entrenador.',p=>{p.mods.hpPct+=.2;p.hp=Math.min(100,p.hp+20);}),
- A('ruleta3','P','Ruleta Pokémon III','🎰','3 tiendas gratis cada ronda.',p=>{p.mods.freeRerolls+=3;p.freeRerolls+=3;}),
-];
-const AUG_BY={}; for(const a of AUGS) AUG_BY[a.id]=a;
+// El catálogo de aumentos y su motor de efectos están en augments.js (se carga antes que este archivo)
 const TIER_NAME={S:'Plata',G:'Oro',P:'Prismático'};
 function rollAugTiers(){
  const a1=weighted([[26,'S'],[65,'G'],[9,'P']]);
@@ -890,8 +862,6 @@ function rollAugTiers(){
  const T3={S:{S:[[50,'G'],[50,'P']],G:[[71,'G'],[29,'P']],P:[[100,'P']]},G:{S:[[90,'G'],[10,'P']],G:[[65,'G'],[35,'P']],P:[[35,'S'],[59,'G'],[6,'P']]},P:{S:[[80,'G'],[20,'P']],G:[[67,'G'],[33,'P']],P:[[50,'G'],[50,'P']]}};
  return [a1,a2,weighted(T3[a1][a2])];
 }
-function augmentChoices(p,tier,n=3){ return shuffle(AUGS.filter(a=>a.tier===tier&&!p.augments.includes(a.id))).slice(0,n).map(a=>a.id); }
-function applyAugment(p,a){ p.augments.push(a.id); a.apply(p); note(p,`✨ Aumento ${TIER_NAME[a.tier]}: ${a.name}`); }
 
 /* ============================== [LOOT] ============================== */
 const ORBS={
@@ -973,6 +943,7 @@ function nextRound(){
    addXp(p,(idx<PASSIVE_XP.length?PASSIVE_XP[idx]:2)+(idx>0?p.mods.xpRound:0));
    p.gold+=income(p,idx).total;
    p.freeRerolls=p.mods.freeRerolls;
+   augFire(p,'roundStart',{idx});
    if(!p.locked) refreshShop(p); p.locked=false;
    if(idx===0) giveUnitTo(p,drawUnitOfCost(1));
  }
@@ -1017,6 +988,8 @@ function startCombat(){
  if(R.type==='pve') for(const p of alive) G.fights.push({a:p,b:null,pve:true});
  else G.fights=makeFights(alive);
  for(const f of G.fights) if(f.b===me&&!f.ghost) [f.a,f.b]=[f.b,f.a];
+ for(const p of alive) autoPicks(p);
+ for(const f of G.fights){ augFire(f.a,'combatStart',{pve:!!f.pve,opp:f.b?f.b.id:null}); if(f.b&&!f.ghost) augFire(f.b,'combatStart',{pve:false,opp:f.a.id}); }
  let myFight=null, maxRemote=0;
  for(const f of G.fights){
    const mine=f.a===me&&!me.isBot;
@@ -1085,7 +1058,7 @@ function resolveRound(){
    if(f.pve){
      const p=f.a, w=c.winner===0; won.set(p,w); addG(p,c.gold[0]);
      if(!w){ const d=base+survivors(c,1); p.hp-=d; p.lastDmg=d; }
-     const loot=pveLoot(p,R,w);
+     const loot=f.looted?f.loot:pveLoot(p,R,w);
      say(p,(w?'🐾 Ronda PvE superada':`🐾 Los salvajes te ganaron: −${p.lastDmg} de vida`)+(loot.length?' · Botín: '+loot.join(' · '):''));
      continue;
    }
@@ -1097,6 +1070,10 @@ function resolveRound(){
    say(A,c.winner===0?`✅ Victoria contra ${B.name}`:c.winner===1?`❌ Derrota contra ${B.name}: −${A.lastDmg} de vida`:`⏱️ Empate por tiempo con ${B.name}: −${A.lastDmg} de vida`);
    if(!f.ghost) say(B,c.winner===1?`✅ Victoria contra ${A.name}`:c.winner===0?`❌ Derrota contra ${A.name}: −${B.lastDmg} de vida`:`⏱️ Empate por tiempo con ${A.name}: −${B.lastDmg} de vida`);
  }
+ // Eventos de los aumentos, después de apuntar el resultado (una sola vez por combate)
+ for(const f of G.fights){ const c=f.c, sides=f.pve?[[f.a,0,null]]:[[f.a,0,f.b],...(f.ghost?[]:[[f.b,1,f.a]])];
+   for(const [p,side,o] of sides){ const w=c.winner===side, n=c.units.filter(u=>u.side===side&&!u.dead).length, k=c.units.filter(u=>u.side===side).reduce((a,u)=>a+u.kills,0);
+     augFire(p,w?'win':'lose',{pve:!!f.pve,opp:o?o.id:null,streak:p.streak}); augFire(p,'survive',{n}); augFire(p,'kills',{n:k}); if(!w) augFire(p,'damaged',{d:p.lastDmg||0}); augFire(p,'roundEnd',{won:w,pve:!!f.pve}); } }
  for(const p of alivePlayers()){ const tier=traitTiers(p)['Fortuna']||0; if(tier){ const g=[0,1,3][tier]+(won.get(p)?[0,1,2][tier]:0); p.gold+=g; extraGold[p.id]=(extraGold[p.id]||0)+g; } }
  for(const [p,m] of msgs) if(isHuman(p)) note(p,m,true);
  for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Fortuna y habilidades de oro: +${extraGold[p.id]} de oro`,true);
@@ -1162,7 +1139,9 @@ function applyAct(p,a){
   case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:'No puedes vender eso ahora'}; }
   case 'move': { const f=normLoc(a.from), to=normLoc(a.to); if(!f||!to) return {ok:false}; if((ph==='combat'||ph==='carousel')&&(f.b!==undefined||to.b!==undefined)) return {ok:false}; return {ok:moveTo(p,f,to)}; }
   case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
-  case 'orb': { if(ph==='combat') return {ok:false}; return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
+  case 'pick': return resolvePick(p,a.id|0,idx(a.i));
+  case 'tac': { if(!TACS[a.k]) return {ok:false}; p.tac=a.k; return {ok:true}; }
+  case 'orb': { return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
   case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,true); return r; }
   case 'rmitem': return {ok:false,why:'Para quitar objetos usa un 🧲 Imán Removedor'};
   case 'ready': if(ph==='planning') p.ready=true; return {ok:true};
@@ -1179,18 +1158,18 @@ const NET={mode:'sp',sock:null,rooms:[],owner:'',named:null,code:'',isHost:false
 const TOPICS=['act','pub','priv','cmb','car','start','lobby','bye'];
 function randomCode(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let s=''; for(let i=0;i<5;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
 function myPeerOf(room){ const me=room.peers().find(p=>p.sameTab); return me?me.peer:''; }
-function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills]; }
-function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0},kills:+a[6]||0}; }
+function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0]; }
+function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0},kills:+a[6]||0,goldGen:Math.max(0,+a[7]||0)}; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',p.isBot?1:0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',p.isBot?1:0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0)])};
 }
 function makePriv(p){
  const d={to:p.peer,id:p.id,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
-   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRerolled?1:0,lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier])};
+   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRerolled?1:0,lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier]),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)]))};
  if(JSON.stringify(d).length>3900){ d.lg=d.lg.slice(0,2); d.ts=d.ts.slice(-1); }
  return d;
 }
@@ -1296,7 +1275,7 @@ function startClient(){
  NET.mode='client'; closeModal(); NET.screen=''; $('menu').classList.add('hidden'); selected=null; selCombat=null; NET.shownOver=false; NET.lastToast=0;
  const me=makePlayer(-1,S.name,false,S.avatar,S.trainer);
  G={mirror:true,players:[me],me,phase:'idle',roundIdx:0,round:ROUNDS[0],timer:0,log:[],speed:1,pool:{},augTiers:['G','G','G'],diff:'normal',over:false,combat:null,acc:0,flip:false,myOpp:'',mp:true};
- updateNetTag(); renderUI();
+ updateNetTag(); renderUI(); showTacPick();
 }
 function applyPub(d){
  if(!d||!Array.isArray(d.pl)) return;
@@ -1305,9 +1284,9 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac]=r;
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
-   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null});
+   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac});
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)) unpackBoard(p,bd);
    list.push(p);
@@ -1334,6 +1313,8 @@ function applyPriv(d){
  const me=G.me;
  Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,MAX_ITEMS_BENCH)});
  me.mods=Object.assign(defaultMods(),d.md||{}); me.po=Array.isArray(d.po)?d.po.slice(0,8):null;
+ me.picks=d.pk&&Array.isArray(d.pk.opts)?[{id:+d.pk.id,src:String(d.pk.src),title:String(d.pk.title).slice(0,60),desc:String(d.pk.desc||'').slice(0,400),opts:d.pk.opts.slice(0,4).map(o=>({t:String(o.t).slice(0,60),i:String(o.i||'').slice(0,4),d:String(o.d||'').slice(0,200),v:String(o.v)}))}]:[];
+ me.augUi=d.ap&&typeof d.ap==='object'?d.ap:{};
  me.orbs=Array.isArray(d.ob)?d.ob.slice(0,12).filter(o=>Array.isArray(o)&&['gray','gold','prism'].includes(o[1])).map(([id,tier])=>({id:+id,tier,toks:[]})):[];
  const selUid=selected&&selected.uid;
  me.bench=Array(BENCH).fill(null).map((_,i)=>d.be&&d.be[i]?unpackInst(d.be[i]):null);
@@ -1505,7 +1486,7 @@ const itemColor=I=>I.tool?'#ff6a5f':I.emblem&&TRAITS[I.emblem]?TRAITS[I.emblem].
 function itemHTML(k,size){
  const I=ITEMS[k]; if(!I) return '';
  const art=itemSrc(k)&&getItemImg(k).status!=='fail';
- return `<span class="ii ${itemTier(I)}" style="--ic:${itemColor(I)}${size?`;--is:${size}px`:''}">${art?`<img src="${itemSrc(k)}" alt="${esc(I.name)}" data-fb="${esc(I.icon)}">`:`<i>${I.icon}</i>`}</span>`;
+ return `<span class="ii ${itemTier(I)}" style="--ic:${itemColor(I)}${size?`;--is:${size}px`:''}">${art?`<img src="${itemSrc(k)}" alt="${esc(I.name)}" data-fb="${esc(I.icon)}">`:I.emblem&&TRAIT_SVG[I.emblem]?`<i class="isvg">${traitIcon(I.emblem)}</i>`:`<i>${I.icon}</i>`}</span>`;
 }
 const trainerOf=p=>p&&TRAINER_BY[p.tr]?p.tr:'';
 function headHTML(p,size){ const t=typeof p==='string'?p:trainerOf(p); return t?`<span class="head em" style="--src:url('${TRAINER_SPRITE(t)}')${size?`;--hs:${size}px`:''}"></span>`:`<span class="head em">${esc(p&&p.emoji||'🧢')}</span>`; }
@@ -1678,13 +1659,13 @@ function drawTrainer(x0,y0,key,o={}){
  ctx.save();
  // peana
  const pr=s*.34, ring=o.ring||'#4c8dff';
- ctx.fillStyle='rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(x,y+s*.03,pr*1.1,pr*.36,0,0,7); ctx.fill();
+ if(!o.noSprite){ ctx.fillStyle='rgba(0,0,0,.32)'; ctx.beginPath(); ctx.ellipse(x,y+s*.03,pr*1.1,pr*.36,0,0,7); ctx.fill();
  const pg=ctx.createRadialGradient(x,y,0,x,y,pr); pg.addColorStop(0,ring); pg.addColorStop(1,'rgba(0,0,0,0)');
  ctx.globalAlpha=o.dim?.4:.85; ctx.fillStyle=pg; ctx.beginPath(); ctx.ellipse(x,y,pr,pr*.33,0,0,7); ctx.fill();
- ctx.strokeStyle=ring; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(x,y,pr,pr*.33,0,0,7); ctx.stroke();
+ ctx.strokeStyle=ring; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(x,y,pr,pr*.33,0,0,7); ctx.stroke(); }
  ctx.globalAlpha=o.dim?.55:1;
- const e=key?getTrImg(key):{status:'fail'};
- if(e.status==='ok'){
+ const e=key&&!o.noSprite?getTrImg(key):{status:'none'};
+ if(o.noSprite){} else if(e.status==='ok'){
    ctx.imageSmoothingEnabled=false; ctx.translate(x,y-lift); ctx.scale((o.face||1)*(2-sq),sq);
    ctx.drawImage(e.img,-s/2,-s*.96,s,s);
  } else {
@@ -1725,12 +1706,12 @@ function drawBoardTrainers(){
  const nm=s=>s.length>12?s.slice(0,11)+'…':s;
  // Abajo: tú (o el entrenador cuyo combate estás mirando). Arriba: su rival.
  const bottom=v?G.players.find(p=>p.id===v.pid)||me:me;
- myTrBox=drawTrainer(sp.me[0],sp.me[1],trainerOf(bottom),{s:sp.s,ring:bottom===me?'#4c8dff':'#ffd75e',label:nm(bottom.name),hp:bottom.hp,mode:bub?'cheer':mode,bubble:bub,emoji:bottom.emoji});
+ myTrBox=drawTrainer(bottom===me?TAC.x:sp.me[0],bottom===me?TAC.y:sp.me[1],trainerOf(bottom),{noSprite:true,s:sp.s,ring:bottom===me?'#4c8dff':'#ffd75e',label:nm(bottom.name),hp:bottom.hp,mode:bub?'cheer':mode,bubble:bub,emoji:bottom.emoji});
  if(cb&&G.round&&G.round.type!=='pve'){
    let opp=null, tr='', label='';
    if(v){ opp=v.opp; tr=trainerOf(opp); label=opp?nm(opp.name)+(v.ghost?' 👻':''):''; }
    else if(G.myOpp){ opp=G.players.find(p=>p!==me&&G.myOpp.replace(' (fantasma)','')===p.name); tr=G.myOppTr||trainerOf(opp); label=opp?nm(opp.name):nm(G.myOpp); }
-   if(label) drawTrainer(sp.opp[0],sp.opp[1],tr,{s:sp.s,ring:'#ef4b3a',label,hp:opp?opp.hp:undefined,mode:cb.done?(cb.winner===mySide?'sad':'cheer'):'idle',seed:1.3,face:-1,emoji:opp&&opp.emoji});
+   if(label) drawTrainer(sp.opp[0],sp.opp[1],tr,{noSprite:true,s:sp.s,ring:'#ef4b3a',label,hp:opp?opp.hp:undefined,mode:cb.done?(cb.winner===mySide?'sad':'cheer'):'idle',seed:1.3,face:-1,emoji:opp&&opp.emoji});
  }
 }
 const EMOTES=['¡Vamos!','😤','👍','¡Allá voy!','😎','GG','🔥','¿Eso es todo?'];
@@ -1762,9 +1743,10 @@ function updateCarousel(dt){
 /* ---------- eventos ---------- */
 function bindEvents(){
  document.addEventListener('pointerdown',()=>Music.init());
+ // La ficha de un Pokémon se cierra al tocar cualquier otra cosa (si se toca otro Pokémon, se abre la suya)
+ document.addEventListener('pointerdown',e=>{ if((selected||selCombat)&&!e.target.closest('#ucard')){ selected=null; selCombat=null; renderCard(); } },true);
  cv.addEventListener('pointerdown',e=>{
    if(!G||!G.players||!G.players.length) return; const [x,y]=canvasPos(e);
-   const ob=b3On()&&G.me.alive&&orbAt(); if(ob){ doAct({t:'orb',id:ob.id},()=>{ G.me.orbs=G.me.orbs.filter(o=>o.id!==ob.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } return; }
    if(hitMyTrainer(x,y)){ trEmote={t0:performance.now(),txt:pick(EMOTES)}; return; }
    if(G.phase==='carousel'&&G.carousel&&G.me.alive){
      const C=G.carousel, a=C.av[G.me.id];
@@ -1776,11 +1758,16 @@ function bindEvents(){
    if(hit){ drag={...hit,sx:x,sy:y,x,y,moved:false}; cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing'; }
  });
  cv.addEventListener('pointermove',e=>{
-   if(!inGame()) return; const [x,y]=canvasPos(e); hover=unitAt(x,y);
+   if(!G||!G.players.length) return; const [x,y]=canvasPos(e);
+   // Objetos dibujados sobre los Pokémon: al pasar el cursor se ve su descripción
+   if(!drag&&!itemDrag){ const hi=hudItems.find(h=>Math.abs(ptr[0]-h.x)<=h.s/2&&Math.abs(ptr[1]-h.y)<=h.s/2); if(hi){ if(tipCanvas!==hi.k){ showTip('item:'+hi.k,e); tipCanvas=hi.k; } else moveTip(e); } else if(tipCanvas){ tipCanvas=null; hideTip(); } }
+   if(!inGame()) return; hover=unitAt(x,y);
    if(drag){ drag.x=x; drag.y=y; if(Math.hypot(x-drag.sx,y-drag.sy)>6) drag.moved=true;
      const sell=drag.moved&&overShop(e); $('shopPanel').classList.toggle('sell',sell); if(sell) $('sellMsg').textContent=`Vender ${nameOf(DEF[drag.u.defId],drag.u.star)} por ${sellValue(drag.u)} de oro`; }
  });
  cv.addEventListener('pointerleave',()=>{ hover=null; });
+ cv.addEventListener('contextmenu',e=>{ e.preventDefault(); if(!G||!G.players.length||!G.me.alive||G.phase==='carousel'||(G.view&&G.view.board)) return;
+   const [x,y]=canvasPos(e), A=tacArea(); TAC.tx=clamp(x,A.x0,A.x1); TAC.ty=clamp(y,A.y0,A.y1); TAC.mark={x:TAC.tx,y:TAC.ty,t0:performance.now()}; });
  cv.addEventListener('pointerup',e=>{
    if(!drag) return; const me=G.me; const [x,y]=canvasPos(e); const d=drag; drag=null;
    $('shopPanel').classList.remove('sell'); cv.style.cursor='grab';
@@ -1792,18 +1779,17 @@ function bindEvents(){
  $('items').addEventListener('pointerdown',e=>{
    const el=e.target.closest('.item'); if(!el||!inGame()) return; e.preventDefault();
    itemDrag={idx:+el.dataset.i,sx:e.clientX,sy:e.clientY,moved:false,target:-1,t0:0}; $('ghost').innerHTML=itemHTML(G.me.items[itemDrag.idx],48);
-   setTimeout(holdTick,30);
  });
  window.addEventListener('pointermove',e=>{
    if(itemDrag){ if(Math.hypot(e.clientX-itemDrag.sx,e.clientY-itemDrag.sy)>5) itemDrag.moved=true;
      const g=$('ghost'); g.style.display=itemDrag.moved?'block':'none'; g.style.left=e.clientX+'px'; g.style.top=e.clientY+'px';
      if(itemDrag.moved){
-       // Encima de otro componente del inventario: hay que mantenerlo 1 s (círculo de carga) para combinarlos
+       // Encima de otro componente del inventario: vista previa del objeto que saldrá al soltar
        const el=document.elementFromPoint(e.clientX,e.clientY), it=el&&el.closest&&el.closest('#items .item'), j=it?+it.dataset.i:-1, res=j>=0?benchCombo(G.me,itemDrag.idx,j):null;
        document.querySelectorAll('#items .item.target').forEach(x=>{ if(x!==it) x.classList.remove('target'); });
        if((res?j:-1)!==itemDrag.target){ itemDrag.target=res?j:-1; itemDrag.t0=performance.now(); }
        if(res){ it.classList.add('target'); const I=ITEMS[res], t=$('tip'), sl=statLine(I.s); t.classList.remove('shopTip'); tipAnchor=null;
-         t.innerHTML=`<div class="combRes">${itemHTML(res,64)}<div><div class="scope">Mantén 1 segundo para crear</div><h4>${esc(I.name)}</h4></div></div>${sl?`<div class="scope">${sl}</div>`:''}<div>${I.desc}</div>`;
+         t.innerHTML=`<div class="combRes">${itemHTML(res,64)}<div><div class="scope">Suelta para crear</div><h4>${esc(I.name)}</h4></div></div>${sl?`<div class="scope">${sl}</div>`:''}<div>${I.desc}</div>`;
          t.style.display='block'; tipOn=true; }
        else hideTip();
      } }
@@ -1812,7 +1798,8 @@ function bindEvents(){
  window.addEventListener('pointerup',e=>{
    if(!itemDrag) return; const d=itemDrag; itemDrag=null; $('ghost').style.display='none'; const me=G.me;
    document.querySelectorAll('#items .item.target').forEach(x=>x.classList.remove('target')); hideTip();
-   if(!d.moved||d.target>=0) return; // soltarlo encima de otro objeto antes de tiempo no hace nada
+   if(!d.moved) return;
+   if(d.target>=0){ doAct({t:'icomb',a:d.idx,b:d.target},()=>combineBench(me,d.idx,d.target)); return; }
    const b=cv.getBoundingClientRect();
    if(e.clientX>=b.left&&e.clientX<=b.right&&e.clientY>=b.top&&e.clientY<=b.bottom){
      const [x,y]=canvasPos(e); const hit=unitAt(x,y);
@@ -1840,6 +1827,8 @@ function bindEvents(){
  document.querySelector('.sideTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
  document.querySelector('.dmgModes').addEventListener('click',e=>{ const b=e.target.closest('[data-m]'); if(!b) return; dmgMode=b.dataset.m; document.querySelectorAll('.dmgModes [data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderDmg(); });
  // Pantalla completa (el navegador puede negarse si no viene de un clic)
+ $('augBar').addEventListener('contextmenu',e=>{ e.preventDefault(); const b=$('augList'); b.hidden=!b.hidden; });
+ document.addEventListener('pointerdown',e=>{ if(!e.target.closest('#augList,#augBar')) $('augList').hidden=true; });
  $('fsBtn').addEventListener('click',()=>{ const d=document; try{ if(d.fullscreenElement) d.exitFullscreen(); else d.documentElement.requestFullscreen({navigationUI:'hide'}).catch(()=>toast('Tu navegador no permite la pantalla completa')); }catch(e){ toast('Tu navegador no permite la pantalla completa'); } });
  document.addEventListener('fullscreenchange',()=>{ $('fsBtn').textContent=document.fullscreenElement?'🗗':'⛶'; layout(); });
  $('ucard').addEventListener('click',e=>{
@@ -1899,10 +1888,10 @@ function tipHTML(spec){
    if(I.comp) h+=`<div class="units">Combina con: ${ORDER.map(o=>{ const r=ITEMS[combineKey(key,o)]; return `${ITEMS[o].name} → <b>${r.name}</b>`; }).join('<br>')}</div>`;
    return h;
  }
- if(type==='aug'){ const a=AUG_BY[key]; return a?`<h4>${a.icon} ${a.name}</h4><div class="scope">${TIER_NAME[a.tier]}</div><div>${a.desc}</div>`:''; }
+ if(type==='aug'){ const a=AUG_BY[key]; if(!a) return ''; const pg=G&&G.me&&G.me.augments.includes(key)?(G.mirror?(G.me.augUi||{})[key]:augProgress(G.me,key)):''; return `<h4>${a.icon} ${a.name}</h4><div class="scope">${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</div><div>${a.desc}</div>${pg?`<div class="units">${esc(pg)}</div>`:''}`; }
  return '';
 }
-let tipOn=false;
+let tipOn=false, tipCanvas=null;
 // Las fichas de las cartas de la tienda se anclan encima de la carta; el resto sigue al puntero
 let tipAnchor=null;
 function showTip(spec,e,el){ const h=tipHTML(spec); if(!h){ hideTip(); return; } const t=$('tip'); t.innerHTML=h; t.style.display='block'; tipOn=true;
@@ -1915,7 +1904,7 @@ function hideTip(){ if(!tipOn) return; tipOn=false; tipAnchor=null; $('tip').sty
 /* ---------- tablero 3D + capa 2D ---------- */
 // El tablero, los Pokémon y los efectos los pinta board3d.js (three.js). Aquí se le dice qué hay
 // en pantalla y encima se dibuja la capa 2D: barras, estrellas, objetos, textos y entrenadores.
-let ptr=[0,0], hudActors=[], myTrBox=null;
+let ptr=[0,0], hudActors=[], hudItems=[], myTrBox=null;
 const b3On=()=>!HEADLESS&&window.B3&&B3.ready;
 function b3Geo(){ const cells=[]; for(let r=0;r<8;r++) for(let c=0;c<7;c++) cells.push(cellXY(c,r)); return {...geo,cells,bench:[...Array(BENCH)].map((_,i)=>benchXY(i))}; }
 function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready) B3.init($('gl')); B3.resize(b3Geo(),window.devicePixelRatio||1,view); }
@@ -1934,19 +1923,22 @@ function pickActor(test){
 function drawItemBadge(k,x,y,sz){
  const I=ITEMS[k]; if(!I) return;
  ctx.save(); const col=itemColor(I);
- ctx.fillStyle='rgba(8,12,30,.85)'; rrPath(ctx,x-sz/2,y-sz/2,sz,sz,sz*.25); ctx.fill(); ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
+ const g=ctx.createRadialGradient(x,y-sz*.1,0,x,y,sz*.7); g.addColorStop(0,col); g.addColorStop(1,'#0a0f22'); ctx.fillStyle='#05070f'; ctx.fillRect(x-sz/2-1.5,y-sz/2-1.5,sz+3,sz+3); ctx.globalAlpha=.85; ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
  const e=getItemImg(k);
- if(e.status==='ok'){ ctx.imageSmoothingEnabled=false; ctx.drawImage(e.img,x-sz*.42,y-sz*.42,sz*.84,sz*.84); }
+ if(e.status==='ok'){ ctx.imageSmoothingEnabled=false; ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
  ctx.restore();
 }
 // Barras al estilo TFT encima de la cabeza: vida con marcas cada 300 PS y maná debajo (brilla cuando va a lanzar)
 function drawHud(a){
  if(!a.anchor||a.dead) return;
- const R=geo.R, o=a.hud, [bx0,by0]=a.base; let [hx,hy]=a.anchor;
+ const R=geo.R, o=a.hud; let [hx,hy]=a.anchor;
+ // Como en TFT: barra arriba y, debajo, la fila de objetos; las estrellas encima de todo
+ const isz=o.items&&o.items.length?Math.max(14,R*.5):0; let itemsY=hy-isz-4;
  ctx.save();
  if(o.hp!==undefined){
-   const w=R*1.45, bx=Math.round(hx-w/2), hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6);
+   const w=R*1.45, bx=Math.round(hx-w/2), hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+3:0));
+   itemsY=by+hh+(hasM?mh+1:0)+3;
    ctx.fillStyle='rgba(10,12,24,.85)'; ctx.fillRect(bx-1.5,by-1.5,w+3,hh+(hasM?mh+1:0)+3);
    ctx.fillStyle=o.mine?'#3fd27a':'#ff5a5f'; ctx.fillRect(bx,by,w*clamp(o.hp/o.maxHp,0,1),hh);
    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(bx,by,w*clamp(o.hp/o.maxHp,0,1),hh*.35);
@@ -1954,24 +1946,34 @@ function drawHud(a){
    ctx.fillStyle='rgba(10,12,24,.7)'; for(let k=300;k<o.maxHp;k+=300){ const tx=bx+w*k/o.maxHp; ctx.fillRect(tx,by,1,k%1500?hh*.55:hh); }
    if(hasM){ const full=o.mana>=o.maxMana*.9; ctx.fillStyle='#1b2a48'; ctx.fillRect(bx,by+hh+1,w,mh); ctx.fillStyle=full?`hsl(205,100%,${70+15*Math.sin(performance.now()/90)}%)`:'#4aa3ff'; ctx.fillRect(bx,by+hh+1,w*clamp(o.mana/o.maxMana,0,1),mh); }
    hy=by;
- }
+ } else if(isz) hy=itemsY;
  if(!o.creep&&o.star){
    ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
    const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
  }
- if(o.items&&o.items.length){ const sz=Math.max(12,R*.42); o.items.forEach((it,i)=>drawItemBadge(it,bx0+(i-(o.items.length-1)/2)*sz*1.1,by0+R*.35,sz)); }
+ if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*(sz+2); drawItemBadge(it,ix,iy,sz); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
 }
 // Posición en pantalla y tamaño de un entrenador colocado en (x,y) del tablero con altura s (px de tablero)
 function trScreen(x,y,s){ const [sx,sy]=scr(x,y,0), [,ty]=scr(x,y,s*1.35/geo.R); return [sx,sy,Math.max(10,sy-ty)]; }
 // Qué se ve en cada momento: lista de Pokémon para board3d.js
+// Tu minileyenda: se mueve con clic derecho por tu mitad del tablero y recoge los orbes al pasar por encima
+const TAC={g:null,x:0,y:0,tx:null,ty:null,mark:null,picked:new Set()};
+function tacArea(){ const R=geo.R; return {x0:geo.pad,x1:geo.W-geo.pad,y0:cellXY(0,4)[1]-R*.9,y1:benchXY(0)[1]+geo.bs*.5+R*.5}; }
+function stepTac(dt){
+ if(!G||!G.players.length||!geo.W) return;
+ if(TAC.g!==G){ const sp=trainerSpots().me; Object.assign(TAC,{g:G,x:sp[0],y:sp[1],tx:null,ty:null,mark:null}); TAC.picked.clear(); }
+ if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), st=geo.R*3.6*dt;
+   if(d<=st){ TAC.x=TAC.tx; TAC.y=TAC.ty; TAC.tx=null; } else { TAC.x+=dx/d*st; TAC.y+=dy/d*st; } }
+ if(!G.me.alive||G.phase==='carousel') return;
+ for(const o of orbList()) if(!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){ TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } }
+}
 // Orbes en tu mitad del tablero, en casillas fijas según su número
 function orbList(){
- if(!G.me.orbs||!G.me.orbs.length||G.phase==='combat'||G.phase==='carousel'||(G.view&&G.view.board)) return [];
+ const cbm=G.phase==='combat'&&G.combat; if(!G.me.orbs||!G.me.orbs.length||(cbm&&!cbm.done)||G.phase==='carousel'||(G.view&&G.view.board)) return [];
  return G.me.orbs.map((o,i)=>{ const [x,y]=cellXY([1,5,3,0,6,2,4][i%7],4+(i*3)%4); return {id:o.id,tier:o.tier,x,y}; });
 }
-function orbAt(){ const [px,py]=ptr; let best=null,bd=geo.R*.95; for(const o of orbList()){ const [sx,sy]=B3.project(o.x,o.y,.7); const d=Math.hypot(px-sx,py-sy); if(d<bd){ bd=d; best=o; } } return best; }
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
  if(inCombat){
@@ -1990,6 +1992,13 @@ function sceneActors(){
      A.push({key:u,u,loc:{b:k},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
    if(G.preview&&G.phase==='planning') for(const cr of G.preview){ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:cr,dex:cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:1,hud:{creep:true}}); }
  }
+ // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
+ if(!inCar){ const v=G.view, bottom=v?G.players.find(p=>p.id===v.pid)||me:me, sp=trainerSpots();
+   const bx=bottom===me?TAC.x:sp.me[0], by=bottom===me?TAC.y:sp.me[1];
+   A.push({key:'tac:'+bottom.id,tac:true,dex:tacDex(bottom),star:bottom.level>=6?2:1,x:bx,y:by,face:Math.PI*.85,ring:bottom===me?'#4c8dff':'#ffd75e',scale:.72,hud:{}});
+   const opp=inCombat&&G.round&&G.round.type!=='pve'?(v?v.opp:G.players.find(p=>p!==me&&G.myOpp&&G.myOpp.replace(' (fantasma)','')===p.name)):null;
+   if(opp) A.push({key:'tac:'+opp.id,tac:true,dex:tacDex(opp),star:opp.level>=6?2:1,x:sp.opp[0],y:sp.opp[1],face:-Math.PI*.15,ring:'#ef4b3a',scale:.72,hud:{}}); }
+ else { const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:p.level>=6?2:1,x:a.x,y:a.y+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  benchOf.bench.forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
@@ -2006,9 +2015,10 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')) return;
  const A=playing?sceneActors():[];
  B3.render({arena:playing?bgKind():'stadium',actors:A,orbs:playing?orbList():[],fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
- hudActors=A;
+ hudActors=A; hudItems=[];
  if(!playing) return;
  if(inCar) drawCarouselHud(); else drawBoardTrainers();
+ if(TAC.mark){ const k=(performance.now()-TAC.mark.t0)/500; if(k>=1) TAC.mark=null; else { const [mx,my]=scr(TAC.mark.x,TAC.mark.y,0), [,my2]=scr(TAC.mark.x,TAC.mark.y+geo.R*.5,0); ctx.save(); ctx.globalAlpha=1-k; ctx.strokeStyle='#7fe0ff'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(mx,my,geo.R*(.25+k*.35),Math.max(3,(my2-my)*(.5+k*.7)),0,0,7); ctx.stroke(); ctx.restore(); } }
  // De atrás adelante: si las barras se solapan, la del Pokémon más cercano queda encima
  for(const a of A.filter(a=>a.base).sort((p,q)=>p.base[1]-q.base[1])) drawHud(a);
  if(inCombat) drawFxHud(viewCombat());
@@ -2040,7 +2050,7 @@ function drawCarouselHud(){
    return {p,a,x,y}; }).filter(Boolean).sort((u,v)=>u.y-v.y);
  for(const {p,a,x,y} of list){
    const locked=!a.rel&&!a.done, mine=p===G.me;
-   const [sx,sy,ss]=drawTrainer(x,y+R*.35,trainerOf(p),{s:R*1.7,ring:mine?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',face:a.face||1,mode:a.moving?'run':a.done?'cheer':'idle',seed:p.id*.7,dim:locked,label:(p.name.length>10?p.name.slice(0,9)+'…':p.name)+(locked?' 🔒':''),emoji:p.emoji});
+   const [sx,sy,ss]=drawTrainer(x,y+R*.35,trainerOf(p),{noSprite:true,s:R*1.7,ring:mine?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',face:a.face||1,mode:a.moving?'run':a.done?'cheer':'idle',seed:p.id*.7,dim:locked,label:(p.name.length>10?p.name.slice(0,9)+'…':p.name)+(locked?' 🔒':''),emoji:p.emoji});
    if(a.carry&&DEF[a.carry.key]){ const e=getImg(dexOf(DEF[a.carry.key],1)); const s=ss*.65; if(e.status==='ok'){ ctx.imageSmoothingEnabled=false; ctx.drawImage(e.img,sx+ss*.1,sy-ss*.95-s*.5,s,s); } }
  }
  const myIdx=C.order.indexOf(G.me), myAv=C.av[G.me.id];
@@ -2079,6 +2089,8 @@ function stepVisual(dt,isHost){
  const cb=G.combat;
  if(cb&&!cb.done){ if(isHost&&document.hidden) simulate(cb); else { G.acc+=dt*G.speed; let n=0; while(G.acc>=DT&&n++<200){ stepCombat(cb); G.acc-=DT; if(cb.done) break; } } }
  if(cb){ for(const f of cb.fx) f.t+=dt*Math.min(G.speed,2); cb.fx=cb.fx.filter(f=>f.t<f.life); }
+ // Botín de los salvajes: los orbes caen al acabar el combate, antes de que termine la ronda
+ if(isHost) for(const f of G.fights||[]) if(f.pve&&!f.looted&&f.c&&f.c.done&&isHuman(f.a)){ f.looted=true; f.loot=pveLoot(f.a,G.round,f.c.winner===0); renderUI(); }
  // El combate que estás mirando avanza al mismo ritmo que el tuyo
  const v=G.view&&G.view.cb?G.view:null;
  if(v){ if(!v.cb.done){ v.acc+=dt*G.speed; let n=0; while(v.acc>=DT&&n++<200){ stepCombat(v.cb); v.acc-=DT; if(v.cb.done) break; } }
@@ -2086,6 +2098,7 @@ function stepVisual(dt,isHost){
  if(isHost&&!G.resolving&&(!cb||cb.done)&&(!v||v.cb.done)&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,cb?900:300); }
 }
 function frame(){
+ const fnow=performance.now(), fdt=Math.min(.1,(fnow-(frame.t||fnow))/1000); frame.t=fnow; stepTac(fdt);
  if(G) draw();
  try{ Scene.frame(performance.now()); }catch(e){ /* la escena del menú nunca debe parar el bucle del juego */ }
  if(G&&G.players&&G.players.length){ renderFeed();
@@ -2106,7 +2119,7 @@ function planStats(u){
  if(!s){ try{ const cu=makeCombatUnit(u,G.me,statsCache.tt,0); s={maxHp:cu.maxHp,mana:cu.mana,maxMana:cu.maxMana}; }catch(e){ s={maxHp:1,mana:0,maxMana:99999}; } statsCache.m.set(u.uid,s); }
  return s;
 }
-function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); }
+function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); if(G.me.picks&&G.me.picks.length&&!modalOpen()) setTimeout(showPick,0); }
 function updatePhase(){
  let t='';
  switch(G.phase){
@@ -2164,18 +2177,20 @@ function renderShop(){
  $('xpbar').style.width=me.level>=10?'100%':(me.xp/XP_NEED[me.level]*100)+'%';
  $('gold').textContent=me.gold;
  $('odds').innerHTML=SHOP_ODDS[me.level].map((o,i)=>`<span style="color:${COST_HEX[i]}" title="Coste ${i+1}">${o}%</span>`).join('');
- $('xpBtn').disabled=me.gold<4||me.level>=10||!me.alive;
+ $('xpBtn').disabled=me.gold<xpCost(me)||me.level>=10||!me.alive; $('xpBtn').querySelector('span').textContent=`${xpCost(me)} de oro`;
  $('rerollBtn').innerHTML=me.freeRerolls>0?`<b>🔄 Gratis</b><span>quedan ${me.freeRerolls}</span>`:'<b>🔄 Tienda</b><span>2 de oro</span>';
  $('rerollBtn').disabled=(me.freeRerolls<=0&&me.gold<2)||!me.alive;
  $('lockBtn').textContent=me.locked?'🔒':'🔓'; $('lockBtn').setAttribute('aria-pressed',me.locked);
- const owned={}; for(const u of allUnits(me)) if(u.star===1) owned[u.baseId]=(owned[u.baseId]||0)+1;
+ const owned={}, have=new Set(); for(const u of allUnits(me)){ have.add(u.baseId); if(u.star===1) owned[u.baseId]=(owned[u.baseId]||0)+1; }
  // Solo se rehacen las cartas si cambia algo (así no parpadean los retratos)
- const key=me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0):'_').join();
+ const key=me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0)+(have.has(k)?'h':''):'_').join();
  if(key!==renderShop.key){ renderShop.key=key;
+   // Precarga los modelos 3D de la tienda y de la siguiente evolución de lo que tienes, para que no haya esperas
+   if(window.B3&&B3.preload) B3.preload([...me.shop.filter(k=>k&&DEF[k]).map(k=>dexOf(DEF[k],1)),...allUnits(me).map(u=>dexOf(DEF[u.defId],Math.min(3,u.star+1)))]);
    $('cards').innerHTML=me.shop.map((k,i)=>{
      if(!k||!DEF[k]) return `<div class="card empty"></div>`;
      const d=DEF[k], can=canBuy(me,i)&&me.alive;
-     return `<button class="card c${d.cost} ${can?'':'off'} ${owned[k]?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
+     return `<button class="card c${d.cost} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
        <span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>
        ${owned[k]?`<span class="own">${owned[k]}/3</span>`:''}
        <span class="cn">${d.name}</span>
@@ -2203,7 +2218,7 @@ function renderTraits(){
    return r.tier?`<div class="trait ${traitClass(Tr,r.tier)}" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc">${r.n}</span><span class="tn">${r.t}<div class="tb">${Tr.bp.map(b=>r.n>=b?`<b>${b}</b>`:b).join(' › ')}</div></span></div>`
      :`<div class="trait off" data-tip="trait:${r.t}" tabindex="0"><span class="ti">${traitIcon(r.t)}</span><span class="tc"></span><span class="tn">${r.t}<div class="tb">${r.n} / ${next}</div></span></div>`;
  }).join(''):'<p class="muted small">Coloca Pokémon en el tablero para activar sinergias. Pasa el cursor por una sinergia para ver qué le da a tu equipo.</p>';
- $('augWrap').innerHTML=G.me.augments.length?`<h2 style="margin-top:12px">Aumentos</h2><div class="augs">${G.me.augments.map(id=>{const a=AUG_BY[id];return a?`<span class="aug tier${a.tier}" data-tip="aug:${a.id}">${a.icon}</span>`:'';}).join('')}</div>`:'';
+ renderAugs();
 }
 // Avisos de subida de estrellas: se ven unos segundos junto al nombre
 const UPS={}, UP_MS=12000;
@@ -2211,6 +2226,16 @@ function upBadge(p){
  const u=p.lastUp; if(!u||p===G.me) return ''; const [dex,star,seq]=u, now=performance.now();
  let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderPlayers(); },UP_MS+50); }
  return now-r.t<UP_MS?`<span class="upb s${star}" title="Subió un Pokémon a ${star} estrellas"><img src="${SPRITE(dex)}" alt=""><b>${'★'.repeat(star)}</b></span>`:'';
+}
+// Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
+function renderAugs(){
+ const list=viewedPlayer().augments.map(id=>AUG_BY[id]).filter(Boolean), bar=$('augBar'), box=$('augList');
+ $('augWrap').innerHTML=''; bar.hidden=!list.length; if(!list.length) box.hidden=true;
+ document.getElementById('boardWrap').style.setProperty('--augTop',($('items').offsetHeight+10)+'px');
+ bar.innerHTML=list.map(a=>`<span class="aug tier${a.tier}" data-tip="aug:${a.id}">${a.icon}</span>`).join('');
+ const P=viewedPlayer(), prog=id=>P===G.me&&G.mirror?(G.me.augUi||{})[id]||'':augProgress(P,id);
+ box.innerHTML='<h4>Aumentos</h4>'+list.map(a=>`<div class="augRow tier${a.tier}" data-tip="aug:${a.id}"><span class="aug tier${a.tier}">${a.icon}</span><span><b>${esc(a.name)}</b><small>${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</small>${prog(a.id)?`<em>${esc(prog(a.id))}</em>`:''}</span></div>`).join('')
+   +`<div class="augMeta">${P.streak>=2?`🔥 Racha de ${P.streak} victorias`:P.streak<=-2?`🧊 Racha de ${-P.streak} derrotas`:'Sin racha'} · Nivel ${P.level} · ${P.gold} de oro</div>`;
 }
 function renderPlayers(){
  const list=G.players.slice().sort((a,b)=>(b.alive-a.alive)||b.hp-a.hp||(a.place-b.place));
@@ -2233,8 +2258,9 @@ function renderItems(){
  const me=G.me, slots=window.matchMedia&&matchMedia('(min-width:1101px)').matches;
  const key=me.items.join()+'|'+slots;
  if(key===renderItems.last&&$('items').childElementCount) return; renderItems.last=key;
- const it=me.items.map((k,i)=>`<div class="item" data-i="${i}" data-tip="item:${k}" tabindex="0">${itemHTML(k)}</div>`).join('');
- $('items').innerHTML=slots?it+'<span class="islot"></span>'.repeat(Math.max(0,MAX_ITEMS_BENCH-me.items.length)):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
+ const groups=[]; me.items.forEach((k,i)=>{ const g=ITEMS[k]&&ITEMS[k].tool&&groups.find(x=>x.k===k); if(g) g.n++; else groups.push({k,i,n:1}); });
+ const it=groups.map(g=>`<div class="item" data-i="${g.i}" data-tip="item:${g.k}" tabindex="0">${itemHTML(g.k)}${g.n>1?`<b class="icount">×${g.n}</b>`:''}</div>`).join('');
+ $('items').innerHTML=slots?it+'<span class="islot"></span>'.repeat(Math.max(0,MAX_ITEMS_BENCH-groups.length)):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
 }
 // Registro de daño: daño hecho, daño recibido y curación (con escudos) de cada Pokémon del último combate
 let dmgMode='dmg', statsCb=null, statsSide=0, sideTab='pl', lastDmgT=0;
@@ -2246,14 +2272,6 @@ function renderDmg(){
  $('dmgTitle').textContent=(G.phase==='combat'?'Combate en curso':'Último combate')+' · '+{dmg:'daño infligido',tank:'daño recibido (con escudos)',heal:'curación y escudos dados'}[dmgMode];
  $('dmgList').innerHTML=us.map(({u,v})=>`<div class="dmgRow ${dmgMode}" style="--cc:${u.creep?'#8a8a8a':COST_HEX[(u.d.cost||1)-1]}"><span class="pic">${portraitImg(u.creep?u.d.dex:dexOf(u.d,u.star))}</span>
    <div><div class="nm"><span>${esc(u.name)} ${u.creep?'':'★'.repeat(u.star)}</span><b>${v}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div></div>`).join('');
-}
-// Combinación en la banca: el círculo se llena en 1 s y entonces se crea el objeto
-function holdTick(){
- const d=itemDrag; if(!d) return;
- const el=d.target>=0&&document.querySelector(`#items .item[data-i="${d.target}"]`);
- if(el){ const p=Math.min(1,(performance.now()-d.t0)/1000); el.style.setProperty('--p',p);
-   if(p>=1){ const me=G.me; itemDrag=null; $('ghost').style.display='none'; el.classList.remove('target'); hideTip(); doAct({t:'icomb',a:d.idx,b:d.target},()=>combineBench(me,d.idx,d.target)); return; } }
- setTimeout(holdTick,30);
 }
 function setSideTab(t){ sideTab=t; document.querySelectorAll('.sideTabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); $('tabPl').hidden=t!=='pl'; $('tabDmg').hidden=t!=='dmg'; $('tabLog').hidden=t!=='log'; renderDmg(); }
 function renderLog(){ $('log').innerHTML=G.log.slice(0,16).map(l=>`<li>${esc(l)}</li>`).join(''); }
@@ -2271,6 +2289,7 @@ function renderCard(){
  const stats=[['❤️ Vida',live?`${R0(cu.hp)}/${R0(cu.maxHp)}`:R0(cu.maxHp)],['⚔️ Ataque',R0(cu.ad)],['⚡ Vel. ataque',cu.as.toFixed(2)],['🎯 Alcance',cu.range],['🛡️ Defensa',R0(cu.df)],['🔰 Resistencia',R0(cu.mr)],['✨ Poder',R0(cu.ap)],['💧 Maná',`${R0(cu.mana)}/${cu.maxMana>=9999?'—':cu.maxMana}`],['💥 Crítico',R0(cu.critC*100)+'%'],['🌀 Esquiva',R0(cu.dodge*100)+'%']];
  const evo=d.names&&!d.evoOf?`<div class="uc-evo">${[1,2,3].map(s=>`<div class="f ${s===star?'on':''}" data-tip="form:${d.key}|${s}">${spriteHTML(d,40,s)}<b>${'★'.repeat(s)}</b>${esc(nameOf(d,s))}<span class="muted">${esc(abOf(d,s)[1])}</span></div>`).join('')}</div>`:'';
  const items=inst?`<div class="uc-items">${[0,1,2].map(i=>{ const it=inst.items[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}</div>`; }).join('')}</div>`:(cu.items.length?`<div>${cu.items.map(i=>ITEMS[i]?`<span class="chip" data-tip="item:${i}">${itemHTML(i,18)} ${ITEMS[i].name}</span>`:'').join('')}</div>`:'');
+ const gab=abOf(d,star), goldLine=inst&&gab[2]&&gab[2].g?`<p class="small goldGen">💰 Oro generado por ${esc(gab[1])}: <b>${inst.goldGen||0}</b></p>`:'';
  const extra=inst&&inst.defId==='eevee'?`<p class="small">🌀 Evoluciona al derrotar ${me.mods.eeveeKills} enemigos: <b>${Math.min(inst.kills,me.mods.eeveeKills)}/${me.mods.eeveeKills}</b></p>`:'';
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad)?`<p class="small">♾️ Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque</p>`:'';
  el.innerHTML=`<div class="uc-head">${spriteHTML(d,64,star)}<div><div class="uc-name">${esc(cu.name)} <span style="color:${star===3?'#d9a400':star===2?'#8e9bb0':'#b07a45'}">${'★'.repeat(star)}</span></div><div class="uc-sub">${who}</div></div><button class="uc-x" aria-label="Cerrar ficha">✕</button></div>
@@ -2278,7 +2297,7 @@ function renderCard(){
   <div>${traits.map(t=>TRAITS[t]?`<span class="chip" data-tip="trait:${t}">${TRAITS[t].icon} ${t}</span>`:'').join('')}</div>
   <div class="uc-ab"><div class="t">${esc(ab[1])}</div><div class="m">${KIND_NAME[ab[0]]} · se lanza al llenar el maná (${cu.maxMana>=9999?'—':cu.maxMana})</div><p>${abDesc(ab,P,star)}</p></div>
   <div class="uc-stats">${stats.map(([a,b])=>`<div><span>${a}</span><b>${b}</b></div>`).join('')}</div>
-  ${evo}${items}${extra}${stk}
+  ${goldLine}${evo}${items}${extra}${stk}
   ${inst?`<button class="btn sm" id="ucSell">Vender por ${sellValue(inst)} de oro</button>`:''}`;
  hydrate(el);
 }
@@ -2286,6 +2305,15 @@ function renderCard(){
 /* ---------- modales ---------- */
 function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">✕</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
+// Elegir minileyenda al empezar la partida (se recuerda en este navegador)
+function savedTac(){ try{ const k=localStorage.getItem('pt_tac'); return TACS[k]?k:''; }catch(e){ return ''; } }
+function showTacPick(){
+ const cur=savedTac()||G.me.tac;
+ openModal(`<h1>Elige tu minileyenda</h1><p class="muted">Te acompaña en el tablero: muévela con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. A nivel 6 evoluciona.</p>
+  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k], u=window.B3&&B3.portrait?B3.portrait(t.dex[0],v=>{ const im=document.querySelector(`.tacOpt[data-k="${k}"] img`); if(im&&v) im.src=v; }):null;
+    return `<button class="tacOpt ${k===cur?'on':''}" data-k="${k}"><span class="art bg-${elemOf(DEF[k])}"><i class="fx"></i></span><img src="${u||SPRITE(t.dex[0])}" alt=""><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>`,{closable:false});
+ $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; try{ localStorage.setItem('pt_tac',k); }catch(e){} doAct({t:'tac',k},()=>{ G.me.tac=k; }); G.me.tac=k; closeModal(); });
+}
 function showDifficulty(){
  openModal(`<h1>Contra bots</h1><p class="muted">7 entrenadores rivales. Elige la dificultad.</p>
  <div class="diffs">
@@ -2293,7 +2321,7 @@ function showDifficulty(){
   <button class="choice" data-d="normal"><span class="big">⚔️</span><b>Normal</b><span class="small">Juegan una economía estándar y buscan sinergias.</span></button>
   <button class="choice" data-d="dificil"><span class="big">🔥</span><b>Difícil</b><span class="small">Refrescan más, suben de nivel antes y gastan mejor cuando tienen poca vida.</span></button>
  </div>`,{closable:true});
- $('mbox').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ S.diff=b.dataset.d; saveSettings(); closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:S.diff}); });
+ $('mbox').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ S.diff=b.dataset.d; saveSettings(); closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:S.diff}); showTacPick(); });
 }
 function showHow(){
  openModal(`<h1>Cómo jugar</h1>
@@ -2301,7 +2329,7 @@ function showHow(){
  <h3>Habilidades</h3><ul class="help"><li>Cada Pokémon llena su barra azul de maná al atacar y recibir golpes. Al llenarla lanza su habilidad: verás el nombre sobre él, el efecto en el tablero y una línea en «Habilidades en este combate».</li><li>Toca cualquier Pokémon (también los rivales en pleno combate) para ver su ficha completa a la derecha.</li></ul>
  <h3>Economía</h3><ul class="help"><li>Ingreso por ronda: 0 · 2 · 3 en la fase 1, 4 en la 2-1 y 5 desde entonces.</li><li>Interés: +1 por cada 10 de oro (máx. 5). Rachas de 2+ victorias o derrotas dan +1 a +3.</li></ul>
  <h3>Pokémon</h3><ul class="help"><li>3 copias = 2★ y evoluciona con una habilidad nueva. 3 de 2★ = 3★. A 3★ deja de salir en tu tienda.</li><li>Eevee acumula vida y ataque para siempre y evoluciona al derrotar enemigos.</li></ul>
- <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, mantén un componente 1 segundo sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el 🧲 Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
+ <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, suelta un componente sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el 🧲 Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
  <h3>Multijugador</h3><ul class="help"><li>Crea una sala, comparte el código y empieza cuando quieras: los asientos vacíos los ocupan bots.</li></ul>
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · toca a tu entrenador para saludar</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Entrenadores: Pokémon Showdown. Música original.</p>`,{closable:true});
@@ -2337,12 +2365,23 @@ function confirmQuit(){
 function showAugment(){
  const me=G.me; if(!me.augChoices||!me.augChoices.length) return;
  const R=G.round, tier=G.augTiers[R.aug]||'G', choices=me.augChoices.map(id=>AUG_BY[id]).filter(Boolean);
- NET.augKey=me.augChoices.join();
- openModal(`<h1>Aumento ${R.aug+1} de 3</h1><p><span class="tierTag tier${tier}">${TIER_NAME[tier]}</span> Elige una mejora permanente. Todos los entrenadores reciben aumentos del mismo nivel en esta ronda.</p>
- <div class="choices">${choices.map((a,i)=>`<button class="choice tier${a.tier}" data-i="${i}"><span class="big">${a.icon}</span><b>${a.name}</b><span class="small">${a.desc}</span></button>`).join('')}</div>
- ${me.augRerolled?'':'<button class="btn" id="augReroll">Cambiar opciones (1 vez)</button>'}`,{kind:'aug'});
- $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const a=choices[+b.dataset.i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i:+b.dataset.i},()=>{ me.augChoices=null; }); });
+ NET.augKey=me.augChoices.join(); let sel=-1;
+ openModal(`<h1>Aumento ${R.aug+1} de 3</h1><p><span class="tierTag tier${tier}">${TIER_NAME[tier]}</span> Elige una estrategia para el resto de la partida y confírmala. ${AUG_ROUNDS_INFO}</p>
+ <div class="augCards">${choices.map((a,i)=>{ const fits=augFits(me,a); return `<button class="augCard tier${a.tier}" data-i="${i}" aria-pressed="false">
+   <span class="acTop"><span class="acIco">${a.icon}</span><span><b>${esc(a.name)}</b><small>${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</small></span></span>
+   <span class="acDesc">${esc(a.desc)}</span>
+   ${a.ex?`<span class="acReq">No se combina con otros de su grupo</span>`:''}
+   ${fits.length?`<span class="acFit">Encaja con: ${fits.map(t=>traitIcon(t)+' '+t).join(' · ')}</span>`:''}</button>`; }).join('')}</div>
+ <div class="row" style="justify-content:flex-end;gap:10px;margin-top:10px">${me.augRerolled?'':'<button class="btn" id="augReroll">Cambiar opciones (1 vez)</button>'}<button class="btn gold" id="augOk" disabled>Confirmar</button></div>`,{kind:'aug'});
+ $('mbox').querySelectorAll('.augCard').forEach(b=>b.onclick=()=>{ sel=+b.dataset.i; $('mbox').querySelectorAll('.augCard').forEach(x=>x.setAttribute('aria-pressed',x===b)); $('augOk').disabled=false; });
+ $('augOk').onclick=()=>{ if(sel<0) return; const a=choices[sel]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i:sel},()=>{ me.augChoices=null; }); };
  if($('augReroll')) $('augReroll').onclick=()=>{ doAct({t:'augrr'},()=>{ me.augRerolled=true; }); if(NET.mode!=='client') showAugment(); };
+}
+// Elecciones pendientes de los aumentos (emblemas, recompensas, Llamada al Caos…)
+function showPick(){
+ const pk=G.me.picks&&G.me.picks[0]; if(!pk||modalOpen()) return;
+ openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>`<button class="choice" data-i="${i}"><span class="big">${esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`).join('')}</div>`,{kind:'pick'});
+ $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
 }
 function showEvolve(u,done){
  const opts=shuffle(EVOS.slice()).slice(0,3);
@@ -2362,7 +2401,7 @@ function showGameOver(){
  <p>${won?'Eres el último entrenador en pie.':`Puesto ${me.place||'—'} de 8.`} Ronda ${G.round?G.round.s+'-'+G.round.n:'—'} · nivel ${me.level}.</p>
  <p class="small muted">Aumentos: ${me.augments.map(id=>AUG_BY[id]?AUG_BY[id].name:'').filter(Boolean).join(', ')||'ninguno'}</p>
  <div style="display:flex;gap:8px;flex-wrap:wrap">${NET.mode==='sp'?'<button class="btn primary" id="againBtn">Jugar otra vez</button>':''}${NET.mode==='client'&&!G.over?'<button class="btn" id="watchBtn">Seguir mirando</button>':''}<button class="btn" id="toMenu">Menú principal</button></div>`,{kind:'over'});
- if($('againBtn')) $('againBtn').onclick=()=>{ closeModal(); selected=null; selCombat=null; newGame({diff:S.diff}); };
+ if($('againBtn')) $('againBtn').onclick=()=>{ closeModal(); selected=null; selCombat=null; newGame({diff:S.diff}); showTacPick(); };
  if($('watchBtn')) $('watchBtn').onclick=closeModal;
  $('toMenu').onclick=()=>{ closeModal(); if(NET.mode!=='sp') leaveRoom(); showMenu(); };
 }
@@ -2543,7 +2582,7 @@ async function boot(){
  G={phase:'idle',me:makePlayer(0,S.name,false,S.avatar,S.trainer),players:[],log:[],speed:S.speed,pool:{}};
  $('muteBtn').textContent=S.muted?'🔇':'🔊';
  layout(); applyTheme(); bindEvents(); Scene.init();
- if(!window.B3) window.addEventListener('b3ready',sizeB3);
+ if(!window.B3) window.addEventListener('b3ready',()=>{ sizeB3(); B3.preload([4,5,1,2,7,8]); }); else B3.preload([4,5,1,2,7,8]);
  setInterval(tick,33); requestAnimationFrame(frame);
  try{ const {user}=await api('/api/me'); applyAccount(user); if(!TRAINER_BY[user.trainer]) showTrainerPick(true); else showMenu(); }
  catch(err){ showAuth(err.status===401?'':err.message); }
@@ -2570,4 +2609,6 @@ function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=
 function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.isBot=true; p.name=p.name+' (bot)'; note(null,`🔌 ${p.name} se desconectó; un bot juega por él`); } }
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[]}; }
 
-if(HEADLESS){ module.exports={serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct}; } else boot();
+if(HEADLESS){ module.exports={serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
+  // Para las pruebas de aumentos (test/augments.js)
+  AUG_BY,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound}; } else boot();

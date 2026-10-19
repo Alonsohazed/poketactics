@@ -12,17 +12,19 @@ Autochess de Pokémon al estilo Teamfight Tactics: modo solitario contra 7 bots 
 | `server.js` | Express + Socket.io. Gestiona las salas y ejecuta cada partida multijugador **en el servidor** (autoritativo), con un tick de 50 ms. |
 | `auth.js` | Registro, login y sesiones (`/api/register`, `/api/login`, `/api/logout`, `/api/me`, `/api/result`) y el guardián de Socket.io. |
 | `db.js` | Cuentas y sesiones. Usa PostgreSQL si existe `DATABASE_URL` (Neon en producción); si no, `data/db.json` (local, ignorado por git). |
+| `public/augments.js` | **Aumentos**: catálogo declarativo (Plata, Oro, Prismático), motor de efectos por eventos (`augFire`), elecciones pendientes (`augOffer`/`resolvePick`), efectos de combate deterministas (`augSnap`/`augCombat`) y Llamada al Caos. Se carga **antes** que `game.js` (en el navegador y concatenado en el servidor). |
 | `public/game.js` | **Todo el juego**: datos, combate, bots, flujo de rondas, red, música e interfaz. Lo usan el navegador **y** el servidor. |
 | `public/board3d.js` | **Tablero 3D** (módulo ES, solo navegador): three.js, arenas, casillas, modelos de los Pokémon, animaciones y efectos de las habilidades. Expone `window.B3`. |
 | `public/index.html` | Marcado y todo el CSS (tokens de color en `:root`, tema oscuro por defecto). Carga three.js 0.169 desde jsDelivr con un `importmap`. |
 | `test/smoke.js` | Prueba automática: cuentas, seguridad básica, emparejamiento y 2 jugadores jugando 12 rondas. |
+| `test/augments.js` | Pruebas del sistema de aumentos: ofertas, efectos, rachas, emblemas, Caos, topes, combates deterministas y partidas completas (`npm run test:aug`). |
 | `render.yaml` | Configuración de Render (Node 20, health check en `/health`, `DATABASE_URL` secreta). |
 
 `public/game.js` está dividido en secciones con cabeceras `/* ==== [NOMBRE] ==== */`: `[DATA]` (sinergias, Pokémon, entrenadores), `[ABILITIES]`, `[ITEMS]`, `[CORE]`, `[COMBAT]`, `[BOTS]`, `[AUGMENTS]`, `[LOOT]`, `[FLOW]` (rondas, emparejamiento, carrusel), `[NET]`, `[MUSIC]`, `[UI]` (puente con el 3D, capa 2D, paneles, cuentas, escena del menú) y `[SERVER API]`.
 
 ## Ideas clave de la arquitectura
 
-- **Un solo motor para cliente y servidor.** `server.js` carga `public/game.js` en un contexto `vm` aislado por sala (`__SERVER__` definido, `HEADLESS` true) y usa `serverCreate/serverTick/serverAct/serverLeave/serverInfo`. En el navegador, `boot()` arranca la interfaz. Cualquier código fuera de `[UI]` debe funcionar sin `document`.
+- **Un solo motor para cliente y servidor.** `server.js` carga `public/augments.js` + `public/game.js` en un contexto `vm` aislado por sala (`__SERVER__` definido, `HEADLESS` true) y usa `serverCreate/serverTick/serverAct/serverLeave/serverInfo`. En el navegador, `boot()` arranca la interfaz. Cualquier código fuera de `[UI]` debe funcionar sin `document`.
 - **Combates deterministas.** Cada combate usa una semilla (`mulberry32`). El servidor envía semilla + equipos (`teamSnap`) y cada cliente los anima: el resultado es idéntico. Nunca uses `Math.random()` dentro de la lógica de combate; usa `cb.rng`. Gracias a esto se puede **ver en directo el combate de otros** (`spectate()`, `G.view`): se recrea el combate con la misma semilla y se adelanta hasta el mismo segundo.
 - **Mensajes de red** (servidor → clientes): `pub` (estado público), `priv` (estado de cada jugador; recortado si pasa de unos 3,9 KB), `cmb` (tu combate), `cmbs` (todos los combates de la ronda), `car` (carrusel; posiciones normalizadas al centro y radio del carrusel). Los jugadores solo envían `act` (acciones validadas en `applyAct`).
 - **Nombre y entrenador salen de la cuenta**, nunca de lo que mande el navegador (`seatFor` en `server.js`).
@@ -56,10 +58,12 @@ Autochess de Pokémon al estilo Teamfight Tactics: modo solitario contra 7 bots 
 npm install
 npm start          # http://localhost:3000 (cuentas en data/db.json)
 npm test           # prueba de humo; debe terminar en "OK: prueba de humo superada"
+npm run test:aug   # pruebas de aumentos; debe terminar en "OK: pruebas de aumentos superadas"
 ```
 
 - Necesitas Node 18 o superior.
 - Para probar el multijugador, abre dos ventanas con cuentas distintas (por ejemplo, una en incógnito).
+- Para añadir un aumento, añade un `AG({...})` en `augments.js` con sus eventos (`on`), su efecto de combate (`combat` + `snap`, siempre determinista) y su progreso (`ui`); no hace falta tocar el motor.
 - Tras cambiar `public/game.js`, comprueba la sintaxis con `node -e "require('vm').createScript(require('fs').readFileSync('public/game.js','utf8'))"` y ejecuta `npm test`.
 - En Windows, git puede no estar en el PATH del shell: está en `C:\Program Files\Git\cmd`.
 

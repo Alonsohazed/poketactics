@@ -60,7 +60,7 @@ ready.then(() => server.listen(0, async () => {
     const vm = require('vm');
     const ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval };
     vm.createContext(ctx);
-    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'public', 'game.js'), 'utf8'), ctx);
+    vm.runInContext(['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8')).join('\n'), ctx);
     const E = ctx.module.exports;
     for (let rep = 0; rep < 20; rep++) {
       E.newGame({ auto: true, diff: 'normal' });
