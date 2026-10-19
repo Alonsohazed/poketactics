@@ -7,15 +7,22 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node test/smoke.js"
+    "test": "node test/smoke.js",
+    "test:e2e": "playwright test",
+    "test:all": "node test/smoke.js && playwright test",
+    "check": "node -e \"require('vm').createScript(require('fs').readFileSync('public/game.js','utf8'))\" && echo sintaxis-ok"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "express": "^4.21.2",
     "pg": "^8.13.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.83",
+    "@playwright/test": "^1.64.1",
     "socket.io-client": "^4.8.1"
   }
 }
