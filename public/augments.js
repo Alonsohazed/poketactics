@@ -17,7 +17,7 @@ const AUG_ROUNDS_INFO='Ofertas en las rondas 2-1, 3-2 y 4-2 (3 opciones; eliges 
 const AUG_CAT={econ:'Economía',reroll:'Reroll',slow:'Ahorro',fast:'Nivel rápido',streak:'Rachas',emblem:'Emblemas',trait:'Sinergias',
  evo:'Evolución',carry:'Hiper carry',risk:'Riesgo',chaos:'Caos',rules:'Reglas',quest:'Misión',hybrid:'Híbrido',classic:'Clásico'};
 const ELEM_TRAITS=['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dragón','Fantasma','Hada','Normal','Acero','Siniestro','Lucha'];
-const CLASS_TRAITS=['Guardián','Coloso','Tirador','Hechicero','Asesino','Sanador','Fortuna','Rival','Team Rocket'];
+const CLASS_TRAITS=['Guardián','Coloso','Tirador','Hechicero','Asesino','Sanador','Cazatesoros','Depredadores','Team Rocket','Potencial Evolutivo'];
 const AUG_MAX_DEPTH=3; // protección contra efectos que se disparan unos a otros en bucle
 
 /* ---------- estado y utilidades ---------- */
