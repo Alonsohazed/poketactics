@@ -51,6 +51,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - racha de 2-3 da +1, de 4 da +2 y de 5 o más da +3;
   - refrescar la tienda cuesta 2; comprar EXP cuesta 4 por 4 EXP.
 - **Estrellas y formas**: los costes 4 de 3 formas empiezan en su 2.ª forma (`formIdx`): a 2★ ya son la forma final con su mejor habilidad. A 3★ las estadísticas usan `STAR3_BY_COST=[3.24,3.24,3.4,5,8]` y las habilidades `ABIL3_BY_COST=[3,3.1,3.3,6,11]` (los costes 4 y 5 a 3★ son casi victoria segura). Además, a 3★ cada lanzamiento suma +20 % de poder (+25 % en costes 4 y 5) durante el combate, sin límite (`u.castBoost`).
+- **Clases** (`applyTraits` + enganches en `dealDamage`/`castAbility`/`stepCombat`), inspiradas en TFT: Guardián = guardaespaldas (provocan a los 1,5 s con escudo, `bodyguard`), Coloso = matones (vida a todo el equipo, doble para ellos), Tirador = +daño por casilla de distancia (`hexAmp`), Hechicero = académicos (+poder cada vez que un aliado lanza, `scholar`), Asesino = salto + críticos y habilidades críticas (`critAbil`), Sanador = encantadores (+curas y escudos de habilidad para todo el equipo, `healAmp`, y resistencia), Fortuna = dado de oro tras cada combate, **Rival** = retadores (+vel. y acelerón con salto al matar, `rival`/`rushT`) y **Team Rocket** = quimtech (al bajar del 60 %: reducción de daño, velocidad y regeneración 4 s, `rocket`).
 - **Legendarios**: cada uno tiene una mecánica propia mediante parámetros de habilidad: `grow` (crece al lanzar), `refundKill` (recupera maná por baja), `amp` (cadena que se amplifica), `revive`/`nova` (renace), `phoenix` (el primer aliado que cae renace), `markAll`, `asTeam`, `mana0` (maná inicial) y `mm` (maná máximo), y los tipos nuevos `titan` (escudo y golpes) y `devour` (si derrota, crece para siempre).
 - **Progresión**: nivel máximo 10 (`XP_NEED`); probabilidades de la tienda por nivel en `SHOP_ODDS`; pool compartido `POOL_SIZE=[30,25,18,10,9]`; 3 copias suben 1 estrella. Tablero = nivel + bonus + Medallas Maestras.
 - **Combate**:
@@ -62,8 +63,8 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - **habilidades híbridas** (`abilPower`): base por coste y estrellas × (1 + poder/100) × factor del rol. Asesinos, luchadores y tiradores multiplican por ataque actual/base; los tanques, por (vida máx. actual/base)^0,75; magos y soportes, solo poder. Sin objetos el factor vale 1. Se recalcula en cada lanzamiento, así que lo acumulado (Eevee, «Acumular», Cinta Furia…) hace crecer la habilidad.
 - **Contenido actual** (comprobado con `validate.js`):
   - 65 líneas de Pokémon, más 7 evoluciones de Eevee;
-  - 21 sinergias y 39 tipos de habilidad;
-  - 75 objetos: 9 componentes (Medalla incluida), 37 completos, 28 insignias (8 con arte de medalla) y el Imán Removedor;
+  - 23 sinergias (13 tipos, 9 clases y Legendario) y 41 tipos de habilidad;
+  - 77 objetos: 9 componentes (Medalla incluida), 37 completos, 30 insignias (8 con arte de medalla) y el Imán Removedor;
   - 80 aumentos: 25 de Plata, 37 de Oro y 18 Prismáticos, en 15 categorías (Llamada al Caos incluida).
 - **Minileyenda** (sustituye a los entrenadores): Charmander, Bulbasaur o Squirtle. Se elige **en el menú** (y al crear la cuenta) y se guarda en la cuenta: la columna `trainer` de la base de datos guarda su clave y el servidor la valida contra `TAC_KEYS`. Evoluciona en los niveles 6, 8 y 9 (Mega), se mueve con clic derecho y recoge los orbes de botín.
 - **Resultados de aumentos**: lo que el jugador debe ver (Llamada al Caos, contratos) se añade con `revealTo(p,…)` y sale en una ventana (`showReveal`; en multijugador viaja en `priv.rv`). El registro de la partida está en la pestaña 📜.
