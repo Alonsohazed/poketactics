@@ -20,6 +20,17 @@ let renderer, scene, camera, clock=new THREE.Clock(), ready=false, camDist=30;
 const M={cx:0,cz:0,R:30,W:600,H:600};
 const W3=(x,y,h=0)=>new THREE.Vector3((x-M.cx)/M.R,h,(y-M.cz)/M.R);
 const TOP=.2; // altura de la cara superior de las casillas
+const ccache={}, ccol=c=>ccache[c]||(ccache[c]=new THREE.Color(c)); // colores de solo lectura (sin crear uno por fotograma)
+
+/* ---------- calidad ---------- */
+// 2 = alta, 1 = media, 0 = baja (sin sombras, 1 píxel por píxel CSS, menos partículas y público quieto).
+// Móviles y equipos modestos empiezan en media; si los FPS no llegan, baja sola (nunca sube, para no ir a tirones).
+const QL=[{pr:1,shadow:0,part:.35,crowd:false},{pr:1.5,shadow:1024,part:.6,crowd:true},{pr:2,shadow:2048,part:1,crowd:true}];
+let qLevel=2, Q=QL[2], dpr0=1;
+function guessQuality(){
+ const mob=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)||/Android|iPhone|iPad|Mobi/i.test(navigator.userAgent);
+ return mob||(navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=4?1:2;
+}
 
 /* ---------- utilidades de dibujo ---------- */
 function canvasTex(w,h,paint,nearest=true){
@@ -60,6 +71,7 @@ function makeParticles(additive){
 }
 let PA,PN; // aditivas (luz) y normales (humo, rocas, hojas)
 function emit(o){
+ if(Q.part<1&&Math.random()>Q.part) return; // en calidad media o baja se emite solo una parte
  const P=o.add===false?PN:PA; if(P.list.length>=PART_MAX) return;
  const c=o.col instanceof THREE.Color?o.col:col(o.col||'#fff');
  P.list.push({x:o.p.x,y:o.p.y,z:o.p.z,vx:o.v?o.v[0]:0,vy:o.v?o.v[1]:0,vz:o.v?o.v[2]:0,r:c.r,g:c.g,b:c.b,s:o.size||.25,s1:o.size1!=null?o.size1:(o.size||.25)*.3,life:o.life||.6,t:0,gr:o.g||0,dr:o.drag||0,a:o.alpha==null?1:o.alpha});
@@ -204,7 +216,7 @@ function buildArena(kind){
      for(let x=X0-1.5-k;x<X1+1.5+k&&n<900;x+=.45){ if(r()<.25) continue; m4.makeTranslation(x,-.9+.5+k*.55+.2,back-k*1.1+rnd(.1)); crowd.setMatrixAt(n,m4); crowd.setColorAt(n,col(shirts[r()*shirts.length|0])); n++; } }
    crowd.count=n; g.add(crowd);
    const base=[]; for(let i=0;i<n;i++){ const mm=new THREE.Matrix4(); crowd.getMatrixAt(i,mm); base.push(mm); }
-   anim.push(t=>{ const mm=new THREE.Matrix4(); for(let i=0;i<n;i+=1){ mm.copy(base[i]); mm.elements[13]+=Math.max(0,Math.sin(t*6+i*1.7))*.08; crowd.setMatrixAt(i,mm); } crowd.instanceMatrix.needsUpdate=true;
+   anim.push(t=>{ if(!Q.crowd) return; const mm=new THREE.Matrix4(); for(let i=0;i<n;i+=1){ mm.copy(base[i]); mm.elements[13]+=Math.max(0,Math.sin(t*6+i*1.7))*.08; crowd.setMatrixAt(i,mm); } crowd.instanceMatrix.needsUpdate=true;
      if(Math.random()<.25){ const i=Math.random()*n|0, p=new THREE.Vector3().setFromMatrixPosition(base[i]); emit({p:p.add(new THREE.Vector3(0,.4,0)),col:'#ffffff',size:.5,size1:.1,life:.18}); } });
    // torres de focos
    for(const [x,z] of [[X0-5,Z0-3],[X1+5,Z0-3],[X0-5,Z1+1],[X1+5,Z1+1]]){
@@ -349,7 +361,7 @@ class Actor{
    if(spec.stun>0&&!spec.dead){ if(!this.stars){ this.stars=new THREE.Group(); for(let i=0;i<3;i++){ const s=new THREE.Mesh(starGeo,new THREE.MeshBasicMaterial({color:'#ffe066'})); s.position.set(Math.cos(i/3*TAU)*.35,0,Math.sin(i/3*TAU)*.35); this.stars.add(s); } this.root.add(this.stars); }
      this.stars.visible=true; this.stars.position.y=TOP+this.h*1.05; this.stars.rotation.y=t*4; for(const s of this.stars.children) s.material.color.set(spec.sleep>0?'#c9a7ff':'#ffe066'); }
    else if(this.stars) this.stars.visible=false;
-   this.blob.visible=!spec.dead&&!this.model; if(!spec.dead) this.root.visible=true;
+   this.blob.visible=!spec.dead&&(!this.model||!sun.castShadow); if(!spec.dead) this.root.visible=true;
  }
  setAlpha(a){
    if(this.alpha===a) return; this.alpha=a;
@@ -497,7 +509,23 @@ function init(canvas){
  sun=new THREE.DirectionalLight('#ffffff',2.4); sun.position.set(-6,14,8); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
  Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:1,far:40}); sun.shadow.bias=-.0006; sun.shadow.normalBias=.02; scene.add(sun,sun.target);
  PA=makeParticles(true); PN=makeParticles(false); scene.add(PA.pts,PN.pts);
+ setQuality(guessQuality());
  ready=true;
+}
+function setQuality(l){
+ qLevel=clamp(l|0,0,2); Q=QL[qLevel]; if(!renderer) return;
+ // Al apagar la sombra del sol, three.js recompila los materiales solo (cambia el estado de las luces)
+ sun.castShadow=Q.shadow>0;
+ if(Q.shadow&&sun.shadow.mapSize.x!==Q.shadow){ sun.shadow.mapSize.set(Q.shadow,Q.shadow); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; } }
+ renderer.setPixelRatio(Math.min(dpr0,Q.pr)); if(board.G){ renderer.setSize(M.W,M.H,false); partScale(); }
+}
+// Vigila los FPS reales en tramos de 2 s; dos tramos seguidos por debajo de 40 bajan un nivel de calidad
+const perf={acc:0,n:0,bad:0,fps:0};
+function watchPerf(dt){
+ if(document.hidden||dt<=0||dt>.25) return; // pestaña oculta o tirón suelto (al cargar un modelo): no cuenta
+ perf.acc+=dt; perf.n++; if(perf.acc<2) return;
+ perf.fps=perf.n/perf.acc; perf.acc=0; perf.n=0;
+ if(perf.fps<40&&qLevel>0){ if(++perf.bad>=2){ perf.bad=0; setQuality(qLevel-1); } } else perf.bad=0;
 }
 // Ajusta la cámara para que entren el tablero, el banquillo y los laterales
 function fitCamera(G){
@@ -513,11 +541,13 @@ function fitCamera(G){
    const mid=(y0+y1)/2; if(Math.abs(mid)<.01) break; tz+=-mid*hi*.35;
  }
  sun.target.position.set(0,0,tz); sun.position.set(-6,14,tz+8);
- const s=renderer.getSize(new THREE.Vector2()); for(const P of [PA,PN]) P.mat.uniforms.uScale.value=s.y*renderer.getPixelRatio()/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2));
+ partScale();
 }
+// Tamaño de las partículas en píxeles del búfer (depende del alto y de la densidad de píxeles)
+function partScale(){ const s=renderer.getSize(new THREE.Vector2()); for(const P of [PA,PN]) P.mat.uniforms.uScale.value=s.y*renderer.getPixelRatio()/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)); }
 function resize(G,dpr){
  Object.assign(M,{W:G.W,H:G.H,R:G.R,cx:G.W/2,cz:(G.pad+G.pad+G.bh+18+G.bs)/2});
- renderer.setPixelRatio(Math.min(dpr||1,2)); renderer.setSize(G.W,G.H,false);
+ dpr0=dpr||1; renderer.setPixelRatio(Math.min(dpr0,Q.pr)); renderer.setSize(G.W,G.H,false);
  buildBoard(G); fitCamera(G);
 }
 const v3=new THREE.Vector3();
@@ -528,19 +558,19 @@ function unproject(sx,sy){ ray.setFromCamera(new THREE.Vector2(sx/M.W*2-1,1-sy/M
 let lastT=0;
 function render(F){
  if(!ready) return;
- const now=performance.now()/1000, dt=Math.min(.1,lastT?now-lastT:0); lastT=now;
- setArena(F.arena);
+ const now=performance.now()/1000, raw=lastT?now-lastT:0, dt=Math.min(.1,raw); lastT=now;
+ watchPerf(raw); setArena(F.arena);
  if(arenas[curArena]) for(const a of arenas[curArena].userData.anim) a(now);
  // casillas resaltadas al arrastrar
- for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,col(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
+ for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,ccol(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
  hexMesh.instanceColor.needsUpdate=true; hexMesh.material.opacity=F.cells&&F.cells.drop?.7:.38;
- for(let i=0;i<9;i++) benchPads.setColorAt(i,col(F.benchHover===i?'#c8d8ff':curArena==='stadium'?'#262638':'#583018')); benchPads.instanceColor.needsUpdate=true;
+ for(let i=0;i<9;i++) benchPads.setColorAt(i,ccol(F.benchHover===i?'#c8d8ff':curArena==='stadium'?'#262638':'#583018')); benchPads.instanceColor.needsUpdate=true;
  hexMesh.visible=hexRing.visible=F.arena!=='plaza';
  // actores
  const seen=new Set();
  for(const s of F.actors){
    let a=actors.get(s.key); if(!a){ a=new Actor(s); actors.set(s.key,a); }
-   a.setDex(s.dex); s.glowCol=s.glowCol||col(s.glowColor||'#ffffff'); a.update(s,dt,now); seen.add(s.key);
+   a.setDex(s.dex); s.glowCol=s.glowCol||ccol(s.glowColor||'#ffffff'); a.update(s,dt,now); seen.add(s.key);
    s.anchor=projectV(a.head()); s.base=projectV(a.root.position.clone().setY(TOP));
  }
  for(const [k,a] of actors) if(!seen.has(k)){ a.dispose(); actors.delete(k); }
@@ -556,5 +586,5 @@ function render(F){
 // Precarga de modelos (por ejemplo, los de la tienda) para que aparezcan sin espera
 function preload(list){ for(const d of list) wantModel(d); }
 function modelStatus(dex){ return models[dex]?models[dex].status:'none'; }
-window.B3={init,resize,render,project,unproject,preload,modelStatus,get ready(){ return ready; }};
+window.B3={init,resize,render,project,unproject,preload,modelStatus,setQuality,get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));

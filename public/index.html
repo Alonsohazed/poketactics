@@ -333,14 +333,38 @@ body:has(#menu:not(.hidden)) #scene,body:has(#auth:not(.hidden)) #scene{display:
   .layout{grid-template-columns:1fr;}
   .center{order:-1}
   .right{display:grid;grid-template-columns:1fr 1fr}
-  .shop{grid-template-columns:1fr}
+  .shop{grid-template-columns:1fr;gap:8px}
+  /* Oro y nivel en una fila: la tienda ocupa menos alto y deja más sitio al tablero */
+  .shopL{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 12px}
+  .shopL .gold{grid-row:1;grid-column:1;font-size:21px} .shopL .lvl{grid-row:1;grid-column:2}
+  .sbtns,.odds{grid-column:1/-1}
+  .card{min-height:128px} .card .ci{height:60px}
   .ucard{position:fixed;left:8px;right:8px;bottom:8px;top:auto;max-height:60vh;z-index:13;box-shadow:0 -8px 30px rgba(0,0,0,.4)}
 }
 @media (max-width:820px){
   #menu .menuGrid{grid-template-columns:1fr;gap:18px}
   .stand{width:170px;height:160px} .stand img{width:130px;height:130px} .stand::before{width:150px;height:44px}
 }
-@media (max-width:620px){ .right{grid-template-columns:1fr} .phase{margin-left:0} .menuRow{grid-template-columns:repeat(2,1fr)} .top .brand{display:none} }
+@media (max-width:620px){ .right{grid-template-columns:1fr} .menuRow{grid-template-columns:repeat(2,1fr)} .top .brand{display:none}
+  /* Móvil: barra superior y tienda compactas para que el tablero y el banquillo quepan entre las dos */
+  .top{gap:6px;padding:6px 8px}
+  .top .stage{font-size:13px;padding:2px 8px}
+  .pills{gap:2px} .pill{width:22px;height:20px;font-size:10px;border-radius:6px}
+  .phase{flex:1 1 calc(100% - 190px);min-width:0;font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top .btn{padding:5px 8px;font-size:13px} .top .btn.icon{min-width:34px;padding:5px 6px}
+  .top #readyBtn{flex:1}
+  .layout{padding:8px;gap:10px} .center{gap:6px}
+  .boardInfo{gap:4px;font-size:11px} .boardInfo span:not(:empty){padding:2px 8px}
+  .shop{padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));gap:6px}
+  .shopL{gap:4px 10px} .shopL .gold{font-size:19px} .coin{width:15px;height:15px}
+  .sbtns .btn{padding:5px 4px;font-size:11.5px} .odds{font-size:10px}
+  .cards{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;overflow:visible;padding:0}
+  .card{min-height:0;border-radius:10px}
+  .card .ci{height:44px;margin-top:3px} .card .ci .spr{width:44px;height:44px}
+  .card .ct{top:3px;left:3px;font-size:9px} .card .ct span{width:15px;height:15px;border-radius:4px}
+  .card .cbot{padding:2px 4px 3px;gap:2px} .card .cn{font-size:10px} .card .cc{font-size:11px} .card .cc::before{width:8px;height:8px}
+  .card .own{top:3px;right:3px;font-size:9px;padding:0 3px}
+}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
 </head>

@@ -1488,11 +1488,14 @@ function computeGeo(W){
  return {pad,R,hw,bw,bh,bs,side,ox:pad+side,W:bw+(pad+side)*2,H:pad+bh+18+bs+pad+R*.25};
 }
 function layout(){
- const wrap=$('boardWrap');
- // Que quepan tablero y banquillo entre la barra superior y la tienda
- const byH=16*((innerHeight-390-34)/14.2)+16;
- geo=computeGeo(Math.max(300,Math.min(wrap.clientWidth||600,760,byH)));
- const dpr=window.devicePixelRatio||1; cv.width=geo.W*dpr; cv.height=geo.H*dpr; cv.style.width=geo.W+'px'; cv.style.height=geo.H+'px';
+ const wrap=$('boardWrap'), hOf=el=>el?el.offsetHeight:0;
+ // Que quepan tablero y banquillo entre la barra superior y la tienda, que se quedan fijas al hacer scroll
+ const availH=innerHeight-hOf(document.querySelector('.top'))-hOf($('shopPanel'))-hOf(document.querySelector('.boardInfo'))-36;
+ let w=Math.min(wrap.clientWidth||600,760);
+ for(let i=0;i<3;i++){ const g=computeGeo(w); if(g.H<=availH) break; w*=availH/g.H; }
+ const g=computeGeo(Math.max(280,w)), dpr=Math.min(window.devicePixelRatio||1,2);
+ if(geo.W===g.W&&geo.H===g.H&&layout.dpr===dpr) return; // sin cambios: no rehace el tablero 3D
+ geo=g; layout.dpr=dpr; cv.width=geo.W*dpr; cv.height=geo.H*dpr; cv.style.width=geo.W+'px'; cv.style.height=geo.H+'px';
  ctx.setTransform(dpr,0,0,dpr,0,0); readColors(); sizeB3();
 }
 const cellXY=(c,r)=>[geo.ox+geo.hw*(c+.5*(r&1))+geo.hw/2, geo.pad+geo.R+r*1.5*geo.R];
@@ -1773,6 +1776,8 @@ function bindEvents(){
  });
  document.addEventListener('pointerover',e=>{ const el=e.target.closest&&e.target.closest('[data-tip]'); if(!el||itemDrag){ hideTip(); return; } showTip(el.dataset.tip,e); });
  window.addEventListener('resize',layout);
+ // La tienda y la barra superior cambian de alto (cartas, botones que saltan de línea): el tablero se reajusta
+ if(window.ResizeObserver){ const ro=new ResizeObserver(()=>layout()); for(const el of [document.querySelector('.top'),$('shopPanel'),document.querySelector('.boardInfo')]) if(el) ro.observe(el); }
  if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readColors);
 }
 function onReady(){
@@ -1899,12 +1904,15 @@ function draw(){
  if(!b3On()){ ctx.save(); ctx.fillStyle='#16203d'; ctx.fillRect(0,0,geo.W,geo.H); ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(14,geo.R*.5)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.fillText('Cargando tablero 3D…',geo.W/2,geo.H/2); ctx.restore(); return; }
  const inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel, playing=G.players&&G.players.length;
  const dragBoard=drag&&drag.moved&&G.phase!=='combat'&&!inCar, cell=dragBoard?hitCell(drag.x,drag.y):null, bh=drag&&drag.moved?hitBench(drag.x,drag.y):-1;
+ // Con el menú o el login delante (pantalla completa) no se ve el tablero: no se pinta, y el móvil lo agradece
+ if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')) return;
  const A=playing?sceneActors():[];
  B3.render({arena:playing?bgKind():'stadium',actors:A,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A;
  if(!playing) return;
  if(inCar) drawCarouselHud(); else drawBoardTrainers();
- for(const a of A) drawHud(a);
+ // De atrás adelante: si las barras se solapan, la del Pokémon más cercano queda encima
+ for(const a of A.filter(a=>a.base).sort((p,q)=>p.base[1]-q.base[1])) drawHud(a);
  if(inCombat) drawFxHud(viewCombat());
 }
 // Textos flotantes, carteles de habilidad y destellos (lo demás lo pinta el 3D)
@@ -1995,7 +2003,7 @@ function planStats(u){
  if(!s){ try{ const cu=makeCombatUnit(u,G.me,statsCache.tt,0); s={maxHp:cu.maxHp,mana:cu.mana,maxMana:cu.maxMana}; }catch(e){ s={maxHp:1,mana:0,maxMana:99999}; } statsCache.m.set(u.uid,s); }
  return s;
 }
-function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); }
+function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); }
 function updatePhase(){
  let t='';
  switch(G.phase){
