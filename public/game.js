@@ -2761,7 +2761,7 @@ function showAugment(){
  const choices=me.augChoices.map(id=>AUG_BY[id]).filter(Boolean), rr=me.augRR||[0,0,0];
  NET.augKey=me.augChoices.join()+'|'+rr.join();
  // Solo las cartas: cada una con el color de su rareza y su botón de refresco debajo
- openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${a.icon}</span><b>${esc(a.name)}</b><span class="ac2Desc">${esc(a.desc)}</span></button>
+ openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${a.icon}</span><b>${esc(a.name)}</b><span class="ac2Desc${a.desc.length>150?' long':''}">${esc(a.desc)}</span><span class="ac2Tier">${TIER_NAME[a.tier]}</span></button>
    <button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
  $('mbox').querySelectorAll('.augCard2').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });

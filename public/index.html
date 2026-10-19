@@ -470,22 +470,25 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .mbox.bare{background:none;border:0;box-shadow:none;max-width:1000px}
 .augPick{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
 .augCol{display:flex;flex-direction:column;align-items:center;gap:12px}
-.augCard2{--f1:#c9d3e2;--f2:#7c8aa0;--ink2:#1b2235;position:relative;width:236px;min-height:340px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 18px 24px;cursor:pointer;text-align:center;color:var(--ink2);border:0;
-  clip-path:polygon(18px 0,calc(100% - 18px) 0,100% 18px,100% calc(100% - 18px),calc(100% - 18px) 100%,18px 100%,0 calc(100% - 18px),0 18px);
-  background:linear-gradient(135deg,#fff6d0,#c9962c 30%,#fff1b0 50%,#a9741a 75%,#ffe39a);filter:drop-shadow(0 14px 22px rgba(0,0,0,.55));transition:transform .14s,filter .14s}
-.augCard2::before{content:"";position:absolute;inset:5px;z-index:0;clip-path:polygon(15px 0,calc(100% - 15px) 0,100% 15px,100% calc(100% - 15px),calc(100% - 15px) 100%,15px 100%,0 calc(100% - 15px),0 15px);
-  background:radial-gradient(120% 70% at 50% 0%,rgba(255,255,255,.55),transparent 55%),linear-gradient(170deg,var(--f1),var(--f2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.4)}
-.augCard2::after{content:"";position:absolute;left:50%;top:-1px;width:22px;height:22px;transform:translate(-50%,-50%) rotate(45deg);background:linear-gradient(135deg,#fff6d0,#c9962c);box-shadow:0 0 10px rgba(255,215,94,.9);z-index:2}
-.augCard2>*{position:relative;z-index:1}
-.augCard2 .ac2Desc{background:rgba(255,255,255,.28);border-radius:10px;padding:8px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
-.augCard2:hover{transform:translateY(-6px);filter:drop-shadow(0 20px 26px rgba(0,0,0,.6)) drop-shadow(0 0 16px rgba(255,215,94,.7))}
-.augCard2.tierS{--f1:#f3f6fb;--f2:#8d9bb2;--ink2:#1b2235}
-.augCard2.tierG{--f1:#ffe9a6;--f2:#c8901c;--ink2:#3a2506}
-.augCard2.tierP{--f1:#ffd6f4;--f2:#8f7bff;--ink2:#2a1650}
-.augCard2.tierP::before{background:radial-gradient(120% 70% at 50% 0%,rgba(255,255,255,.55),transparent 55%),linear-gradient(160deg,#ffd6f4,#c3b2ff 35%,#9fe6ff 65%,#c9ffd9)}
-.ac2Ico{width:96px;height:96px;display:grid;place-items:center;font-size:52px;border-radius:50%;margin:6px 0;background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.9),color-mix(in srgb,var(--f2) 75%,#000) 75%);border:3px solid rgba(255,255,255,.75);box-shadow:0 0 22px color-mix(in srgb,var(--f1) 80%,transparent)}
-.augCard2 b{font-family:var(--display);font-weight:400;font-size:20px;line-height:1.1}
-.ac2Desc{font-size:13.5px;font-weight:700;line-height:1.35}
+/* Carta de aumento: sprite de Poké Ball (img/aug-card.png, 774×1126). Icono en el círculo blanco, nombre sobre la línea,
+   descripción debajo y rareza en el semicírculo de abajo. La rareza tiñe el brillo exterior y el fondo negro. */
+.augCard2{--tc:#d6deec;--tg:rgba(214,222,236,.55);position:relative;width:290px;aspect-ratio:774/1126;padding:0;border:0;cursor:pointer;text-align:center;color:#fff;
+  background:url(img/aug-card.png) center/100% 100% no-repeat;filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 10px var(--tg));transition:transform .14s,filter .14s}
+.augCard2::before{content:"";position:absolute;left:1.7%;right:1.7%;top:13.3%;bottom:12.5%;pointer-events:none;background:radial-gradient(90% 55% at 50% 30%,color-mix(in srgb,var(--tc) 22%,transparent),transparent 70%),radial-gradient(90% 45% at 50% 85%,color-mix(in srgb,var(--tc) 14%,transparent),transparent 70%)}
+.augCard2:hover{transform:translateY(-6px);filter:drop-shadow(0 20px 26px rgba(0,0,0,.65)) drop-shadow(0 0 18px var(--tg))}
+.augCard2:focus-visible{outline:3px solid var(--tc);outline-offset:4px}
+.augCard2.tierS{--tc:#dfe6f2;--tg:rgba(200,214,236,.6)}
+.augCard2.tierG{--tc:#ffd75e;--tg:rgba(255,200,60,.7)}
+.augCard2.tierP{--tc:#d7b8ff;--tg:rgba(190,150,255,.8)}
+.augCard2.tierP{animation:prismGlow 3s linear infinite}
+@keyframes prismGlow{0%,100%{filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(255,140,220,.8))}33%{filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(120,200,255,.8))}66%{filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(150,255,190,.8))}}
+.ac2Ico{position:absolute;left:50.4%;top:15%;width:17.4%;aspect-ratio:1;transform:translate(-50%,-50%);display:grid;place-items:center;font-size:30px;line-height:1;border-radius:50%}
+.ac2Ico img{width:86%;height:86%;object-fit:contain;image-rendering:pixelated}
+.augCard2 b{position:absolute;left:9%;right:9%;top:27%;height:22%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:400;font-size:21px;line-height:1.1;color:#fff;text-shadow:0 2px 0 #000,0 0 14px color-mix(in srgb,var(--tc) 55%,transparent)}
+.ac2Desc{position:absolute;left:8%;right:8%;top:56%;bottom:14.5%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;line-height:1.38;color:#e3e8f2}
+.ac2Desc.long{font-size:12px;line-height:1.32}
+.ac2Tier{position:absolute;left:35.6%;right:36.1%;top:88%;height:5.6%;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
+.augCard2.tierP .ac2Tier{background:linear-gradient(90deg,#ff9ad8,#a594ff,#7fe0ff,#9cffc2);-webkit-background-clip:text;background-clip:text;color:transparent}
 .augRR{width:64px;height:40px;border-radius:10px;border:2px solid #f2d27a;background:linear-gradient(180deg,#3a3020,#1c160c);color:#ffe9a6;font-size:22px;cursor:pointer}
 .augRR:disabled{opacity:.35;cursor:not-allowed}
 /* Oferta de aumentos */
