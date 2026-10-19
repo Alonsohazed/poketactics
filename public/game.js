@@ -1240,13 +1240,16 @@ function startCarousel(){
  const order=alivePlayers().sort((a,b)=>a.hp-b.hp||Math.random()-.5);
  G.carousel={opts,order,t:0,rot:Math.random()*6,av:{},endT:0,finished:false};
  if(G.auto||(HEADLESS&&!SERVER)){ for(const p of order){ const i=carouselChoice(p); if(i!=null) takeCarousel(p,i); } finishCarousel(); return; }
- order.forEach((p,j)=>{ G.carousel.av[p.id]={ang:j*Math.PI*2/order.length+Math.PI/8,x:null,y:null,target:null,tx:null,ty:null,done:false,rel:false,delay:.4+Math.random()*1.2}; });
+ order.forEach((p,j)=>{ G.carousel.av[p.id]={ang:carAng(j,order.length),x:null,y:null,target:null,tx:null,ty:null,done:false,rel:false,delay:.4+Math.random()*1.2}; });
  note(null,'🎠 Carrusel: salen primero los entrenadores con menos vida (de 2 en 2). Muévete con clic derecho y pasa por encima del Pokémon que quieras');
  renderUI();
 }
 function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return false; o.taken=p; giveUnitTo(p,o.key); giveItem(p,o.item); note(p,`🎠 Elegiste ${DEF[o.key].name} con ${ITEMS[o.item].name}`,true); return true; }
 function finishCarousel(){ const C=G.carousel; for(const o of C.opts) if(!o.taken) returnToPool(o.key,1); G.carousel=null; renderUI(); later(nextRound,400); }
 const releaseAt=idx=>1.5+3.5*Math.floor(idx/2);
+// Cada pareja que sale a la vez empieza en lados opuestos (misma distancia a todos los Pokémon)
+const BALL_OF=idx=>['poke','great','ultra','master'][Math.min(3,Math.floor(idx/2))]; // ball de cada pareja de salida
+const carAng=(j,n)=>Math.floor(j/2)*Math.PI/Math.ceil(n/2)+(j%2)*Math.PI+Math.PI/8;
 function endGame(){ G.over=true; G.phase='over'; if(G.me.alive&&!G.me.place) G.me.place=1; renderUI(); if(NET.mode==='host') netFlush(true); if(!G.auto&&!HEADLESS) showGameOver(); }
 
 // Acciones de un jugador (las del anfitrión, las de los clientes y las de un jugador solo pasan por aquí)
@@ -1884,7 +1887,7 @@ function hitMyTrainer(){ if(!G||!G.players.length||G.phase==='carousel'||!myTrBo
 
 /* ---------- carrusel ---------- */
 function carGeo(){ const cx=geo.W/2, cy=geo.pad+geo.bh/2, rr=Math.min(geo.W*.42,geo.bh*.42); return {cx,cy,rr}; }
-function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+C.rot; return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.48]; }
+function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+C.rot; return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.55]; }
 function updateCarousel(dt){
  const C=G.carousel; if(!C||C.finished||C.mirror) return;
  C.t+=dt; C.rot+=.32*dt;
@@ -1893,8 +1896,8 @@ function updateCarousel(dt){
  C.order.forEach((p,idx)=>{
    const a=C.av[p.id]; if(!a) return;
    // Empiezan en el borde, cada uno dentro de su campo de fuerza
-   if(a.x===null){ a.x=cx+Math.cos(a.ang)*rr*1.12; a.y=cy+Math.sin(a.ang)*rr*.95; }
-   if(a.done){ toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*.95); return; }
+   if(a.x===null){ a.x=cx+Math.cos(a.ang)*rr*1.12; a.y=cy+Math.sin(a.ang)*rr*1.12; }
+   if(a.done){ toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
    if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Fuera el campo de fuerza! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
@@ -1902,7 +1905,7 @@ function updateCarousel(dt){
    if(a.tx==null&&a.target==null&&(!isHuman(p)?C.t-a.relT>a.delay:C.t-a.relT>10)) a.target=carouselChoice(p);
    if(a.target!=null){ const [ox,oy]=optPos(C,a.target); toward(a,ox,oy); } else if(a.tx!=null) toward(a,a.tx,a.ty);
    // Se lleva el Pokémon que toque al pasar por encima
-   for(let i=0;i<C.opts.length;i++){ const o=C.opts[i]; if(o.taken) continue; const [ox,oy]=optPos(C,i); if(Math.hypot(ox-a.x,oy-a.y)<geo.R*.6&&takeCarousel(p,i)){ a.done=true; a.carry=o; a.ang=Math.atan2((a.y-cy)/.82,a.x-cx); renderUI(); break; } }
+   for(let i=0;i<C.opts.length;i++){ const o=C.opts[i]; if(o.taken) continue; const [ox,oy]=optPos(C,i); if(Math.hypot(ox-a.x,oy-a.y)<geo.R*.6&&takeCarousel(p,i)){ a.done=true; a.carry=o; a.ang=Math.atan2(a.y-cy,a.x-cx); renderUI(); break; } }
  });
  if(C.order.every(p=>C.av[p.id]&&C.av[p.id].done)||C.opts.every(o=>o.taken)){ if(!C.endT) C.endT=C.t; if(C.t-C.endT>1.3){ C.finished=true; if(NET.mode==='host') netCarousel(); finishCarousel(); } }
 }
@@ -2179,7 +2182,7 @@ function sceneActors(){
    if(opp&&opp!==me) A.push({key:'tac:'+opp.id,tac:true,dex:tacDex(opp),star:tacStage(opp)+1,x:sp.opp[0],y:sp.opp[1],face:-Math.PI*.15,ring:'#ef4b3a',scale:.72,hud:{}}); }
  else { const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:a.x,y:a.y+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
- benchOf.bench.forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
+ (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
@@ -2197,8 +2200,9 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); if(b3On()) B3.render({arena:'route',actors:menuActors(),fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:false,hover:-1},benchHover:-1}); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
- const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; return {id:p.id,x:a.x,y:a.y+geo.R*.35,ball:['poke','great','ultra','master'][Math.min(3,Math.floor(idx/2))],k:clamp(left/3,0,1)}; }).filter(Boolean):[];
- B3.render({arena:playing?bgKind():'stadium',actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
+ const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; return {id:p.id,x:a.x,y:a.y+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
+ const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length); return {id:p.id,x:cx+Math.cos(an)*rr*1.12,y:cy+Math.sin(an)*rr*1.12+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
+ B3.render({arena:playing?bgKind():'stadium',car:inCar?carGeo():null,pads,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
    interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
@@ -2384,7 +2388,7 @@ const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><pa
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
 // Ilustraciones recortadas de cartas TCG (public/art): retratos de la tienda y de las minileyendas, sin cargar modelos 3D
-const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').filter(k=>!DEF[k]||dexOf(DEF[k],1)===DEF[k].dex[0]).map(k=>[k,`art/${k}.webp`])); // solo si la tienda muestra la forma de la ilustración (los de coste 4 salen ya evolucionados)
+const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 const artImg=k=>CARD_ART[k]?`<img src="${CARD_ART[k]}" alt="" class="artPic">`:portraitImg(TACS[k]?TACS[k].dex[0]:dexOf(DEF[k],1));
 // Tipo elemental de un Pokémon: pinta el fondo de su carta
@@ -2424,7 +2428,7 @@ function renderShop(){
      const d=DEF[k], can=canBuy(me,i)&&me.alive;
      return `<button class="card c${d.cost} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
        ${CARD_ART[k]?`<span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
-       ${owned[k]?`<span class="own">${owned[k]}/3</span>`:''}${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
+       <i class="frame"></i>${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
        <span class="cn">${d.name}</span>
        <span class="tr">${d.traits.map(t=>`<span title="${t}"><i>${traitIcon(t)}</i>${t}</span>`).join('')}</span>
        <span class="cc">${d.cost}</span></button>`;
@@ -2640,7 +2644,7 @@ function showPick(){
 function showEvolve(u,done){
  const opts=shuffle(EVOS.slice()).slice(0,3);
  openModal(`<h1>¡Eevee va a evolucionar!</h1><p>Ha derrotado a suficientes enemigos. Elige su evolución: conserva todo lo que ha acumulado y gana una habilidad nueva.</p>
- <div class="choices">${opts.map((e,i)=>{ const cu=baseCombatUnit(e,0,u.star); return `<button class="choice" data-i="${i}">${spriteHTML(e,64)}<b>${e.name}</b><span class="small">${e.traits.map(t=>TRAITS[t].icon+' '+t).join(' · ')} · ${ROLE_NAME[e.role]}<br><b style="display:inline;font-size:12px">${e.ab[0][1]}:</b> ${abDesc(e.ab[0],abilPower(cu),u.star)}</span></button>`; }).join('')}</div>`);
+ <div class="choices">${opts.map((e,i)=>{ const cu=baseCombatUnit(e,0,u.star); return `<button class="choice" data-i="${i}">${CARD_ART[e.key]?`<span class="evoArt" style="background-image:url('${CARD_ART[e.key]}')"></span>`:spriteHTML(e,64)}<b>${e.name}</b><span class="small">${e.traits.map(t=>TRAITS[t].icon+' '+t).join(' · ')} · ${ROLE_NAME[e.role]}<br><b style="display:inline;font-size:12px">${e.ab[0][1]}:</b> ${abDesc(e.ab[0],abilPower(cu),u.star)}</span></button>`; }).join('')}</div>`);
  $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ u.defId=opts[+b.dataset.i].key; note(G.me,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,true); closeModal(); renderUI(); done(); });
 }
 function showAnvil(a,done){
