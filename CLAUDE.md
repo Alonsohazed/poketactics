@@ -105,6 +105,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - **Arenas 3D low-poly** (`buildArena()` en `board3d.js`): el templo (`temple-fire`, `temple-grass`, `temple-water`: suelo liso, muros de piedra y columnas con braseros) es la arena de todos los combates y su variante es la del anfitrión, según su minileyenda (`arenaHost()`/`bgKind()` en `game.js`); `plaza` es el carrusel: la cámara encuadra solo la plaza (sin banquillo), cada pareja de salida empieza en lados opuestos (`carAng`) y su base lleva pintada la ball de su turno (Poké, Super, Ultra y Master Ball; `stepPads` en `board3d.js`). Las casillas hexagonales solo se ven al arrastrar un Pokémon. `route` y `stadium` siguen en el código, pero ya no se usan.
 - El menú y el acceso usan de fondo el propio campo 3D (`menuActors()`); la escena pixel art (`Scene`) ya no se muestra.
 - Retratos de la tienda y de las minileyendas (selector, menú, cabezas de la lista de jugadores y salas): ilustraciones recortadas de cartas TCG en `public/art/<clave>.webp` (414×256, sin texto; `CARD_ART` y `artImg()` en `game.js`), sacadas de pokemon-tcg-data, pokemon-tcg-pocket-database y tcgdex. Ahí no se cargan modelos 3D. Son arte oficial: sustituibles por arte propio cuando lo haya.
+- Logo y favicon propios en `public/img/` (`logo.png` del menú y del acceso; `favicon-32.png`, `favicon-512.png` y `apple-touch-icon.png`), con el fondo ya transparente.
 - No uses fan art de terceros sin permiso; inspírate en el estilo de los juegos oficiales.
 
 ## Cuentas y seguridad
