@@ -201,11 +201,15 @@ const TRAINERS=[
 ].map(([key,name,from])=>({key,name,from}));
 const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
 // Minileyendas: el Pokémon que te representa en el tablero (evoluciona al llegar a nivel 6)
-// Etapas: base · nivel 6 · nivel 8 · Megaevolución en nivel 9 (modelos de las carpetas mega/x/y de Pokemon-3D-api)
-const TACS={charmander:{name:'Charmander',evo:'Charmeleon, Charizard y Mega Charizard Y',dex:[4,5,6,'y/6']},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur, Venusaur y Mega Venusaur',dex:[1,2,3,'mega/3']},squirtle:{name:'Squirtle',evo:'Wartortle, Blastoise y Mega Blastoise',dex:[7,8,9,'y/9']}};
-const tacStage=p=>p&&p.level>=9?3:p&&p.level>=8?2:p&&p.level>=6?1:0;
+// Etapas: base · nivel 6 · nivel 8 (sin Megaevoluciones). Eevee no tiene línea fija: al llegar a 6 y a 8 eliges su evolución (pick: opciones de cada subida)
+const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,6]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur y Venusaur',dex:[1,2,3]},squirtle:{name:'Squirtle',evo:'Wartortle y Blastoise',dex:[7,8,9]},
+ dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},
+ eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
+const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 const TAC_KEYS=Object.keys(TACS);
-const tacOf=p=>TACS[p&&p.tac]||TACS.charmander, tacDex=p=>tacOf(p).dex[tacStage(p)];
+// Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
+const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
+const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.pick&&st>0){ const k=p.tacForm&&p.tacForm[st-1]; if(k&&DEF[k]) return dexOf(DEF[k],1); } return t.dex[st]; };
 
 /* ============================ [ABILITIES] ============================ */
 // Habilidad al estilo TFT: cada número es el valor real (con tus estadísticas) y lleva el icono de lo que lo hace crecer.
@@ -369,7 +373,7 @@ let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:
 const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0,xpCost:4,oddsSave:0,cheapCombine:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
-   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(TAC_KEYS),alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
+   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(TAC_KEYS),tacForm:['',''],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
 }
 const makeInst=key=>({uid:UID++,defId:key,baseId:DEF[key].evoOf||key,star:1,kills:0,items:[],stk:{hp:0,ad:0}});
 const boardUnits=p=>Object.values(p.board);
@@ -400,7 +404,11 @@ function income(p,idx){
  if(st){ if(p.streak>0) st*=p.mods.winStreakMult; else st=st*p.mods.lossStreakMult+p.mods.lossBonus; }
  return {base,interest,streak:st,bonus:p.mods.income,total:base+interest+st+p.mods.income};
 }
-function addXp(p,n){ const l0=p.level; p.xp+=n; while(p.level<10&&p.xp>=XP_NEED[p.level]){ p.xp-=XP_NEED[p.level]; p.level++; } if(p.level>=10) p.xp=0; if(p.level>l0) augFire(p,'levelUp',{level:p.level}); }
+function addXp(p,n){ const l0=p.level; p.xp+=n; while(p.level<10&&p.xp>=XP_NEED[p.level]){ p.xp-=XP_NEED[p.level]; p.level++; } if(p.level>=10) p.xp=0; if(p.level>l0){ augFire(p,'levelUp',{level:p.level}); tacOffer(p); } }
+// Minileyenda Eevee: al subir a 6 y a 8 se ofrece elegir su evolución (los rivales eligen solos)
+function tacOffer(p){ const t=TACS[p.tac]; if(!t||!t.pick) return; p.tacOff=p.tacOff||[0,0];
+ for(let st=1;st<=2;st++){ if(tacStage(p)<st||p.tacOff[st-1]||(p.tacForm&&p.tacForm[st-1])) continue; p.tacOff[st-1]=1;
+   augOffer(p,'__tac',st===1?'🌀 Tu Eevee evoluciona':'🌀 Tu Eevee vuelve a evolucionar','Elige la forma de tu minileyenda.',t.pick[st-1].map(k=>({t:DEF[k].name,i:'🌀',d:DEF[k].traits.join(' · '),v:'te:'+st+'|'+k}))); } }
 const xpCost=p=>p.mods.xpCost||4;
 const xpByHp=p=>!!(p.mods.xpHp&&p.hp>20);
 function buyXp(p){ if(p.level<10&&xpByHp(p)){ p.hp-=p.mods.xpHp; addXp(p,4+p.mods.xpBuy); return true; } if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
@@ -1469,7 +1477,7 @@ function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk
 function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0},kills:+a[6]||0,goldGen:Math.max(0,+a[7]||0)}; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(',')]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
@@ -1575,9 +1583,9 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf]=r;
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
-   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac});
+   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:'')});
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
@@ -1650,7 +1658,7 @@ function applyCar(d){
    // Guarda la posición anterior para que el entrenador se deslice y mire hacia donde camina
    av[p.id]={x,y,px:o&&o.x!=null?o.x:x,py:o&&o.y!=null?o.y:y,at:performance.now(),face:o&&o.x!=null&&x!=null&&Math.abs(x-o.x)>.5?(x<o.x?-1:1):(o?o.face:1),rel:!!a[3],done:!!a[4],carry:DEF[a[5]]?{key:a[5],item:'claw'}:null,target:a[6]>=0?a[6]:null};
  }
- G.carousel={opts,order,av,rot:+d.rot||0,t:+d.t||0,mirror:true};
+ G.carousel={opts,order,av,rot:+d.rot||0,rotAt:performance.now(),t:+d.t||0,mirror:true};
 }
 function updateNetTag(){ if(HEADLESS) return; const el=$('netTag'); if(NET.mode==='client'){ el.hidden=false; el.textContent=`Sala ${NET.code}`; } else el.hidden=true; }
 // Acción local: en modo cliente se envía al anfitrión; en solitario o como anfitrión se aplica directamente
@@ -1899,13 +1907,20 @@ function fightsList(){
 // Transición de «vuelo» entre islas al cambiar de tablero
 function warp(){ const el=$('boardStack'); if(!el) return; el.classList.remove('warp'); void el.offsetWidth; el.classList.add('warp'); }
 const ISLE_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water'};
+// Minimapa 3×3 (como el de TFT): los 8 jugadores rodean el centro; en combate, el visitante aparece sobre el campo que visita
+const ISLE_SLOT=[0,1,2,5,8,7,6,3];
 function renderIslands(){
- let box=$('islands'); if(!box){ box=document.createElement('div'); box.id='islands'; box.className='islands'; box.setAttribute('aria-label','Mapa de islas'); $('boardWrap').appendChild(box);
-   box.addEventListener('click',e=>{ const b=e.target.closest('[data-pid]'); if(b) spectate(+b.dataset.pid); }); }
- const ps=G.players, n=ps.length||1, cur=viewOwner(), key=ps.map(p=>p.id+':'+R0(p.hp)+':'+(p.alive?1:0)+':'+(p.tac||'')).join()+'|'+cur.id+'|'+G.phase;
+ let box=$('islands'); if(!box){ box=document.createElement('div'); box.id='islands'; box.className='islands'; box.setAttribute('aria-label','Mapa de campos'); $('boardWrap').appendChild(box);
+   box.addEventListener('click',e=>{ const b=e.target.closest('[data-pid]'); if(b){ e.stopPropagation(); spectate(+b.dataset.pid); } }); }
+ const ps=G.players, cur=viewOwner(), combat=G.phase==='combat', fl=combat?fightsList():[], guest={};
+ for(const f of fl){ if(f.ib>=0&&!f.ghost&&!f.pve) guest[f.ia]=f.ib; } // quien visita el campo de f.ia
+ const key=ps.map(p=>p.id+':'+(p.alive?1:0)+':'+(p.tac||'')+':'+(guest[p.id]!=null?guest[p.id]:'')).join()+'|'+cur.id+'|'+G.phase+'|'+G.me.id;
  if(box.dataset.k===key) return; box.dataset.k=key;
- box.innerHTML='<b class="isleT">Islas</b>'+ps.map((p,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n, x=50+Math.cos(a)*38, y=54+Math.sin(a)*34;
-   return `<button class="isle ${ISLE_THEME[tacKey(p)]||'grass'} ${p===G.me?'me':''} ${p===cur?'cur':''} ${p.alive?'':'dead'}" data-pid="${p.id}" style="left:${x}%;top:${y}%" title="${esc(p.name)} · ${p.alive?R0(p.hp)+' de vida':'eliminado'}">${artImg(tacKey(p))}<i>${p.alive?R0(p.hp):'💀'}</i></button>`; }).join('');
+ const cells=Array(9).fill('');
+ ps.forEach((p,i)=>{ const g=guest[p.id]!=null?ps.find(x=>x.id===guest[p.id]):null;
+   cells[ISLE_SLOT[i%8]]=`<button class="isleCell ${p===G.me?'me':''} ${p===cur?'cur':''} ${p.alive?'':'dead'}" data-pid="${p.id}" title="${esc(p.name)} · ${p.alive?R0(p.hp)+' de vida':'eliminado'}"><span class="mini">${artImg(tacKey(p))}</span>${g?`<span class="vis" data-pid="${g.id}" title="${esc(g.name)}">${artImg(tacKey(g))}</span>`:''}</button>`; });
+ cells[4]='<span class="isleCenter"><i data-i="ball" data-s="28"></i></span>';
+ box.innerHTML=cells.join(''); if(window.PX) PX.hydrate(box);
 }
 function spectate(pid){
  if(!G||!G.players.length) return;
@@ -2074,22 +2089,12 @@ function drawTacLabel(x,y,p,col,bub){
 }
 // Iconos de los aumentos sobre el tótem (con su descripción al pasar el cursor)
 let hudAugs=[];
-// Pokémon en el tablero / máximo, pintado en la mitad rival durante la planificación (como en TFT).
-// Llamativo mientras quede hueco; oscuro y apagado cuando el tablero está lleno
-function drawBoardCount(){
- const me=G.me; if(G.phase!=='planning'||!me||!me.alive||viewedPlayer()!==me) return;
- const n=boardUnits(me).length, max=maxBoard(me), full=n>=max, [ax,ay]=cellXY(3,1), [bx,by]=cellXY(3,2), [x,y]=scr((ax+bx)/2,(ay+by)/2,0);
- const fs=Math.max(34,geo.R*2.3), txt=n+'/'+max, t=performance.now()/1000;
- ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='900 '+fs+'px Nunito,system-ui'; ctx.lineJoin='round';
- const w=ctx.measureText(txt).width, ix=x-w/2-fs*.42, r=fs*.3;
- if(full){ ctx.globalAlpha=.6; ctx.fillStyle='rgba(8,10,20,.85)'; ctx.strokeStyle='rgba(255,255,255,.18)'; }
- else { const g=ctx.createLinearGradient(0,y-fs/2,0,y+fs/2); g.addColorStop(0,'#bff8ff'); g.addColorStop(.5,'#3fd6ff'); g.addColorStop(1,'#2a7bff'); ctx.fillStyle=g; ctx.strokeStyle='#082a4a'; ctx.shadowColor='rgba(63,214,255,'+(.55+.25*Math.sin(t*3))+')'; ctx.shadowBlur=fs*.45; }
- ctx.lineWidth=fs*.12; ctx.strokeText(txt,x+r*.7,y); ctx.fillText(txt,x+r*.7,y);
- // Poké Ball a la izquierda del número
- ctx.shadowBlur=0; ctx.lineWidth=fs*.07; ctx.beginPath(); ctx.arc(ix,y,r,Math.PI,0); ctx.fillStyle=full?'rgba(30,32,44,.9)':'#ff5a4a'; ctx.fill(); ctx.beginPath(); ctx.arc(ix,y,r,0,Math.PI); ctx.fillStyle=full?'rgba(60,64,80,.9)':'#f4f4f4'; ctx.fill();
- ctx.beginPath(); ctx.arc(ix,y,r,0,Math.PI*2); ctx.moveTo(ix-r,y); ctx.lineTo(ix+r,y); ctx.strokeStyle=full?'rgba(0,0,0,.7)':'#1a1a22'; ctx.stroke();
- ctx.beginPath(); ctx.arc(ix,y,r*.3,0,Math.PI*2); ctx.fillStyle=full?'rgba(60,64,80,.9)':'#f4f4f4'; ctx.fill(); ctx.stroke();
- ctx.restore();
+// Pokémon en el tablero / máximo: se pinta en el suelo del 3D (board3d.js, floorCount) con la misma inclinación que el tablero.
+// Llamativo mientras quede hueco; apagado cuando el tablero está lleno
+function floorCountSpec(){
+ const me=G.me; if(G.phase!=='planning'||!me||!me.alive||viewedPlayer()!==me) return null;
+ const n=boardUnits(me).length, max=maxBoard(me), [ax,ay]=cellXY(3,1), [bx,by]=cellXY(3,2);
+ return {txt:n+'/'+max,full:n>=max,x:(ax+bx)/2,y:(ay+by)/2};
 }
 function drawTotemIcons(){
  hudAugs=[]; const tt=B3.totemTop&&B3.totemTop(); if(!tt) return;
@@ -2117,15 +2122,24 @@ function drawBoardTrainers(){
    if(label&&opp&&opp!==me) drawTacLabel(sp.opp[0],sp.opp[1],opp,'#ef4b3a','');
  }
 }
+// Burla de la minileyenda de Charmander (H): hace su animación de habilidad (también Charmeleon y Charizard) y lanza una bola de fuego al campo rival
+function tacFire(){
+ const me=G&&G.me; if(!me||!me.alive||!window.B3||tacKey(me)!=='charmander'||G.phase==='carousel'||modalOpen()) return;
+ const now=performance.now(); if(now-(TAC.fireT||0)<1500) return; TAC.fireT=now; TAC.castN=(TAC.castN||0)+1; trEmote={t0:now,txt:'🔥'};
+ const [tx,ty]=cellXY(3,1); TAC.fx=tx; TAC.fy=ty;
+ setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty); },170);
+}
 const EMOTES=['¡Vamos!','😤','👍','¡Allá voy!','😎','GG','🔥','¿Eso es todo?'];
 function hitMyTrainer(){ if(!G||!G.players.length||G.phase==='carousel'||!myTrBox) return false; const [x,y]=ptr, [tx,ty,s]=myTrBox; return Math.abs(x-tx)<s*.4&&y<ty+s*.1&&y>ty-s*.95; }
 
 /* ---------- carrusel ---------- */
 function carGeo(){ const cx=geo.W/2, cy=geo.pad+geo.bh/2, rr=Math.min(geo.W*.42,geo.bh*.42); return {cx,cy,rr}; }
-function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+C.rot; return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.55]; }
+// Los Pokémon giran con la rotación de la simulación más lo que ha pasado desde su último paso (60 fps suaves aunque el paso sea de 33 ms o llegue cada 160 ms por red)
+function carRot(C){ const at=C.mirror?C.rotAt:C.tickAt; return C.rot+(at?.2*clamp((performance.now()-at)/1000,0,.3):0); }
+function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+carRot(C); return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.55]; }
 function updateCarousel(dt){
  const C=G.carousel; if(!C||C.finished||C.mirror) return;
- C.t+=dt; C.rot+=.2*dt; // despacio: da tiempo a correr hasta el Pokémon que quieres
+ C.t+=dt; C.rot+=.2*dt; if(!HEADLESS) C.tickAt=performance.now(); // despacio: da tiempo a correr hasta el Pokémon que quieres
  const {cx,cy,rr}=carGeo(), sp=geo.R*4.2;
  const toward=(a,tx,ty)=>{ const dx=tx-a.x, dy=ty-a.y, d=Math.hypot(dx,dy); if(d>1){ const st=Math.min(d,sp*dt); a.x+=dx/d*st; a.y+=dy/d*st; } return d; };
  C.order.forEach((p,idx)=>{
@@ -2207,7 +2221,9 @@ function bindEvents(){
    if(d.target>=0){ if(performance.now()-d.t0>=1000) doAct({t:'icomb',a:d.idx,b:d.target},()=>combineBench(me,d.idx,d.target)); return; }
    const b=cv.getBoundingClientRect();
    if(e.clientX>=b.left&&e.clientX<=b.right&&e.clientY>=b.top&&e.clientY<=b.bottom){
-     const [x,y]=canvasPos(e); const hit=unitAt(x,y);
+     const [x,y]=canvasPos(e); let hit=unitAt(x,y);
+     // En pleno combate el objeto se suelta sobre el Pokémon que está peleando (se equipa en el momento, ver applyLiveItems)
+     if(G.phase==='combat'&&G.combat&&!G.combat.done&&viewCombat()===G.combat){ const cu=combatUnitAt(x,y); if(cu&&!cu.creep&&cu.side===(curFlip()?1:0)&&cu.bk&&me.board[cu.bk]) hit={u:me.board[cu.bk],loc:{b:cu.bk}}; }
      if(hit){ doAct({t:'item',idx:d.idx,loc:hit.loc},()=>useItem0(me,d.idx,hit.u,hit.loc)); selected=hit.u; selCombat=null; renderUI(); }
    }
  });
@@ -2258,6 +2274,7 @@ function bindEvents(){
    else if(k==='e'&&hover){ doAct({t:'sell',loc:hover.loc}); if(selected===hover.u) selected=null; hover=null; }
    else if(k===' '){ e.preventDefault(); onReady(); }
    else if(k==='t'){ trEmote={t0:performance.now(),txt:'👍'}; }
+   else if(k==='h'){ tacFire(); }
  });
  document.addEventListener('pointerover',e=>{ const el=e.target.closest&&e.target.closest('[data-tip]'); if(!el||itemDrag){ if(!itemDrag) hideTip(); return; } if(tipAnchor===el) return; showTip(el.dataset.tip,e,el); });
  window.addEventListener('resize',layout);
@@ -2328,14 +2345,14 @@ const GFX={get q(){ try{ return localStorage.getItem('pt_gfx')||'auto'; }catch(e
 function applyGfx(){ if(!window.B3||!B3.ready) return; const q=GFX.q; if(B3.setAuto) B3.setAuto(q==='auto'); if(q!=='auto') B3.setQuality(+q); if(B3.setShake) B3.setShake(GFX.shake&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)); }
 // De píxeles de tablero (suelo) a pantalla; h en radios de casilla
 const scr=(x,y,h=0)=>b3On()?B3.project(x,y,h/1):[x,y];
-const TAC_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water'};
+const TAC_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water',dratini:'water',pichu:'fire',abra:'grass',eevee:'grass'};
 // Anfitrión: en tu combate, tú, salvo que juegues en el campo del rival; si miras otra mesa, su dueño (o su rival si juega fuera)
 function arenaHost(){
  const me=G.me, v=G.view, byName=n=>G.players.find(p=>p!==me&&n&&n.replace(' (fantasma)','')===p.name);
  if(G.phase==='combat'){ if(v&&v.cb) return v.flip?(v.opp||viewedPlayer()):(G.players.find(p=>p.id===v.pid)||me); return G.flip?(byName(G.myOpp)||me):me; }
  return viewedPlayer();
 }
-function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'temple-'+(TAC_THEME[arenaHost().tac]||'grass'); }
+function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'river'; }
 const STAR_SCALE=[1,1.13,1.27];
 // Etapa evolutiva: las primeras formas son más pequeñas y al evolucionar se nota el cambio (líneas de 1, 2 o 3 formas)
 const STAGE_SCALE={2:[.75,1.1],3:[.78,.93,1.08]};
@@ -2413,11 +2430,14 @@ function orbList(){
 let synCache={v:-1,who:null,t:{}};
 function activeTraits(who){ if(synCache.v!==G.uiV||synCache.who!==who){ const t=traitTiers(who); synCache={v:G.uiV,who,t}; } return synCache.t; }
 let sceneLinks=[];
+// Entrenadores del carrusel: la posición que se dibuja persigue a la real con suavizado exponencial (sin saltos entre pasos de 33 ms ni entre mensajes de red)
+const carVis=new Map(); let carFrame=0, carVisT=0, carDt=0;
+function carPos(pid,x,y){ let v=carVis.get(pid); if(!v){ v={x,y,f:-1}; carVis.set(pid,v); } if(v.f!==carFrame){ const k=1-Math.exp(-carDt*15); v.x+=(x-v.x)*k; v.y+=(y-v.y)*k; v.f=carFrame; } return [v.x,v.y]; }
 // Efecto de una vez al colocar una ficha que comparte sinergia: memoria de cada ficha del tablero (casilla y sinergias activas)
-const synMem=new WeakMap(); let synCtx='';
+const synMem=new WeakMap(); let synCtx='', synFrame=0; // m.last = último fotograma en que la ficha estaba en el tablero (entrar = no estaba en el anterior)
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
- sceneLinks=[];
+ sceneLinks=[]; if(inCar){ const tn=performance.now(); carFrame++; carDt=Math.min(.1,(tn-carVisT)/1000); carVisT=tn; } else if(carVis.size) carVis.clear();
  const since=NET.lastTick?Math.max(0,(performance.now()-NET.lastTick)/1000)*(G.speed||1):0;
  drawSub=inCombat&&!inCombat.done?Math.min(DT,((G.view&&G.view.cb===inCombat?G.view.acc:G.acc)||0)+since):0;
  if(inCombat){
@@ -2434,10 +2454,10 @@ function sceneActors(){
    const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=optPos(C,i); A.push({key:o,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
  } else {
    const who=viewedPlayer(), mine=who===me, ctx=who.id+'|'+G.phase+'|'+G.roundIdx, quiet=ctx!==synCtx, now=performance.now(); synCtx=ctx;
-   const info=[], tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
-   for(const k in who.board){ const u=who.board[k]; if(drag&&drag.moved&&drag.u===u) continue; const [c,r]=k.split(',').map(Number); const [x,y]=cellXY(c,4+r);
-     const syn=showSyn?unitTraits(u).filter(t=>(tiers[t]||0)>=1):null; let m=synMem.get(u); const fresh=!m; if(!m){ m={cell:k,n:0,t:0}; synMem.set(u,m); }
-     info.push({u,k,c,r,x,y,syn,m,init:!quiet&&showSyn&&!!syn&&syn.length>0&&(fresh||m.cell!==k)}); m.cell=k; }
+   const info=[], fr=++synFrame, tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
+   for(const k in who.board){ const u=who.board[k]; if(drag&&drag.moved&&drag.u===u){ const dm=synMem.get(u); if(dm) dm.last=fr; continue; } const [c,r]=k.split(',').map(Number); const [x,y]=cellXY(c,4+r);
+     const syn=showSyn?unitTraits(u).filter(t=>(tiers[t]||0)>=1):null; let m=synMem.get(u); const entered=!m||m.last!==fr-1; if(!m){ m={n:0,t:0}; synMem.set(u,m); }
+     info.push({u,k,c,r,x,y,syn,m,init:!quiet&&showSyn&&!!syn&&syn.length>0&&entered}); m.last=fr; }
    // Quien se acaba de colocar estalla con el elemento de su sinergia y lanza un destello hacia las fichas con las que la comparte (que también reaccionan)
    for(const i of info) if(i.init){ const par=info.filter(o=>o!==i&&o.syn&&o.syn.some(t=>i.syn.includes(t))); if(!par.length) continue; const sh=i.syn.filter(t=>par.some(p=>p.syn.includes(t)));
      i.m.n++; i.m.t=now; i.m.tr=sh; i.m.from=null; i.m.to=par.slice(0,4).map(p=>[p.x,p.y]);
@@ -2449,11 +2469,11 @@ function sceneActors(){
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){ const v=G.view, bottom=v?G.players.find(p=>p.id===v.pid)||me:me, sp=trainerSpots();
-   A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,ring:'#4c8dff',scale:.72,hud:{}});
+   A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
    if(bottom!==me) A.push({key:'tac:'+bottom.id,tac:true,dex:tacDex(bottom),star:tacStage(bottom)+1,x:sp.me[0],y:sp.me[1],face:Math.PI*.85,ring:'#ffd75e',scale:.72,hud:{}});
    const opp=inCombat&&G.round&&G.round.type!=='pve'?(v?v.opp:G.players.find(p=>p!==me&&G.myOpp&&G.myOpp.replace(' (fantasma)','')===p.name)):null;
    if(opp&&opp!==me) A.push({key:'tac:'+opp.id,tac:true,dex:tacDex(opp),star:tacStage(opp)+1,x:sp.opp[0],y:sp.opp[1],face:-Math.PI*.15,ring:'#ef4b3a',scale:.72,hud:{}}); }
- else { const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:a.x,y:a.y+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+ else { const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,a.x,a.y); A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,still:true,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
@@ -2470,14 +2490,14 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
- const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; return {id:p.id,x:a.x,y:a.y+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
+ const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,a.x,a.y); return {id:p.id,x:vx,y:vy+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length); return {id:p.id,x:cx+Math.cos(an)*rr*1.12,y:cy+Math.sin(an)*rr*1.12+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'stadium',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
-   interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
+   floorCount:playing&&!inCar?floorCountSpec():null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
- if(inCar) drawCarouselHud(); else { drawBoardCount(); drawBoardTrainers(); drawTotemIcons(); }
+ if(inCar) drawCarouselHud(); else { drawBoardTrainers(); drawTotemIcons(); }
  if(TAC.mark){ const k=(performance.now()-TAC.mark.t0)/500; if(k>=1) TAC.mark=null; else { const [mx,my]=scr(TAC.mark.x,TAC.mark.y,0), [,my2]=scr(TAC.mark.x,TAC.mark.y+geo.R*.5,0); ctx.save(); ctx.globalAlpha=1-k; ctx.strokeStyle='#7fe0ff'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(mx,my,geo.R*(.25+k*.35),Math.max(3,(my2-my)*(.5+k*.7)),0,0,7); ctx.stroke(); ctx.restore(); } }
  // De atrás adelante: si las barras se solapan, la del Pokémon más cercano queda encima
  for(const a of A.filter(a=>a.base).sort((p,q)=>p.base[1]-q.base[1])) drawHud(a);
@@ -2728,7 +2748,6 @@ function renderShop(){
  $('incomeInfo').innerHTML=`<b>Próximo ingreso: +${inc.total}</b><span>Base ${inc.base}</span><span>Interés ${inc.interest} (1 por cada 10 de oro, máx. ${me.mods.maxInterest})</span><span>Racha ${inc.streak}</span>${inc.bonus?`<span>Extra ${inc.bonus}</span>`:''}`;
  // Racha: llama roja con las victorias seguidas, azul con las derrotas
  const sk=$('streak'); sk.hidden=Math.abs(me.streak)<1; sk.className='streak '+(me.streak>0?'win':'loss'); sk.querySelector('b').textContent=Math.abs(me.streak); sk.title=me.streak>0?`Racha de ${me.streak} victorias`:`Racha de ${-me.streak} derrotas`;
- $('boardCount').textContent=`Tablero ${boardUnits(me).length}/${maxBoard(me)}`;
  $('streakInfo').textContent='';
 }
 // Ficha de habilidad que se ve al pasar por una carta de la tienda (antes de comprarla)
@@ -2761,7 +2780,7 @@ let sndWatch={g:null,up:0,tac:0};
 function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me);
  if(sndWatch.g!==G){ sndWatch={g:G,up,tac}; return; }
  if(up>sndWatch.up) Music.evolve('unit');
- if(tac>sndWatch.tac) Music.evolve(tac>=3?'mega':'big');
+ if(tac>sndWatch.tac) Music.evolve('big');
  sndWatch.up=up; sndWatch.tac=tac; }
 function upBadge(p){
  const u=p.lastUp; if(!u||p===G.me) return ''; const [dex,star,seq]=u, now=performance.now();
@@ -2868,7 +2887,7 @@ function savedTac(){ if(ACC&&TACS[ACC.trainer]) return ACC.trainer; try{ const k
 function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
- openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6, 8 y 9 (Mega). Con <b>T</b> saluda.</p>
+ openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p>
   <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k];
     return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn gold" id="tacOk">Confirmar</button></div>`,{closable:!first,onClose:()=>{ if(ACC) showMenu(); }});
@@ -2889,7 +2908,7 @@ function showHow(){
  <h3>Pokémon</h3><ul class="help"><li>3 copias = 2★ y evoluciona con una habilidad nueva. 3 de 2★ = 3★. A 3★ deja de salir en tu tienda.</li><li>Eevee acumula vida y ataque para siempre y evoluciona al derrotar enemigos.</li></ul>
  <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, suelta un componente sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
  <h3>Modos de juego</h3><ul class="help"><li><b>Normal</b>: rivales de tu nivel que se adaptan a ti (si ganas, juegan mejor; si te cuesta, más asequibles). No cambia tu rango.</li><li><b>Clasificatoria</b>: 3 partidas de posicionamiento y después ligas de Hierro a Retador. Ganas o pierdes LP según tu puesto y la fuerza de la sala.</li><li><b>Sala informal</b>: con amigos y un código. Da caramelos, pero no cambia tu nivel ni tu rango.</li><li>Todas dan caramelos (65 a 100 según el puesto) y quedan en tu historial. La práctica sin conexión no cuenta.</li></ul>
- <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda</p>
+ <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda · <span class="kbd">H</span> bola de fuego (Charmander)</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true});
 }
 function showDex(cost){
@@ -2952,7 +2971,13 @@ function showReveal(){
 function showPick(){
  const pk=G.me.picks&&G.me.picks[0]; if(!pk||modalOpen()) return;
  if(pk.src==='__eevee'){ showEvolve(pk); return; }
+ if(pk.src==='__tac'){ showTacEvolve(pk); return; }
  openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>`<button class="choice" data-i="${i}"><span class="big">${esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`).join('')}</div>`,{kind:'pick'});
+ $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
+}
+function showTacEvolve(pk){
+ const opts=pk.opts.map(o=>DEF[String(o.v).split('|')[1]]).filter(Boolean);
+ openModal(`<h1>${esc(pk.title)}</h1><p>${esc(pk.desc||'')}</p><div class="choices">${opts.map((e,i)=>`<button class="choice" data-i="${i}">${CARD_ART[e.key]?`<span class="evoArt" style="background-image:url('${CARD_ART[e.key]}')"></span>`:spriteHTML(e,64)}<b>${e.name}</b><span class="small">${e.traits.join(' · ')}</span></button>`).join('')}</div>`,{kind:'pick'});
  $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
 }
 function showEvolve(pk){

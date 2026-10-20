@@ -55,6 +55,7 @@ function augGrant(p,v){
  const [k,a]=String(v).split(':');
  if(k==='ev'){ const [uid,key]=String(a).split('|'), u=allUnits(p).find(x=>String(x.uid)===uid&&x.defId==='eevee'), e=DEF[key];
    if(!u||!e||e.evoOf!=='eevee') return ''; u.defId=key; p.eeveeForm=key; return 'Eevee evolucionó en '+e.name; }
+ if(k==='te'){ const [st,key]=String(a).split('|'), t=TACS[p.tac], e=DEF[key], n=(+st)-1; if(!t||!t.pick||!e||!(n>=0&&n<2)||!t.pick[n].includes(key)) return ''; p.tacForm=p.tacForm||['','']; p.tacForm[n]=key; return 'Tu minileyenda evolucionó en '+e.name; }
  if(k==='g'){ p.gold+=+a; return `${a} de oro`; }
  if(k==='xp'){ addXp(p,+a); return `${a} de EXP`; }
  if(k==='c'){ const it=giveItem(p,pick(BASIC)); return ITEMS[it].name; }
