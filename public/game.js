@@ -53,7 +53,7 @@ const TRAITS={
  'Asesino':T('🗡️','#34495e',[2,4,6],'Afecta a tus Asesinos','Saltan a la retaguardia al empezar; ganan críticos y sus habilidades pueden ser críticas.',['+15% de prob. crítica y +10% de daño crítico','+30% y +20%','+45% y +35%']),
  'Sanador':T('💖','#16a085',[2,4,6],'Afecta a TODO tu equipo','Las curaciones y escudos de las habilidades de tu equipo son más fuertes, y todos ganan resistencia.',['+20% de curación y escudos · +10 de resistencia','+40% · +20 de resistencia','+70% · +35 de resistencia']),
  'Cazatesoros':T('💎','#e0a800',[2,3],'Afecta a tu economía','Consiguen botín al ganar combates, más con rachas de victorias. Toca la sinergia para ver todo lo que te han dado.',['Al ganar: 2 de oro (+1 por cada victoria seguida, máx. +3) · al perder: 1 de oro','Al ganar: un orbe de botín y oro de racha · al perder: 2 de oro']),
- 'Legendario':T('👑','#c79400',[1],'Afecta a cada Legendario','Bonificación propia de cada Legendario.',['+20% de vida y de daño de ataque']),
+ 'Legendario':T('👑','#c79400',[1],'Afecta a cada Legendario','Resonancia: cada Legendario se hace más fuerte con los niveles activos de sus OTRAS sinergias, contando solo a tus Pokémon no legendarios (vida, ataque y habilidad). Sin apoyo, se debilita.',['Sin sinergias activas −8% · 1 nivel +0% · 2 niveles +12% · 3 niveles +25% · 4 niveles +40% · 5 o más +50%']),
  'Depredadores':T('🩸','#e8572a',[2,4,6],'Afecta a tus Depredadores','Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná: una baja puede encadenar otra.',['+15% de vel. de ataque · al matar: acelerón +40% 2 s y 30% de maná','+30% · acelerón +60% 2,5 s y 50% de maná','+50% · acelerón +90% 3 s y reinicia su habilidad']),
  'Potencial Evolutivo':T('🌱','#5bbf6a',[2,4,6],'Afecta a tus Pokémon con Potencial Evolutivo','Crecen para siempre: al terminar cada ronda en el tablero ganan vida y ataque permanentes (el doble a 3★).',['+12 de vida, +1 de ataque y +1,5 de poder por ronda','+25 de vida, +2 de ataque y +3 de poder por ronda','+45 de vida, +4 de ataque y +6 de poder por ronda']),
  'Team Rocket':T('🚀','#b8203c',[3,5],'Afecta a tus miembros del Team Rocket','La primera vez que bajan del 60% de vida se ponen serios durante 4 s.',['25% menos de daño, +50% de vel. de ataque y regeneran 3% de vida/s','45% menos de daño, +80% de vel. de ataque y regeneran 5% de vida/s']),
@@ -577,7 +577,10 @@ const traitCounts=p=>traitCountsOf(boardUnits(p),p.mods.extraTrait);
 // Emblemas que cuentan para cada sinergia (un Pokémon que ya la tiene de serie no suma)
 function emblemCountsOf(units){ const e={}; for(const u of units){ const d=DEF[u.defId]; for(const i of u.items){ const t=ITEMS[i]&&ITEMS[i].emblem; if(t&&!d.traits.includes(t)) e[t]=(e[t]||0)+1; } } return e; }
 const tierOf=(t,n,e)=>{ const Tr=TRAITS[t]; let k=Tr.bp.filter(b=>n>=b).length; if(k===Tr.bp.length&&Tr.pr&&e>0&&n>=Tr.pr[0]) k++; return k; };
-function traitTiers(p){ const c=traitCounts(p), e=emblemCountsOf(boardUnits(p)), Tt={}; for(const t in c) Tt[t]=tierOf(t,c[t],e[t]||0); return Tt; }
+// Tt.nl (no enumerable): niveles contando solo a los no legendarios, para la resonancia (unos legendarios no activan la de otros)
+function traitTiers(p){ const bu=boardUnits(p), c=traitCounts(p), e=emblemCountsOf(bu), Tt={}; for(const t in c) Tt[t]=tierOf(t,c[t],e[t]||0);
+ const nu=bu.filter(u=>!DEF[u.defId].traits.includes('Legendario')), cn=traitCountsOf(nu,p.mods.extraTrait), en=emblemCountsOf(nu), nl={}; for(const t in cn) nl[t]=tierOf(t,cn[t],en[t]||0);
+ Object.defineProperty(Tt,'nl',{value:nl,enumerable:false}); return Tt; }
 function topTrait(p){ const c=traitCountsOf(allUnits(p)); delete c['Legendario']; const e=Object.entries(c).sort((a,b)=>b[1]-a[1]); return e.length?e[0][0]:null; }
 function pushLog(p,msg,t){ p.log.unshift(msg); p.log.length=Math.min(p.log.length,12); if(t){ p.tseq++; p.toasts=p.toasts.concat([[p.tseq,msg]]).slice(-4); } }
 function note(p,msg,toastIt){
@@ -595,6 +598,7 @@ function neighbors(c,r){ const d=(r&1)?[[1,0],[-1,0],[1,-1],[0,-1],[1,1],[0,1]]:
 const toGrid=(side,c,r)=>side===0?[c,4+r]:[6-c,3-r];
 const pickR=(cb,a)=>a[Math.floor(cb.rng()*a.length)];
 
+const LEG_RES=[.92,1,1.12,1.25,1.4,1.5]; // por niveles activos de sus otras sinergias
 function applyTraits(u,traits,Tt,mods){
  const has=t=>traits.includes(t), tv=(t,arr)=>arr[Math.min(Tt[t]||0,arr.length-1)]||0;
  // Tipos con identidad propia: incendio, oleadas, sobrecarga, ciclos de maná, escalado dracónico, fortaleza y ejecuciones
@@ -624,7 +628,8 @@ function applyTraits(u,traits,Tt,mods){
  u.healAmp=(u.healAmp||0)+tv('Sanador',[0,.2,.4,.7,1.2]); u.mr+=tv('Sanador',[0,10,20,35,60]);
  if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.15,.3,.5,.8]); u.rival=[tv('Depredadores',[0,.4,.6,.9,1.3]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.3,.5,1,1])]; }
  if(has('Team Rocket')&&Tt['Team Rocket']) u.rocket=Tt['Team Rocket'];
- if(has('Legendario')){ const b=1.2+(mods?mods.legend:0); u.maxHp*=b; u.ad*=b; }
+ // Resonancia: un Legendario sin su arquetipo (p. ej. Rayquaza sin Dragón ni Tirador) rinde menos; llenar el tablero de legendarios no basta
+ if(has('Legendario')){ let n=0; const T2=Tt.nl||Tt; for(const t of traits) if(t!=='Legendario') n+=T2[t]||0; const b=LEG_RES[Math.min(n,LEG_RES.length-1)]+(mods?mods.legend:0); u.maxHp*=b; u.ad*=b; u.legMul=b; u.legRes=n; }
 }
 function applyStats(u,s){
  for(const k in s){ const v=s[k]; switch(k){
@@ -662,7 +667,7 @@ function abilPower(u){
  const k=scaleOf(u); let f=1;
  if(k==='ad'&&u.ad0>0) f=u.ad/u.ad0; else if(k==='hp'&&u.hp0>0) f=Math.pow(u.maxHp/u.hp0,.75);
  // castBoost: lo que la habilidad ha crecido en este combate (3★ y legendarios que se fortalecen al lanzarla)
- return ABIL_BASE[u.cost-1]*(u.star>=3?ABIL3_BY_COST[u.cost-1]:ABIL_STAR[u.star-1])*(1+u.ap/100)*Math.max(.5,f)*(1+(u.castBoost||0));
+ return ABIL_BASE[u.cost-1]*(u.star>=3?ABIL3_BY_COST[u.cost-1]:ABIL_STAR[u.star-1])*(1+u.ap/100)*Math.max(.5,f)*(1+(u.castBoost||0))*(k==='ap'?u.legMul||1:1); // la resonancia ya entra por el ataque o la vida en los demás roles
 }
 
 // Instantánea compacta de un equipo: es lo que se envía por red y lo que usa la simulación
@@ -2891,6 +2896,7 @@ function renderCard(){
  const evo=d.names&&!d.evoOf?`<div class="uc-evo">${[1,2,3].map(s=>`<div class="f ${s===star?'on':''}" data-tip="form:${d.key}|${s}">${spriteHTML(d,40,s)}<b>${'★'.repeat(s)}</b>${esc(nameOf(d,s))}<span class="muted">${esc(abOf(d,s)[1])}</span></div>`).join('')}</div>`:'';
  const items=inst||cu.items?`<div class="uc-items">${[0,1,2].map(i=>{ const it=(inst?inst.items:cu.items)[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; if(!I) return `<div class="slot">Vacío</div>`; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}</div>`; }).join('')}</div>`:'';
  const gab=abOf(d,star), goldLine=inst&&gab[2]&&gab[2].g?`<p class="small goldGen">💰 Oro generado por ${esc(gab[1])}: <b>${inst.goldGen||0}</b></p>`:'';
+ const legLine=cu.legMul?`<p class="small">👑 Resonancia: <b>${cu.legMul>=1?'+':'−'}${R0(Math.abs(cu.legMul-1)*100)}%</b> de vida, ataque y habilidad (${cu.legRes||0} niveles activos de sus otras sinergias)</p>`:'';
  const stacks=live?[cu.sp.rage?`😤 Cinta Furia: <b>${cu.rageN||0}</b> cargas (vel. de ataque ${cu.as.toFixed(2)})`:'',cu.sp.rampAp?`🌙 Piedra Lunar: <b>+${R0(cu.apGain||0)}</b> de poder`:'',cu.sp.titan?`🦾 Coraza Titán: <b>${cu.titanN||0}</b>/25 cargas`:''].filter(Boolean).map(t=>`<p class="small">${t}</p>`).join(''):'';
  const extra=inst&&inst.defId==='mewtwo'?`<p class="small">Inestable: <b>${Math.min(MEW_NEED,(inst.kills||0)+(inst.mwR||0))}/${MEW_NEED}</b> de energía (bajas y rondas en tu tablero) para volverse Mega Mewtwo Y</p>`:inst&&inst.defId==='eevee'?`<p class="small">🌀 Evoluciona al derrotar ${me.mods.eeveeKills} enemigos: <b>${Math.min(inst.kills,me.mods.eeveeKills)}/${me.mods.eeveeKills}</b></p>`:'';
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad||inst.stk.ap)?`<p class="small">Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque · +${R0(inst.stk.ap||0)} poder</p>`:'';
@@ -2901,7 +2907,7 @@ function renderCard(){
   <div>${traits.map(t=>TRAITS[t]?`<span class="chip" data-tip="trait:${t}">${TRAITS[t].icon} ${t}</span>`:'').join('')}</div>
   <div class="uc-ab"><div class="t"><span class="abIco">${elIcon(ab[2]&&ab[2].el||elemOf(d))||'✨'}</span>${esc(ab[1])}<span class="abMana">💧 ${cu.maxMana>=9999?'—':cu.maxMana}</span></div><div class="m">${KIND_NAME[ab[0]]} · escala con ${SCALE_TXT[scaleOf(cu)]} · pasa el ratón por un número para ver su ratio</div>${abHTML(ab,cu,star)}</div>
   <div class="uc-stats">${stats.map(([i,a,b])=>`<div title="${a}"><span>${i} ${a}</span><b>${b}</b></div>`).join('')}</div>
-  ${goldLine}${evo}${items}${stacks}${extra}${stk}
+  ${goldLine}${legLine}${evo}${items}${stacks}${extra}${stk}
   ${inst?`<button class="btn sm" id="ucSell">Vender por ${sellValue(inst)} de oro</button>`:''}`;
  hydrate(el);
 }

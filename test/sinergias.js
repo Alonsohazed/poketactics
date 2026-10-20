@@ -193,6 +193,14 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     if (run(false) === run(true)) same++; }
   ok(same === N, `mismo resultado con y sin efectos visuales (${same}/${N})`); ok(fxN > 0, 'los combates visuales generan efectos'); }
 
+// 14. Resonancia legendaria: un Legendario depende de sus otras sinergias, y otros legendarios no se las activan
+{ const ray = b => { const { p } = fresh(); p.board = b; return combatOf(p, '3,3'); }, I = E.makeInst;
+  const solo = ray({ '3,3': I('rayquaza'), '3,0': I('onix') }), conLeg = ray({ '3,3': I('rayquaza'), '3,0': I('giratina'), '2,0': I('zapdos') });
+  const conApoyo = ray({ '3,3': I('rayquaza'), '3,0': I('dratini'), '2,0': I('horsea'), '4,3': I('pichu') });
+  ok(solo.legMul < 1 && solo.legRes === 0, `Rayquaza sin apoyo se debilita (×${solo.legMul})`);
+  ok(conLeg.legRes === 0, 'Giratina y Zapdos no activan la resonancia de Rayquaza');
+  ok(conApoyo.legRes >= 2 && conApoyo.legMul > 1 && conApoyo.ad > solo.ad, `con Dragón y Tirador se fortalece (×${conApoyo.legMul})`); }
+
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');
