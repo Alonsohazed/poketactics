@@ -30,7 +30,7 @@ const ccache={}, ccol=c=>ccache[c]||(ccache[c]=new THREE.Color(c)); // colores d
 /* ---------- calidad ---------- */
 // 2 = alta, 1 = media, 0 = baja (sin sombras, 1 píxel por píxel CSS, menos partículas y público quieto).
 // Móviles y equipos modestos empiezan en media; si los FPS no llegan, baja sola (nunca sube, para no ir a tirones).
-const QL=[{pr:1,shadow:0,part:.35,crowd:false},{pr:1.5,shadow:1024,part:.6,crowd:true},{pr:2,shadow:2048,part:1,crowd:true}];
+const QL=[{pr:1,shadow:0,part:.35,crowd:false},{pr:1.25,shadow:1024,part:.6,crowd:true},{pr:1.5,shadow:2048,part:1,crowd:true}];
 let qLevel=2, Q=QL[2], dpr0=1;
 function guessQuality(){
  const mob=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)||/Android|iPhone|iPad|Mobi/i.test(navigator.userAgent);
@@ -314,7 +314,7 @@ function buildArena(kind){
 }
 const SKY={route:['#8fd3ff','#e8f7ff'],stadium:['#141a3a','#3a4a8a'],plaza:['#ffc89a','#fff2d8'],'temple-fire':TEMPLE.fire.sky,'temple-grass':TEMPLE.grass.sky,'temple-water':TEMPLE.water.sky};
 function setArena(kind){
- if(kind===curArena) return; const prev=curArena; curArena=kind;
+ if(kind===curArena) return; const prev=curArena; curArena=kind; if(renderer) renderer.shadowMap.needsUpdate=true;
  if(benchPads) benchPads.visible=kind!=='plaza';
  // La cámara encuadra la plaza entera en el carrusel y el tablero en el resto
  if(board.G&&(kind==='plaza')!==(prev==='plaza')) fitCamera(board.G);
@@ -329,14 +329,23 @@ function setArena(kind){
 const loader=new GLTFLoader(); const draco=new DRACOLoader(); draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/draco/gltf/');
 loader.setDRACOLoader(draco); loader.setMeshoptDecoder(MeshoptDecoder);
 const models={}; const queue=[]; let loading=0;
+function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[dex].status==='queued') delete models[dex]; }
+// Animaciones por estados (prueba con 5 Pokémon): idle, run, attack, special, hit, faint y victory.
+// Cada uno tiene public/anims/<n.º>.json (fotograma de impacto y, opcional, "glb": true para usar anims/<n.º>.glb con los clips ya
+// renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
+// Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
+const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150]);
+const SM_CLIPS=['idle','run','attack','special','hit','faint','victory'];
 function wantModel(dex){
  let m=models[dex]; if(m) return m;
- m=models[dex]={status:'queued'}; queue.push(dex); pump(); return m;
+ m=models[dex]={status:'queued'};
+ if(ANIM_SET.has(+dex)){ m.status='meta'; fetch('anims/'+dex+'.json').then(r=>r.ok?r.json():{}).catch(()=>({})).then(j=>{ m.meta=j||{}; if(m.meta.glb) m.url='anims/'+dex+'.glb'; m.status='queued'; queue.push(dex); pump(); }); return m; }
+ queue.push(dex); pump(); return m;
 }
 function pump(){
  while(loading<4&&queue.length){
    const dex=queue.shift(), m=models[dex]; loading++; m.status='loading';
-   loader.load(m.retry?MODEL_RAW(dex):MODEL_URL(dex),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; if(!m.retry){ m.retry=1; m.status='queued'; queue.push(dex); pump(); return; } m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
+   loader.load(m.retry?MODEL_RAW(dex):(m.url||MODEL_URL(dex)),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; if(!m.retry){ m.retry=1; m.status='queued'; queue.push(dex); pump(); return; } m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
  }
 }
 const RX={
@@ -349,13 +358,14 @@ const RX={
 const BAD_IDLE=/dizzy|faint|down|\bko\b|_ko|sleep|dead|die|lose|damage|hurt/i;
 function prepModel(m,gl,dex){
  const root=gl.scene; root.updateMatrixWorld(true);
- root.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=false; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt.map) mt.map.colorSpace=THREE.SRGBColorSpace; if(mt.transparent&&mt.opacity>=1) mt.alphaTest=.5; } } });
+ root.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt.map) mt.map.colorSpace=THREE.SRGBColorSpace; if(mt.transparent&&mt.opacity>=1) mt.alphaTest=.5; } } });
  const clips=gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
  m.clips={idle:pick(RX.idle),walk:pick(RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
  if(!m.clips.idle){ const c2=clips.find(k=>!BAD_IDLE.test(k.name)&&k!==m.clips.attack&&k!==m.clips.ko); m.clips.idle=c2||null; }
  // Sin desplazamiento de la raíz: algunas animaciones mueven el modelo hacia un lado y al repetirse vuelve de golpe (un "tic")
  const roots=new Set(); root.traverse(o=>{ if(o.isBone&&!(o.parent&&o.parent.isBone)) roots.add(o.name); });
  for(const c of clips) for(const tr of c.tracks){ const i=tr.name.lastIndexOf('.'); if(tr.name.slice(i+1)!=='position'||!roots.has(tr.name.slice(0,i))) continue; const v=tr.values; for(let k=3;k<v.length;k+=3){ v[k]=v[0]; v[k+2]=v[2]; } }
+ const body=m.meta?bodyType(root,dex):null;
  // Se mide en la pose de reposo real: la animación de espera o, si no hay, la pose que le damos por código
  if(m.clips.idle){ const mx=new THREE.AnimationMixer(root); mx.clipAction(m.clips.idle).play(); mx.update(.4); root.updateMatrixWorld(true); }
  else { m.proc=rigPose(root,dex); root.updateMatrixWorld(true); }
@@ -364,6 +374,71 @@ function prepModel(m,gl,dex){
  const h=Math.max(size.y,1e-3), L=Math.max(size.x,size.z,1e-3);
  // Las serpientes enroscadas (COIL) ocupan más ancho que alto: se les deja algo más de margen
  m.kh=1.05/h; m.k=COIL.has(dex)?Math.min(1.2/h,1.8/L):Math.min(1.05/h,1.3/L); m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
+ if(m.meta){ const have={}; for(const n of SM_CLIPS){ const c2=clips.find(k=>k.name===n); if(c2) have[n]=c2; }
+   // alias: un clip propio que hace de otro (p. ej. special con el de ataque) antes de generarlo por código
+   for(const [n,src] of Object.entries(m.meta.alias||{})) if(!have[n]&&have[src]) have[n]=have[src];
+   const gen=synthClips(root,body,h); for(const n of SM_CLIPS) if(!have[n]&&gen[n]) have[n]=gen[n];
+   m.sm={clips:have,hit:{attack:(m.meta.attack&&m.meta.attack.hit)||.4,special:(m.meta.special&&m.meta.special.hit)||.55},body}; }
+}
+// Tipo de cuerpo por los huesos (en la pose de montaje): serpiente, cuadrúpedo (brazos hacia el suelo), volador (alas largas) o bípedo
+function bodyType(root,dex){ const B=bonesOf(root,true); root.updateMatrixWorld(true);
+ if(COIL.has(+dex)) return 'serpent';
+ if(chainOf(B,/^LFeeler\d+$/).length>=4) return 'flyer';
+ const arm=B.LArm||B.RArm; if(arm&&B.LThigh&&Math.abs(dirOf(arm).y)>.7) return 'quad';
+ if(!B.LThigh&&!B.RThigh) return 'float';
+ return 'biped'; }
+// Genera los 7 clips sobre el esqueleto (en la pose de reposo ya colocada): rotaciones alrededor de ejes del modelo,
+// cada brazo en su lado (nunca cruza el cuerpo: solo gira hacia delante/atrás o hacia fuera)
+function synthClips(root,body,h){
+ const B=bonesOf(root,true); if(!Object.keys(B).length) return {};
+ root.updateMatrixWorld(true);
+ const X=new THREE.Vector3(1,0,0), Y=new THREE.Vector3(0,1,0), Z=new THREE.Vector3(0,0,1), FPS=30;
+ const used=new Map(); // hueso → {q0, ejes locales}
+ const reg=b=>{ if(!b) return null; if(!used.has(b)) used.set(b,{q0:b.quaternion.clone(),x:localAxis(b,X),y:localAxis(b,Y),z:localAxis(b,Z)}); return b; };
+ const spine=chainOf(B,/^Spine\d*$/).map(reg), tail=chainOf(B,/^Tail\d*$/).map(reg), head=reg(B.Head), neck=reg(B.Neck||B.Neck1), jaw=reg(B.Jaw), hips=reg(B.Hips);
+ const armL=reg(B.LArm), armR=reg(B.RArm), foreL=reg(B.LForeArm), foreR=reg(B.RForeArm), thL=reg(B.LThigh), thR=reg(B.RThigh), legL=reg(B.LLeg), legR=reg(B.RLeg), earL=reg(B.LEar), earR=reg(B.REar);
+ const wingL=chainOf(B,/^LFeeler\d*$/).map(reg), wingR=chainOf(B,/^RFeeler\d*$/).map(reg);
+ // Hacia fuera de cada brazo (signo del eje Z del modelo que lo levanta por su lado)
+ const out=b=>b?(Math.sign(dirOf(b).x)||1):1;
+ const quad=body==='quad', snake=body==='serpent';
+ // f(t) → lista de [hueso, eje, ángulo]; se muestrea a 30 fps y se compone sobre la pose de reposo
+ const make=(name,dur,f,loop)=>{ if(!used.size) return null; const n=Math.max(2,Math.round(dur*FPS)+1), times=new Float32Array(n), vals=new Map();
+   for(const [bn] of used) vals.set(bn,new Float32Array(n*4));
+   const q=new THREE.Quaternion(), qa=new THREE.Quaternion();
+   for(let i=0;i<n;i++){ const t=loop?i/(n-1)*dur:i/(n-1)*dur; times[i]=t; const rot=new Map(); for(const [bone,ax,ang] of f(t/dur,t)){ if(!bone||!ang) continue; (rot.get(bone)||rot.set(bone,[]).get(bone)).push([ax,ang]); }
+     for(const [bone,info] of used){ q.copy(info.q0); for(const [ax,ang] of rot.get(bone)||[]){ qa.setFromAxisAngle(info[ax],ang); q.multiply(qa); } q.toArray(vals.get(bone),i*4); } }
+   const tracks=[...used].map(([bone])=>new THREE.QuaternionKeyframeTrack(bone.name+'.quaternion',times,vals.get(bone)));
+   return new THREE.AnimationClip(name,dur,tracks); };
+ const S=Math.sin, TAU2=Math.PI*2, ease=x=>x<0?0:x>1?1:x*x*(3-2*x), bump=(p,a,b)=>p<a||p>b?0:S((p-a)/(b-a)*Math.PI);
+ const wave=(arr,p,amp,ax,lag=.7)=>arr.map((bn,i)=>[bn,ax,amp*S(p*TAU2-i*lag)]);
+ const C={};
+ // idle: respira, cola y orejas, mira alrededor (bucle exacto)
+ C.idle=make('idle',2.6,p=>[ ...spine.map((bn,i)=>[bn,'x',.035*S(p*TAU2+i*.4)]), [neck,'x',.04*S(p*TAU2+.5)], [head,'x',.05*S(p*TAU2+.9)], [head,'y',.22*S(p*TAU2)*Math.min(1,Math.abs(S(p*TAU2))*1.6)],
+   ...wave(tail,p,snake?.05:.16,'y',.5), [earL,'z',.07*S(p*TAU2*2)], [earR,'z',-.07*S(p*TAU2*2+.5)], [jaw,'x',.03*S(p*TAU2)], [armL,'x',.05*S(p*TAU2)], [armR,'x',.05*S(p*TAU2+Math.PI)],
+   ...wingL.map((bn,i)=>[bn,'z',.18*S(p*TAU2+i*.4)]), ...wingR.map((bn,i)=>[bn,'z',-.18*S(p*TAU2+i*.4)]) ],true);
+ // run: piernas alternas, brazos opuestos (cuadrúpedo: en diagonal), cadera y cola; la serpiente ondula
+ C.run=make('run',.68,p=>{ const w=p*TAU2; if(snake) return [...wave([...spine,...tail],p,.18,'y',.8), [head,'y',-.08*S(w)]];
+   return [ [thL,'x',.6*S(w)], [thR,'x',-.6*S(w)], [legL,'x',.4*S(w+.9)+.25], [legR,'x',-.4*S(w+.9)+.25],
+     [armL,'x',(quad?-.55:-.5)*S(w)*(quad?-1:1)], [armR,'x',(quad?-.55:-.5)*S(w+Math.PI)*(quad?-1:1)], [foreL,'x',quad?.3*S(w+.9):0], [foreR,'x',quad?.3*S(w+.9+Math.PI):0],
+     ...spine.map(bn=>[bn,'z',.05*S(w)]), [hips,'y',.06*S(w)], [head,'x',.06*S(w*2)], ...wave(tail,p,.25,'y',.6), ...wingL.map(bn=>[bn,'z',.35*S(w*1.5)]), ...wingR.map(bn=>[bn,'z',-.35*S(w*1.5)]) ]; },true);
+ // attack: preparación (0–35 %), golpe con el impacto al 40 % y vuelta al reposo
+ C.attack=make('attack',.5,p=>{ const k=p<.35?-ease(p/.35):p<.5?-1+2.4*ease((p-.35)/.15):1.4*(1-ease((p-.5)/.5));
+   return [ ...spine.map(bn=>[bn,'x',.2*k]), [neck,'x',.15*k], [head,'x',.2*k], [jaw,'x',.35*Math.max(0,k)], [armL,'x',-.7*k], [armR,'x',-.7*k], [foreL,'x',-.3*Math.max(0,k)], [foreR,'x',-.3*Math.max(0,k)],
+     [thL,'x',.15*k], [thR,'x',-.1*k], ...wave(tail,p,.15,'y'), ...(snake?[[spine[spine.length-1],'x',.35*k]]:[]) ]; });
+ // special: carga más larga (brazos hacia fuera y arriba) y lanzamiento al 55 %
+ C.special=make('special',.8,p=>{ const ch=p<.45?ease(p/.45):p<.6?1-ease((p-.45)/.15):0, rel=bump(p,.45,.85);
+   return [ ...spine.map(bn=>[bn,'x',-.25*ch+.3*rel]), [head,'x',-.3*ch+.25*rel], [jaw,'x',.45*rel],
+     [armL,'z',out(armL)*(.9*ch)], [armR,'z',out(armR)*(.9*ch)], [armL,'x',-.9*rel], [armR,'x',-.9*rel],
+     ...wave(tail,p,.25*ch,'y',.5), ...wingL.map(bn=>[bn,'z',.6*ch]), ...wingR.map(bn=>[bn,'z',-.6*ch]) ]; });
+ // hit: retroceso corto de cabeza y torso
+ C.hit=make('hit',.3,p=>{ const k=bump(p,0,1); return [ ...spine.map(bn=>[bn,'x',-.18*k]), [neck,'x',-.12*k], [head,'x',-.25*k], [jaw,'x',.15*k], [armL,'x',.2*k], [armR,'x',.2*k] ]; });
+ // faint: cae de lado y se queda quieto (la cadera gira el cuerpo entero)
+ if(hips) C.faint=make('faint',1,p=>{ const k=ease(p/.65); return [ [hips,'z',(snake?.6:1.35)*k], ...spine.map(bn=>[bn,'x',.25*k]), [head,'x',.5*k], [thL,'x',-.5*k], [thR,'x',-.5*k], [armL,'x',.4*k], [armR,'x',.4*k], ...wave(tail,0,.0,'y') ]; });
+ // victory: brazos arriba por su lado, cabeza alta y dos botes
+ C.victory=make('victory',1.5,p=>{ const up=ease(p/.25)*(1-ease((p-.8)/.2)), hop=Math.abs(S(p*Math.PI*3))*up;
+   return [ [armL,'z',out(armL)*1.0*up], [armR,'z',out(armR)*1.0*up], [armL,'x',-.4*hop], [armR,'x',-.4*hop], ...spine.map(bn=>[bn,'x',-.15*up]), [head,'x',-.3*up], [head,'y',.25*S(p*TAU2*2)*up],
+     [thL,'x',-.25*hop], [thR,'x',-.25*hop], ...wave(tail,p*3,.3*up,'y',.5), ...wingL.map(bn=>[bn,'z',.5*hop]), ...wingR.map(bn=>[bn,'z',-.5*hop]) ]; });
+ return C;
 }
 
 /* ---------- pose y movimiento por código (modelos sin animaciones) ---------- */
@@ -373,7 +448,8 @@ function prepModel(m,gl,dex){
 const boneName=o=>o.name.replace(/^\d+\s+/,'').replace(/_\d+$/,'');
 const COIL=new Set([147,148,384]); // Dratini, Dragonair y Rayquaza: cuerpo enroscado como una serpiente
 const _q=new THREE.Quaternion(), _v=new THREE.Vector3();
-function bonesOf(root){ const B={}; root.traverse(o=>{ if(o.isBone){ const n=boneName(o); if(!B[n]) B[n]=o; } }); return B; }
+// loose: también quita prefijos como "004_" (Growlithe y otros); solo lo usan las animaciones por estados
+function bonesOf(root,loose){ const B={}; root.traverse(o=>{ if(o.isBone){ const n=loose?boneName(o).replace(/^\d+_/,''):boneName(o); if(!B[n]) B[n]=o; } }); return B; }
 function chainOf(B,re){ return Object.keys(B).filter(n=>re.test(n)).sort((a,b)=>(+(a.match(/\d+$/)||[0])[0])-(+(b.match(/\d+$/)||[0])[0])).map(n=>B[n]); }
 // Gira un hueso con una rotación dada en el espacio del modelo
 function rotModel(b,q){ const pw=b.parent.getWorldQuaternion(new THREE.Quaternion()), bw=b.getWorldQuaternion(new THREE.Quaternion()); b.quaternion.copy(pw.invert().multiply(q.clone().multiply(bw))); b.updateMatrixWorld(true); }
@@ -443,7 +519,7 @@ class Actor{
  setDex(dex){
    if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(dex);
  }
- clearModel(){ if(this.ball){ this.body.remove(this.ball); this.ball=null; } if(this.model){ this.body.remove(this.model); this.model=null; this.mixer=null; this.cur=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
+ clearModel(){ this.sm=null; this.smActs=null; this.noKo=false; if(this.ball){ this.body.remove(this.ball); this.ball=null; } if(this.model){ this.body.remove(this.model); this.model=null; this.mixer=null; this.cur=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
  ensure(){
    const m=this.m; if(!m) return;
    if(m.status==='ok'&&!this.model){
@@ -455,8 +531,37 @@ class Actor{
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
      this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;
      for(const k in m.clips) if(m.clips[k]) this.acts[k]=this.mixer.clipAction(m.clips[k]);
-     this.play('idle',true);
+     if(m.sm){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.smActs={}; for(const n in m.sm.clips) this.smActs[n]=this.mixer.clipAction(m.sm.clips[n]); this.proc=null; this.go('idle'); }
+      else this.play('idle',true);
    } else if(m.status!=='ok'&&!this.ball){ this.ball=pokeBall(); this.body.add(this.ball); } // cargando o sin modelo: Poké Ball, nunca un sprite 2D
+ }
+ // Cambia de estado con un fundido de 0,15 s (nunca de golpe). once: se reproduce una vez y se queda en el último fotograma
+ go(name,o={}){ const a=this.smActs&&this.smActs[name]; if(!a) return false; const S=this.sm;
+   if(S.st===name&&!o.restart){ if(o.ts) a.timeScale=o.ts; return true; }
+   const once=name!=='idle'&&name!=='run'; a.reset(); a.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity); a.clampWhenFinished=once; a.timeScale=o.ts||1; if(o.start) a.time=o.start; a.enabled=true;
+   if(S.act&&S.act!==a) a.crossFadeFrom(S.act,name==='faint'?.35:.15,false); a.play(); S.act=a; S.st=name; S.once=once; return true; }
+ // Máquina de estados: faint > victory > special/attack (con el impacto alineado al daño) > hit > run/idle
+ smUpdate(spec,dt,movedSpeed){
+   if(this.sm.frozen) return; this.sm.spec={dead:!!spec.dead,win:!!spec.win,atkIn:spec.atkIn,atk:spec.atk,cast:spec.cast};
+   const S=this.sm, M=this.m.sm, C=M.clips, spd=spec.spd||1, dur=n=>C[n]?C[n].duration:0;
+   const busy=S.once&&S.act&&S.act.isRunning();
+   if(spec.dead){ if(S.st!=='faint'&&!this.go('faint')) this.noKo=true; return; }
+   if(spec.win&&!S.won&&!busy){ S.won=true; if(this.go('victory')) return; }
+   // Habilidad: cuando sube el contador, el lanzamiento empieza justo antes del impacto
+   if((spec.cast||0)>S.castSeen){ S.castSeen=spec.cast; if(C.special){ this.go('special',{restart:true,start:Math.max(0,M.hit.special*dur('special')-.12),ts:1}); return; } }
+   // Ataque: arranca antes del golpe para que su fotograma de impacto coincida con el daño de la simulación
+   const nextAtk=(spec.atk||0)+1;
+   if(C.attack&&spec.atkIn!=null&&S.atkStarted<nextAtk&&!(busy&&S.st==='special')){
+     const ts=Math.max(1,dur('attack')/Math.max(.2,(spec.atkP||1)*.95)), lead=M.hit.attack*dur('attack')/ts;
+     if(spec.atkIn<=lead){ S.atkStarted=nextAtk; this.go('attack',{restart:true,ts,start:Math.max(0,(lead-spec.atkIn)*ts)}); return; } }
+   // Golpe que llegó sin anticipar (primer ataque, cambios de objetivo): se ve desde el impacto
+   if(C.attack&&(spec.atk||0)>=S.atkStarted&&(spec.atk||0)>this.lastAtkSm){ this.lastAtkSm=spec.atk; if(S.atkStarted<spec.atk){ S.atkStarted=spec.atk; this.go('attack',{restart:true,start:M.hit.attack*dur('attack')}); return; } }
+   this.lastAtkSm=Math.max(this.lastAtkSm||0,spec.atk||0);
+   // Recibir daño: destello + clip hit (sin cortar un ataque o una habilidad)
+   const fl=spec.flash||0; if(fl>S.flash+.05&&!busy){ S.flash=fl; if(this.go('hit',{restart:true})) return; } S.flash=fl;
+   if(busy) return;
+   // Correr a la velocidad real (los pies no patinan) o esperar
+   if(this.moveT>0&&C.run) this.go('run',{ts:Math.min(1.7,Math.max(.7,movedSpeed/2.2))}); else this.go('idle');
  }
  play(name,loop){
    const a=this.acts&&this.acts[name]; if(!a){ return false; }
@@ -470,7 +575,7 @@ class Actor{
    if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star,!!spec.tac); this.star=spec.star; }
    const p=W3(spec.x,spec.y,0);
    // Solo se gira al caminar: los quietos (tablero y banquillo) miran siempre al frente y un salto grande (soltar una ficha, reajuste del tablero) es un teletransporte
-   const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0, jump=dd>1.2, moving=!spec.still&&!jump&&dd>.004; this.moveT=moving?.15:(spec.still||jump)?0:Math.max(0,this.moveT-dt);
+   const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0; this.lastSpeed=dt>0?(this.lastSpeed||0)*.7+.3*(dd/dt):0; const _=0, jump=dd>1.2, moving=!spec.still&&!jump&&dd>.004; this.moveT=moving?.15:(spec.still||jump)?0:Math.max(0,this.moveT-dt);
    if(moving&&!spec.drag){ const dx=p.x-this.lastPos.x, dz=p.z-this.lastPos.z; this.face=Math.atan2(dx,dz); }
    else if(spec.tx!=null){ const q=W3(spec.tx,spec.ty); this.face=Math.atan2(q.x-p.x,q.z-p.z); }
    else if(spec.face!=null&&!this.moveT) this.face=spec.face;
@@ -485,18 +590,19 @@ class Actor{
    if(this.evoBig&&ev<evL) this.face+=dt*14*Math.sin(ev/evL*Math.PI);
    this.ring.material.color.set(spec.ring||'#ffffff'); this.ring.visible=!spec.hideRing; this.ring.scale.setScalar(spec.sel?1.25+.06*Math.sin(t*8):1);
    // ataque y habilidad (contadores que suben en la simulación)
-   if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
+   if(this.sm){ this.lastAtk=spec.atk||0; this.lastCast=spec.cast||0; } else if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
    if((spec.cast||0)>this.lastCast){ this.lastCast=spec.cast; this.castT=0; this.play('cast',false); }
    this.atkT+=dt; this.castT+=dt;
    let lift=TOP, lean=0, fwd=0, breath=0, sway=0;
    if(spec.dead){
-     if(this.deadT<0){ this.deadT=0; if(!this.play('ko',false)) this.noKo=true; }
+     if(this.deadT<0){ this.deadT=0; if(this.sm) this.smUpdate(spec,dt,0); else if(!this.play('ko',false)) this.noKo=true; }
      this.deadT+=dt; const k=clamp(this.deadT/1.1,0,1);
      if(this.noKo) lean=k*1.35; lift-=Math.max(0,this.deadT-.6)*.6;
      this.setAlpha(1-clamp((this.deadT-.5)/.7,0,1)); this.root.visible=this.deadT<1.3;
    } else {
-     if(this.cur&&!this.cur.isRunning()&&this.curName!=='idle'&&this.curName!=='walk'){ this.cur.stop(); this.cur=null; }
-     if(!this.cur||this.curName==='idle'||this.curName==='walk'){ if(this.moveT>0&&this.acts&&this.acts.walk) this.play('walk',true); else this.play('idle',true); }
+     if(this.sm) this.smUpdate(spec,dt,this.lastSpeed||0);
+     else if(this.cur&&!this.cur.isRunning()&&this.curName!=='idle'&&this.curName!=='walk'){ this.cur.stop(); this.cur=null; }
+     if(!this.sm&&(!this.cur||this.curName==='idle'||this.curName==='walk')){ if(this.moveT>0&&this.acts&&this.acts.walk) this.play('walk',true); else this.play('idle',true); }
      if(this.atkT<.3) fwd=Math.sin(this.atkT/.3*Math.PI)*.35;
      if(this.castT<.5){ lift+=Math.sin(this.castT/.5*Math.PI)*.35; }
      if(!this.acts||!this.acts.idle){ const ph=t+this.root.id; lift+=(Math.sin(ph*2.2)*.5+.5)*(this.proc?.04:.07); breath=Math.sin(ph*2.6)*(this.proc?.03:.05); lean=Math.sin(ph*1.3)*(this.proc?.02:.05); }
@@ -510,7 +616,7 @@ class Actor{
    // destello al recibir daño y brillo al lanzar
    const fl=clamp((spec.flash||0)/.12,0,1), gl=spec.glow||0;
    if(this.mats) for(const mt of this.mats) if(mt.emissive){ const e=Math.max(fl*.12,gl*.3,evoGlow*.9), w=fl*.12>gl*.3||evoGlow*.9>gl*.3, e0=mt.userData.e0; mt.emissive.setRGB(e0.r+e*(w?1:spec.glowCol.r),e0.g+e*(w?1:spec.glowCol.g),e0.b+e*(w?1:spec.glowCol.b)); }
-   if(this.mixer) this.mixer.update(dt*(spec.stun>0&&!spec.dead?.15:1));
+   if(this.mixer) this.mixer.update(dt*(this.sm?(spec.spd||1):1)*(spec.stun>0&&!spec.dead?.15:1));
    // Peso de la animación de andar: sube al moverse y baja al pararse, sin saltos
    this.wf=lerp(this.wf||0,this.moveT>0&&!spec.dead?1:0,Math.min(1,dt*8));
    if(this.proc&&!spec.dead){ const k=spec.stun>0?.2:1, wf=this.wf; for(const p of this.proc){ const a=p.w?p.amp*wf*Math.sin(t*p.f*Math.PI+p.ph):p.amp*k*(1-wf*.6)*Math.sin(t*p.f*Math.PI+p.ph+this.root.id); p.b.quaternion.copy(p.rest).multiply(_q.setFromAxisAngle(p.ax,a)); } }
@@ -523,7 +629,7 @@ class Actor{
      this.stars.visible=true; this.stars.position.y=TOP+this.h*1.05; this.stars.rotation.y=t*4; for(const s of this.stars.children) s.material.color.set(spec.sleep>0?'#c9a7ff':'#ffe066'); }
    else if(this.stars) this.stars.visible=false;
    if(this.evoFx) this.stepEvo(dt);
-   this.blob.visible=!spec.dead&&(!this.model||!sun.castShadow); if(!spec.dead) this.root.visible=true;
+   this.blob.visible=!spec.dead; if(!spec.dead) this.root.visible=true;
  }
  // Subida de estrellas: pilar de luz dorada, estallido de chispas y estrellas que suben girando (más cuantas más estrellas)
  evolve(star,big){
@@ -810,7 +916,7 @@ let hemi, sun;
 function init(canvas){
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
  renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
- renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=true;
  scene=new THREE.Scene();
  camera=new THREE.PerspectiveCamera(30,1,.1,200);
  hemi=new THREE.HemisphereLight('#ffffff','#5a6a40',1.5); scene.add(hemi);
@@ -823,7 +929,7 @@ function init(canvas){
 function setQuality(l){
  qLevel=clamp(l|0,0,2); Q=QL[qLevel]; if(!renderer) return;
  // Al apagar la sombra del sol, three.js recompila los materiales solo (cambia el estado de las luces)
- sun.castShadow=Q.shadow>0;
+ sun.castShadow=Q.shadow>0; renderer.shadowMap.needsUpdate=true;
  if(Q.shadow&&sun.shadow.mapSize.x!==Q.shadow){ sun.shadow.mapSize.set(Q.shadow,Q.shadow); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; } }
  renderer.setPixelRatio(Math.min(dpr0,Q.pr)); if(board.G){ renderer.setSize(M.W,M.H,false); partScale(); }
 }
@@ -833,7 +939,7 @@ function watchPerf(dt){
  if(document.hidden||dt<=0||dt>.25) return; // pestaña oculta o tirón suelto (al cargar un modelo): no cuenta
  perf.acc+=dt; perf.n++; if(perf.acc<2) return;
  perf.fps=perf.n/perf.acc; perf.acc=0; perf.n=0;
- if(perf.fps<32&&qLevel>0){ if(++perf.bad>=2){ perf.bad=0; setQuality(qLevel-1); } } else perf.bad=0;
+ if(perf.fps<45&&qLevel>0){ if(++perf.bad>=2){ perf.bad=0; setQuality(qLevel-1); } } else perf.bad=0;
 }
 // Ajusta la cámara para que el tablero, el banquillo y los laterales entren en el rectángulo de juego (M.rect).
 // El lienzo puede ocupar toda la pantalla: el campo se ve detrás de los paneles y el tablero queda en el hueco central.
@@ -854,7 +960,7 @@ function fitCamera(G){
  }
  // Desplaza la imagen para que el centro del tablero caiga en el centro del rectángulo de juego
  const ox=M.W/2-(rc.x+rc.w/2), oy=M.H/2-(rc.y+rc.h/2); if(Math.abs(ox)>.5||Math.abs(oy)>.5){ camera.setViewOffset(M.W,M.H,ox,oy,M.W,M.H); camera.updateProjectionMatrix(); }
- sun.target.position.set(0,0,tz); sun.position.set(-6,14,tz+8);
+ sun.target.position.set(0,0,tz); sun.position.set(-6,14,tz+8); renderer.shadowMap.needsUpdate=true;
  partScale();
 }
 // Tamaño de las partículas en píxeles del búfer (depende del alto y de la densidad de píxeles)
@@ -960,5 +1066,13 @@ function makePortrait(dex){
 // Precarga de modelos (por ejemplo, los de la tienda) para que aparezcan sin espera
 function preload(list){ for(const d of list) wantModel(d); }
 function modelStatus(dex){ return models[dex]?models[dex].status:'none'; }
-window.B3={init,resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+// Depuración: congela los Pokémon de un número de Pokédex en un clip y un instante (0–1) para revisarlos
+function debugPose(dex,clip,frac){ let n=0; for(const [,ac] of actors){ if(String(ac.dex)!==String(dex)||!ac.sm||!ac.smActs[clip]) continue; ac.mixer.stopAllAction(); const x=ac.smActs[clip]; x.reset(); x.setEffectiveWeight(1); x.play(); x.time=frac*x.getClip().duration; x.paused=true; ac.mixer.update(0); ac.sm.act=x; ac.sm.st=clip; ac.sm.frozen=true; n++; } return n; }
+// Depuración: foto de cerca de un Pokémon (en el clip e instante indicados), para revisar las poses
+function debugShot(dex,clip,frac,S=220){ const ac=[...actors.values()].find(x=>String(x.dex)===String(dex)&&x.sm); if(!ac) return null; if(clip) debugPose(dex,clip,frac);
+ const p=ac.root.position, h=Math.max(.8,ac.h), cam=new THREE.PerspectiveCamera(28,1,.1,100); cam.position.set(p.x+h*.9,TOP+h*1.1,p.z+h*3.4); cam.lookAt(p.x,TOP+h*.55,p.z);
+ const rt=new THREE.WebGLRenderTarget(S,S,{samples:4}); rt.texture.colorSpace=THREE.SRGBColorSpace; renderer.setRenderTarget(rt); renderer.render(scene,cam); const px=new Uint8Array(S*S*4); renderer.readRenderTargetPixels(rt,0,0,S,S,px); renderer.setRenderTarget(null); rt.dispose();
+ const c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d'), im=g.createImageData(S,S); for(let y=0;y<S;y++) im.data.set(px.subarray((S-1-y)*S*4,(S-y)*S*4),y*S*4); g.putImageData(im,0,0); return c.toDataURL(); }
+window.B3={init,resize,render,dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; },
+ get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));

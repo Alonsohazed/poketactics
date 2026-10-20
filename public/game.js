@@ -1132,6 +1132,7 @@ function buildRounds(){
 }
 const ROUNDS=buildRounds();
 function newGame(opts={}){
+ if(!HEADLESS&&window.B3&&B3.dropQueue) B3.dropQueue();
  UID=1;
  G={pool:{},players:[],roundIdx:-1,round:null,phase:'idle',timer:0,combat:null,fights:[],log:[],over:false,speed:S.speed,auto:!!opts.auto,acc:0,resolving:false,myOpp:'',anvils:[],augTiers:rollAugTiers(),carousel:null,diff:opts.diff||'normal',mp:!!opts.mp,resolveNotBefore:0};
  for(const u of UNIT_LIST) G.pool[u.key]=POOL_SIZE[u.cost-1];
@@ -2201,6 +2202,7 @@ function bindEvents(){
    if(e.target.closest('#ucSell')&&selected){ const loc=findLoc(me,selected); if(loc){ doAct({t:'sell',loc}); selected=null; renderCard(); } }
  });
  window.addEventListener('keydown',e=>{
+   if(e.key==='F3'){ e.preventDefault(); toggleFps(); return; }
    if(e.key==='Escape'&&(selected||selCombat)&&!modalOpen()){ selected=null; selCombat=null; renderCard(); return; }
    if(!inGame()||modalOpen()||!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')) return;
    if(['INPUT','SELECT'].includes(e.target.tagName)) return;
@@ -2306,6 +2308,7 @@ function drawItemBadge(k,x,y,sz,n){
  ctx.restore();
 }
 // Barras al estilo TFT encima de la cabeza: vida con marcas cada 300 PS y maná debajo (brilla cuando va a lanzar)
+const hpLag=new WeakMap();
 function drawHud(a){
  if(!a.anchor||a.dead) return;
  const R=geo.R, o=a.hud; let [hx,hy]=a.anchor;
@@ -2316,7 +2319,10 @@ function drawHud(a){
    const w=R*1.45, bx=Math.round(hx-w/2), hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+3:0));
    itemsY=by+hh+(hasM?mh+1:0)+3;
    ctx.fillStyle='rgba(10,12,24,.85)'; ctx.fillRect(bx-1.5,by-1.5,w+3,hh+(hasM?mh+1:0)+3);
-   ctx.fillStyle=o.mine?'#3fd27a':'#ff5a5f'; ctx.fillRect(bx,by,w*clamp(o.hp/o.maxHp,0,1),hh);
+   // Tramo blanco: la vida perdida se queda un momento y baja después de la parte de color
+   const fr=clamp(o.hp/o.maxHp,0,1), now=performance.now(); const ok=a.key&&typeof a.key==='object'; let L=ok?hpLag.get(a.key):null; if(!L||fr>L.v){ L={v:fr,t:now}; if(ok) hpLag.set(a.key,L); } else if(fr<L.v){ if(now-L.t>280) L.v=Math.max(fr,L.v-(now-(L.last||now))/1000*.9); } L.last=now; if(fr>=L.v) L.t=now;
+   if(L.v>fr){ ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillRect(bx+w*fr,by,w*(L.v-fr),hh); }
+   ctx.fillStyle=o.mine?'#3fd27a':'#ff5a5f'; ctx.fillRect(bx,by,w*fr,hh);
    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(bx,by,w*clamp(o.hp/o.maxHp,0,1),hh*.35);
    if(o.shield>0){ ctx.fillStyle='rgba(240,240,240,.9)'; ctx.fillRect(bx,by,w*clamp(o.shield/o.maxHp,0,1),hh*.45); }
    ctx.fillStyle='rgba(10,12,24,.7)'; for(let k=300;k<o.maxHp;k+=300){ const tx=bx+w*k/o.maxHp; ctx.fillRect(tx,by,1,k%1500?hh*.55:hh); }
@@ -2361,7 +2367,9 @@ function sceneActors(){
    const cb=viewCombat(), mySide=curFlip()?1:0;
    for(const u of cb.units){
      const [x,y]=unitXY(u), t=u.target&&!u.target.dead?unitXY(u.target):null, mine=u.side===mySide;
-     A.push({key:u,cu:u,dex:u.creep?u.d.dex:dexOf(u.d,u.star),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
+     // Para la animación: cuánto falta para el próximo golpe (el impacto del clip se alinea con el daño), cada cuánto ataca y si ganó
+     const tg=u.target&&!u.target.dead?u.target:null, inR=!!tg&&!u.dead&&!(u.stun>0)&&dU(u,tg)<=u.range, sp=G.speed||1;
+     A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),dex:u.creep?u.d.dex:dexOf(u.d,u.star),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
        alpha:u.stealth>0?.35:1,scale:unitScale(u.d,u.star,{boss:u.maxMana===120&&u.creep}),ring:u.creep?'#8a8a8a':mine?'#3fd27a':'#ff5a5f',sel:u===selCombat,
        hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
@@ -2387,9 +2395,6 @@ function sceneActors(){
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
-// Pokémon que posan en el fondo del menú
-function menuActors(){ const tk=savedTac()||'charmander', L=[[tacOf({tac:tk}).dex[0],3,5,.95],[25,1,4,1],[133,5,4,1],[1,2,6,.9],[7,4,6,.9],[4,0,6,.9],[39,6,6,.9]];
- return L.map(([dex,c,r,sc],i)=>{ const [x,y]=cellXY(c,r); return {key:'menu'+i,dex,x,y,face:Math.PI,ring:i?'#ffffff':'#ffd75e',scale:sc,hideRing:i>0,hud:{}}; }); }
 function draw(){
  if(!G||!geo.W) return;
  ctx.clearRect(0,0,view.W,view.H);
@@ -2397,8 +2402,8 @@ function draw(){
  if(!b3On()){ ctx.save(); ctx.fillStyle='#16203d'; ctx.fillRect(0,0,view.W,view.H); ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(14,geo.R*.5)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.fillText('Cargando tablero 3D…',view.W/2,view.H/2); ctx.restore(); return; }
  const inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel, playing=G.players&&G.players.length;
  const dragBoard=drag&&drag.moved&&G.phase!=='combat'&&!inCar, cell=dragBoard?hitCell(drag.x,drag.y):null, bh=drag&&drag.moved?hitBench(drag.x,drag.y):-1;
- // Menú y acceso: de fondo, el campo 3D con unos Pokémon (ya no se usa la escena pixel art)
- if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); if(b3On()) B3.render({arena:'route',actors:menuActors(),fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:false,hover:-1},benchHover:-1}); return; }
+ // Menú y acceso: fondo estático (CSS), sin dibujar el campo 3D ni cargar modelos
+ if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
  const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; return {id:p.id,x:a.x,y:a.y+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
@@ -2488,7 +2493,11 @@ function stepVisual(dt,isHost){
    for(const f of v.cb.fx) f.t+=dt*Math.min(G.speed,2); v.cb.fx=v.cb.fx.filter(f=>f.t<f.life); }
  if(isHost&&!G.resolving&&(!cb||cb.done)&&(!v||v.cb.done)&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,cb?5000:300); } // 5 s para recoger orbes y vender
 }
+// Contador de FPS (F3): media, peor fotograma y calidad del 3D, cada medio segundo
+let fpsOn=false, fpsT=[];
+function toggleFps(){ fpsOn=!fpsOn; let el=$('fpsTag'); if(!el){ el=document.createElement('div'); el.id='fpsTag'; el.className='fpsTag'; document.body.appendChild(el); } el.hidden=!fpsOn; fpsT=[]; }
 function frame(){
+ if(fpsOn){ const n=performance.now(); fpsT.push(n); while(fpsT.length&&n-fpsT[0]>1000) fpsT.shift(); if(!frame.fpsU||n-frame.fpsU>500){ frame.fpsU=n; let worst=0; for(let i=1;i<fpsT.length;i++) worst=Math.max(worst,fpsT[i]-fpsT[i-1]); const inf=window.B3&&B3.info; $('fpsTag').textContent=fpsT.length+' FPS · peor '+worst.toFixed(0)+' ms'+(window.B3?' · calidad '+B3.quality+(inf?' · '+inf.calls+' dibujos':''):''); } }
  const fnow=performance.now(), fdt=Math.min(.1,(fnow-(frame.t||fnow))/1000); frame.t=fnow; stepTac(fdt);
  if(G) draw();
  try{ Scene.frame(performance.now()); }catch(e){ /* la escena del menú nunca debe parar el bucle del juego */ }
@@ -3060,8 +3069,8 @@ async function boot(){
  G={phase:'idle',me:makePlayer(0,S.name,false,S.avatar,S.trainer),players:[],log:[],speed:S.speed,pool:{}};
  $('muteBtn').textContent=S.muted?'🔇':'🔊';
  layout(); applyTheme(); bindEvents(); Scene.init();
- const tacModels=Object.values(TACS).flatMap(t=>t.dex);
- if(!window.B3) window.addEventListener('b3ready',()=>{ sizeB3(); B3.preload(tacModels); }); else B3.preload(tacModels);
+ // Sin precarga en el menú: los modelos se piden al entrar en la partida (primero los tuyos)
+ if(!window.B3) window.addEventListener('b3ready',()=>sizeB3());
  setInterval(tick,33); requestAnimationFrame(frame);
  try{ const {user}=await api('/api/me'); applyAccount(user); if(!TACS[user.trainer]) showTacPick(true); else showMenu(); }
  catch(err){ showAuth(err.status===401?'':err.message); }

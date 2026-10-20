@@ -36,7 +36,8 @@ const auth = createAuth(db, { trainers: TRAINER_KEYS });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rooms.size }));
 app.use('/api', auth.router);
 // Sin caché larga: tras cada despliegue el navegador revalida (ETag) y nunca mezcla versiones
-app.use(express.static(path.join(__dirname, 'public')));
+// Imágenes (arte de cartas, logo, iconos): caché de 7 días; HTML y JS se revalidan siempre porque cambian con cada despliegue
+app.use(express.static(path.join(__dirname, 'public'), { setHeaders(res, file) { if (/\.(webp|png|jpe?g|svg)$/i.test(file)) res.setHeader('Cache-Control', 'public, max-age=604800'); } }));
 
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 16 * 1024 });

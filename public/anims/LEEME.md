@@ -1,0 +1,8 @@
+# Animaciones por estados (prueba)
+
+Los 82 modelos de 1.ª gen que usa el juego (`ANIM_SET` en `board3d.js`; 36 MB en total). El resto de generaciones sigue con Pokemon-3D-api.
+
+- `<n.º>.glb`: modelo animado de [06wj/pokemon](https://github.com/06wj/pokemon) (clips de Escarlata/Púrpura; los 151 de la 1.ª gen). Lleva solo `idle`, `run`, `attack` (recortado alrededor del golpe), `victory` (su `happy`) y `faint` (su `sleep`, 3 s). Texturas WebP a 512 px y mallas con Draco: 230–600 KB cada uno.
+- `<n.º>.json`: `"glb": true`, el fotograma de impacto de `attack` y `special` (fracción del clip, de 0 a 1) y `alias` (un clip que hace de otro: `special` usa el de ataque). Lo que falte (`hit`) se genera por código sobre el esqueleto o se queda en el destello.
+- El impacto se calcula como el pico de movimiento de los huesos en el clip de ataque original; se guarda desde 0,7 s antes hasta 0,45 s después.
+- Los modelos y clips son de Nintendo, Creatures y GAME FREAK (como el resto de modelos 3D del juego).
