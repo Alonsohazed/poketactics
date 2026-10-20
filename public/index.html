@@ -418,7 +418,7 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .lvl #xpTxt{font-family:var(--display);font-size:15px}
 .lvl .lvN{font-size:15px}
 /* Tienda flotante (escritorio): una barra compacta centrada abajo, para que el campo se vea entero */
-body.fullField .shop{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(1240px,calc(100vw - 340px));padding:4px 10px 8px;border:1px solid rgba(184,147,62,.6);border-bottom:0;border-radius:14px 14px 0 0;
+body.fullField .shop{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(1500px,calc(100vw - 330px));padding:4px 10px 8px;border:1px solid rgba(184,147,62,.6);border-bottom:0;border-radius:14px 14px 0 0;
   background:linear-gradient(180deg,rgba(14,22,36,.94),rgba(8,12,22,.97));box-shadow:0 -8px 26px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
 body.fullField .shopTop{margin-bottom:4px;position:relative}
 body.fullField .shopTop .goldWrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0}
@@ -434,6 +434,44 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .upStars.s2{color:#e8eef8;filter:drop-shadow(0 0 4px #cfd8ea)}
 .upStars.s3{color:#ffd23a;filter:drop-shadow(0 0 6px #ffb400)}
 @keyframes upPulse{to{transform:scale(1.18)}}
+/* Carta nueva al estilo TFT (de momento solo las de ART_FOCUS en game.js): retrato a la derecha con fundido a negro,
+   sinergias con icono hexagonal a la izquierda, barra inferior con nombre y coste y borde del color del coste */
+/* Con las cartas nuevas la fila crece: retrato más grande y sitio para que las sinergias respiren */
+.cards:has(.card.v2){gap:8px}
+.cards:has(.card.v2) .card,body.fullField .cards:has(.card.v2) .card{--ch:clamp(138px,8.8vw,184px)}
+.card.v2{border-radius:5px;background:#070b10;border:2px solid var(--ccb)}
+.card.v2:not(.empty){border:2px solid var(--ccb)}
+.card.v2::after{display:none}
+.card.v2 .frame{border-radius:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.card.v2{--bar:max(26px,calc(var(--ch) * .18))}
+.card.v2 .v2art{position:absolute;inset:0 0 var(--bar) 0;z-index:0;overflow:hidden;background:#070b10;container-type:size}
+/* El punto del Pokémon va al 64 % del ancho (centrado en alto), pero sin dejar huecos: el arte (414×256) crece lo que haga falta
+   para cubrir la carta y se desplaza solo hasta sus bordes (medidas del contenedor: cqw/cqh) */
+.card.v2 .v2art img{--iw:max(calc(161.7cqh * var(--z,1)),calc(115cqw * var(--zr,1)));--ih:calc(var(--iw) / 1.617);position:absolute;width:var(--iw);height:var(--ih);max-width:none;
+  left:clamp(calc(100cqw - (1 - var(--fx,.5)) * var(--iw)),var(--ax,64%),calc(var(--fx,.5) * var(--iw)));top:clamp(calc(100cqh - (1 - var(--fy,.5)) * var(--ih)),50%,calc(var(--fy,.5) * var(--ih)));
+  transform:translate(calc(-1 * var(--fx,.5) * var(--iw)),calc(-1 * var(--fy,.5) * var(--ih)))}
+.card.v2 .v2art::after{display:block;content:"";position:absolute;inset:0;background:linear-gradient(90deg,#070b10 0%,rgba(7,11,16,.9) 16%,rgba(7,11,16,.5) 36%,rgba(7,11,16,0) 60%),linear-gradient(0deg,rgba(7,11,16,.75),transparent 28%)}
+.card.v2 .cn{left:0;right:0;top:auto;bottom:0;height:var(--bar);padding:0 calc(var(--ch) * .3) 0 calc(var(--ch) * .06);display:flex;align-items:center;font-size:calc(var(--ch) * .105);font-family:inherit;font-weight:800;letter-spacing:0;
+  background:color-mix(in srgb,var(--ccb) 18%,#0f1820);border-top:1px solid color-mix(in srgb,var(--ccb) 55%,transparent)}
+.card.v2 .cc{bottom:0;right:calc(var(--ch) * .05);height:var(--bar);padding:0;background:none;border:0;color:#fff;font-size:calc(var(--ch) * .105);gap:5px;font-family:inherit;font-weight:800}
+.card.v2 .cc::before{width:calc(var(--ch) * .075);height:calc(var(--ch) * .075)}
+/* Sinergias como en TFT: icono hexagonal y nombre, con aire entre filas y apoyadas sobre la barra del nombre */
+.card.v2 .tr{left:calc(var(--ch) * .06);bottom:calc(var(--bar) + var(--ch) * .05);gap:calc(var(--ch) * .045)}
+.card.v2 .tr span{font-size:calc(var(--ch) * .08);font-weight:700;gap:calc(var(--ch) * .05);background:none;border:0;padding:0;box-shadow:none;text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.9)}
+.card.v2 .tr i{width:calc(var(--ch) * .14);height:calc(var(--ch) * .155);background:linear-gradient(180deg,#3a4656,#18202b);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.card.v2 .tr i svg{width:calc(var(--ch) * .08);height:calc(var(--ch) * .08);stroke-width:1px}
+/* Ya la tienes: brillo dorado en el borde sin teñir el retrato */
+.card.v2.owned::before{background:none;box-shadow:inset 0 0 0 2px rgba(255,236,170,.9),inset 0 0 14px rgba(255,205,80,.55)}
+.card.v2 .upStars{left:calc(var(--ch) * .05);right:auto;top:calc(var(--ch) * .03);font-size:calc(var(--ch) * .17);letter-spacing:0;transform-origin:left top}
+/* Pantallas medianas y móviles: la carta nueva se compacta (en el móvil, sinergias solo con su icono) */
+@media (max-width:1100px){ .cards:has(.card.v2) .card,body.fullField .cards:has(.card.v2) .card{--ch:128px} }
+@media (max-width:620px){
+  .cards:has(.card.v2) .card,body.fullField .cards:has(.card.v2) .card{--ch:96px}
+  .card.v2{--bar:20px;--ax:58%}
+  .card.v2 .cn{font-size:10px;padding:0 26px 0 4px} .card.v2 .cc{font-size:11px;right:4px;gap:3px} .card.v2 .cc::before{width:8px;height:8px}
+  .card.v2 .tr{left:3px;bottom:23px;gap:2px} .card.v2 .tr span{font-size:0;gap:0} .card.v2 .tr i{width:14px;height:16px} .card.v2 .tr i svg{width:8px;height:8px}
+  .card.v2 .upStars{left:3px;top:2px;font-size:14px}
+}
 .card .cardArt{background-size:cover;background-position:60% 40%}
 .card .cardArt::before,.card .cardArt::after{display:none}
 /* ---------- planificador de fases (estilo TFT) ---------- */
@@ -629,7 +667,7 @@ ul.help{padding-left:18px;margin:6px 0} ul.help li{margin-bottom:4px}
 .roomItem b{flex:1}
 .seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin:12px 0}
 .seat{padding:8px 10px;border-radius:14px;background:var(--panel3);border:1px solid var(--line2);display:flex;gap:10px;align-items:center;font-weight:800;min-height:62px}
-.seat.bot{opacity:.6;font-weight:600}
+.seat.wait{opacity:.55;font-weight:600;font-style:italic}
 .seat.host{border-color:var(--gold);box-shadow:0 0 14px color-mix(in srgb,var(--gold) 30%,transparent)}
 .code{font-family:var(--display);font-size:24px;letter-spacing:.12em;background:var(--panel3);border:1px solid var(--line2);border-radius:10px;padding:2px 12px}
 

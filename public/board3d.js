@@ -62,7 +62,7 @@ function slab(shape,depth,top,sideCol,topTex,topCol){
 
 /* ---------- partículas ---------- */
 const PART_MAX=3200;
-function makeParticles(additive){
+function makeParticles(additive){ const bub=additive==='bubble'; additive=additive===true;
  const geo=new THREE.BufferGeometry();
  const pos=new Float32Array(PART_MAX*3), pc=new Float32Array(PART_MAX*3), sz=new Float32Array(PART_MAX), al=new Float32Array(PART_MAX);
  geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); geo.setAttribute('pcol',new THREE.BufferAttribute(pc,3));
@@ -70,15 +70,15 @@ function makeParticles(additive){
  const mat=new THREE.ShaderMaterial({uniforms:{uScale:{value:400}},transparent:true,depthWrite:false,blending:additive?THREE.AdditiveBlending:THREE.NormalBlending,
   vertexShader:`attribute vec3 pcol;attribute float size;attribute float alpha;varying vec3 vC;varying float vA;uniform float uScale;
    void main(){vC=pcol;vA=alpha;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=size*uScale/-mv.z;gl_Position=projectionMatrix*mv;}`,
-  fragmentShader:`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float a=${additive?'pow(1.-d*2.,1.6)':'smoothstep(.5,.35,d)'};gl_FragColor=vec4(vC,a*vA);}`});
+  fragmentShader:bub?`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float rim=smoothstep(.3,.45,d)*smoothstep(.5,.46,d);float hl=smoothstep(.1,.02,length(gl_PointCoord-vec2(.33,.33)));gl_FragColor=vec4(mix(vC,vec3(1.),rim*.55+hl),(rim*.95+.16*(1.-d*2.)+hl)*vA);}`:`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float a=${additive?'pow(1.-d*2.,1.6)':'smoothstep(.5,.35,d)'};gl_FragColor=vec4(vC,a*vA);}`});
  const pts=new THREE.Points(geo,mat); pts.frustumCulled=false; pts.renderOrder=10;
  const P={pts,n:0,list:[],geo,mat,pos,pc,sz,al};
  return P;
 }
-let PA,PN; // aditivas (luz) y normales (humo, rocas, hojas)
+let PA,PN,PB; // aditivas (luz), normales (humo, rocas, hojas) y burbujas
 function emit(o){
  if(Q.part<1&&Math.random()>Q.part) return; // en calidad media o baja se emite solo una parte
- const P=o.add===false?PN:PA; if(P.list.length>=PART_MAX) return;
+ const P=o.bub?PB:o.add===false?PN:PA; if(P.list.length>=PART_MAX) return;
  const c=o.col instanceof THREE.Color?o.col:col(o.col||'#fff');
  P.list.push({x:o.p.x,y:o.p.y,z:o.p.z,vx:o.v?o.v[0]:0,vy:o.v?o.v[1]:0,vz:o.v?o.v[2]:0,r:c.r,g:c.g,b:c.b,s:o.size||.25,s1:o.size1!=null?o.size1:(o.size||.25)*.3,life:o.life||.6,t:0,gr:o.g||0,dr:o.drag||0,a:o.alpha==null?1:o.alpha});
 }
@@ -362,7 +362,10 @@ function warmModel(m){ if(!renderer||!m.scene) return; try{ m.scene.traverse(o=>
  const ms=[]; m.scene.traverse(o=>{ if(o.isMesh) for(const mt of [].concat(o.material)) ms.push([mt,mt.transparent,mt.depthWrite]); });
  for(const [mt] of ms){ mt.transparent=true; mt.depthWrite=false; } renderer.compileAsync(m.scene,camera,scene).catch(()=>{}); for(const [mt,t,d] of ms){ mt.transparent=t; mt.depthWrite=d; } }catch(e){} }
 function prepModel(m,gl,dex){
- const root=gl.scene; root.updateMatrixWorld(true);
+ const root=gl.scene;
+ // pose "tail" (en su .json): los alargados se ponen de pie sobre la cola, como Dratini, para ocupar su casilla igual que los demás
+ if(m.meta&&m.meta.pose==="tail") root.rotation.x=-(m.meta.tilt||78)*Math.PI/180;
+ root.updateMatrixWorld(true);
  root.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt.map) mt.map.colorSpace=THREE.SRGBColorSpace; if(mt.transparent&&mt.opacity>=1) mt.alphaTest=.5; } } });
  const clips=gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
  m.clips={idle:pick(RX.idle),walk:pick(RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
@@ -378,12 +381,17 @@ function prepModel(m,gl,dex){
  // Todos del mismo alto (como las piezas de TFT), salvo los muy anchos o largos, que se encogen para no salirse de su casilla
  const h=Math.max(size.y,1e-3), L=Math.max(size.x,size.z,1e-3);
  // Las serpientes enroscadas (COIL) ocupan más ancho que alto: se les deja algo más de margen
- m.kh=1.05/h; m.k=COIL.has(dex)?Math.min(1.2/h,1.8/L):Math.min(1.05/h,1.3/L); m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
+ m.kh=1.05/h; m.k=COIL.has(dex)?Math.min(1.2/h,1.8/L):Math.min(1.05/h,1.3/L);
+ // size (en su .json): las primeras etapas, más pequeñas; al evolucionar se nota el cambio
+ if(m.meta&&m.meta.size){ m.k*=m.meta.size; m.kh*=m.meta.size; } m.off=new THREE.Vector3(-c.x,-box.min.y,-c.z); m.scene=root;
  if(m.meta){ const have={}; for(const n of SM_CLIPS){ const c2=clips.find(k=>k.name===n); if(c2) have[n]=c2; }
    // alias: un clip propio que hace de otro (p. ej. special con el de ataque) antes de generarlo por código
    for(const [n,src] of Object.entries(m.meta.alias||{})) if(!have[n]&&have[src]) have[n]=have[src];
    const gen=synthClips(root,body,h); for(const n of SM_CLIPS) if(!have[n]&&gen[n]) have[n]=gen[n];
-   m.sm={clips:have,hit:{attack:(m.meta.attack&&m.meta.attack.hit)||.4,special:(m.meta.special&&m.meta.special.hit)||.55},body}; }
+   // Una acción no puede fundirse consigo misma: special (si usa el clip del ataque) va con su copia, y los clips de una vez llevan una copia (~) para encadenar un golpe con el siguiente sin saltos
+   if(have.special&&have.special===have.attack) have.special=have.attack.clone();
+   const alt={}; for(const n of ["attack","special","hit"]) if(have[n]) alt[n]=have[n].clone();
+   m.sm={clips:have,alt,hit:{attack:(m.meta.attack&&m.meta.attack.hit)||.4,special:(m.meta.special&&m.meta.special.hit)||.55},body}; }
 }
 // Tipo de cuerpo por los huesos (en la pose de montaje): serpiente, cuadrúpedo (brazos hacia el suelo), volador (alas largas) o bípedo
 function bodyType(root,dex){ const B=bonesOf(root,true); root.updateMatrixWorld(true);
@@ -538,13 +546,14 @@ class Actor{
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
      this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;
      for(const k in m.clips) if(m.clips[k]) this.acts[k]=this.mixer.clipAction(m.clips[k]);
-     if(m.sm){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.smActs={}; for(const n in m.sm.clips) this.smActs[n]=this.mixer.clipAction(m.sm.clips[n]); this.proc=null; this.go('idle'); }
+     if(m.sm){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.smActs={}; for(const n in m.sm.clips){ this.smActs[n]=this.mixer.clipAction(m.sm.clips[n]); if(m.sm.alt[n]) this.smActs[n+"~"]=this.mixer.clipAction(m.sm.alt[n]); } this.proc=null; this.go('idle'); }
       else this.play('idle',true);
    } else if(m.status!=='ok'&&!this.ball){ this.ball=pokeBall(); this.body.add(this.ball); } // cargando o sin modelo: Poké Ball, nunca un sprite 2D
  }
  // Cambia de estado con un fundido de 0,15 s (nunca de golpe). once: se reproduce una vez y se queda en el último fotograma
- go(name,o={}){ const a=this.smActs&&this.smActs[name]; if(!a) return false; const S=this.sm;
-   if(S.st===name&&!o.restart){ if(o.ts) a.timeScale=o.ts; return true; }
+ go(name,o={}){ let a=this.smActs&&this.smActs[name]; if(!a) return false; const S=this.sm;
+   if(S.st===name&&!o.restart){ if(o.ts&&S.act) S.act.timeScale=o.ts; return true; }
+   if(S.act===a&&this.smActs[name+"~"]) a=this.smActs[name+"~"];
    const once=name!=='idle'&&name!=='run'; a.reset(); a.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity); a.clampWhenFinished=once; a.timeScale=o.ts||1; if(o.start) a.time=o.start; a.enabled=true;
    if(S.act&&S.act!==a) a.crossFadeFrom(S.act,name==='faint'?.35:.15,false); a.play(); S.act=a; S.st=name; S.once=once; return true; }
  // Máquina de estados: faint > victory > special/attack (con el impacto alineado al daño) > hit > run/idle
@@ -584,7 +593,7 @@ class Actor{
    // Solo se gira al caminar: los quietos (tablero y banquillo) miran siempre al frente y un salto grande (soltar una ficha, reajuste del tablero) es un teletransporte
    const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0; this.lastSpeed=dt>0?(this.lastSpeed||0)*.7+.3*(dd/dt):0; const _=0, jump=dd>1.2, moving=!spec.still&&!jump&&dd>.004; this.moveT=moving?.15:(spec.still||jump)?0:Math.max(0,this.moveT-dt);
    if(moving&&!spec.drag){ const dx=p.x-this.lastPos.x, dz=p.z-this.lastPos.z; this.face=Math.atan2(dx,dz); }
-   else if(spec.tx!=null){ const q=W3(spec.tx,spec.ty); this.face=Math.atan2(q.x-p.x,q.z-p.z); }
+   else if(spec.tx!=null&&!this.moveT){ const q=W3(spec.tx,spec.ty); this.face=Math.atan2(q.x-p.x,q.z-p.z); }
    else if(spec.face!=null&&!this.moveT) this.face=spec.face;
    this.lastPos=p.clone();
    const sc=spec.scale||1; this.root.position.set(p.x,0,p.z);
@@ -696,6 +705,11 @@ class Actor{
        case 'dust': { const [x,z]=rr(.3+Math.random()*.2); emit({p:new THREE.Vector3(x,TOP+.05,z),v:[rnd(.18),.3,rnd(.18)],col:c,size:.09,size1:.07,life:.8,add:false,g:.6}); break; }
      } }
  }
+ // Se coloca una ficha que comparte sinergia: estallido de una vez (la ficha nueva, fuerte; las que comparten con ella, más suave) y destellos entre ellas
+ joinFx(spec){ if(!spec.joinN||spec.joinN===this.lastJoin) return; this.lastJoin=spec.joinN; if(performance.now()-spec.joinT>600) return;
+   const tr=spec.joinTraits||[], el=tr.find(x=>SYN_EL[x])||tr[0]; if(!el) return; const P=this.root.position, strong=!spec.joinFrom;
+   joinBurst(P,el,strong); const cl=tr.find(x=>SYN_CL[x]&&x!==el); if(cl) shock(new THREE.Vector3(P.x,TOP+.06,P.z),SYN_CL[cl],.3,strong?1.9:1.3,.6);
+   if(spec.joinTo) for(const q of spec.joinTo){ const w=W3(q[0],q[1],0); joinTrail(P,w,el); } }
  dispose(){ scene.remove(this.root); if(this.model){ this.body.remove(this.model); poolPut(this); } else if(this.mats) for(const m of this.mats) m.dispose(); this.model=null; if(this.shieldM) this.shieldM.material.dispose(); this.ring.material.dispose(); }
  // Reacción al recibir un golpe: retroceso en la dirección del impacto, aplastamiento y destello blanco
  hitReact(dx,dz,k,crit){ this.hitT=0; const L=Math.hypot(dx,dz)||1; this.hitDx=dx/L; this.hitDz=dz/L; this.hitK=Math.min(1.4,(.45+.55*k)*(crit?1.35:1)); }
@@ -967,7 +981,7 @@ function init(canvas){
  hemi=new THREE.HemisphereLight('#ffffff','#5a6a40',1.5); scene.add(hemi);
  sun=new THREE.DirectionalLight('#ffffff',2.4); sun.position.set(-6,14,8); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
  Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:1,far:40}); sun.shadow.bias=-.0006; sun.shadow.normalBias=.02; scene.add(sun,sun.target);
- PA=makeParticles(true); PN=makeParticles(false); scene.add(PA.pts,PN.pts);
+ PA=makeParticles(true); PN=makeParticles(false); PB=makeParticles('bubble'); scene.add(PA.pts,PN.pts,PB.pts);
  setQuality(guessQuality());
  ready=true; setTimeout(warmFx,50);
 }
@@ -1019,7 +1033,7 @@ function fitCamera(G){
  partScale();
 }
 // Tamaño de las partículas en píxeles del búfer (depende del alto y de la densidad de píxeles)
-function partScale(){ const s=renderer.getSize(new THREE.Vector2()); for(const P of [PA,PN]) P.mat.uniforms.uScale.value=s.y*renderer.getPixelRatio()/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)); }
+function partScale(){ const s=renderer.getSize(new THREE.Vector2()); for(const P of [PA,PN,PB]) P.mat.uniforms.uScale.value=s.y*renderer.getPixelRatio()/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)); }
 // V: tamaño del lienzo y rectángulo donde debe caber el tablero (por defecto, el lienzo entero)
 function resize(G,dpr,V){
  V=V||{W:G.W,H:G.H,rect:{x:0,y:0,w:G.W,h:G.H}};
@@ -1047,7 +1061,7 @@ function render(F){
  const pt0=performance.now(); const seen=new Set();
  for(const s of F.actors){
    let a=actors.get(s.key); if(!a){ a=new Actor(s); actors.set(s.key,a); }
-   a.setDex(s.dex); s.glowCol=s.glowCol||ccol(s.glowColor||'#ffffff'); a.update(s,dt,now); a.synFx(s.syn,dt,now); seen.add(s.key);
+   a.setDex(s.dex); s.glowCol=s.glowCol||ccol(s.glowColor||'#ffffff'); a.update(s,dt,now); a.synFx(s.syn,dt,now); a.joinFx(s); seen.add(s.key);
    s.anchor=projectV(a.head()); s.base=projectV(a.root.position.clone().setY(TOP));
  }
  for(const [k,a] of actors) if(!seen.has(k)){ a.dispose(); actors.delete(k); }
@@ -1057,7 +1071,7 @@ function render(F){
  stepTrans(dt);
  for(const [f,v] of fxVis) if(!fseen.has(f)){ if(v) killFx(v); fxVis.delete(f); }
  stepOrbs(F.orbs,now); stepProps(F,now); stepBubbles(F.bubbles,now); stepPads(F.pads); stepLinks(F.links,now);
- stepParticles(PA,dt); stepParticles(PN,dt);
+ stepParticles(PA,dt); stepParticles(PN,dt); stepParticles(PB,dt);
  const pt2=performance.now(); // temblor de cámara en los impactos fuertes
  const base=camera.position.clone(); if(shake>0&&shakeOn){ camera.position.x+=rnd(shake); camera.position.y+=rnd(shake); } shake=Math.max(0,shake-dt*.6);
  renderer.render(scene,camera); camera.position.copy(base);
@@ -1066,6 +1080,43 @@ function render(F){
  if(pt3-pt0>40){ SLOW.push({ms:+(pt3-pt0).toFixed(1),actores:+(pt1-pt0).toFixed(1),efectos:+(pt2-pt1).toFixed(1),gpu:+(pt3-pt2).toFixed(1),nuevos:born.slice(0,12),progs:renderer.info.programs?renderer.info.programs.length:0,progsAntes:prg0}); if(SLOW.length>20) SLOW.shift(); }
 }
 const PT={a:0,f:0,g:0,n:0}, SLOW=[];
+// Estallido de una sinergia al colocar una ficha: cada elemento a su manera (llamas con brasas, burbujas que suben y se hinchan, hojas en espiral, chispas, polvo…)
+const emitBig=(o,k=1.3)=>emit({...o,size:o.size*k,size1:o.size1!=null?o.size1*k:o.size*k*.3});
+function joinBurst(P,trait,strong){
+ const E=SYN_EL[trait], k=strong?1:.7, n=v=>Math.max(3,Math.round(v*k)), base=new THREE.Vector3(P.x,TOP+.05,P.z), at=(r,y)=>{ const a=Math.random()*TAU; return [new THREE.Vector3(P.x+Math.cos(a)*r,TOP+y,P.z+Math.sin(a)*r),a]; };
+ if(!E){ const c=SYN_CL[trait]||'#ffffff'; shock(base,c,.3,strong?1.9:1.3,.6); shock(base,'#ffffff',.2,strong?1.2:.8,.35);
+   for(let i=0;i<n(18);i++){ const [p,a]=at(.2+Math.random()*.4,.1); emitBig({p,v:[Math.cos(a)*.5,1+Math.random()*1.8,Math.sin(a)*.5],col:i%3?c:'#ffffff',size:.24,size1:0,life:1.1,drag:.5}); } return; }
+ const C=E.c, c=i=>C[i%2];
+ switch(E.k){
+  case 'flame': shock(base,C[0],.3,1.9,.55); shock(base,C[1],.15,1.1,.4);
+   for(let i=0;i<n(18);i++){ const a=i/n(18)*TAU+Math.random()*.3, r=.5+Math.random()*.12; emitBig({p:new THREE.Vector3(P.x+Math.cos(a)*r,TOP+.04,P.z+Math.sin(a)*r),v:[-Math.cos(a)*.3,1.3+Math.random()*1.2,-Math.sin(a)*.3],col:i%2?C[0]:C[1],size:.5,size1:.05,life:1.1+Math.random()*.4,g:-.5,drag:.7,alpha:.8}); }
+   for(let i=0;i<n(12);i++){ const [p,a]=at(Math.random()*.22,.05); emitBig({p,v:[Math.cos(a)*.2,2.3+Math.random()*1.3,Math.sin(a)*.2],col:i%3?C[1]:'#ffe9a0',size:.38,size1:.03,life:1+Math.random()*.4,g:-.4,drag:.8,alpha:.9}); }
+   for(let i=0;i<n(20);i++){ const [p,a]=at(.1+Math.random()*.35,.2); emitBig({p,v:[Math.cos(a)*1.1,2.6+Math.random()*2,Math.sin(a)*1.1],col:'#ffd27a',size:.1,size1:.02,life:1.4,g:2.6}); } break;
+  case 'bubble': shock(base,C[0],.25,1.5,.65); shock(base,C[1],.1,.9,.45);
+   for(let i=0;i<n(22);i++){ const [p]=at(.1+Math.random()*.5,.1), s0=.13+Math.random()*.14; emitBig({bub:true,p,v:[rnd(.35),.8+Math.random()*1.2,rnd(.35)],col:c(i),size:s0,size1:s0*1.6,life:1.4+Math.random()*.7,alpha:.95,drag:.3}); }
+   for(let i=0;i<n(10);i++){ const a=Math.random()*TAU; emitBig({p:base.clone().setY(TOP+.2),v:[Math.cos(a)*1.5,2.2+Math.random()*1.3,Math.sin(a)*1.5],col:'#ffffff',size:.08,size1:.02,life:.55,g:6,alpha:.7}); } break;
+  case 'leaf': shock(base,C[0],.3,1.4,.55);
+   for(let i=0;i<n(20);i++){ const [p,a]=at(.5,.1); emitBig({p,v:[Math.cos(a)*.4-Math.sin(a)*1.2,.9+Math.random()*.9,Math.sin(a)*.4+Math.cos(a)*1.2],col:c(i),size:.16,size1:.1,life:1.6,add:false,drag:.2,g:.4}); }
+   for(let i=0;i<n(12);i++){ const [p]=at(.1+Math.random()*.4,.1); emitBig({p,v:[0,.7+Math.random()*.7,0],col:'#e8ffb0',size:.12,size1:0,life:1}); } break;
+  case 'spark': shock(base.clone().setY(TOP+.5),C[1],.2,1.5,.28,false); shock(base,C[0],.2,1.3,.3);
+   for(let i=0;i<n(22);i++){ const a=Math.random()*TAU, sp=4+Math.random()*2.5; emitBig({p:base.clone().setY(TOP+.35+Math.random()*.5),v:[Math.cos(a)*sp,rnd(2.5),Math.sin(a)*sp],col:c(i),size:.18,size1:.02,life:.24,drag:3}); } break;
+  case 'orb': shock(base,C[1],.3,1.6,.6); shock(base,C[0],.15,1,.4);
+   for(let i=0;i<n(18);i++){ const [p,a]=at(.55,.15); emitBig({p,v:[Math.cos(a)*.9,.6+Math.random()*.9,Math.sin(a)*.9],col:c(i),size:.24,size1:.03,life:.95}); }
+   for(let i=0;i<n(6);i++) emitBig({p:base.clone().setY(TOP+.2),v:[0,1+Math.random(),0],col:'#ffffff',size:.2,size1:.02,life:.8}); break;
+  case 'twinkle': shock(base,C[1],.3,1.5,.5);
+   for(let i=0;i<n(26);i++){ const [p]=at(Math.random()*.6,.1+Math.random()*1.1); emitBig({p,v:[0,.2+Math.random()*.4,0],col:c(i),size:.28,size1:0,life:1.1+Math.random()*.4}); } break;
+  case 'wisp': shock(base,C[0],.3,1.5,.55);
+   for(let i=0;i<n(20);i++){ const [p,a]=at(.4,.05); emitBig({p,v:[-Math.sin(a)*1.5,1.6+Math.random()*1.2,Math.cos(a)*1.5],col:c(i),size:.32,size1:.05,life:1,drag:.5}); } break;
+  case 'mist': shock(base,C[1],.3,1.5,.6);
+   for(let i=0;i<n(11);i++){ const [p]=at(.1+Math.random()*.4,.1); emitBig({p,v:[rnd(.5),.4+Math.random()*.4,rnd(.5)],col:c(i),size:.4,size1:.85,life:1.4,add:false,alpha:.55}); }
+   for(let i=0;i<n(10);i++){ const [p,a]=at(.3,.05); emitBig({p,v:[-Math.sin(a)*1,1.2+Math.random(),Math.cos(a)*1],col:C[1],size:.22,size1:.04,life:.9}); } break;
+  case 'dust': shock(base,C[1],.3,1.6,.4);
+   for(let i=0;i<n(16);i++){ const [p,a]=at(.2,.05); emitBig({p,v:[Math.cos(a)*1.4,.6+Math.random()*.8,Math.sin(a)*1.4],col:c(i),size:.22,size1:.34,life:.9,add:false,alpha:.8,g:.2}); }
+   for(let i=0;i<n(9);i++){ const [p,a]=at(.2,.1); emitBig({p,v:[Math.cos(a)*1.2,2.6+Math.random()*1.4,Math.sin(a)*1.2],col:C[0],size:.13,size1:.1,life:.7,add:false,g:9}); } break;
+ } }
+// Destello en arco entre la ficha que se coloca y cada una con la que comparte la sinergia
+function joinTrail(a,b,trait){ const E=SYN_EL[trait], c=E?E.c[0]:(SYN_CL[trait]||'#ffffff'), dx=b.x-a.x, dz=b.z-a.z, len=Math.hypot(dx,dz)||1, N=Math.max(8,Math.round(len*3.2));
+ for(let i=0;i<N;i++){ const s=i/(N-1), h=TOP+.5+Math.sin(s*Math.PI)*.55; emit({p:new THREE.Vector3(a.x+dx*s,h,a.z+dz*s),v:[dx/len*1.4,.25,dz/len*1.4],col:i%3?c:'#ffffff',size:.2,size1:.02,life:.55+.25*s}); } }
 const SYN_EL={Fuego:{k:'flame',c:['#ff6a2a','#ffb347'],rate:9},Agua:{k:'bubble',c:['#9fd8ff','#e6f7ff'],rate:4},Planta:{k:'leaf',c:['#5fc24a','#b8f07a'],rate:3},Eléctrico:{k:'spark',c:['#ffe14a','#ffffff'],rate:7},
  Psíquico:{k:'orb',c:['#ff7ad0','#ffd6f2'],rate:9},Hada:{k:'twinkle',c:['#ffb0da','#ffffff'],rate:4},Dragón:{k:'wisp',c:['#8a7bff','#c9c2ff'],rate:5},Fantasma:{k:'mist',c:['#9b6ad8','#d2b8ff'],rate:3},
  Siniestro:{k:'mist',c:['#3a2350','#7a5a9e'],rate:3},Roca:{k:'dust',c:['#b09060','#d9c39a'],rate:3},Acero:{k:'twinkle',c:['#d4dde8','#ffffff'],rate:4},Lucha:{k:'wisp',c:['#ff7043','#ffd2a8'],rate:5}};
@@ -1127,8 +1178,8 @@ function modelStatus(dex){ return models[dex]?models[dex].status:'none'; }
 // Depuración: congela los Pokémon de un número de Pokédex en un clip y un instante (0–1) para revisarlos
 function debugPose(dex,clip,frac){ let n=0; for(const [,ac] of actors){ if(String(ac.dex)!==String(dex)||!ac.sm||!ac.smActs[clip]) continue; ac.mixer.stopAllAction(); const x=ac.smActs[clip]; x.reset(); x.setEffectiveWeight(1); x.play(); x.time=frac*x.getClip().duration; x.paused=true; ac.mixer.update(0); ac.sm.act=x; ac.sm.st=clip; ac.sm.frozen=true; n++; } return n; }
 // Depuración: foto de cerca de un Pokémon (en el clip e instante indicados), para revisar las poses
-function debugShot(dex,clip,frac,S=220){ const ac=[...actors.values()].find(x=>String(x.dex)===String(dex)&&x.sm); if(!ac) return null; if(clip) debugPose(dex,clip,frac);
- const p=ac.root.position, h=Math.max(.8,ac.h), cam=new THREE.PerspectiveCamera(28,1,.1,100); cam.position.set(p.x+h*.9,TOP+h*1.1,p.z+h*3.4); cam.lookAt(p.x,TOP+h*.55,p.z);
+function debugShot(dex,clip,frac,S=220,D=3.4){ const ac=[...actors.values()].find(x=>String(x.dex)===String(dex)&&x.sm); if(!ac) return null; if(clip) debugPose(dex,clip,frac);
+ const p=ac.root.position, h=Math.max(.8,ac.h), cam=new THREE.PerspectiveCamera(28,1,.1,100); cam.position.set(p.x+h*.9*D/3.4,TOP+h*(.8+.3*D/3.4),p.z+h*D); cam.lookAt(p.x,TOP+h*.55,p.z);
  const rt=new THREE.WebGLRenderTarget(S,S,{samples:4}); rt.texture.colorSpace=THREE.SRGBColorSpace; renderer.setRenderTarget(rt); renderer.render(scene,cam); const px=new Uint8Array(S*S*4); renderer.readRenderTargetPixels(rt,0,0,S,S,px); renderer.setRenderTarget(null); rt.dispose();
  const c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d'), im=g.createImageData(S,S); for(let y=0;y<S;y++) im.data.set(px.subarray((S-1-y)*S*4,(S-y)*S*4),y*S*4); g.putImageData(im,0,0); return c.toDataURL(); }
 // Diagnóstico (banco de rendimiento): qué se dibuja y de dónde sale cada llamada de dibujo
@@ -1136,5 +1187,5 @@ function debugInfo(){ const c={mallas:0,piel:0,actores:0,efectos:0,escenario:0,s
  const act=new Set(); for(const a of actors.values()) a.root.traverse(m=>act.add(m));
  scene.traverseVisible(o=>{ if(o.isMesh||o.isSprite||o.isPoints){ c.mallas++; if(o.isSkinnedMesh) c.piel++; if(o.isSprite) c.sprites++; if(o.isPoints) c.puntos++; if(inFx.has(o)) c.efectos++; else if(act.has(o)) c.actores++; else c.escenario++; for(const m of [].concat(o.material)) c.materiales.add(m); } });
  c.materiales=c.materiales.size; c.programas=renderer.info.programs?renderer.info.programs.length:0; c.sombras=sun.castShadow; return c; }
-window.B3={init,debugInfo,dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },setShake:b=>{ shakeOn=!!b; },get shakeOn(){ return shakeOn; },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+window.B3={init,debugInfo,dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },setShake:b=>{ shakeOn=!!b; },get shakeOn(){ return shakeOn; },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));

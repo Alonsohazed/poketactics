@@ -20,7 +20,7 @@ test('dos jugadores crean sala, se unen con código y juegan', async ({ browser 
   await B.locator('#rmCode').fill(code);
   await B.locator('#rmJoin').click();
   await expect(B.locator('#mbox .code')).toHaveText(code);
-  await expect(A.locator('#seats .seat:not(.bot)')).toHaveCount(2);
+  await expect(A.locator('#seats .seat:not(.wait)')).toHaveCount(2);
   await expect(A.locator('#seats')).toContainText(userB);
   await expect(B.locator('#rmStart')).toHaveCount(0); // solo el creador puede empezar
 

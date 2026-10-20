@@ -1127,7 +1127,36 @@ function pveLoot(p,R,won){
 }
 
 /* ============================== [FLOW] ============================== */
-const BOT_NAMES=[['Brock','🪨','brock'],['Misty','💧','misty'],['Erika','🌸','erika'],['Sabrina','🔮','sabrina'],['Blaine','🔥','blaine'],['Koga','🥷','koga'],['Surge','⚡','ltsurge'],['Lance','🐉','lance'],['Blue','😏','blue'],['Cintia','🌟','cynthia'],['Morti','👻','morty'],['Yasmina','🔩','jasmine']];
+/* Nombres de los rivales: cuentas con aspecto real, en el mismo formato que el registro (letras, números y _; 3 a 14 caracteres).
+   generateBotName(usados) evita repetir nombre (sin mayúsculas ni símbolos), parte de otro nombre y la misma estructura que los ya usados. */
+const NM_BASE='Alex Alexis Alejandro Angel Alan Alonso Diego Dani Daniel David Dany Luis Luisito Mau Mauricio Mario Marco Kevin Brandon Bryan Fer Fernando Rafa Rafael Gael Emiliano Santiago Mateo Sebastian Ivan Isaac Omar Erik Edgar Carlos Carlitos Cristian Cesar Miguel Jose Jesus Juan Jorge Manuel Andre Leo Leonardo Nico Nicolas Val Vale Regina Sofi Camila Andrea Vane Sam Ferch Pablo Hugo Adrian Abraham Axel Bruno Dario Eduardo Eric Fabian Gerardo Gus Hector Ian Jaime Joaquin Julian Lalo Lucas Memo Moy Nacho Oscar Paco Rodrigo Ruben Saul Tomas Tono Ulises Victor Yael Ale Ana Ari Bere Caro Dana Fati Gaby Isa Jime Karla Lau Lupita Mari Mony Nata Paola Pau Sandy Vicky Yuli Ximena Renata Fernanda Daniela Valeria Mia Ines Cande Eli Rosy Dulce Montse Sergio Pedro Tadeo Rene Raul Beto Chava Gil Ivo Noe Osvaldo Uriel Alfredo Armando Jair Josue Cinthia Marisol'.split(' ');
+const NM_CASUAL=['ElMau','Pablito','Charly','Rulas','Tavo','Borre','Chuy','Panchito','ElNene','Pollito','Mishi','Kira','Galletita','Cafecito','SinMana','NoEraCrit','OtroReroll','MeFaltoUno','PuroTop4','Chato','Gordo','Flaco','Wero','Tito','Pepe','Neto','Cheto','Pancho','Meno','Nano','Taquito','Elotito','Conchita','Tamalito','ElGuero','Chilango','LaNeta','Chamba','Quesadilla','Mijo','Chelito','Nena','Lobito','Patito','Chiquis','Mimi','Pelon','Bigote','ElPrimo'];
+const NM_COMP='Kuro Nox Vex Kaizen Renzo Akira Kiro Yuki Zenn Naru Rivenx Zyro Nexo Kenz Vyn Lune Rei Sora Kai Ryu Raze Orion Atlas Nyx Zeke Axl Rex Ash Sen Taro Hiro Ren Zed Kano Rocko Dex Mako Rune Soma Onyx Zane Cael Niko'.split(' ');
+const NM_GAME=['GengarMx','Eevee27','DittoMain','PikaDani','Snorlaxito','Mimikyu','LucarioGG','Ditto_exe','MewtwoMX','PokeMau','ShinyHunter','CriticalHit','SinRerolls','Top4Enjoyer','Squirtle_7','Umbreon99','Gyarados_x','TogepiLove','Garchomp17','CharizardX','BulbaFer','PsyduckMood','Pokeball_77','MasterBall','Tilteado','Snorlax_zzz','Magikarp1','PikaAlex','Mew_2','ReRollKing','Gengar_xd','Eevee_Lau','DragoniteMx','Shiny_Nico'];
+const NM_PRE=['soy','its','el','mr','x','yo'], NM_SUF=['mx','gg','qt','exe','x','xd','lol','jr','mz','zz','_mx','_gg','_exe','_x'];
+const NM_BADNUM=/69|420|666|88|14|187/, NM_BAD=/nazi|hitler|puta|pinche|verga|culo|mierda|sex|porn|gay|negro|joto|pene|cum|rape|isis|kkk/i, NM_AVATARS=['🧢','🎒','⭐','🎯','🎮','👾','🔥','💧','🌿','⚡','🎲','🍀'];
+const nmRnd=a=>a[Math.floor(Math.random()*a.length)], nmW=pairs=>{ let t=0; for(const p of pairs) t+=p[0]; let r=Math.random()*t; for(const p of pairs){ r-=p[0]; if(r<0) return p[1]; } return pairs[0][1]; };
+const nmNorm=n=>String(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+const nmWord=n=>nmNorm(n).replace(/\d+/g,''), nmSig=n=>String(n).replace(/[A-Z][a-z]+/g,'A').replace(/[a-z]+/g,'a').replace(/\d+/g,m=>'d'+m.length);
+const nmCase=(w,lower)=>lower?w.toLowerCase():w.charAt(0).toUpperCase()+w.slice(1);
+function nmNum(){ return nmW([[34,()=>nmRnd(['7','17','27','77','10','21','23','33','11','99','98','97','96','00','01','02','03','04','05','08','12','3','5','9','1','2','22'])],[24,()=>String(10+Math.floor(Math.random()*90))],[10,()=>nmRnd(['1998','1999','2000','2001','2002','2003','2004','2005','2006','2007','1997','1996'])],[8,()=>String(100+Math.floor(Math.random()*900))]])(); }
+// Variante de ortografía moderada de un nombre (Carlos→Karlos, Dani→Danii, Dany→Danyx)
+function nmVar(w){ if(Math.random()>.2) return w; return nmW([[3,()=>/c[aou]/i.test(w)?w.replace(/c([aou])/i,'k$1'):w],[3,()=>/[aio]$/i.test(w)?w+w.slice(-1):w],[2,()=>w.length<7?w+'x':w]])(); }
+const NM_STYLES=[[30,'simple'],[31,'numero'],[19,'afijo'],[9,'casual'],[8,'comp'],[3,'juego']];
+function nmBuild(style){ const low=Math.random()<.3, base=nmVar(nmRnd(NM_BASE));
+ switch(style){
+  case 'simple': return nmCase(base,low);
+  case 'numero': { const n=nmNum(), f=nmW([[55,0],[25,1],[10,2],[10,3]]), b=nmCase(base,low); return f===1?b+'_'+n:f===2?b+'x'+n:b+n; }
+  case 'afijo': { if(Math.random()<.45) return (low?nmRnd(NM_PRE)+base.toLowerCase():nmCase(nmRnd(NM_PRE),false)+nmCase(base,false))+(Math.random()<.2?nmNum().slice(0,2):'');
+   const sf=nmRnd(NM_SUF); return nmCase(base,low)+(low||sf[0]==='_'?sf:sf.length<=3?sf.toUpperCase():sf)+(Math.random()<.25?nmNum().slice(0,2):''); }
+  case 'casual': return nmRnd(NM_CASUAL)+(Math.random()<.2?nmNum():'');
+  case 'comp': { const w=nmRnd(NM_COMP), r=Math.random(); return r<.55?w:r<.8?w+nmNum().slice(0,2):w+'_'+nmRnd(['mx','gg','x','7','17']); }
+  default: return nmRnd(NM_GAME); } }
+function generateBotName(used,tries=60){ const arr=[...(used||[])], norms=arr.map(nmNorm), words=arr.map(nmWord).filter(w=>w.length>=3), sigs=new Set(arr.map(nmSig));
+ const clash=(n,strict)=>{ const nn=nmNorm(n), w=nmWord(n); if(norms.includes(nn)) return true; if(!strict) return false; if(sigs.has(nmSig(n))) return true; return w.length>=3&&words.some(x=>x.includes(w)||w.includes(x)); };
+ for(let i=0;i<tries;i++){ const n=nmBuild(nmW(NM_STYLES)).replace(/[^A-Za-z0-9_]/g,''); if(n.length<3||n.length>14||NM_BAD.test(n)||/^\d/.test(n)||(/\d/.test(n)&&NM_BADNUM.test(n.replace(/\D/g,'')))) continue; if(!clash(n,i<tries-12)) return n; }
+ for(let i=0;i<400;i++){ const n=nmRnd(NM_BASE)+(3+Math.floor(Math.random()*9990)); if(n.length<=14&&!NM_BAD.test(n)&&!clash(n,false)) return n; }
+ return 'Jugador'+Date.now().toString().slice(-6); }
 const DIFF_NAME={facil:'Fácil',normal:'Normal',dificil:'Difícil'};
 function later(fn,ms){ const g=G; setTimeout(()=>{ if(G===g&&!G.over) fn(); }, G.auto?0:ms); }
 function buildRounds(){
@@ -1144,11 +1173,11 @@ function newGame(opts={}){
  if(!opts.server){ G.players.push(makePlayer(0,opts.auto?'Tú':S.name||'Tú',!!opts.auto,S.avatar||'🧢',S.trainer)); if(!opts.auto&&!HEADLESS&&savedTac()) G.players[0].tac=savedTac(); }
  let id=opts.server?0:1;
  for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.remote=true; p.peer=h.peer; G.players.push(p); }
- const taken=new Set(G.players.map(p=>p.tr)), bots=shuffle(BOT_NAMES.filter(b=>!taken.has(b[2])));
- while(G.players.length<8){ const [n,e,t]=bots.pop(); G.players.push(makePlayer(id++,n+(G.mp?' 🤖':''),true,e,t)); }
+ const usados=G.players.map(p=>p.name);
+ while(G.players.length<8){ const n=generateBotName(usados); usados.push(n); G.players.push(makePlayer(id++,n,true,pick(NM_AVATARS),'')); }
  // En el servidor no hay jugador local: G.me es un espectador fantasma fuera de la lista
  G.me=opts.server?Object.assign(makePlayer(-1,'',true,''),{alive:false}):G.players[0];
- note(null,`Empieza la partida (bots: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
+ note(null,`Empieza la partida (dificultad: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
  nextRound();
 }
 function nextRound(){
@@ -1415,7 +1444,7 @@ function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk
 function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0},kills:+a[6]||0,goldGen:Math.max(0,+a[7]||0)}; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',p.isBot?1:0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
@@ -1485,12 +1514,12 @@ function showMP(){
  if(!s){ openModal(`<h1>Multijugador</h1><p>El multijugador necesita el servidor del juego. Abre el juego desde la dirección donde está desplegado (tu app de Render), no como archivo suelto.</p>`,{closable:true}); return; }
  NET.screen='lobby';
  openModal(`<h1>Multijugador</h1>
-  <p class="muted">Los asientos vacíos los ocupan bots.</p>
+  <p class="muted">Crea una sala o únete con un código: la partida es de hasta 8 jugadores.</p>
   <h3>Crear sala</h3>
   <div class="row">
    <div class="field"><label for="rmName">Nombre de la sala</label><input id="rmName" maxlength="24" value="Sala de ${esc(S.name)}"></div>
-   <div class="field"><label for="rmMax">Jugadores humanos</label><select id="rmMax">${[2,3,4,5,6,7,8].map(n=>`<option ${n===8?'selected':''}>${n}</option>`).join('')}</select></div>
-   <div class="field"><label for="rmDiff">Dificultad de los bots</label><select id="rmDiff">${Object.entries(DIFF_NAME).map(([k,v])=>`<option value="${k}" ${k===S.diff?'selected':''}>${v}</option>`).join('')}</select></div>
+   <div class="field"><label for="rmMax">Jugadores en la sala (máx.)</label><select id="rmMax">${[2,3,4,5,6,7,8].map(n=>`<option ${n===8?'selected':''}>${n}</option>`).join('')}</select></div>
+   <div class="field"><label for="rmDiff">Dificultad</label><select id="rmDiff">${Object.entries(DIFF_NAME).map(([k,v])=>`<option value="${k}" ${k===S.diff?'selected':''}>${v}</option>`).join('')}</select></div>
   </div>
   <button class="btn primary" id="rmCreate">Crear sala</button>
   <h3>Salas abiertas</h3><div class="roomList" id="roomList"></div>
@@ -1502,7 +1531,7 @@ function showMP(){
 function renderRoomList(){
  const el=$('roomList'); if(!el) return;
  const rooms=NET.rooms||[];
- el.innerHTML=rooms.length?rooms.map(r=>`<div class="roomItem">${tacHeadHTML(r.tr,34)}<b>${esc(String(r.name||'Sala').slice(0,24))}</b><span class="small muted">${+r.n||1}/${+r.max||8} · bots ${esc(DIFF_NAME[r.diff]||'Normal')}</span><button class="btn sm" data-code="${esc(r.code)}">Unirse</button></div>`).join(''):'<p class="muted small">No hay salas abiertas ahora. Crea una y pasa el código a tus amigos.</p>';
+ el.innerHTML=rooms.length?rooms.map(r=>`<div class="roomItem">${tacHeadHTML(r.tr,34)}<b>${esc(String(r.name||'Sala').slice(0,24))}</b><span class="small muted">${+r.n||1}/${+r.max||8} · ${esc(DIFF_NAME[r.diff]||'Normal')}</span><button class="btn sm" data-code="${esc(r.code)}">Unirse</button></div>`).join(''):'<p class="muted small">No hay salas abiertas ahora. Crea una y pasa el código a tus amigos.</p>';
  el.querySelectorAll('button[data-code]').forEach(b=>b.onclick=()=>{ NET.mode='joining'; NET.sock.emit('join',{code:b.dataset.code}); });
 }
 function showRoomScreen(){
@@ -1514,8 +1543,8 @@ function showRoomScreen(){
 }
 function renderSeats(){
  const el=$('seats'); if(!el) return; const cfg=NET.cfg||{name:'Sala',max:8,diff:'normal'};
- $('roomInfo').textContent=`${cfg.name} · hasta ${cfg.max} humanos · bots en ${DIFF_NAME[cfg.diff]}`;
- const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${esc(s.nick)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' 👑':''}</div>`:`<div class="seat bot">🤖 Bot ${DIFF_NAME[cfg.diff]}</div>`); }
+ $('roomInfo').textContent=`${cfg.name} · hasta ${cfg.max} jugadores · dificultad ${DIFF_NAME[cfg.diff]}`;
+ const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${esc(s.nick)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' 👑':''}</div>`:`<div class="seat wait">Buscando jugador…</div>`); }
  el.innerHTML=rows.join('');
  const owner=NET.owner&&NET.owner===NET.myPeer;
  $('rmActions').innerHTML=(owner?'<button class="btn primary" id="rmStart">Empezar partida</button>':'<span class="muted" style="margin-right:auto">Esperando a que el creador de la sala empiece…</span>')+'<button class="btn" id="rmLeave">Salir de la sala</button>';
@@ -2296,7 +2325,10 @@ function arenaHost(){
 }
 function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'temple-'+(TAC_THEME[arenaHost().tac]||'grass'); }
 const STAR_SCALE=[1,1.13,1.27];
-const unitScale=(d,star,o={})=>STAR_SCALE[star-1]*(d.traits&&d.traits.includes('Legendario')?1.15:1)*(o.boss?1.35:1);
+// Etapa evolutiva: las primeras formas son más pequeñas y al evolucionar se nota el cambio (líneas de 1, 2 o 3 formas)
+const STAGE_SCALE={2:[.75,1.1],3:[.78,.93,1.08]};
+const stageScale=(d,star)=>{ const n=Array.isArray(d.dex)?d.dex.length:1; return n>1&&STAGE_SCALE[n]?STAGE_SCALE[n][formIdx(d,star,n)]:1; };
+const unitScale=(d,star,o={})=>STAR_SCALE[star-1]*stageScale(d,star)*(d.traits&&d.traits.includes('Legendario')?1.15:1)*(o.boss?1.35:1);
 // Pokémon bajo el puntero (en pantalla, porque los modelos están de pie)
 function pickActor(test){
  const [px,py]=ptr; let best=null,bd=1e9;
@@ -2369,6 +2401,8 @@ function orbList(){
 let synCache={v:-1,who:null,t:{}};
 function activeTraits(who){ if(synCache.v!==G.uiV||synCache.who!==who){ const t=traitTiers(who); synCache={v:G.uiV,who,t}; } return synCache.t; }
 let sceneLinks=[];
+// Efecto de una vez al colocar una ficha que comparte sinergia: memoria de cada ficha del tablero (casilla y sinergias activas)
+const synMem=new WeakMap(); let synCtx='';
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
  sceneLinks=[];
@@ -2387,12 +2421,19 @@ function sceneActors(){
  } else if(inCar){
    const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=optPos(C,i); A.push({key:o,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
  } else {
-   const who=viewedPlayer(), mine=who===me;
-   for(const k in who.board){ const u=who.board[k]; if(drag&&drag.moved&&drag.u===u) continue; const [c,r]=k.split(',').map(Number); const [x,y]=cellXY(c,4+r), st=mine?planStats(u):null, d=DEF[u.defId];
-     const syn=G.phase==='planning'||G.phase==='augment'||G.phase==='results'?unitTraits(u).filter(t=>(activeTraits(who)[t]||0)>=1):null;
+   const who=viewedPlayer(), mine=who===me, ctx=who.id+'|'+G.phase+'|'+G.roundIdx, quiet=ctx!==synCtx, now=performance.now(); synCtx=ctx;
+   const info=[], tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
+   for(const k in who.board){ const u=who.board[k]; if(drag&&drag.moved&&drag.u===u) continue; const [c,r]=k.split(',').map(Number); const [x,y]=cellXY(c,4+r);
+     const syn=showSyn?unitTraits(u).filter(t=>(tiers[t]||0)>=1):null; let m=synMem.get(u); const fresh=!m; if(!m){ m={cell:k,n:0,t:0}; synMem.set(u,m); }
+     info.push({u,k,c,r,x,y,syn,m,init:!quiet&&showSyn&&!!syn&&syn.length>0&&(fresh||m.cell!==k)}); m.cell=k; }
+   // Quien se acaba de colocar estalla con el elemento de su sinergia y lanza un destello hacia las fichas con las que la comparte (que también reaccionan)
+   for(const i of info) if(i.init){ const par=info.filter(o=>o!==i&&o.syn&&o.syn.some(t=>i.syn.includes(t))); if(!par.length) continue; const sh=i.syn.filter(t=>par.some(p=>p.syn.includes(t)));
+     i.m.n++; i.m.t=now; i.m.tr=sh; i.m.from=null; i.m.to=par.slice(0,4).map(p=>[p.x,p.y]);
+     for(const p of par){ if(p.m.t===now) continue; p.m.n++; p.m.t=now; p.m.tr=sh.filter(t=>p.syn.includes(t)); p.m.from=[i.x,i.y]; p.m.to=null; } }
+   for(const i of info){ const {u,k,x,y,syn,m}=i, st=mine?planStats(u):null, d=DEF[u.defId];
      if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
-     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
-   if(G.preview&&G.phase==='planning') for(const cr of G.preview){ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:cr,dex:cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:1,hud:{creep:true}}); }
+     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
+ if(G.preview&&G.phase==='planning') for(const cr of G.preview){ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:cr,dex:cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:1,hud:{creep:true}}); }
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){ const v=G.view, bottom=v?G.players.find(p=>p.id===v.pid)||me:me, sp=trainerSpots();
@@ -2557,7 +2598,7 @@ function updatePhase(){
  $('rbPhase').textContent=PHASE_TAG[G.phase]||'Esperando'; const alive=G.players.filter(p=>p.alive).length; $('rbAlive').textContent=`👤 ${alive}/${G.players.length}`;
  if(plan&&sec<=5&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.hurry(sec); } if(!plan) lastBeep=-1;
  switch(G.phase){
-  case 'planning': t=(isFinite(G.timer)?`Planificación · ${Math.max(0,Math.ceil(G.timer))}s`:'Planificación')+(G.mp?` · listos ${G.players.filter(p=>!p.isBot&&p.alive&&p.ready).length}/${G.players.filter(p=>!p.isBot&&p.alive).length}`:''); break;
+  case 'planning': t=(isFinite(G.timer)?`Planificación · ${Math.max(0,Math.ceil(G.timer))}s`:'Planificación')+(G.mp&&G.me&&G.me.ready?' · esperando al resto':''); break;
   case 'combat': t=G.myOpp?`Combate contra ${G.myOpp}`:'Combates en curso'; break;
   case 'carousel': t='Carrusel'; break; case 'augment': t='Elige un aumento'; break;
   case 'results': t='Resultados'; break; case 'over': t='Fin de la partida'; break; default: t='Esperando al anfitrión…';
@@ -2612,6 +2653,17 @@ const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><pa
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
 // Ilustraciones recortadas de cartas TCG (public/art): retratos de la tienda y de las minileyendas, sin cargar modelos 3D
+// Retrato de cada carta: punto del Pokémon en su arte [x %, y %] y zoom; ese punto se coloca a la derecha de la carta (a la izquierda queda el fundido para las sinergias)
+const ART_FOCUS={
+ abra:[45,40,1.2],absol:[52,40,1.2],bagon:[50,45,1.15],beldum:[55,45,1.15],bulbasaur:[42,55,1.2],charmander:[60,50,1.2],chikorita:[55,55,1.2],cleffa:[50,50,1.3],
+ darkrai:[45,45,1.15],diglett:[48,45,1.15],ditto:[50,50,1.15],dratini:[48,46,1.2],drowzee:[45,40,1.15],duskull:[40,35,1.15],eevee:[52,45,1.2],elekid:[75,45,1.15],
+ espeon:[45,40,1.15],flareon:[40,45,1.15],gastly:[42,55,1.2],geodude:[50,45,1.15],gible:[40,40,1.1],gimmighoul:[52,45,1.25],giratina:[50,60,1.1],groudon:[65,50,1.1],
+ growlithe:[45,40,1.15],hatenna:[45,40,1.15],hooh:[72,35,1.15],horsea:[70,40,1.2],houndour:[55,45,1.15],igglybuff:[45,50,1.15],jolteon:[40,50,1.15],kyogre:[55,50,1.1],
+ lapras:[60,50,1.15],larvitar:[50,45,1.15],leafeon:[40,55,1.2],litwick:[45,40,1.1],lugia:[42,40,1.05],machop:[52,45,1.15],magikarp:[52,36,1.25],magnemite:[52,55,1.1],
+ meowth:[42,45,1.15],mewtwo:[45,40,1.1],mimejr:[50,55,1.3],misdreavus:[55,60,1.1],moltres:[55,45,1.1],munchlax:[45,55,1.15],oddish:[50,55,1.15],onix:[70,45,1.1],
+ pichu:[55,40,1.15],poliwag:[50,50,1.15],ponyta:[36,38,1.15],psyduck:[65,55,1.1],ralts:[45,35,1.1],rattata:[55,45,1.2],rayquaza:[65,45,1.1],rhyhorn:[55,50,1.15],
+ riolu:[55,45,1.1],rowlet:[45,45,1.15],sableye:[50,45,1.15],scyther:[70,40,1.1],shellder:[40,40,1.1],shinx:[45,35,1.15],squirtle:[60,72,1.3],sylveon:[65,40,1.1],
+ tauros:[45,55,1.1],timburr:[45,40,1.1],togepi:[57,60,1.15],turtwig:[60,45,1.1],umbreon:[30,45,1.1],vaporeon:[60,45,1.1],zapdos:[50,40,1.1],zorua:[50,55,1.15]};
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
 const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
@@ -2651,9 +2703,9 @@ function renderShop(){
    if(window.B3&&B3.preload) B3.preload([...me.shop.filter(k=>k&&DEF[k]).map(k=>dexOf(DEF[k],1)),...allUnits(me).map(u=>dexOf(DEF[u.defId],Math.min(3,u.star+1)))]);
    $('cards').innerHTML=me.shop.map((k,i)=>{
      if(!k||!DEF[k]) return `<div class="card empty"></div>`;
-     const d=DEF[k], can=canBuy(me,i)&&me.alive;
-     return `<button class="card c${d.cost} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
-       ${CARD_ART[shopArtKey(k)]?`<span class="art cardArt" style="background-image:url('${CARD_ART[shopArtKey(k)]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
+     const d=DEF[k], can=canBuy(me,i)&&me.alive, ak=shopArtKey(k), fo=CARD_ART[ak]&&(ART_FOCUS[ak]||[50,50,1.2]);
+     return `<button class="card c${d.cost} ${fo?'v2':''} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
+       ${fo?`<span class="art v2art"><img src="${CARD_ART[ak]}" alt="" style="--fx:${fo[0]/100};--fy:${fo[1]/100};--z:${fo[2]};--zr:${Math.min(1.6,Math.max(1,52/fo[0])).toFixed(2)}"></span>`:CARD_ART[shopArtKey(k)]?`<span class="art cardArt" style="background-image:url('${CARD_ART[shopArtKey(k)]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
        <i class="frame"></i>${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
        <span class="cn">${DEF[shopArtKey(k)].name}</span>
        <span class="tr">${d.traits.map(t=>`<span title="${t}"><i>${traitIcon(t)}</i>${t}</span>`).join('')}</span>
@@ -2817,22 +2869,22 @@ function showTacPick(first){
 }
 const tacHeadHTML=(k,s)=>`<span class="head tacHead" style="--hs:${s}px">${artImg(tacKey({tac:k}))}</span>`;
 function showDifficulty(){
- openModal(`<h1>Contra bots</h1><p class="muted">7 entrenadores rivales. Elige la dificultad.</p>
+ openModal(`<h1>Partida rápida</h1><p class="muted">Juega contra 7 rivales. Elige la dificultad.</p>
  <div class="diffs">
-  <button class="choice" data-d="facil"><span class="big">🌱</span><b>Fácil</b><span class="small">No refrescan la tienda, colocan sus Pokémon al azar y equipan objetos a medias.</span></button>
-  <button class="choice" data-d="normal"><span class="big">⚔️</span><b>Normal</b><span class="small">Juegan una economía estándar y buscan sinergias.</span></button>
-  <button class="choice" data-d="dificil"><span class="big">🔥</span><b>Difícil</b><span class="small">Refrescan más, suben de nivel antes y gastan mejor cuando tienen poca vida.</span></button>
+  <button class="choice" data-d="facil"><span class="big">🌱</span><b>Fácil</b><span class="small">Rivales tranquilos: ideal para aprender el juego.</span></button>
+  <button class="choice" data-d="normal"><span class="big">⚔️</span><b>Normal</b><span class="small">Rivales equilibrados que buscan sinergias.</span></button>
+  <button class="choice" data-d="dificil"><span class="big">🔥</span><b>Difícil</b><span class="small">Rivales muy afinados: suben de nivel antes y gastan mejor cuando van justos de vida.</span></button>
  </div>`,{closable:true});
  $('mbox').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ S.diff=b.dataset.d; saveSettings(); closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:S.diff}); });
 }
 function showHow(){
  openModal(`<h1>Cómo jugar</h1>
- <p>Juegas contra 7 entrenadores. Cada ronda compras Pokémon, los colocas en el tablero y combaten solos. Si pierdes, pierdes vida de entrenador. El último en pie gana.</p>
+ <p>Juegas contra 7 rivales. Cada ronda compras Pokémon, los colocas en el tablero y combaten solos. Si pierdes, pierdes vida de entrenador. El último en pie gana.</p>
  <h3>Habilidades</h3><ul class="help"><li>Cada Pokémon llena su barra azul de maná al atacar y recibir golpes. Al llenarla lanza su habilidad: verás el nombre sobre él, el efecto en el tablero y una línea en «Habilidades en este combate».</li><li>Toca cualquier Pokémon (también los rivales en pleno combate) para ver su ficha completa a la derecha.</li></ul>
  <h3>Economía</h3><ul class="help"><li>Ingreso por ronda: 0 · 2 · 3 en la fase 1, 4 en la 2-1 y 5 desde entonces.</li><li>Interés: +1 por cada 10 de oro (máx. 5). Rachas de 2+ victorias o derrotas dan +1 a +3.</li></ul>
  <h3>Pokémon</h3><ul class="help"><li>3 copias = 2★ y evoluciona con una habilidad nueva. 3 de 2★ = 3★. A 3★ deja de salir en tu tienda.</li><li>Eevee acumula vida y ataque para siempre y evoluciona al derrotar enemigos.</li></ul>
  <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, suelta un componente sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el 🧲 Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
- <h3>Multijugador</h3><ul class="help"><li>Crea una sala, comparte el código y empieza cuando quieras: los asientos vacíos los ocupan bots.</li></ul>
+ <h3>Multijugador</h3><ul class="help"><li>Crea una sala, comparte el código con tus amigos y empieza cuando quieras: hasta 8 jugadores por partida.</li></ul>
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true});
 }
@@ -2862,7 +2914,7 @@ function showOptions(){
  $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
 }
 function confirmQuit(){
- openModal(`<h1>¿Volver al menú?</h1><p>${NET.mode==='client'?'Saldrás de la sala; un bot jugará por ti.':'La partida actual se perderá.'}</p><div style="display:flex;gap:8px"><button class="btn primary" id="qYes">Volver al menú</button><button class="btn" id="qNo">Seguir jugando</button></div>`,{closable:true});
+ openModal(`<h1>¿Volver al menú?</h1><p>${NET.mode==='client'?'Saldrás de la sala y tu partida continuará sin ti.':'La partida actual se perderá.'}</p><div style="display:flex;gap:8px"><button class="btn primary" id="qYes">Volver al menú</button><button class="btn" id="qNo">Seguir jugando</button></div>`,{closable:true});
  $('qYes').onclick=()=>{ closeModal(); if(G) G.over=true; if(NET.mode!=='sp') leaveRoom(); showMenu(); };
  $('qNo').onclick=closeModal;
 }
@@ -3109,10 +3161,10 @@ function serverTick(dt){
  hostNetTick();
 }
 function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
-function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.isBot=true; p.name=p.name+' (bot)'; note(null,`🔌 ${p.name} se desconectó; un bot juega por él`); } }
+function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.isBot=true; note(null,`🔌 ${p.name} se desconectó`); } }
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[]}; }
 
-if(HEADLESS){ module.exports={serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
+if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js
