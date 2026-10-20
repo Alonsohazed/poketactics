@@ -249,15 +249,15 @@ function bakeStatic(g){
 // Arena «río» (por defecto), inspirada en el mapa de Ríos de TFT: una isla de hierba con acantilados sobre un río, campo de tierra pisada con adoquines
 // gastados en el centro, gruesas losas de piedra arriba y abajo, hileras de urnas hexagonales a los lados y cuatro torres con fuego en las esquinas
 function riverTex(){
- return canvasTex(1024,1152,(g,w,h)=>{ const rr=seeded(41); g.fillStyle='#6f803c'; g.fillRect(0,0,w,h);
+ return canvasTex(1024,1152,(g,w,h)=>{ const rr=seeded(41); g.fillStyle='#5f6f33'; g.fillRect(0,0,w,h);
    const blot=(x,y,r0,c,al)=>{ const gr=g.createRadialGradient(x,y,0,x,y,r0); gr.addColorStop(0,c+al); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-r0,y-r0,r0*2,r0*2); };
-   for(let i=0;i<420;i++) blot(rr()*w,rr()*h,30+rr()*120,['#82913f','#5c6d33','#7a8a3c','#4f6030'][i%4],'55');
+   for(let i=0;i<420;i++) blot(rr()*w,rr()*h,30+rr()*120,['#6e7f38','#4f5f2b','#667632','#445426'][i%4],'55');
    // grandes manchas de tierra naranja-parda, más hacia el centro y las esquinas
-   for(let i=0;i<34;i++){ const a=rr()*Math.PI*2, d=rr()*w*.32; blot(w/2+Math.cos(a)*d*1.25,h/2+Math.sin(a)*d*1.2,70+rr()*150,['#b0804e','#9c7042','#c08c56'][i%3],'aa'); }
+   for(let i=0;i<34;i++){ const a=rr()*Math.PI*2, d=rr()*w*.32; blot(w/2+Math.cos(a)*d*1.25,h/2+Math.sin(a)*d*1.2,80+rr()*170,['#a87646','#946a3e','#b9824c'][i%3],'cc'); }
    for(const [x,y] of [[.14,.22],[.86,.76],[.18,.82],[.84,.2]]) for(let i=0;i<4;i++) blot(w*x+rnd(60),h*y+rnd(60),60+rr()*70,'#a87a48','88');
    // adoquines gastados en el centro
-   g.lineJoin='round'; for(let i=0;i<64;i++){ const cx=w*.5+(rr()-.5)*w*.52, cy=h*.5+(rr()-.5)*h*.36, r0=34+rr()*46, n=5+(rr()*3|0); g.beginPath(); for(let k=0;k<n;k++){ const an=k/n*Math.PI*2+rr()*.5, rad=r0*(.72+rr()*.4); const px=cx+Math.cos(an)*rad, py=cy+Math.sin(an)*rad*.8; k?g.lineTo(px,py):g.moveTo(px,py); } g.closePath();
-     g.fillStyle='rgba('+(130+(rr()*30|0))+','+(122+(rr()*24|0))+','+(100+(rr()*20|0))+',.42)'; g.fill(); g.strokeStyle='rgba(50,42,32,.45)'; g.lineWidth=3; g.stroke(); }
+   g.lineJoin='round'; for(let i=0;i<86;i++){ const cx=w*.5+(rr()-.5)*w*.52, cy=h*.5+(rr()-.5)*h*.36, r0=30+rr()*38, n=9+(rr()*4|0); g.beginPath(); for(let k=0;k<n;k++){ const an=k/n*Math.PI*2+rr()*.25, rad=r0*(.9+rr()*.18); const px=cx+Math.cos(an)*rad, py=cy+Math.sin(an)*rad*.8; k?g.lineTo(px,py):g.moveTo(px,py); } g.closePath();
+     g.fillStyle='rgba('+(118+(rr()*30|0))+','+(110+(rr()*24|0))+','+(92+(rr()*20|0))+',.55)'; g.fill(); g.strokeStyle='rgba(38,32,24,.38)'; g.lineWidth=3; g.stroke(); }
    // matas de hierba y florecillas
    for(let i=0;i<1400;i++){ const x=rr()*w, y=rr()*h; g.fillStyle=rr()<.5?'rgba(150,175,80,.5)':'rgba(40,60,28,.4)'; g.fillRect(x,y,2,5+rr()*5); }
    for(let i=0;i<90;i++){ const x=rr()*w, y=rr()*h; g.fillStyle=['#f2e27a','#f4f0e8','#c48ae8','#e88aa8'][i%4]; g.fillRect(x,y,4,4); }
@@ -266,8 +266,8 @@ function riverTex(){
  },false);
 }
 function grassTex(){
- return canvasTex(512,512,(g,w,h)=>{ const rr=seeded(52); g.fillStyle='#4f6a2e'; g.fillRect(0,0,w,h);
-   for(let i=0;i<260;i++){ const x=rr()*w, y=rr()*h, r0=20+rr()*70, c=['#5f7c36','#44602a','#6a8a3a'][i%3]; const gr=g.createRadialGradient(x,y,0,x,y,r0); gr.addColorStop(0,c+'88'); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-r0,y-r0,r0*2,r0*2); }
+ return canvasTex(512,512,(g,w,h)=>{ const rr=seeded(52); g.fillStyle='#3f5726'; g.fillRect(0,0,w,h);
+   for(let i=0;i<260;i++){ const x=rr()*w, y=rr()*h, r0=20+rr()*70, c=['#4d6a2e','#364e22','#587836'][i%3]; const gr=g.createRadialGradient(x,y,0,x,y,r0); gr.addColorStop(0,c+'88'); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-r0,y-r0,r0*2,r0*2); }
    for(let i=0;i<1600;i++){ g.fillStyle=rr()<.5?'rgba(170,200,90,.35)':'rgba(20,40,16,.35)'; g.fillRect(rr()*w,rr()*h,2,6); } },true);
 }
 function buildRiver(g,rc,r,anim){
@@ -296,22 +296,22 @@ function buildRiver(g,rc,r,anim){
  // Torres de las esquinas con fuego
  for(const [x,z] of [[X0-1.2,Z0-1.2],[X1+1.2,Z0-1.2],[X0-1.2,Z1+1.4],[X1+1.2,Z1+1.4]]){
    const base=new THREE.Mesh(new THREE.BoxGeometry(1.9,.7,1.9),new THREE.MeshStandardMaterial({color:dark,roughness:.9})); base.position.set(x,.3,z); base.castShadow=true; g.add(base);
-   const tw=new THREE.Mesh(new THREE.CylinderGeometry(.62,.85,1.9,4),new THREE.MeshStandardMaterial({color:stone,roughness:.9})); tw.rotation.y=Math.PI/4; tw.position.set(x,1.5,z); tw.castShadow=true; g.add(tw);
-   const cap=new THREE.Mesh(new THREE.BoxGeometry(1.35,.24,1.35),new THREE.MeshStandardMaterial({color:dark,roughness:.85})); cap.position.set(x,2.55,z); g.add(cap);
-   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.46,.26,.32,20,1,true),new THREE.MeshStandardMaterial({color:'#2f261e',side:THREE.DoubleSide,metalness:.4,roughness:.5})); bowl.position.set(x,2.82,z); g.add(bowl);
-   const glow=glowSprite(flame[1],2.8); glow.position.set(x,3.15,z); g.add(glow);
+   const tw=new THREE.Mesh(new THREE.CylinderGeometry(.7,.92,1.5,4),new THREE.MeshStandardMaterial({color:stone,roughness:.9})); tw.rotation.y=Math.PI/4; tw.position.set(x,1.3,z); tw.castShadow=true; g.add(tw);
+   const cap=new THREE.Mesh(new THREE.BoxGeometry(1.35,.24,1.35),new THREE.MeshStandardMaterial({color:dark,roughness:.85})); cap.position.set(x,2.15,z); g.add(cap);
+   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.46,.26,.32,20,1,true),new THREE.MeshStandardMaterial({color:'#2f261e',side:THREE.DoubleSide,metalness:.4,roughness:.5})); bowl.position.set(x,2.42,z); g.add(bowl);
+   const glow=glowSprite(flame[1],2.8); glow.position.set(x,2.75,z); g.add(glow);
    anim.push(t=>{ glow.material.opacity=.7+.25*Math.sin(t*7+x)+.1*Math.sin(t*13+z);
-     for(let k=0;k<2;k++) if(Math.random()<.85) emit({p:new THREE.Vector3(x+rnd(.16),2.85,z+rnd(.16)),v:[rnd(.12),1.2+Math.random()*.9,rnd(.12)],col:flame[Math.random()<.5?0:1],size:.5+Math.random()*.2,size1:.06,life:.55+.3*Math.random(),g:-.6,drag:1.4});
-     if(Math.random()<.5) emit({p:new THREE.Vector3(x+rnd(.08),2.95,z+rnd(.08)),v:[rnd(.05),1],col:flame[2],size:.26,size1:.04,life:.35,g:-.4});
-     if(Math.random()<.07) emit({p:new THREE.Vector3(x+rnd(.15),3.1,z+rnd(.15)),v:[rnd(.5),2.2+Math.random(),rnd(.5)],col:flame[1],size:.07,size1:.02,life:1.2,g:.6}); }); }
+     for(let k=0;k<2;k++) if(Math.random()<.85) emit({p:new THREE.Vector3(x+rnd(.16),2.45,z+rnd(.16)),v:[rnd(.12),1.2+Math.random()*.9,rnd(.12)],col:flame[Math.random()<.5?0:1],size:.5+Math.random()*.2,size1:.06,life:.55+.3*Math.random(),g:-.6,drag:1.4});
+     if(Math.random()<.5) emit({p:new THREE.Vector3(x+rnd(.08),2.55,z+rnd(.08)),v:[rnd(.05),1],col:flame[2],size:.26,size1:.04,life:.35,g:-.4});
+     if(Math.random()<.07) emit({p:new THREE.Vector3(x+rnd(.15),2.7,z+rnd(.15)),v:[rnd(.5),2.2+Math.random(),rnd(.5)],col:flame[1],size:.07,size1:.02,life:1.2,g:.6}); }); }
  // Pinos y arbustos en las esquinas de la isla, flores moradas y rocas
  const pine=(x,z,s2)=>{ const t=new THREE.Group(); const tr=new THREE.Mesh(new THREE.CylinderGeometry(.12*s2,.18*s2,.8*s2,6),new THREE.MeshStandardMaterial({color:'#5e3d22',roughness:.9})); tr.position.y=.4*s2; t.add(tr);
-   for(let i=0;i<4;i++){ const c=new THREE.Mesh(new THREE.ConeGeometry((.95-i*.2)*s2,(1.1-i*.08)*s2,8),new THREE.MeshStandardMaterial({color:['#27583a','#2e6a40','#38794a','#43895a'][i],roughness:.85,flatShading:true})); c.position.y=(.85+i*.62)*s2; t.add(c); }
+   for(let i=0;i<4;i++){ const c=new THREE.Mesh(new THREE.ConeGeometry((.95-i*.2)*s2,(1.1-i*.08)*s2,8),new THREE.MeshStandardMaterial({color:['#1f4a34','#255a3a','#2e6a43','#387a4f'][i],roughness:.85,flatShading:true})); c.position.y=(.85+i*.62)*s2; t.add(c); }
    t.position.set(x,-.1,z); t.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); return t; };
  const spots=[[X0-2.6,Z0-3.2,1.5],[X0-3.6,Z0-1.4,1.2],[X0-1.4,Z0-3.6,1.1],[X1+2.6,Z0-3.2,1.6],[X1+3.6,Z0-1.4,1.25],[X1+1.4,Z0-3.7,1.1],[X0-4,ZB+.5,1.1],[X1+4,ZB+.4,1.2],[X0-3.4,Z1-2,.9],[X1+3.5,Z1-3,1]];
  for(const [x,z,sz] of spots) g.add(pine(x+rnd(.3),z+rnd(.3),sz*(.9+r()*.3)));
  for(let i=0;i<46;i++){ const side=r()<.5?-1:1, x=side<0?X0-1.9-r()*3.2:X1+1.9+r()*3.2, z=Z0-3.4+r()*(ZB-Z0+6.2); if(Math.abs(z-cz)<2&&r()<.5) continue;
-   const b=new THREE.Mesh(blob(.42+r()*.4,i*1.7,.2,10,7),new THREE.MeshStandardMaterial({color:['#3f6a2c','#4c7c34','#355a28'][i%3],roughness:.9})); b.scale.y=.75; b.position.set(x,.05,z); b.castShadow=true; g.add(b); }
+   const b=new THREE.Mesh(blob(.42+r()*.4,i*1.7,.2,10,7),new THREE.MeshStandardMaterial({color:['#34562a','#3f6a2e','#2b4a24'][i%3],roughness:.9})); b.scale.y=.75; b.position.set(x,.05,z); b.castShadow=true; g.add(b); }
  for(let i=0;i<90;i++){ const x=X0-4.5+r()*(X1-X0+9), z=Z0-4.3+r()*(ZB-Z0+7.6); if(x>X0-.6&&x<X1+.6&&z>Z0-.8&&z<ZB+.6) continue; const fl=new THREE.Mesh(new THREE.SphereGeometry(.08,6,4),new THREE.MeshBasicMaterial({color:['#b48ae8','#f2e27a','#f4f0e8','#e88aa8'][i%4]})); fl.position.set(x,.0,z); g.add(fl); }
  for(let i=0;i<24;i++){ const side=r()<.5?-1:1, x=side<0?X0-2.2-r()*3:X1+2.2+r()*3, z=Z0-3+r()*(ZB-Z0+5.5), rock=rockMesh(.3+r()*.5,r()*20,['#7a7064','#6a6054','#867c6e'][i%3]); rock.position.set(x,-.05,z); rock.rotation.y=r()*TAU; g.add(rock); }
  // Acantilados lejanos con árboles y una cascada
