@@ -708,6 +708,16 @@ function rigPose(root,dex){
 const spriteTex={};
 function getSpriteTex(dex){ if(!spriteTex[dex]){ const t=new THREE.TextureLoader().setCrossOrigin('anonymous').load(SPRITE_URL(dex)); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; spriteTex[dex]=t; } return spriteTex[dex]; }
 
+// Variocolor: lleva los tonos azules (y cian) de la textura al rojo, sin tocar blancos, cremas ni grises (como el Gyarados variocolor)
+function shinyMat(mt){
+ mt.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+  { vec3 c=diffuseColor.rgb; float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.;
+    float h=0.; if(d>1e-4){ if(mx==c.r) h=mod((c.g-c.b)/d,6.); else if(mx==c.g) h=(c.b-c.r)/d+2.; else h=(c.r-c.g)/d+4.; h/=6.; }
+    float w=smoothstep(.42,.5,h)*(1.-smoothstep(.74,.8,h))*smoothstep(.12,.3,s);
+    vec3 red=vec3(mx,mx*(1.-s*.82),mx*(1.-s*.9));
+    diffuseColor.rgb=mix(c,red*1.08,w); }`); };
+ mt.customProgramCacheKey=()=>'shiny'; mt.needsUpdate=true;
+}
 /* ---------- actores (un Pokémon en escena) ---------- */
 const actors=new Map();
 const ringGeo=new THREE.RingGeometry(.52,.64,32); ringGeo.rotateX(-Math.PI/2);
@@ -731,8 +741,9 @@ class Actor{
    this.lastAtk=spec.atk||0; this.lastCast=spec.cast||0; this.atkT=9; this.castT=9; this.deadT=-1; this.flash=0; this.lastPos=null; this.moveT=0;
    scene.add(this.root);
  }
+ // 'shiny:130' = el mismo modelo con los azules teñidos de rojo (Pokemon-3D-api no tiene todos los variocolor)
  setDex(dex){
-   if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(dex);
+   if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(String(dex).replace(/^shiny:/,''));
  }
  clearModel(){ this.sm=null; this.noKo=false; if(this.ball){ this.body.remove(this.ball); this.ball=null; } if(this.model){ this.body.remove(this.model); poolPut(this); this.model=null; this.smActs=null; this.mixer=null; this.cur=null; this.mats=null; this.acts=null; this.proc=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
  ensure(){
@@ -743,7 +754,8 @@ class Actor{
      const kk=this.fitH&&m.kh?Math.min(m.kh,m.k*1.6):m.k, pk=this.dex+'|'+kk, pooled=poolGet(pk);
      if(pooled){ Object.assign(this,pooled); this.poolKey=pk; this.body.add(this.model); this.alpha=undefined; if(m.sm&&this.smActs){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.go('idle'); } else this.play('idle',true); return; }
      const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(kk); holder.userData.k=kk; this.poolKey=pk;
-     this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); this.mats.push(mt); } } });
+     const shiny=String(this.dex).startsWith('shiny:');
+     this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); if(shiny) shinyMat(mt); this.mats.push(mt); } } });
      this.model=holder; this.body.add(holder); this.mixer=new THREE.AnimationMixer(inst); this.acts={};
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
      this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;

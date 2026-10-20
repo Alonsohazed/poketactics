@@ -106,7 +106,12 @@ ready.then(() => server.listen(0, async () => {
   assert.strictEqual(lobby.seats.length, 2, 'dos jugadores en la sala');
   A.emit('start', { timer: 30, speed: 4 });
   const t0 = Date.now();
+  let tposSent = false, idA = -1;
   while (Date.now() - t0 < 120000) {
+    // Minileyenda de B en el tablero de A: entradas inválidas (jugador inexistente, tipos raros, fuera de rango) y luego una válida
+    if (lastPub && !tposSent && st.A.rounds.size >= 3) { tposSent = true; idA = lastPub.pl.find(p => p[1] === 'Ana')[0];
+      B.emit('act', { t: 'tpos', b: 99, x: 1, y: 1 }); B.emit('act', { t: 'tpos', b: 'x', x: {}, y: [] }); B.emit('act', { t: 'tpos', b: idA, x: 1e9, y: -1e9 });
+      B.emit('act', { t: 'tpos', b: idA, x: 4.5, y: 9.25 }); }
     for (const [k, s] of [['A', A], ['B', B]]) {
       const p = st[k].priv; if (!p) continue;
       s.emit('act', { t: 'buy', i: Math.floor(Math.random() * 5) });
@@ -126,6 +131,9 @@ ready.then(() => server.listen(0, async () => {
   assert(Array.isArray(st.A.priv.po), 'llegan los posibles rivales');
   assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle', 'dratini', 'pichu', 'abra', 'eevee'].includes(p[14])), 'todos los jugadores llevan minileyenda');
   assert.strictEqual(lastPub.pl.find(p => p[1] === 'Ana')[14], 'squirtle', 'la minileyenda de la partida sale de la cuenta');
+  const tpB = lastPub.pl.find(p => p[8] && p[1] !== 'Ana')[16];
+  assert.deepStrictEqual(tpB, [idA, 4.5, 9.25], 'la posición de la minileyenda de B llega a todos (y las inválidas se ignoran): ' + JSON.stringify(tpB));
+  assert(lastPub.pl.filter(p => !p[8]).every(p => p[16] === 0), 'los asientos sin persona no mandan posición');
   B.disconnect(); await sleep(400);
   A.disconnect(); await sleep(300);
   fs.rmSync(tmp, { recursive: true, force: true });
