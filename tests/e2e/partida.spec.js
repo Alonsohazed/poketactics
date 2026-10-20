@@ -150,8 +150,7 @@ test('Llamada al Caos: se elige y aparece una ventana con el resultado', async (
   await expect(page.locator('#mbox .reveal h1')).not.toBeEmpty();
   await page.locator('#rvOk').click();
   await expect(page.locator('#modal')).toBeHidden();
-  // también queda en el registro de la partida
-  await page.locator('.sideTabs [data-tab="log"]').click();
+  // también queda en el registro de la partida (sin pestaña visible)
   await expect(page.locator('#log')).toContainText('Llamada al Caos');
 });
 
