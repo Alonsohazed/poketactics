@@ -1611,8 +1611,11 @@ function applyPriv(d){
  me.augUi=d.ap&&typeof d.ap==='object'?d.ap:{};
  me.orbs=Array.isArray(d.ob)?d.ob.slice(0,12).filter(o=>Array.isArray(o)&&['gray','gold','prism'].includes(o[1])).map(([id,tier,c,r])=>({id:+id,tier,toks:[],c:Number.isInteger(c)?clamp(c,0,6):null,r:Number.isInteger(r)?clamp(r,0,7):null})):[];
  const selUid=selected&&selected.uid;
- me.bench=Array(BENCH).fill(null).map((_,i)=>d.be&&d.be[i]?unpackInst(d.be[i]):null);
- me.board={}; for(const row of d.bo||[]){ const u=unpackInst(row[1]); if(u&&/^[0-6],[0-3]$/.test(row[0])) me.board[row[0]]=u; }
+ // Cada mensaje trae las fichas otra vez: se reutiliza el mismo objeto (por uid) para que el 3D no destruya y recree el modelo
+ // (si no, cada acción de cualquiera reiniciaba la animación y la ficha daba un giro al aparecer de nuevo)
+ const oldU=new Map(allUnits(me).map(u=>[u.uid,u])), keepU=a=>{ const n=unpackInst(a); if(!n) return null; const o=oldU.get(n.uid); if(!o) return n; Object.assign(o,n); return o; };
+ me.bench=Array(BENCH).fill(null).map((_,i)=>d.be&&d.be[i]?keepU(d.be[i]):null);
+ me.board={}; for(const row of d.bo||[]){ const u=keepU(row[1]); if(u&&/^[0-6],[0-3]$/.test(row[0])) me.board[row[0]]=u; }
  selected=selUid?allUnits(me).find(u=>u.uid===selUid)||null:null;
  const hadChoices=!!me.augChoices; me.augChoices=Array.isArray(d.ac)?d.ac.filter(a=>AUG_BY[a]):null; me.eeveeForm=DEF[d.ef]?d.ef:''; me.augRR=Array.isArray(d.ar)?d.ar.slice(0,3).map(x=>x?1:0):[0,0,0];
  G.log=Array.isArray(d.lg)?d.lg.map(String):[];
