@@ -335,17 +335,22 @@ function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[d
 // renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
 // Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
 const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150]);
+// En producción los modelos animados salen de jsDelivr fijados al commit desplegado (mismos archivos, caché de un año y
+// sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
+let ANIM_BASE='';
+const animReady=fetch('/api/build').then(r=>r.ok?r.json():{}).catch(()=>({})).then(b=>{ if(b&&/^[0-9a-f]{7,40}$/.test(b.commit||'')&&/^[\w.-]+\/[\w.-]+$/.test(b.repo||'')) ANIM_BASE=`https://cdn.jsdelivr.net/gh/${b.repo}@${b.commit}/public/`; });
+const animFetch=p=>animReady.then(()=>ANIM_BASE?fetch(ANIM_BASE+p).then(r=>r.ok?r:Promise.reject(r)).catch(()=>fetch(p)):fetch(p));
 const SM_CLIPS=['idle','run','attack','special','hit','faint','victory'];
 function wantModel(dex){
  let m=models[dex]; if(m) return m;
  m=models[dex]={status:'queued'};
- if(ANIM_SET.has(+dex)){ m.status='meta'; fetch('anims/'+dex+'.json').then(r=>r.ok?r.json():{}).catch(()=>({})).then(j=>{ m.meta=j||{}; if(m.meta.glb) m.url='anims/'+dex+'.glb'; m.status='queued'; queue.push(dex); pump(); }); return m; }
+ if(ANIM_SET.has(+dex)){ m.status='meta'; animFetch('anims/'+dex+'.json').then(r=>r.ok?r.json():{}).catch(()=>({})).then(j=>{ m.meta=j||{}; if(m.meta.glb){ m.url=ANIM_BASE+'anims/'+dex+'.glb'; m.local='anims/'+dex+'.glb'; } m.status='queued'; queue.push(dex); pump(); }); return m; }
  queue.push(dex); pump(); return m;
 }
 function pump(){
  while(loading<4&&queue.length){
    const dex=queue.shift(), m=models[dex]; loading++; m.status='loading';
-   loader.load(m.retry?MODEL_RAW(dex):(m.url||MODEL_URL(dex)),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; warmModel(m); }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; if(!m.retry){ m.retry=1; m.status='queued'; queue.push(dex); pump(); return; } m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
+   loader.load(m.retry?(m.local||MODEL_RAW(dex)):(m.url||MODEL_URL(dex)),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; warmModel(m); }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; if(!m.retry){ m.retry=1; m.status='queued'; queue.push(dex); pump(); return; } m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
  }
 }
 const RX={

@@ -136,6 +136,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - Sinergias en planificación: `synFx` (partículas por tipo, escudo de Guardián, anillo por clase) y `stepLinks` (bandas entre los Coloso) en `board3d.js`; los datos salen de `activeTraits` y `sceneLinks` en `game.js`.
 - Espectador: minimapa de islas (`renderIslands`, transición `warp`); al mirar a otro, el inventario y el tótem muestran sus objetos y aumentos (`viewOwner`; viajan en `pub.bd`).
 - Aumentos: cada carta llega como una ball con volumen (CSS: `.augBox`, `.lidT`/`.lidB`), se entreabre y se estira hasta la carta con arriba y abajo redondeados. Los modelos FBX de pogo_assets son de una pieza y sin textura, así que no se usan.
+- **Ancho de banda (Render gratis: 5 GB al mes)**: los modelos animados de `public/anims` (unos 37 MB, lo que más gastaba: ~14 MB por jugador y partida) se piden a jsDelivr fijados al commit desplegado (`/api/build` devuelve `RENDER_GIT_COMMIT`; `animFetch` en `board3d.js`), con respaldo a nuestro servidor si jsDelivr falla. Necesita que el repositorio siga siendo público. El websocket comprime los mensajes de 1 KB o más (`perMessageDeflate`). Para medir: script de tráfico con Playwright (carga en frío, recarga y partida).
 - No uses fan art de terceros sin permiso; inspírate en el estilo de los juegos oficiales.
 
 ## Cuentas y seguridad

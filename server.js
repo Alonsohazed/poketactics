@@ -39,13 +39,17 @@ app.use((req, res, next) => {
 });
 const auth = createAuth(db, { trainers: TRAINER_KEYS });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rooms.size }));
+// Commit desplegado: el navegador pide los modelos animados (public/anims) a jsDelivr fijados a este commit, así no gastan
+// el ancho de banda de Render. En local no hay commit y se sirven desde aquí.
+app.get('/api/build', (req, res) => res.json({ commit: process.env.RENDER_GIT_COMMIT || '', repo: process.env.CDN_REPO || 'Alonsohazed/poketactics' }));
 app.use('/api', auth.router);
 // Sin caché larga: tras cada despliegue el navegador revalida (ETag) y nunca mezcla versiones
 // Imágenes (arte de cartas, logo, iconos): caché de 7 días; HTML y JS se revalidan siempre porque cambian con cada despliegue
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders(res, file) { if (/\.(webp|png|jpe?g|svg)$/i.test(file)) res.setHeader('Cache-Control', 'public, max-age=604800'); } }));
 
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 16 * 1024 });
+// Mensajes de 1 KB o más comprimidos (estado de la partida en JSON: ocupa una fracción); los pequeños van tal cual para no gastar CPU
+const io = new Server(server, { maxHttpBufferSize: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
 io.use(auth.socketGuard);
 
 /** @type {Map<string, any>} */
