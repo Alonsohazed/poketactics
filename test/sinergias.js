@@ -125,13 +125,63 @@ const combatOf = (p, k) => { const cb = E.createCombatSnap(E.teamSnap(p), null, 
   ok(/\+9% de daño, \+9 de poder y \+120 de vida/.test(E.augProgress(p, 'extremo')), 'Entrenamiento Extremo: contador con las stats: ' + E.augProgress(p, 'extremo')); }
 { const { p } = fresh(); p.board = { '3,0': E.makeInst('squirtle') }; const base = combatOf(p, '3,0');
   E.applyAugment(p, E.AUG_BY.entreno_diario); for (let i = 0; i < 5; i++) event(p, 'win', {}); const c = combatOf(p, '3,0');
-  ok(Math.abs(c.maxHp / base.maxHp - 1.05) < .001, 'Entrenamiento Diario: +5% de vida tras 5 victorias'); ok(/\+5% de vida y de daño/.test(E.augProgress(p, 'entreno_diario')), 'Entrenamiento Diario: contador'); }
+  ok(Math.abs(c.maxHp / base.maxHp - 1.05) < .001, 'Entrenamiento Diario: +5% de vida tras 5 victorias'); ok(/\+5% de vida y de ataque y \+5 de poder/.test(E.augProgress(p, 'entreno_diario')), 'Entrenamiento Diario: contador'); }
 { const { p } = fresh(); const u = E.makeInst('abra'); p.board = { '3,0': u };
   E.applyAugment(p, E.AUG_BY.entreno_combate); E.resolvePick(p, p.picks[0].id, 0); for (let i = 0; i < 2; i++) event(p, 'roundEnd', {});
-  ok(u.stk.ad === 6 && u.stk.hp === 40, 'Entrenamiento de Combate: +6 de ataque y +40 de vida permanentes'); ok(/\+6 de ataque y \+40 de vida/.test(E.augProgress(p, 'entreno_combate')), 'Entrenamiento de Combate: contador'); }
+  ok(u.stk.ad === 6 && u.stk.hp === 40 && u.stk.ap === 9, 'Entrenamiento de Combate: +6 de ataque, +9 de poder y +40 de vida permanentes'); ok(/\+6 de ataque, \+9 de poder y \+40 de vida/.test(E.augProgress(p, 'entreno_combate')), 'Entrenamiento de Combate: contador'); }
 { const { p } = fresh(); p.board = { '3,0': E.makeInst('abra') }; const base = combatOf(p, '3,0'); E.applyAugment(p, E.AUG_BY.h_alakazam); for (let i = 0; i < 3; i++) event(p, 'roundStart', {});
   ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 12, 'Fuerza Creciente: +12 de poder tras 3 rondas'); }
 ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite');
+
+// 11. Cada aumento de héroe mejora de verdad a su Pokémon (mismo combate y semilla, con y sin el aumento; media de 12 semillas)
+{ const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', 'squirtle', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0], ['2,3', 'pichu', 2, [], 0, 0]] };
+  const stat = (k, aug, f) => { let s = 0; for (let seed = 1; seed <= 12; seed++) { const { p } = fresh(); if (aug) { E.applyAugment(p, E.AUG_BY[aug]); for (let r = 0; r < 5; r++) E.augFire(p, 'roundStart', {}); }
+      const ag = aug ? E.augSnap(p) : []; const me = { ag, m: {}, u: [['3,1', k, 2, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0], ['4,0', 'machop', 2, [], 0, 0]] };
+      const cb = E.createCombatSnap(me, foe, { s: 4, n: 2, type: 'pvp' }, { seed: seed * 101 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k); const pre = f(h, cb, true); E.simulate(cb); s += pre != null ? pre : f(h, cb, false); } return s / 12; };
+  const cmp = (id, k, f, label) => { const a = stat(k, null, f), b = stat(k, id, f); ok(b > a * 1.05, `${E.AUG_BY[id].name}: ${label} (${Math.round(a)} → ${Math.round(b)})`); };
+  const dmg = (h, cb, pre) => pre ? null : (h.sDmg || 0), heal = (h, cb, pre) => pre ? null : (h.sHeal || 0);
+  cmp('h_gengar', 'gastly', dmg, 'más daño de Gengar'); cmp('h_gyarados', 'magikarp', (h, cb, pre) => pre ? h.maxHp : null, 'más vida de Gyarados');
+  cmp('h_clefable', 'cleffa', heal, 'más curación y escudos de Clefable (críticos)'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
+  cmp('h_raichu', 'pichu', dmg, 'más daño de Raichu'); cmp('h_machamp', 'machop', dmg, 'más daño de Machamp (velocidad creciente)');
+  cmp('h_lucario', 'riolu', dmg, 'Lucario lanza dos veces: más daño'); cmp('h_charizard', 'charmander', dmg, 'más daño de Charizard');
+  cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor'); }
+{ const { G, p } = fresh(); G.round = { s: 3, n: 2 }; E.applyAugment(p, E.AUG_BY.h_lucario); ok(p.bench.filter(Boolean).some(u => u.defId === 'riolu' && u.star === 2), 'héroe en 3-2: el Pokémon llega a 2★');
+  G.round = { s: 2, n: 1 }; let seen = 0; for (let i = 0; i < 300; i++) seen += E.augmentChoices(p, 'S').filter(id => id === 'h_dusknoir').length; ok(seen === 0, 'el héroe de coste 4 no sale en 2-1');
+  G.round = { s: 3, n: 2 }; seen = 0; for (let i = 0; i < 300; i++) seen += E.augmentChoices(p, 'S').filter(id => id === 'h_dusknoir').length; ok(seen > 0, 'el héroe de coste 4 sí sale en 3-2'); }
+
+// 12. Aumentos que dan cosas tras rondas, victorias o niveles: dan exactamente lo que dice su descripción
+{ const items = p => p.items.length, units = p => p.bench.filter(Boolean).length, rs = (p, n) => { for (let i = 0; i < n; i++) event(p, 'roundStart', {}); };
+  const take = (id, setup) => { const { p } = fresh(); if (setup) setup(p); E.applyAugment(p, E.AUG_BY[id]); return p; };
+  { const p = take('huevo'); const u0 = units(p), i0 = items(p); rs(p, 5); ok(units(p) === u0 && items(p) === i0, 'Huevo: nada antes de 6 rondas'); rs(p, 1); ok(units(p) === u0 + 1 && p.bench.filter(Boolean).some(u => E.DEF[u.defId].cost === 4) && items(p) === i0 + 1, 'Huevo: a las 6 rondas, Pokémon de coste 4 y un componente'); rs(p, 6); ok(units(p) === u0 + 1, 'Huevo: una sola vez'); }
+  { const p = take('paga_extra'); const g0 = p.gold; for (let i = 0; i < 12; i++) event(p, 'win', { pve: false }); event(p, 'win', { pve: true }); ok(p.gold - g0 === 20, `Paga Extra: 2 por victoria PvP hasta 20 (${p.gold - g0})`); }
+  { const p = take('banco_rocket'); p.gold = 50; rs(p, 5); ok(p.gold === 50 - 10 + 15, `Banco del Team Rocket: 5 depósitos de 2 y devuelve 15 (${p.gold})`); rs(p, 3); ok(p.gold === 55, 'Banco: termina tras cobrar'); }
+  { const p = take('ahorro_profesor'); p.gold = 35; const i0 = items(p); rs(p, 3); ok(items(p) === i0 + 1, 'Ahorro del Profesor: 3 rondas con 30+ → componente'); p.gold = 10; rs(p, 2); p.gold = 35; rs(p, 2); ok(items(p) === i0 + 1, 'Ahorro: bajar de 30 reinicia los puntos'); }
+  { const p = take('investigacion_fin'); p.gold = 60; rs(p, 1); ok(p.freeRerolls === 0, 'Investigación Financiada: 5 puntos aún no'); rs(p, 1); ok(p.freeRerolls === 3, 'Investigación Financiada: 10 puntos → 3 tiendas gratis'); const u0 = units(p); rs(p, 3); ok(units(p) === u0 + 1, 'Investigación Financiada: 25 puntos → Pokémon de coste 4'); }
+  { const p = take('inversion'); E.resolvePick(p, p.picks[0].id, 1); p.gold = 25; const g = []; for (let i = 0; i < 4; i++) { const g0 = p.gold; rs(p, 1); g.push(p.gold - g0); } ok(g.join() === '1,1,2,2', `Inversión: +1 por ronda y sube a +2 a las 3 rondas con 20+ (${g.join()})`); }
+  { const p = take('camino_campeon'); const i0 = items(p), g0 = p.gold; event(p, 'levelUp', { level: 6 }); ok(items(p) === i0 + 1, 'Camino del Campeón: nivel 6 → componente'); event(p, 'levelUp', { level: 7 }); ok(p.gold === g0 + 5, 'Camino del Campeón: nivel 7 → 5 de oro');
+    event(p, 'levelUp', { level: 8 }); ok(items(p) === i0 + 2 && E.FULL_KEYS.includes(p.items[p.items.length - 1]), 'Camino del Campeón: nivel 8 → objeto completo'); const u0 = units(p); event(p, 'levelUp', { level: 9 }); ok(units(p) === u0 + 1 && p.bench.filter(Boolean).some(u => E.DEF[u.defId].cost === 5), 'Camino del Campeón: nivel 9 → Pokémon de coste 5'); }
+  { const p = take('insignias'); for (const l of [5, 6]) event(p, 'levelUp', { level: l }); ok(!p.picks.length, 'Insignias de Gimnasio: 2 insignias aún no'); event(p, 'levelUp', { level: 7 }); ok(p.picks.length === 1 && p.picks[0].opts.length === 3, 'Insignias de Gimnasio: con 3, elección de 3 premios'); }
+  { const p = take('regreso'); const g0 = p.gold; for (let i = 0; i < 3; i++) event(p, 'lose', {}); event(p, 'win', {}); ok(p.gold - g0 === 9, `El Regreso: 3 derrotas → 9 de oro al ganar (${p.gold - g0})`); }
+  { const p = take('supervivientes'); const g0 = p.gold; event(p, 'survive', { n: 7 }); ok(p.gold - g0 === 3, 'Equipo de Supervivientes: +1 por cada 2 en pie, máx. 3'); event(p, 'survive', { n: 3 }); ok(p.gold - g0 === 4, 'Equipo de Supervivientes: 3 en pie → +1'); }
+  { const p = take('crecimiento'); const xp = p.xp + p.level * 100; event(p, 'win', { pve: false }); ok(p.xp + p.level * 100 > xp, 'Crecimiento Acelerado: EXP por victoria PvP'); }
+  { const p = take('campeon_sinnoh'); const i0 = items(p); for (let i = 0; i < 3; i++) event(p, 'win', { pve: false }); ok(items(p) === i0 + 1, 'Campeón de Sinnoh: 3 victorias → componente'); for (let i = 0; i < 3; i++) event(p, 'win', { pve: false }); ok(items(p) === i0 + 2, 'Campeón de Sinnoh: 6 → objeto completo'); const b0 = p.mods.boardBonus; for (let i = 0; i < 3; i++) event(p, 'win', { pve: false }); ok(p.mods.boardBonus === b0 + 1, 'Campeón de Sinnoh: 9 → +1 espacio'); }
+  { const p = take('coleccionista', q => { for (const k of ['charmander', 'squirtle', 'bulbasaur', 'pichu', 'abra', 'gastly']) E.addUnitToBench(q, E.makeInst(k)); }); const g0 = p.gold; rs(p, 1); ok(p.gold - g0 === 1, 'Coleccionista: 6 especies → +1 de oro'); }
+  { const p = take('pacto_rocket'); ok(p.gold === 58, 'Pacto del Team Rocket: +8 de oro al elegirlo'); event(p, 'lose', { pve: false }); const g0 = p.gold; rs(p, 5); ok(g0 - p.gold === 15, `Pacto del Team Rocket: la derrota alarga la deuda a 5 rondas de 3 (${g0 - p.gold})`); rs(p, 2); ok(g0 - p.gold === 15, 'Pacto del Team Rocket: después ya no cobra'); }
+  { const p = take('maestro'); const x0 = p.xp + p.level * 1000; p.gold = 10; E.applyAct(p, { t: 'xp' }); ok(p.xp + p.level * 1000 >= x0 + 5 || p.level > 1, 'Maestro Pokémon: la EXP comprada da 5'); E.addUnitToBench(p, E.makeInst('charmander')); p.board = { '0,0': E.makeInst('charmander') };
+    event(p, 'levelUp', { level: 9 }); const pk = p.picks.find(x => x.src === 'maestro'); ok(pk && pk.opts.length >= 1, 'Maestro Pokémon: elección de sinergia al nivel 9'); const t = pk.opts[0].v, n0 = E.traitCounts(p)[t] || 0; E.resolvePick(p, pk.id, 0); ok((E.traitCounts(p)[t] || 0) === n0 + 1, 'Maestro Pokémon: la sinergia elegida cuenta 1 más'); }
+  { const p = take('h_meowth'); p.board = { '0,0': E.makeInst('meowth') }; const g0 = p.gold; event(p, 'win', { pve: false }); ok(p.gold - g0 === 2, 'Día de Pago: +2 de oro al ganar con Meowth en el tablero'); }
+  { const p = take('proyecto_mew'); p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('squirtle'), '2,0': E.makeInst('bulbasaur'), '3,0': E.makeInst('pichu') }; const g0 = p.gold; event(p, 'combatStart', {}); ok(p.gold - g0 === 6, 'Proyecto Mew: 4 tipos → 6 de oro'); }
+}
+
+// 13. Mewtwo inestable: con 10 de energía (bajas + rondas en el tablero) se vuelve Mega Mewtwo Y para siempre, más fuerte y escalando
+{ const { G, p } = fresh(); for (const q of G.players) q.board = {}; const u = E.makeInst('mewtwo'); u.kills = 6; p.board = { '3,3': u };
+  for (let i = 0; i < 3; i++) E.mewtwoUnstable(); ok(u.defId === 'mewtwo' && u.mwR === 3, 'Mewtwo: 6 bajas + 3 rondas = 9, aún no');
+  E.mewtwoUnstable(); ok(u.defId === 'megamewtwo' && E.DEF.megamewtwo.evoOf === 'mewtwo', 'Mewtwo: con 10 de energía se vuelve Mega Mewtwo Y');
+  const back = E.unpackInst(E.packInst(Object.assign(E.makeInst('mewtwo'), { mwR: 4 }))); ok(back.mwR === 4, 'la energía de Mewtwo viaja por red');
+  const snap = k => ({ ag: [], m: {}, u: [['3,3', k, 2, [], 0, 0], ['3,0', 'onix', 2, [], 0, 0]] }), foe = { ag: [], m: {}, u: [['3,0', 'machop', 2, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0]] };
+  const a = E.createCombatSnap(snap('mewtwo'), foe, { s: 5, n: 2 }, { seed: 9 }), b = E.createCombatSnap(snap('megamewtwo'), foe, { s: 5, n: 2 }, { seed: 9 });
+  const ma = a.units.find(x => x.d.key === 'mewtwo'), mb = b.units.find(x => x.d.key === 'megamewtwo'); ok(mb.maxHp > ma.maxHp * 1.3 && mb.ad > ma.ad * 1.3, 'Mega Mewtwo: más vida y ataque');
+  const hp0 = mb.maxHp, ap0 = mb.ap; E.simulate(b); ok(mb.castN > 0 && mb.maxHp > hp0 && mb.ap > ap0, `Mega Mewtwo: cada lanzamiento le da vida máxima y poder (${Math.round(hp0)}→${Math.round(mb.maxHp)} vida, ${ap0}→${Math.round(mb.ap)} poder)`); }
 
 // 10. Determinismo: dibujar el combate (efectos, retrasos visuales de impacto) no cambia su resultado
 { const big = ['machop', 'onix', 'charmander', 'pichu', 'abra', 'gastly', 'magnemite', 'riolu', 'cleffa'], big2 = ['magikarp', 'bulbasaur', 'squirtle', 'meowth', 'dratini', 'larvitar', 'cleffa', 'abra', 'pichu'];

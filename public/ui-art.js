@@ -90,32 +90,52 @@
   }
   // Sustituye cada <i data-i="nombre" data-s="tamaño"> por su icono
   function hydrate(root = document) { root.querySelectorAll('i[data-i]').forEach(el => { if (el.dataset.done === el.dataset.i) return; el.innerHTML = icon(el.dataset.i, +(el.dataset.s || 32)); el.dataset.done = el.dataset.i; el.classList.add('pxw'); }); }
-  /* ---------- insignias de rango (24×24): alas y gema; más alas y corona cuanto más alta la liga ---------- */
-  const LEAGUE_PAL = { iron: ['#2e2a29', '#5f5653', '#958a85', '#c9c2bd'], bronze: ['#4a2716', '#9a5532', '#d98f5e', '#ffc59a'], silver: ['#33404f', '#7d8ea4', '#c8d4e4', '#ffffff'],
-    gold: ['#51330a', '#ad7718', '#f0c75a', '#fff3b0'], platinum: ['#0e434a', '#24919c', '#7fe3e8', '#e8ffff'], emerald: ['#0b4226', '#1c9152', '#5fe39a', '#dcffeb'],
-    diamond: ['#1a2670', '#4062db', '#9fb6ff', '#ffffff'], master: ['#33105a', '#8338d2', '#d39bff', '#ffe6ff'], grandmaster: ['#520f0f', '#c3302a', '#ff8a6a', '#ffe4c8'],
-    challenger: ['#4f3b0d', '#cf9c26', '#ffe27a', '#c8f4ff'], none: ['#2a2f45', '#525a78', '#8d95b5', '#c9cee6'] };
+  /* ---------- insignias de rango (32×32): yelmo con visera en T, gema en la frente y cuchillas laterales ----------
+     Inspiradas en la forma de los emblemas clásicos de clasificatoria, dibujadas aquí en pixel art propio.
+     Cuanto más alta la liga: cuchillas más grandes, hombreras, alas superiores y corona (Maestro en adelante). */
+  // [sombra, metal, metal claro, brillo, gema]
+  const LEAGUE_PAL = { iron: ['#2b2624', '#5d534f', '#8f847e', '#c4bab4', '#7a6e68'], bronze: ['#45210f', '#8c4a27', '#c97f4f', '#f2b88a', '#7a3d23'],
+    silver: ['#323d4b', '#76869b', '#b8c5d6', '#f2f6fb', '#5d8ccf'], gold: ['#4b2e08', '#a06c14', '#e2b54a', '#fff0b0', '#2fb07a'],
+    platinum: ['#0c3c43', '#23838e', '#69cfd6', '#dcffff', '#1fa69a'], emerald: ['#0a3a21', '#178046', '#4ecb85', '#d4ffe6', '#14c27a'],
+    diamond: ['#18215f', '#3a58c4', '#8ea7ff', '#f2f5ff', '#5fd2ff'], master: ['#2c0f4d', '#7432bd', '#c18bff', '#f6e6ff', '#d14cff'],
+    grandmaster: ['#4a0d0d', '#ae2a24', '#f07258', '#ffe0cc', '#ff3a3a'], challenger: ['#47360c', '#b98a22', '#f2cf6a', '#fff6cf', '#3fb8ff'],
+    none: ['#262b40', '#4a5270', '#7f88aa', '#c3c9e2', '#7f88aa'] };
   const LEAGUE_ORDER = ['none', 'iron', 'bronze', 'silver', 'gold', 'platinum', 'emerald', 'diamond', 'master', 'grandmaster', 'challenger'];
   const badgeSvg = {};
   function badge(key, size = 48) {
     const k = (LEAGUE_PAL[key] ? key : 'none') + '|' + size; if (badgeSvg[k]) return badgeSvg[k];
-    const lg = LEAGUE_PAL[key] ? key : 'none', P = LEAGUE_PAL[lg], t = Math.max(0, LEAGUE_ORDER.indexOf(lg) - 1), N = 24, cx = 12;
-    const W = 8.6 + Math.min(t, 9) * .3, lift = t * .45, wings = lg !== 'none';
+    const lg = LEAGUE_PAL[key] ? key : 'none', P = LEAGUE_PAL[lg], t = Math.max(0, LEAGUE_ORDER.indexOf(lg) - 1), N = 32, cx = 16, none = lg === 'none';
+    const bw = 10.6 + Math.min(t, 9) * .42, lift = t * .55; // cuchillas: más anchas y altas en ligas altas
     const f = (x, y) => {
-      const dx = Math.abs(x - cx), gem = inPoly(x, y, [[cx, 6.4], [cx + 4.2, 12.6], [cx, 20], [cx - 4.2, 12.6]]);
-      if (gem) return dx < .7 ? 'd' : x < cx ? (y < 12.6 ? 'd' : 'c') : (y < 12.6 ? 'c' : 'b');
-      if (lg === 'none') return inPoly(x, y, [[cx, 4.4], [cx + 6, 12.6], [cx, 21.8], [cx - 6, 12.6]]) ? 'a' : null;
-      if (wings && inPoly(dx, y, [[3.2, 17.4], [W, 5.2 - lift], [W - 1.6, 10.6], [4.4, 19.6]])) return dx > W - 3.2 ? 'c' : 'b';
-      if (t >= 3 && inPoly(dx, y, [[3.6, 19.4], [W - .6, 13.4 - lift * .4], [W - 2.2, 17.4], [4.6, 21.2]])) return 'a';
-      if (t >= 6 && inPoly(dx, y, [[2.4, 15], [W + 1.4, 9 - lift], [W, 12.4]])) return 'd';
-      if (t >= 7) { for (const sx of [-3.2, 0, 3.2]) if (inPoly(x, y, [[cx + sx - 1.2, 6.4], [cx + sx, 1.6 + Math.abs(sx) * .4], [cx + sx + 1.2, 6.4]])) return 'c'; }
-      if (inPoly(x, y, [[cx - 2.4, 21], [cx + 2.4, 21], [cx, 23.2]])) return 'b';
+      const dx = Math.abs(x - cx);
+      // yelmo: cúpula y mentón en punta
+      const helm = inPoly(dx, y, [[0, 6.5], [4.2, 7.4], [6.6, 10], [7.2, 15], [6.4, 21], [3.8, 25.6], [0, 28.2]]);
+      if (helm) {
+        if (!none && y < 12 && y > 7.4 && dx < 1.6) return y < 9.4 ? 'g' : 'd';            // gema de la frente
+        if (y > 14 && y < 16.2 && dx < 5) return 'k';                                     // visera horizontal
+        if (y >= 16.2 && y < 23.5 && dx < .9) return 'k';                                 // visera vertical
+        if (dx > 5.4 || y > 24.6) return 'a';                                            // borde en sombra
+        return x < cx ? (y < 14 ? 'd' : 'c') : (y < 14 ? 'c' : 'b');                     // luz desde la izquierda
+      }
+      if (none) return inPoly(dx, y, [[0, 4], [8.6, 14], [0, 30]]) ? 'a' : null;
+      // cuchillas laterales que suben desde las mejillas
+      if (inPoly(dx, y, [[5.6, 21.5], [bw, 9 - lift], [bw - 1.4, 14.5], [7.4, 24]])) return dx > bw - 2.6 ? 'c' : 'b';
+      // hombreras (Plata en adelante)
+      if (t >= 3 && inPoly(dx, y, [[5.8, 24.2], [bw - .6, 19 - lift * .3], [bw - 2.6, 24.6], [6.6, 27.6]])) return 'a';
+      // alas superiores (Platino en adelante) y gemas en las cuchillas (Diamante en adelante)
+      if (t >= 5 && inPoly(dx, y, [[4.6, 8.8], [bw + 1.6, 3.6 - lift * .4], [bw - .4, 8.6], [6.2, 11.2]])) return 'd';
+      if (t >= 7 && inPoly(dx, y, [[bw - 3.2, 15.5], [bw - 2, 13.8], [bw - .8, 15.5], [bw - 2, 17.2]])) return 'g';
+      // cresta y corona (Maestro en adelante: tres puntas; Retador, cinco)
+      if (inPoly(x, y, [[cx - 1.6, 6.8], [cx, 2.6 - (t >= 7 ? 1.2 : 0)], [cx + 1.6, 6.8]])) return 'c';
+      if (t >= 7) for (const sx of t >= 9 ? [-6, -3.4, 3.4, 6] : [-3.6, 3.6]) if (inPoly(x, y, [[cx + sx - 1.1, 7.6], [cx + sx, 3.4 + Math.abs(sx) * .25], [cx + sx + 1.1, 7.6]])) return 'g';
+      // punta inferior
+      if (inPoly(x, y, [[cx - 2.4, 27], [cx + 2.4, 27], [cx, 31]])) return 'b';
     };
     const g = []; for (let y = 0; y < N; y++) { g.push([]); for (let x = 0; x < N; x++) g[y].push(f(x + .5, y + .5) || null); }
     const o = g.map(r => r.slice()); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!g[y][x]) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const c = g[y + dy] && g[y + dy][x + dx]; if (c && c !== 'k') { o[y][x] = 'k'; break; } }
-    const col = { a: P[0], b: P[1], c: P[2], d: P[3], k: '#0b0d18' }; let r = '';
+    const col = { a: P[0], b: P[1], c: P[2], d: P[3], g: P[4], k: '#0b0d18' }; let r = '';
     for (let y = 0; y < N; y++) { let x = 0; while (x < N) { const c = o[y][x]; let e = x + 1; while (e < N && o[y][e] === c) e++; if (c) r += `<rect x="${x}" y="${y}" width="${e - x}" height="1" fill="${col[c]}"/>`; x = e; } }
-    return badgeSvg[k] = `<svg class="pxBadge" width="${size}" height="${size}" viewBox="0 0 24 24" shape-rendering="crispEdges" aria-hidden="true" focusable="false">${r}</svg>`;
+    return badgeSvg[k] = `<svg class="pxBadge" width="${size}" height="${size}" viewBox="0 0 32 32" shape-rendering="crispEdges" aria-hidden="true" focusable="false">${r}</svg>`;
   }
   window.PX = { icon, hydrate, badge, LEAGUE_PAL, names: Object.keys(ICONS), PAL };
 

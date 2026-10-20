@@ -61,6 +61,8 @@ img{-webkit-user-drag:none}
 .top{display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border-bottom:1px solid var(--line2);
   flex-wrap:wrap;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .brand{font-family:var(--display);font-size:20px;display:flex;align-items:center;gap:8px;letter-spacing:.03em}
+/* Logo en la barra de la partida: pequeño y sin brillo para no quitar protagonismo al tablero */
+.brandLogo{display:block;height:34px;width:auto;filter:drop-shadow(0 2px 0 rgba(11,13,24,.6));opacity:.95}
 .ball{width:22px;height:22px;border-radius:50%;background:linear-gradient(#ff5b43 0 46%,#141a33 46% 54%,#fff 54%);border:2px solid #141a33;position:relative;flex:none;box-shadow:0 2px 0 rgba(0,0,0,.3)}
 .ball::after{content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:#fff;border:2px solid #141a33;left:50%;top:50%;transform:translate(-50%,-50%)}
 .stage{font-family:var(--display);font-size:16px;padding:3px 12px;border-radius:999px;background:var(--panel3);border:1px solid var(--line2)}
@@ -1029,7 +1031,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 <body>
 <div id="menuScene" aria-hidden="true"><canvas></canvas><div class="mnUnits"></div></div>
 <header class="top">
-  <div class="brand"><span class="ball" aria-hidden="true"></span>Poké Tactics</div>
+  <div class="brand"><img class="brandLogo" src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></div>
   <span class="netTag" id="netTag" hidden></span>
   <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div><span class="rbPhase" id="rbPhase">Planificación</span></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
   <button class="btn ghost icon" id="dexBtn" title="Pokédex">📕</button>
