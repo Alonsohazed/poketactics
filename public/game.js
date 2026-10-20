@@ -2179,7 +2179,7 @@ function bindEvents(){
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
  $('readyBtn').addEventListener('click',onReady);
  $('speedBtn').addEventListener('click',()=>{ if(NET.mode==='client'){ toast('La velocidad la elige el anfitrión'); return; } G.speed=G.speed===1?2:G.speed===2?4:1; S.speed=G.speed; saveSettings(); renderTop(); });
- $('muteBtn').addEventListener('click',()=>{ Music.init(); S.muted=!S.muted; saveSettings(); Music.setVol(); $('muteBtn').textContent=S.muted?'🔇':'🔊'; });
+ $('muteBtn').addEventListener('click',()=>{ Music.init(); S.muted=!S.muted; saveSettings(); Music.setVol(); $('muteBtn').innerHTML=muteIcon(); });
  $('recBtn').addEventListener('click',showRecipes);
  $('dexBtn').addEventListener('click',()=>showDex(0));
  $('menuBtn').addEventListener('click',confirmQuit);
@@ -2796,7 +2796,7 @@ function renderCard(){
 }
 
 /* ---------- modales ---------- */
-function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">✕</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
+function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
 function savedTac(){ if(ACC&&TACS[ACC.trainer]) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]?k:''; }catch(e){ return ''; } }
@@ -2857,7 +2857,7 @@ function showOptions(){
  <div class="field"><label for="optGfx">Calidad gráfica (este dispositivo)</label><select id="optGfx">${[['auto','Automática (baja sola si va lento)'],['2','Alta: sombras nítidas y todas las partículas'],['1','Media'],['0','Baja: sin sombras y menos partículas']].map(([v,t])=>`<option value="${v}" ${GFX.q===v?'selected':''}>${t}</option>`).join('')}</select></div>
  <div class="field"><label for="optShake">Temblor de cámara en los golpes fuertes</label><select id="optShake"><option value="1" ${GFX.shake?'selected':''}>Sí</option><option value="0" ${GFX.shake?'':'selected'}>No</option></select></div>
  <div class="row" style="justify-content:space-between;margin-top:16px"><button class="btn primary" id="saveOpt">Guardar</button><button class="btn ghost" id="logoutBtn">Cerrar sesión</button></div>`,{closable:true});
- $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; Music.init(); Music.setVol(); $('muteBtn').textContent='🔊'; };
+ $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; Music.init(); Music.setVol(); $('muteBtn').innerHTML=muteIcon(); };
  $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',$('optGfx').value); localStorage.setItem('pt_shake',$('optShake').value); }catch(e){} applyGfx(); S.timer=+$('optTimer').value; S.speed=+$('optSpeed').value; S.theme=$('optTheme').value; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
  $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
 }
@@ -2925,11 +2925,15 @@ function renderMenu(){
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], st=ACC.stats||{};
  $('menuWho').innerHTML=`<div class="stand artStand">${artImg(tk)}</div>
   <div class="tname">${esc(ACC.name)}</div><div class="tfrom">Minileyenda: ${esc(t.name)}</div>
-  <div class="stats"><div><b>${st.games||0}</b><span>Partidas</span></div><div><b>${st.wins||0}</b><span>Victorias</span></div><div><b>${st.top4||0}</b><span>Top 4</span></div><div><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
-  <div class="row"><button class="btn sm" id="pickTr">Cambiar minileyenda</button></div>`;
- $('pickTr').onclick=()=>showTacPick(false);
+  <div class="stats"><div><i data-i="ball" data-s="20"></i><b>${st.games||0}</b><span>Partidas</span></div><div><i data-i="trophy" data-s="20"></i><b>${st.wins||0}</b><span>Victorias</span></div><div><i data-i="medal" data-s="20"></i><b>${st.top4||0}</b><span>Top 4</span></div><div><i data-i="star" data-s="20"></i><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
+  <div class="row"><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
+ $('menuWho').insertAdjacentHTML('afterbegin','<div class="mnTag">Entrenador</div>');
+ $('pickTr').onclick=()=>showTacPick(false); pxArt($('menu'));
 }
-function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); },0); renderMenu(); $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); }
+function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); },0); renderMenu(); $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu')); }
+// Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
+function pxArt(root){ if(window.PX) PX.hydrate(root||document); if(window.MenuScene) MenuScene.ensure(); }
+const muteIcon=()=>window.PX?PX.icon(S.muted?'mute':'sound',20):(S.muted?'Sin sonido':'Sonido');
 /* ---------- escena pixel del menú (estilo Esmeralda) ---------- */
 // Cielo por bandas, nubes grandes, mar con destellos, valla y hierba; Latios y Latias cruzan el cielo.
 const GEN3=d=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/emerald/${d}.png`;
@@ -3022,7 +3026,7 @@ function applyAccount(user){
  ACC=user; S.name=user.name.slice(0,14); if(TACS[user.trainer]) try{ localStorage.setItem('pt_tac',user.trainer); }catch(e){}
  const s=user.settings||{}; for(const k of SYNCED) if(k in s) S[k]=s[k];
  try{ localStorage.setItem(SETTINGS_KEY,JSON.stringify(Object.fromEntries(SYNCED.map(k=>[k,S[k]])))); }catch(e){}
- applyTheme(); Music.setVol(); $('muteBtn').textContent=S.muted?'🔇':'🔊';
+ applyTheme(); Music.setVol(); $('muteBtn').innerHTML=muteIcon();
  if(G&&!G.players.length) G.me=makePlayer(0,S.name,false,S.avatar,S.trainer);
 }
 let authMode='login', authBusy=false;
@@ -3040,7 +3044,7 @@ function authError(msg,field){
  if(field==='user') $('auUser').focus(); else if(field==='pass') $('auPass').focus(); else if(field==='pass2') $('auPass2').focus();
 }
 function showAuth(msg){ setTimeout(()=>{ layout.key=''; layout(); },0);
- ACC=null; closeModal(); $('menu').classList.add('hidden'); $('auth').classList.remove('hidden');
+ ACC=null; closeModal(); $('menu').classList.add('hidden'); $('auth').classList.remove('hidden'); pxArt();
  $('auPass').value=''; $('auPass2').value=''; setAuthMode(authMode); if(msg) authError(msg);
  setTimeout(()=>($('auUser').value?$('auPass'):$('auUser')).focus(),50);
 }
@@ -3081,7 +3085,7 @@ async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');
  loadSettings();
  G={phase:'idle',me:makePlayer(0,S.name,false,S.avatar,S.trainer),players:[],log:[],speed:S.speed,pool:{}};
- $('muteBtn').textContent=S.muted?'🔇':'🔊';
+ $('muteBtn').innerHTML=muteIcon();
  layout(); applyTheme(); bindEvents(); Scene.init();
  // Sin precarga en el menú: los modelos se piden al entrar en la partida (primero los tuyos)
  if(!window.B3) window.addEventListener('b3ready',()=>sizeB3());

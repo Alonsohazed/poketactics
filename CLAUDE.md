@@ -14,6 +14,7 @@ Autochess de Pokémon al estilo Teamfight Tactics: modo solitario contra 7 bots 
 | `db.js` | Cuentas y sesiones. Usa PostgreSQL si existe `DATABASE_URL` (Neon en producción); si no, `data/db.json` (local, ignorado por git). |
 | `public/augments.js` | **Aumentos**: catálogo declarativo (Plata, Oro, Prismático), motor de efectos por eventos (`augFire`), elecciones pendientes (`augOffer`/`resolvePick`), efectos de combate deterministas (`augSnap`/`augCombat`) y Llamada al Caos. Se carga **antes** que `game.js` (en el navegador y concatenado en el servidor). |
 | `public/game.js` | **Todo el juego**: datos, combate, bots, flujo de rondas, red, música e interfaz. Lo usan el navegador **y** el servidor. |
+| `public/ui-art.js` | Arte de interfaz (solo navegador): iconos pixel art propios (`PX.icon`, `PX.hydrate` sobre `<i data-i="nombre">`) y el escenario pixel del menú y del acceso (`MenuScene`: arena-tablero, braseros y sprites animados de 5.ª gen). Se carga antes que `game.js`. |
 | `public/board3d.js` | **Tablero 3D** (módulo ES, solo navegador): three.js, arenas, casillas, modelos de los Pokémon, animaciones y efectos de las habilidades. Expone `window.B3`. |
 | `public/index.html` | Marcado y todo el CSS (tokens de color en `:root`, tema oscuro por defecto). Carga three.js 0.169 desde jsDelivr con un `importmap`. |
 | `test/smoke.js` | Prueba rápida sin navegador: cuentas, seguridad básica, emparejamiento y 2 jugadores por Socket.io durante 12 rondas. |
@@ -78,6 +79,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - **Ficha y tooltips de habilidad estilo TFT** (`abHTML`): números reales con el icono del stat que escala, ratio al pasar el ratón (el poder ✨ se muestra empezando en 100) y valores [1★/2★/3★]. Pruebas: `npm run test:sin` (`test/sinergias.js`).
 - **Eevee**: al llegar a las bajas necesarias, su evolución es una elección pendiente (`augOffer` con `__eevee`, valor `ev:<uid>|<clave>`) que también funciona en multijugador; tras elegir, la carta de Eevee de tu tienda muestra esa evolución (`p.eeveeForm`, `priv.ef`).
 - **Objetos**: los componentes se combinan también en el inventario; para quitar objetos de un Pokémon se usa el 🧲 Imán Removedor.
+- **Menú y acceso (pixel art)**: botones `.pxb` (marco de dos anillos con esquinas escalonadas, `.pxb-main` rojo Poké Ball, `.pxb-alt` azul, `.pxb-sq` cuadrados), panel `.pxpanel`, fuente Pixelify Sans y colores en las variables `--px*` de `index.html`. Sin emojis: los iconos salen de `PX` (para añadir uno, una función más en `ICONS`). El escenario corre a 15 fps y se para solo al salir del menú.
 - **Presentación del combate (solo visual, nunca toca la simulación)**:
   - Los efectos (`cb.fx`) envejecen en cada fotograma (`ageFx` en `frame()`) y la posición de las unidades se interpola con el tiempo real desde el último tick (`drawSub`): todo se mueve a la frecuencia de la pantalla, no a 30 Hz.
   - `cb.visDelay` retrasa los textos y la reacción de impacto hasta que llega el proyectil (un efecto con `t` negativo aún no ha empezado). El daño se sigue aplicando en el mismo tick.
