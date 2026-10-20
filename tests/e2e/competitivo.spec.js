@@ -16,7 +16,7 @@ test('Normal: buscar partida, entrar con bots y la partida la lleva el servidor 
   await expect(page.locator('#menu')).toBeHidden();
   await expect(page.locator('#queueBar')).toBeHidden();
   const players = await page.evaluate(() => G.players.map(p => p.name));
-  expect(players.filter(n => / \(bot\)$/.test(n))).toHaveLength(7);
+  expect(players).toHaveLength(8); // 1 persona y 7 bots (el navegador no los distingue: lo sabe el servidor)
 });
 
 test('cancelar la cola, ver la clasificatoria y el historial vacío', async ({ page }) => {

@@ -61,6 +61,8 @@ img{-webkit-user-drag:none}
 .top{display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border-bottom:1px solid var(--line2);
   flex-wrap:wrap;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .brand{font-family:var(--display);font-size:20px;display:flex;align-items:center;gap:8px;letter-spacing:.03em}
+/* Logo en la barra de la partida: pequeño y sin brillo para no quitar protagonismo al tablero */
+.brandLogo{display:block;height:34px;width:auto;filter:drop-shadow(0 2px 0 rgba(11,13,24,.6));opacity:.95}
 .ball{width:22px;height:22px;border-radius:50%;background:linear-gradient(#ff5b43 0 46%,#141a33 46% 54%,#fff 54%);border:2px solid #141a33;position:relative;flex:none;box-shadow:0 2px 0 rgba(0,0,0,.3)}
 .ball::after{content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:#fff;border:2px solid #141a33;left:50%;top:50%;transform:translate(-50%,-50%)}
 .stage{font-family:var(--display);font-size:16px;padding:3px 12px;border-radius:999px;background:var(--panel3);border:1px solid var(--line2)}
@@ -940,7 +942,8 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 /* ---------- panel compacto de rango y caramelos (ficha del menú) ---------- */
 .rkMini{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;cursor:pointer;color:var(--pxInk);font-family:var(--pxFont);text-align:left;background:rgba(0,0,0,.3);clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #2a3150;transition:transform .07s steps(2)}
 .rkMini:hover,.rkMini:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--pxGold);transform:translateY(-1px)}
-.rkMini .pxBadge{flex:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5))}
+.pxBadge{object-fit:contain;image-rendering:auto;user-select:none;-webkit-user-drag:none}
+.rkMini .pxBadge{flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
 .rkTxt{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
 .rkTxt b{font-size:16px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}
 .rkTxt small{font-size:11px;color:var(--pxMut)}
@@ -973,11 +976,11 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .pxLink{margin-top:14px;background:none;border:0;padding:4px 0;color:var(--pxMut);font-family:var(--pxFont);font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .pxLink:hover{color:var(--pxInk)}
 .pxKicker{font-family:var(--pxFont);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pxGold)}
-.rkBig{display:flex;align-items:center;gap:20px}.rkBig .pxBadge{flex:none;filter:drop-shadow(0 4px 0 rgba(0,0,0,.5)) drop-shadow(0 0 18px rgba(255,210,63,.18))}
+.rkBig{display:flex;align-items:center;gap:20px}.rkBig .pxBadge{flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.55)) drop-shadow(0 0 18px rgba(255,210,63,.18))}
 .rkBigTxt{flex:1;display:flex;flex-direction:column;gap:6px}.rkBigTxt h1{margin:0}.rkLp{font-family:var(--pxFont);font-size:20px;font-weight:700;color:var(--pxGold);margin:0}
 .rkBigTxt .rkBar{height:12px}
-.leagues{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:4px 0 16px}
-.lgItem{display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--pxFont);font-size:10.5px;color:var(--pxMut);opacity:.55;text-align:center}
+.leagues{display:grid;grid-template-columns:repeat(10,1fr);align-items:end;gap:4px;margin:4px 0 16px}
+.lgItem{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;font-family:var(--pxFont);font-size:10.5px;color:var(--pxMut);opacity:.55;text-align:center}
 .lgItem.on{opacity:1;color:var(--pxGold)}
 /* ---------- resultado, ascenso y revelación ---------- */
 .goChips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
@@ -1061,7 +1064,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 <body>
 <div id="menuScene" aria-hidden="true"><canvas></canvas><div class="mnUnits"></div></div>
 <header class="top">
-  <div class="brand"><span class="ball" aria-hidden="true"></span>Poké Tactics</div>
+  <div class="brand"><img class="brandLogo" src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></div>
   <span class="netTag" id="netTag" hidden></span>
   <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div><span class="rbPhase" id="rbPhase">Planificación</span></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
   <button class="btn ghost icon" id="dexBtn" title="Pokédex">📕</button>
