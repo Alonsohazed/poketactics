@@ -78,6 +78,13 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - **Ficha y tooltips de habilidad estilo TFT** (`abHTML`): números reales con el icono del stat que escala, ratio al pasar el ratón (el poder ✨ se muestra empezando en 100) y valores [1★/2★/3★]. Pruebas: `npm run test:sin` (`test/sinergias.js`).
 - **Eevee**: al llegar a las bajas necesarias, su evolución es una elección pendiente (`augOffer` con `__eevee`, valor `ev:<uid>|<clave>`) que también funciona en multijugador; tras elegir, la carta de Eevee de tu tienda muestra esa evolución (`p.eeveeForm`, `priv.ef`).
 - **Objetos**: los componentes se combinan también en el inventario; para quitar objetos de un Pokémon se usa el 🧲 Imán Removedor.
+- **Presentación del combate (solo visual, nunca toca la simulación)**:
+  - Los efectos (`cb.fx`) envejecen en cada fotograma (`ageFx` en `frame()`) y la posición de las unidades se interpola con el tiempo real desde el último tick (`drawSub`): todo se mueve a la frecuencia de la pantalla, no a 30 Hz.
+  - `cb.visDelay` retrasa los textos y la reacción de impacto hasta que llega el proyectil (un efecto con `t` negativo aún no ha empezado). El daño se sigue aplicando en el mismo tick.
+  - Cada golpe genera un efecto `hit` (retroceso, aplastamiento y destello del objetivo en `board3d.js`); los críticos salen grandes con «!», las curas de habilidad en verde y la barra de vida deja un tramo que baja con retraso. Con el maná casi lleno, el Pokémon brilla con el color de su tipo.
+  - `board3d.js`: proyectiles e impactos con forma propia por tipo (`impactFx`), geometrías compartidas (`geoS`), pool de modelos por especie (`poolPut`/`poolGet`: no se reclonan al empezar y acabar cada combate) y precarga de texturas y shaders, incluida la variante transparente (`warmModel`, `warmFx`).
+  - Calidad gráfica (Automática/Alta/Media/Baja) y temblor de cámara en Opciones, guardados en este dispositivo (`pt_gfx`, `pt_shake`); se respeta `prefers-reduced-motion`.
+- **Rendimiento**: `node tests/perf/run.js <etiqueta> [segundos]` abre Edge con GPU real y mide los escenarios fijos A-D (`tests/perf/bench-page.js`: FPS, p50/p95/p99, ms de `draw`, llamadas de dibujo, tareas largas, fotogramas repetidos) y la carga en frío (E). `B3.debugInfo()` desglosa lo que se dibuja y `B3.slow` devuelve los fotogramas lentos con su causa. Resultados de referencia en `tests/perf/resultados-antes.json` y `resultados-despues.json`.
 - **Limitación conocida**: si un jugador se desconecta, un bot sigue por él y **no puede volver a su asiento**.
 
 ## Herramientas para Claude

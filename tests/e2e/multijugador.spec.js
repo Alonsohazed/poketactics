@@ -2,6 +2,7 @@
 const { test, expect, register } = require('./helpers');
 
 test('dos jugadores crean sala, se unen con código y juegan', async ({ browser }) => {
+  test.setTimeout(180_000); // dos navegadores con el campo 3D sin GPU tardan más de los 90 s por defecto
   const ctxA = await browser.newContext(), ctxB = await browser.newContext();
   const A = await ctxA.newPage(), B = await ctxB.newPage();
   const errors = [];

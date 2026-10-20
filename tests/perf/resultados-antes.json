@@ -1,0 +1,179 @@
+{
+  "etiqueta": "orig2",
+  "fecha": "2026-10-20T04:17:40.571Z",
+  "segundos": 8,
+  "escenarios": [
+    {
+      "escenario": "A",
+      "unidades": 4,
+      "modelos": "4/4",
+      "fps": 59.99,
+      "frameP50": 16.7,
+      "frameP95": 17.6,
+      "frameP99": 26.2,
+      "drawMsMedio": 2.49,
+      "drawMsP95": 4.1,
+      "drawMsMax": 100.6,
+      "drawMsPrimeros": [
+        100.6,
+        1.7,
+        1.9,
+        1.9
+      ],
+      "largasEn": [
+        101
+      ],
+      "tareasLargas": 1,
+      "tareaLargaMax": 101,
+      "errores": 0,
+      "efectosMax": 11,
+      "fotogramasRepetidosPct": 49.53,
+      "combateTerminado": false,
+      "3d_actorsMs": 0.29,
+      "3d_fxMs": 0.08,
+      "3d_glMs": 1.76,
+      "3d_calls": 66.53,
+      "3d_tris": 102475.2,
+      "3d_geo": 81.07,
+      "3d_tex": 117,
+      "escena": null,
+      "lentos": [],
+      "calidad": 2
+    },
+    {
+      "escenario": "B",
+      "unidades": 12,
+      "modelos": "12/12",
+      "fps": 59.64,
+      "frameP50": 16.6,
+      "frameP95": 17.6,
+      "frameP99": 25.7,
+      "drawMsMedio": 3.49,
+      "drawMsP95": 4,
+      "drawMsMax": 129.6,
+      "drawMsPrimeros": [
+        129.6,
+        3.9,
+        3.3,
+        3.1
+      ],
+      "largasEn": [
+        130,
+        73
+      ],
+      "tareasLargas": 2,
+      "tareaLargaMax": 130,
+      "errores": 0,
+      "efectosMax": 25,
+      "fotogramasRepetidosPct": 49.36,
+      "combateTerminado": false,
+      "3d_actorsMs": 0.41,
+      "3d_fxMs": 0.1,
+      "3d_glMs": 2.54,
+      "3d_calls": 111.13,
+      "3d_tris": 146308.6,
+      "3d_geo": 110.8,
+      "3d_tex": 198,
+      "escena": null,
+      "lentos": [],
+      "calidad": 2
+    },
+    {
+      "escenario": "C",
+      "unidades": 18,
+      "modelos": "15/15",
+      "fps": 58.95,
+      "frameP50": 16.6,
+      "frameP95": 19.8,
+      "frameP99": 28.3,
+      "drawMsMedio": 4.67,
+      "drawMsP95": 6.1,
+      "drawMsMax": 141.1,
+      "drawMsPrimeros": [
+        80.8,
+        4.3,
+        3.3,
+        5.4
+      ],
+      "largasEn": [
+        81,
+        145
+      ],
+      "tareasLargas": 2,
+      "tareaLargaMax": 145,
+      "errores": 0,
+      "efectosMax": 60,
+      "fotogramasRepetidosPct": 49.68,
+      "combateTerminado": false,
+      "3d_actorsMs": 0.51,
+      "3d_fxMs": 0.17,
+      "3d_glMs": 3.37,
+      "3d_calls": 168.07,
+      "3d_tris": 164504.6,
+      "3d_geo": 138.53,
+      "3d_tex": 303,
+      "escena": null,
+      "lentos": [],
+      "calidad": 2
+    },
+    {
+      "escenario": "D",
+      "unidades": 18,
+      "modelos": "15/15",
+      "fps": 56.74,
+      "frameP50": 16.6,
+      "frameP95": 20.2,
+      "frameP99": 29,
+      "drawMsMedio": 5.78,
+      "drawMsP95": 6.6,
+      "drawMsMax": 302.2,
+      "drawMsPrimeros": [
+        302.2,
+        19.8,
+        6.9,
+        5.9
+      ],
+      "largasEn": [
+        302,
+        229,
+        139
+      ],
+      "tareasLargas": 3,
+      "tareaLargaMax": 302,
+      "errores": 0,
+      "efectosMax": 93,
+      "fotogramasRepetidosPct": 48.74,
+      "combateTerminado": true,
+      "3d_actorsMs": 0.46,
+      "3d_fxMs": 0.17,
+      "3d_glMs": 4.64,
+      "3d_calls": 187.64,
+      "3d_tris": 150471.5,
+      "3d_geo": 197.36,
+      "3d_tex": 473,
+      "escena": null,
+      "lentos": [],
+      "calidad": 2
+    }
+  ],
+  "carga": {
+    "primerContenidoMs": 68,
+    "interactivoMs": 54,
+    "cargaMs": 78,
+    "tablero3DListoMs": 348,
+    "primerPokemonMs": 43,
+    "seisPokemonMs": 522,
+    "porModelo": {
+      "4": 43,
+      "7": 147,
+      "25": 217,
+      "66": 237,
+      "92": 522,
+      "130": 237
+    }
+  },
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 SUPER (0x000021C4) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "erroresConsola": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ]
+}
