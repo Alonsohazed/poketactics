@@ -267,6 +267,7 @@ function abDesc(ab,P,star){
   case 'reflect': t=`Gana un escudo de ${d(p.m*.6)} y devuelve el ${R0(p.pct*100)}% del daño recibido durante 4s.${p.heal?` Se cura ${d(p.heal)}.`:''}`; break;
   case 'harden': t=`Gana +${p.df*star} de defensa y resistencia (se acumula) y se cura ${d(p.heal)}.`; break;
   case 'rest': t=`Se cura ${d(p.m)}${p.sleep?` y se duerme ${p.sleep}s`:''}.`; break;
+  case 'lunar': t=`Lanza un rayo lunar al objetivo: ${d(p.m)} de daño mágico (la mitad a los enemigos adyacentes) y cura ${d(p.heal)} a los ${p.n} aliados con menos vida (ella incluida). Daño y curación pueden ser críticos y crecen un ${R0(p.grow*100)}% con cada lanzamiento.`; break;
   case 'heal': t=p.n>=99?`Cura ${d(p.m)} a todo su equipo.`:`Cura ${d(p.m)} a ${p.n===1?'el aliado':`los ${p.n} aliados`} con menos vida.`; break;
   case 'teamShield': t=`Todo su equipo gana un escudo de ${d(p.m)} (4s).${p.heal?` Y se cura ${d(p.heal)}.`:''}${p.ap?` Aliados +${p.ap} de poder (se acumula).`:''}`; break;
   case 'buff': t=`Todo su equipo gana +${R0(p.as*100)}% de velocidad de ataque (se acumula)${p.heal?` y se cura ${d(p.heal)}`:''}.`; break;
@@ -890,6 +891,9 @@ function castAbility(cb,u,ab,depth=0){
   case 'reflect': SH(u,P*p.m*.6,4); u.reflT=4; u.reflPct=p.pct||.4; if(p.heal) H(u,P*p.heal); FX({type:'aura',u,life:4,color:'#e6f0ff'}); cb.cExtra=` · refleja ${R0((p.pct||.4)*100)}%`; break;
   case 'harden': u.df+=p.df*u.star; u.mr+=p.df*u.star; H(u,P*p.heal); FX({type:'aura',u,life:1,color:'#c9c9c9'}); cb.cExtra=` · +${p.df*u.star} def/res`; break;
   case 'rest': H(u,P*p.m); if(p.sleep){ u.stun=Math.max(u.stun,p.sleep); u.sleepT=p.sleep; } break;
+  // Rayo Lunar (Precisión Lunar): daña y cura a la vez; cada lanzamiento lo hace más fuerte
+  case 'lunar': { const g=1+p.grow*((u.castN||1)-1); if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true,color:'#ffd6f0'}); for(const e of foes) if(e===t||dU(t,e)<=1) hitFx(cb,u,e,P*p.m*g*(e===t?1:.5),p); FX({type:'area',c:t.c,r:t.r,rad:1.5,color:'#ffd6f0',life:.55}); }
+    allies.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp).slice(0,p.n).forEach(a=>{ FX({type:'proj',fc:u.c,fr:u.r,tc:a.c,tr:a.r,life:.3,heal:true}); H(a,P*p.heal*g); }); if(g>1) cb.cExtra+=` · ×${g.toFixed(1)}`; break; }
   case 'heal': allies.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp).slice(0,p.n).forEach(a=>{ FX({type:'proj',fc:u.c,fr:u.r,tc:a.c,tr:a.r,life:.3,heal:true}); H(a,P*p.m); }); break;
   case 'teamShield': for(const a of allies){ SH(a,P*p.m,4); if(p.heal) H(a,P*p.heal); if(p.ap) a.ap+=p.ap; } FX({type:'flash',color:'#ffd6f0',life:.35}); break;
   case 'buff': for(const a of allies){ a.as=Math.min(3,a.as*(1+p.as)); if(p.heal) H(a,P*p.heal); FX({type:'arrows',c:a.c,r:a.r,life:.8}); } cb.cExtra=` · equipo +${R0(p.as*100)}% vel.`; break;

@@ -92,6 +92,7 @@ for (const [id, k] of Object.entries(HEROES)) { const { G, p } = fresh(); const 
   if (id === 'h_lucario') ok(h.echo, 'Aura Implacable: doble lanzamiento');
   if (id === 'h_machamp') ok(h.sp.rage === .05, 'Furia Creciente: cargas de velocidad');
   if (id === 'h_clefable') ok(h.critAbil, 'Precisión Lunar: habilidades críticas');
+  if (id === 'h_clefable') ok(h.ab[0] === 'lunar' && h.ab[2].grow > 0, 'Precisión Lunar: cambia su habilidad por Rayo Lunar, que crece al lanzar');
   if (id === 'h_charizard') ok(h.dragonRamp === .03, 'Calor Acumulado: daño creciente');
   E.simulate(cb); ok(cb.done && cb.units.every(u => Number.isFinite(u.hp)), `${id}: el combate termina sin valores rotos`);
   if (id === 'h_ditto') ok(h.copied && h.copied[0] !== 'copy', 'Adaptación Perfecta: Ditto copia una habilidad enemiga'); }
@@ -141,7 +142,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   const cmp = (id, k, f, label) => { const a = stat(k, null, f), b = stat(k, id, f); ok(b > a * 1.05, `${E.AUG_BY[id].name}: ${label} (${Math.round(a)} → ${Math.round(b)})`); };
   const dmg = (h, cb, pre) => pre ? null : (h.sDmg || 0), heal = (h, cb, pre) => pre ? null : (h.sHeal || 0);
   cmp('h_gengar', 'gastly', dmg, 'más daño de Gengar'); cmp('h_gyarados', 'magikarp', (h, cb, pre) => pre ? h.maxHp : null, 'más vida de Gyarados');
-  cmp('h_clefable', 'cleffa', heal, 'más curación y escudos de Clefable (críticos)'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
+  cmp('h_clefable', 'cleffa', dmg, 'Clefable hace daño (Rayo Lunar)'); cmp('h_clefable', 'cleffa', heal, 'y cura más a la vez'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
   cmp('h_raichu', 'pichu', dmg, 'más daño de Raichu'); cmp('h_machamp', 'machop', dmg, 'más daño de Machamp (velocidad creciente)');
   cmp('h_lucario', 'riolu', dmg, 'Lucario lanza dos veces: más daño'); cmp('h_charizard', 'charmander', dmg, 'más daño de Charizard');
   cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor'); }
