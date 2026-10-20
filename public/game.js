@@ -3074,7 +3074,7 @@ function showNormal(){
 function startPractice(){ closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:'normal'}); }
 function leaguesHTML(rk){ const cur=rk.placing?'':rk.league;
  return [['iron','Hierro'],['bronze','Bronce'],['silver','Plata'],['gold','Oro'],['platinum','Platino'],['emerald','Esmeralda'],['diamond','Diamante'],['master','Maestro'],['grandmaster','Gran Maestro'],['challenger','Retador']]
-  .map(([k,n])=>`<div class="lgItem ${k===cur?'on':''}">${window.PX?PX.badge(k,40):''}<span>${n}</span></div>`).join(''); }
+  .map(([k,n],i)=>`<div class="lgItem ${k===cur?'on':''}">${window.PX?PX.badge(k,34+i*2.4|0):''}<span>${n}</span></div>`).join(''); } // cada liga, un poco más grande
 function showRanked(){
  const rk=COMP().ranked;
  openModal(`<div class="rkBig">${rankBadge(rk,128)}<div class="rkBigTxt"><div class="pxKicker">Clasificatoria</div><h1>${esc(rankText(rk))}</h1>${rk.placing?`<p class="muted">Juega ${rk.of-rk.done} partida${rk.of-rk.done===1?'':'s'} más para revelar tu rango.</p>`:`<p class="rkLp">${rk.lp} LP</p>`}${lpBar(rk)}</div></div>
