@@ -734,6 +734,14 @@ function heal(u,a){ if(!u.dead&&a>0){ const b=u.hp; u.hp=Math.min(u.maxHp,u.hp+a
 function stunUnit(e,s,sleep){ if(!e.sp.noStun){ e.stun=Math.max(e.stun,s); if(sleep) e.sleepT=Math.max(e.sleepT,s); } }
 const foesOf=(cb,u)=>cb.units.filter(e=>!e.dead&&e.side!==u.side);
 const alliesOf=(cb,u)=>cb.units.filter(e=>!e.dead&&e.side===u.side);
+// Áreas y control al grupo más grande: entre los enemigos a su alcance (+2 casillas), el que tiene más enemigos a 'rad'.
+// Desempate: el objetivo actual y luego el más cercano. Así un área no se gasta en un enemigo suelto si hay un grupo al lado.
+function aoeTarget(cb,u,t,rad,cnt){ if(!t) return t; const fs=foesOf(cb,u).filter(e=>!(e.stealth>0)); const reach=Math.max((u.range||1)+2,3); let best=t, bs=-1e9;
+ for(const c of fs){ if(c!==t&&dU(u,c)>reach) continue; const n=cnt?cnt(c):fs.filter(e=>dU(c,e)<=rad).length, sc=n*100+(c===t?50:0)-dU(u,c); if(sc>bs){ bs=sc; best=c; } } return best; }
+// Igual para conos y oleadas: la dirección que atraviesa a más enemigos
+const aoeDir=(cb,u,t,o)=>aoeTarget(cb,u,t,0,c=>dirTargets(cb,u,c,o).length);
+// Zonas de curación: donde más aliados heridos quedan dentro (antes caían sobre el lanzador o sobre el enemigo)
+function allyCluster(cb,u,rad){ const al=alliesOf(cb,u); let best=u, bs=-1; for(const c of al){ const sc=al.reduce((s2,a)=>s2+(dU(c,a)<=rad?1+2*(1-a.hp/a.maxHp):0),0); if(sc>bs){ bs=sc; best=c; } } return best; }
 function nearestEnemy(cb,u,except){
  let best=null,bd=1e9;
  for(const e of cb.units){ if(e.dead||e.side===u.side||e===except||e.stealth>0) continue; const d=dU(u,e)+cb.rng()*.1; if(d<bd){bd=d;best=e;} }
@@ -878,8 +886,8 @@ function castAbility(cb,u,ab,depth=0){
  const near=(c,r,rad)=>foesOf(cb,u).filter(e=>hexDist(e.c,e.r,c,r)<=rad);
  switch(k){
   case 'bolt': if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.32,big:true}); hitFx(cb,u,t,P*p.m,p); } break;
-  case 'burn': if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true}); const tg=p.r?foes.filter(e=>dU(t,e)<=p.r):[t]; for(const e of tg) hitFx(cb,u,e,P*p.m,{...p,burn:p.burn||.03}); FX({type:'area',c:t.c,r:t.r,rad:(p.r||0)+.5,life:.6}); } break;
-  case 'blast': if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true}); for(const e of foes) if(dU(t,e)<=p.r) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:t.c,r:t.r,rad:p.r+.5,life:.65}); } break;
+  case 'burn': if(t){ if(p.r) t=aoeTarget(cb,u,t,p.r); FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true}); const tg=p.r?foes.filter(e=>dU(t,e)<=p.r):[t]; for(const e of tg) hitFx(cb,u,e,P*p.m,{...p,burn:p.burn||.03}); FX({type:'area',c:t.c,r:t.r,rad:(p.r||0)+.5,life:.6}); } break;
+  case 'blast': if(t){ t=aoeTarget(cb,u,t,p.r); FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true}); for(const e of foes) if(dU(t,e)<=p.r) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:t.c,r:t.r,rad:p.r+.5,life:.65}); } break;
   case 'nova': for(const e of foes) if(dU(u,e)<=p.r) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:u.c,r:u.r,rad:p.r+.5,life:.7,quake:p.r>=2});
     if(p.selfDmg){ u.hp=Math.max(1,u.hp-u.maxHp*p.selfDmg); cb.cExtra=` · pierde ${R0(p.selfDmg*100)}% de su vida`; } break;
   // fall: cada enemigo atravesado recibe ese porcentaje menos que el anterior (mín. 40 %): el rayo no borra una fila entera
@@ -904,30 +912,30 @@ function castAbility(cb,u,ab,depth=0){
   case 'buff': for(const a of allies){ a.as=Math.min(3,a.as*(1+p.as)); if(p.heal) H(a,P*p.heal); FX({type:'arrows',c:a.c,r:a.r,life:.8}); } cb.cExtra=` · equipo +${R0(p.as*100)}% vel.`; break;
   case 'frenzy': u.as=Math.min(3,u.as*(1+p.as)); u.ad*=1+p.ad; u.ap+=p.ad*100; FX({type:'arrows',c:u.c,r:u.r,life:.8}); FX({type:'aura',u,life:1.2}); cb.cExtra=' · más rápido y fuerte'; break;
   case 'empower': u.empN=p.n; u.empDmg=P*p.m; u.empStun=p.stun||0; FX({type:'aura',u,life:1.2,color:'#ffd23f'}); cb.cExtra=` · próximos ${p.n} golpes potenciados`; break;
-  case 'sing': { const tg=p.all?foes:t?foes.filter(e=>dU(t,e)<=(p.r||0)):[]; let tot=0; for(const e of tg){ const b=e.hp; abilDamage(cb,u,e,P*p.m); if(!e.dead){ stunUnit(e,p.s,true); cb.cStun=true; } tot+=Math.max(0,b-e.hp); } if(t) FX({type:'area',c:t.c,r:t.r,rad:p.all?6:(p.r||0)+.5,color:'#c9a7ff',life:.7,notes:true}); if(p.drain) H(u,tot*p.drain); if(p.healTeam) for(const a of allies) H(a,P*p.healTeam); cb.cExtra=' · duerme'; break; }
+  case 'sing': { if(!p.all&&p.r) t=aoeTarget(cb,u,t,p.r); const tg=p.all?foes:t?foes.filter(e=>dU(t,e)<=(p.r||0)):[]; let tot=0; for(const e of tg){ const b=e.hp; abilDamage(cb,u,e,P*p.m); if(!e.dead){ stunUnit(e,p.s,true); cb.cStun=true; } tot+=Math.max(0,b-e.hp); } if(t) FX({type:'area',c:t.c,r:t.r,rad:p.all?6:(p.r||0)+.5,color:'#c9a7ff',life:.7,notes:true}); if(p.drain) H(u,tot*p.drain); if(p.healTeam) for(const a of allies) H(a,P*p.healTeam); cb.cExtra=' · duerme'; break; }
   case 'drain': if(t){ const b=t.hp; hitFx(cb,u,t,P*p.m,p); const d=Math.max(0,b-t.hp); FX({type:'proj',fc:t.c,fr:t.r,tc:u.c,tr:u.r,life:.4,heal:true}); const who=p.ally?allies.sort((a,b2)=>a.hp/a.maxHp-b2.hp/b2.maxHp)[0]:u; if(who) H(who,d*p.h); } break;
-  case 'gold': { const tg=p.all?foes:t?(p.r?foes.filter(e=>dU(t,e)<=p.r):[t]):[]; for(const e of tg){ FX({type:'coins',fc:u.c,fr:u.r,tc:e.c,tr:e.r,life:.5}); hitFx(cb,u,e,P*p.m,p); } break; }
+  case 'gold': { if(!p.all&&p.r) t=aoeTarget(cb,u,t,p.r); const tg=p.all?foes:t?(p.r?foes.filter(e=>dU(t,e)<=p.r):[t]):[]; for(const e of tg){ FX({type:'coins',fc:u.c,fr:u.r,tc:e.c,tr:e.r,life:.5}); hitFx(cb,u,e,P*p.m,p); } break; }
   case 'stack': if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.25}); hitFx(cb,u,t,P*p.m,p); } gainStacks(u,p.hp*u.star,p.ad*u.star); fxText(cb,u,`+${p.hp*u.star} PS`,'#7dff9b'); cb.cExtra=` · +${p.hp*u.star} vida y +${p.ad*u.star} ataque para siempre`; break;
   case 'splash': FX({type:'area',c:u.c,r:u.r,rad:.5,life:.5,el:'Agua'}); fxText(cb,u,'¡Pero no pasó nada!','#9aa4c0'); cb.cExtra=' · no pasó nada'; break;
   case 'copy': { if(!u.copied){ const src=foes.filter(e=>!e.creep).sort((a,b)=>b.cost-a.cost||b.star-a.star)[0]; u.copied=src&&src.ab[0]!=='copy'?src.ab:['nova','Golpe',{r:1,m:.8}]; } cb.cExtra=` → copia ${u.copied[1]}`; if(depth<2) castAbility(cb,u,u.copied,depth+1); break; }
   case 'metro': { const m=pickR(cb,METRO); cb.cExtra=` → ${m[1]}`; if(depth<2) castAbility(cb,u,m,depth+1); break; }
   // ---- mecánicas nuevas ----
-  case 'cone': if(t){ for(const e of dirTargets(cb,u,t,{len:p.len||2,half:.55})) hitFx(cb,u,e,P*p.m,p); FX({type:'cone',fc:u.c,fr:u.r,tc:t.c,tr:t.r,len:p.len||2,life:.7}); } break;
-  case 'wave': if(t){ for(const e of dirTargets(cb,u,t,{w:p.w||1.3})){ hitFx(cb,u,e,P*p.m,p); if(p.push&&!e.dead) shove(cb,e,u.c,u.r,p.push,true); } FX({type:'wave',fc:u.c,fr:u.r,tc:t.c,tr:t.r,w:p.w||1.3,life:.9});
+  case 'cone': if(t){ t=aoeDir(cb,u,t,{len:p.len||2,half:.55}); for(const e of dirTargets(cb,u,t,{len:p.len||2,half:.55})) hitFx(cb,u,e,P*p.m,p); FX({type:'cone',fc:u.c,fr:u.r,tc:t.c,tr:t.r,len:p.len||2,life:.7}); } break;
+  case 'wave': if(t){ t=aoeDir(cb,u,t,{w:p.w||1.3}); for(const e of dirTargets(cb,u,t,{w:p.w||1.3})){ hitFx(cb,u,e,P*p.m,p); if(p.push&&!e.dead) shove(cb,e,u.c,u.r,p.push,true); } FX({type:'wave',fc:u.c,fr:u.r,tc:t.c,tr:t.r,w:p.w||1.3,life:.9});
     if(p.healTeam) for(const a of allies) H(a,P*p.healTeam); if(p.asTeam) for(const a of allies){ a.as=Math.min(3,a.as*(1+p.asTeam)); FX({type:'arrows',c:a.c,r:a.r,life:.8}); } if(p.push) cb.cExtra=' · empuja'; } break;
-  case 'strike': if(t){ const c=t.c, r=t.r, rad=p.r||0, d=p.delay||.6; FX({type:'tele',c,r,rad:rad+.5,life:d}); cb.cExtra=` · cae en ${d}s`;
+  case 'strike': if(t){ if(p.r) t=aoeTarget(cb,u,t,p.r); const c=t.c, r=t.r, rad=p.r||0, d=p.delay||.6; FX({type:'tele',c,r,rad:rad+.5,life:d}); cb.cExtra=` · cae en ${d}s`;
     later2(cb,d,()=>{ if(u.dead&&!p.ghost) return; const pc=cb.caster; cb.caster=null; for(const e of near(c,r,rad)) hitFx(cb,u,e,P*p.m,p); cb.caster=pc; FX({type:'strike',c,r,rad:rad+.5,life:.75}); }); } break;
-  case 'zone': { const center=p.self||!t?u:t, c=center.c, r=center.r, rad=p.r||1, dur=p.dur||3, n=Math.round(dur/.5);
+  case 'zone': { if(t&&!p.self&&!p.ally) t=aoeTarget(cb,u,t,p.r||1); const center=p.ally?allyCluster(cb,u,p.r||1):p.self||!t?u:t, c=center.c, r=center.r, rad=p.r||1, dur=p.dur||3, n=Math.round(dur/.5);
     FX({type:'zone',c,r,rad:rad+.5,life:dur,heal:!!p.ally});
     for(let i=1;i<=n;i++) later2(cb,i*.5,()=>{ if(u.dead) return;
       if(p.ally){ HEALER=u; for(const a of cb.units) if(!a.dead&&a.side===u.side&&hexDist(a.c,a.r,c,r)<=rad){ heal(a,P*p.m/n); if(i%2===0) FX({type:'plus',c:a.c,r:a.r,life:.6}); } HEALER=null; return; }
       for(const e of near(c,r,rad)){ abilDamage(cb,u,e,P*p.m/n); if(e.dead) continue; if(i===1&&(p.root||p.sleep)) stunUnit(e,p.root||p.sleep,!!p.sleep); if(p.burn) addBurn(e,u,p.burn*e.maxHp,2,'abil'); if(p.chill) e.chillT=Math.max(e.chillT||0,1); } });
     cb.cExtra=` · zona ${dur}s`; break; }
   case 'knock': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:2,life:.5}); if(!t.dead&&shove(cb,t,u.c,u.r,p.k||2,true)) { cb.cExtra=' · lo lanza lejos'; FX({type:'trail',fc:t.pc,fr:t.pr,tc:t.c,tr:t.r,life:.45}); } } break;
-  case 'pull': { const center=p.self||!t?u:t, c=center.c, r=center.r, rad=p.r||2; const tg=near(c,r,rad).sort((a,b)=>hexDist(a.c,a.r,c,r)-hexDist(b.c,b.r,c,r));
+  case 'pull': { if(t&&!p.self) t=aoeTarget(cb,u,t,p.r||2); const center=p.self||!t?u:t, c=center.c, r=center.r, rad=p.r||2; const tg=near(c,r,rad).sort((a,b)=>hexDist(a.c,a.r,c,r)-hexDist(b.c,b.r,c,r));
     for(const e of tg){ if(e!==center) shove(cb,e,c,r,2,false); hitFx(cb,u,e,P*p.m,p); } FX({type:'vortex',c,r,rad:rad+.5,life:.9}); cb.cExtra=' · atrae'; break; }
   case 'seed': if(t){ hitFx(cb,u,t,P*p.m*.25,p); const b=addBurn(t,u,P*p.m*.75/(p.dur||4),p.dur||4,'seed'); b.leech=p.h||1; FX({type:'tether',u,t,life:p.dur||4}); cb.cExtra=' · drena con el tiempo'; } break;
-  case 'poison': { const tg=t?(p.r?foes.filter(e=>dU(t,e)<=p.r):[t]):[]; if(t) FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true});
+  case 'poison': { if(t&&p.r) t=aoeTarget(cb,u,t,p.r); const tg=t?(p.r?foes.filter(e=>dU(t,e)<=p.r):[t]):[]; if(t) FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true});
     for(const e of tg){ abilDamage(cb,u,e,P*p.m*.3); if(e.dead) continue; addBurn(e,u,P*p.m*.7/(p.dur||5),p.dur||5,'poison'); e.woundT=Math.max(e.woundT||0,p.dur||5); FX({type:'aura',u:e,life:p.dur||5,color:'#b25bd6',el:'Veneno'}); } cb.cExtra=' · envenena (cura a la mitad)'; break; }
   case 'mark': if(t){ hitFx(cb,u,t,P*p.m,p); if(!t.dead){ t.markT=p.dur||4; t.markAmp=p.amp||.25; FX({type:'mark',u:t,life:p.dur||4}); } cb.cExtra=` · +${R0((p.amp||.25)*100)}% de daño recibido`; } break;
   case 'spin': { const n=p.n||4; u.tdr=Math.max(u.tdr,p.dr||0); u.tdrT=Math.max(u.tdrT,n*.3); FX({type:'spin',u,life:n*.3});
