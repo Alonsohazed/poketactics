@@ -468,6 +468,8 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .roundBar .phase{display:none}
 /* Selección de aumentos: solo cartas, con el color de su rareza y un refresco debajo de cada una */
 .mbox.bare{background:none;border:0;box-shadow:none;max-width:1000px}
+/* Mientras se abren las balls, las tapas salen de la carta: sin barra de desplazamiento */
+.mbox.bare:has(.augBox.closed:not(.opened)){overflow:visible}
 .augPick{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
 .augCol{display:flex;flex-direction:column;align-items:center;gap:12px}
 /* Carta de aumento: una Poké Ball por rareza (Plata = Poké Ball, Oro = Ultra Ball, Prismático = Master Ball; img/aug-card-*.png, 774×1126).
@@ -488,6 +490,41 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .ac2Desc.long{font-size:11.5px;line-height:1.3}
 .ac2Tier{position:absolute;left:35.6%;right:36.1%;top:88%;height:5.6%;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
 .augCard2.tierP .ac2Tier{background:linear-gradient(90deg,#ff7ac8,#c49bff,#8fb2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Apertura: la carta llega cerrada como su ball (mismo contorno), brilla el botón y las dos mitades se separan con suavidad */
+/* Apertura: la carta llega como una ball perfectamente redonda (recorte circular de la carta, 774×1126),
+   brilla el botón y, mientras las dos mitades se separan, el círculo se estira hasta ser la carta rectangular */
+.augBox{position:relative;--d:0s}
+.augBox:not(.opened) .augCard2{pointer-events:none}
+.augClip{position:relative;clip-path:inset(15.63% 0 round 50% / 34.37%)}
+.augBox.opened .augClip{clip-path:none}
+.augBox .lidT,.augBox .lidB,.augBox .ballBtn,.augBox .ballRing{position:absolute;pointer-events:none;z-index:2}
+.augBox .lidT,.augBox .lidB{left:0;right:0;height:50%;box-sizing:border-box}
+.augBox .lidT{top:0;border-bottom:8px solid #15151c;background:radial-gradient(42% 26% at 34% 52%,rgba(255,255,255,.5),transparent 70%),linear-gradient(180deg,#ff4a44 40%,#d8141c)}
+.augBox .lidB{bottom:0;border-top:8px solid #15151c;background:radial-gradient(70% 45% at 50% 0%,#fff,#e6e6ec 70%,#c9cbd4)}
+.augBox.tG .lidT{background:radial-gradient(42% 26% at 34% 52%,rgba(255,255,255,.3),transparent 70%),linear-gradient(90deg,transparent 16%,#ffc61a 16% 31%,transparent 31% 69%,#ffc61a 69% 84%,transparent 84%),linear-gradient(180deg,#30303a 40%,#121218)}
+.augBox.tP .lidT{background:radial-gradient(42% 26% at 34% 52%,rgba(255,255,255,.35),transparent 70%),radial-gradient(circle at 25% 74%,#ff5aa8 0 9.5%,transparent 10%),radial-gradient(circle at 75% 74%,#ff5aa8 0 9.5%,transparent 10%),linear-gradient(180deg,#7f71d8 40%,#5846b6)}
+.augBox.tP .lidT::after{content:"M";position:absolute;left:50%;top:66%;transform:translate(-50%,-50%);font-family:var(--display);font-size:44px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.3)}
+.augBox .ballBtn{z-index:3;left:50%;top:50%;width:22%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#e2e2ea 60%,#babcc8);border:8px solid #15151c;box-shadow:0 0 0 4px #fff}
+.augBox .ballRing{z-index:4;left:0;right:0;top:15.63%;aspect-ratio:1;border-radius:50%;box-shadow:inset 0 0 0 5px #fff,inset 0 -14px 26px rgba(0,0,0,.18)}
+.augBox.opened .lidT,.augBox.opened .lidB,.augBox.opened .ballBtn,.augBox.opened .ballRing{display:none}
+.augBox.closed{animation:augIn .5s cubic-bezier(.22,1,.36,1) var(--d) both,augWob .7s ease-in-out calc(var(--d) + .45s) both}
+.augBox.closed .ballBtn{animation:btnGlow .55s ease-in-out calc(var(--d) + .5s) 2 alternate,btnFade .35s ease-out calc(var(--d) + 1.15s) forwards}
+.augBox.closed .ballRing{animation:ringFade .4s ease-out calc(var(--d) + 1.2s) forwards}
+.augBox.closed .augClip{animation:ballToCard .8s cubic-bezier(.22,1,.36,1) calc(var(--d) + 1.2s) forwards}
+.augBox.closed .lidT{animation:lidUp .75s cubic-bezier(.22,1,.36,1) calc(var(--d) + 1.2s) forwards}
+.augBox.closed .lidB{animation:lidDn .75s cubic-bezier(.22,1,.36,1) calc(var(--d) + 1.2s) forwards}
+.augBox.closed::after{content:"";position:absolute;z-index:4;left:50%;top:50%;width:120%;aspect-ratio:1;border-radius:50%;pointer-events:none;opacity:0;transform:translate(-50%,-50%) scale(.2);
+  background:radial-gradient(circle,rgba(255,255,255,.7),color-mix(in srgb,var(--glow) 60%,transparent) 32%,transparent 62%);animation:augFlash .8s ease-out calc(var(--d) + 1.18s)}
+.augBox.tS{--glow:#ff6464}.augBox.tG{--glow:#ffc61a}.augBox.tP{--glow:#c49bff}
+@keyframes augIn{from{opacity:0;transform:translateY(24px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes augWob{0%,100%{transform:rotate(0)}30%{transform:rotate(-5deg)}70%{transform:rotate(4deg)}}
+@keyframes btnGlow{to{box-shadow:0 0 0 4px #fff,0 0 18px 6px var(--glow)}}
+@keyframes btnFade{to{opacity:0;transform:translate(-50%,-50%) scale(1.15)}}
+@keyframes ringFade{to{opacity:0}}
+@keyframes ballToCard{to{clip-path:inset(-40px round 40px)}}
+@keyframes lidUp{to{transform:translateY(-34%);opacity:0}}
+@keyframes lidDn{to{transform:translateY(34%);opacity:0}}
+@keyframes augFlash{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:.9}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
 .aug .augImg{width:82%;height:82%;object-fit:contain;image-rendering:pixelated}.augTipIco{width:26px;height:26px;object-fit:contain;image-rendering:pixelated;vertical-align:middle}
 .augRR{width:64px;height:40px;border-radius:10px;border:2px solid #f2d27a;background:linear-gradient(180deg,#3a3020,#1c160c);color:#ffe9a6;font-size:22px;cursor:pointer}
 .augRR:disabled{opacity:.35;cursor:not-allowed}
@@ -721,7 +758,8 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 
   .card .pic{width:100%;top:12px;-webkit-mask-image:none;mask-image:none}
 }
-@media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+/* Con «reducir movimiento» se quitan las animaciones, salvo la apertura de los aumentos: es corta, no se repite y es parte de la elección */
+@media (prefers-reduced-motion:reduce){ :not(.augBox,.augBox *){transition:none!important;animation:none!important} }
 </style>
 </head>
 <body>
