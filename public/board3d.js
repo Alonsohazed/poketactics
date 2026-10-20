@@ -246,53 +246,80 @@ function bakeStatic(g){
  g.add(mesh); g.traverse(o=>{ if(o!==g&&!o.userData.dyn) { o.matrixAutoUpdate=false; o.updateMatrix(); } });
  return g;
 }
-// Arena «río» (por defecto): campo de hierba con tierra pisada en el centro, losas de piedra en el borde, cuatro torres con fuego en las esquinas,
-// un río alrededor y pinos y riscos más allá (como el mapa de Ríos de TFT)
+// Arena «río» (por defecto), inspirada en el mapa de Ríos de TFT: una isla de hierba con acantilados sobre un río, campo de tierra pisada con adoquines
+// gastados en el centro, gruesas losas de piedra arriba y abajo, hileras de urnas hexagonales a los lados y cuatro torres con fuego en las esquinas
 function riverTex(){
- return canvasTex(512,576,(g,w,h)=>{ const rr=seeded(41); g.fillStyle='#6aa03c'; g.fillRect(0,0,w,h);
-   for(let i=0;i<320;i++){ const x=rr()*w, y=rr()*h, s2=20+rr()*80, c=['#82b44a','#5a9230','#4f8a2e'][i%3]; const gr=g.createRadialGradient(x,y,0,x,y,s2); gr.addColorStop(0,c+'66'); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-s2,y-s2,s2*2,s2*2); }
-   // tierra pisada y adoquines gastados en el centro
-   for(let i=0;i<46;i++){ const a=rr()*Math.PI*2, d=rr()*w*.3, x=w/2+Math.cos(a)*d*1.2, y=h/2+Math.sin(a)*d*1.1, s2=38+rr()*70; const gr=g.createRadialGradient(x,y,0,x,y,s2); gr.addColorStop(0,'#b68d58aa'); gr.addColorStop(1,'#b68d5800'); g.fillStyle=gr; g.fillRect(x-s2,y-s2,s2*2,s2*2); }
-   g.strokeStyle='rgba(70,56,40,.28)'; g.lineWidth=2; for(let i=0;i<70;i++){ const x=w*.2+rr()*w*.6, y=h*.2+rr()*h*.6, a=rr()*6, l=22+rr()*34; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l); g.lineTo(x+Math.cos(a+1.4)*l*.8,y+Math.sin(a+1.4)*l*.8); g.stroke(); }
-   for(let i=0;i<1800;i++){ g.fillStyle=rr()<.5?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)'; g.fillRect(rr()*w,rr()*h,2,2); }
-   for(let i=0;i<70;i++){ const x=rr()*w, y=rr()*h; g.fillStyle=['#f6e27a','#f4f4f4','#e88aa8'][i%3]; g.fillRect(x,y,3,3); }
-   const v=g.createRadialGradient(w/2,h/2,w*.3,w/2,h/2,w*.78); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.25)'); g.fillStyle=v; g.fillRect(0,0,w,h);
+ return canvasTex(1024,1152,(g,w,h)=>{ const rr=seeded(41); g.fillStyle='#6f803c'; g.fillRect(0,0,w,h);
+   const blot=(x,y,r0,c,al)=>{ const gr=g.createRadialGradient(x,y,0,x,y,r0); gr.addColorStop(0,c+al); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-r0,y-r0,r0*2,r0*2); };
+   for(let i=0;i<420;i++) blot(rr()*w,rr()*h,30+rr()*120,['#82913f','#5c6d33','#7a8a3c','#4f6030'][i%4],'55');
+   // grandes manchas de tierra naranja-parda, más hacia el centro y las esquinas
+   for(let i=0;i<34;i++){ const a=rr()*Math.PI*2, d=rr()*w*.32; blot(w/2+Math.cos(a)*d*1.25,h/2+Math.sin(a)*d*1.2,70+rr()*150,['#b0804e','#9c7042','#c08c56'][i%3],'aa'); }
+   for(const [x,y] of [[.14,.22],[.86,.76],[.18,.82],[.84,.2]]) for(let i=0;i<4;i++) blot(w*x+rnd(60),h*y+rnd(60),60+rr()*70,'#a87a48','88');
+   // adoquines gastados en el centro
+   g.lineJoin='round'; for(let i=0;i<64;i++){ const cx=w*.5+(rr()-.5)*w*.52, cy=h*.5+(rr()-.5)*h*.36, r0=34+rr()*46, n=5+(rr()*3|0); g.beginPath(); for(let k=0;k<n;k++){ const an=k/n*Math.PI*2+rr()*.5, rad=r0*(.72+rr()*.4); const px=cx+Math.cos(an)*rad, py=cy+Math.sin(an)*rad*.8; k?g.lineTo(px,py):g.moveTo(px,py); } g.closePath();
+     g.fillStyle='rgba('+(130+(rr()*30|0))+','+(122+(rr()*24|0))+','+(100+(rr()*20|0))+',.42)'; g.fill(); g.strokeStyle='rgba(50,42,32,.45)'; g.lineWidth=3; g.stroke(); }
+   // matas de hierba y florecillas
+   for(let i=0;i<1400;i++){ const x=rr()*w, y=rr()*h; g.fillStyle=rr()<.5?'rgba(150,175,80,.5)':'rgba(40,60,28,.4)'; g.fillRect(x,y,2,5+rr()*5); }
+   for(let i=0;i<90;i++){ const x=rr()*w, y=rr()*h; g.fillStyle=['#f2e27a','#f4f0e8','#c48ae8','#e88aa8'][i%4]; g.fillRect(x,y,4,4); }
+   for(let i=0;i<2600;i++){ g.fillStyle=rr()<.5?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)'; g.fillRect(rr()*w,rr()*h,2,2); }
+   const v=g.createRadialGradient(w/2,h/2,w*.32,w/2,h/2,w*.8); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.32)'); g.fillStyle=v; g.fillRect(0,0,w,h);
  },false);
 }
+function grassTex(){
+ return canvasTex(512,512,(g,w,h)=>{ const rr=seeded(52); g.fillStyle='#4f6a2e'; g.fillRect(0,0,w,h);
+   for(let i=0;i<260;i++){ const x=rr()*w, y=rr()*h, r0=20+rr()*70, c=['#5f7c36','#44602a','#6a8a3a'][i%3]; const gr=g.createRadialGradient(x,y,0,x,y,r0); gr.addColorStop(0,c+'88'); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-r0,y-r0,r0*2,r0*2); }
+   for(let i=0;i<1600;i++){ g.fillStyle=rr()<.5?'rgba(170,200,90,.35)':'rgba(20,40,16,.35)'; g.fillRect(rr()*w,rr()*h,2,6); } },true);
+}
 function buildRiver(g,rc,r,anim){
- const X0=rc.bx0, X1=rc.bx1, Z0=rc.bz0, Z1=rc.bz1, cx=(X0+X1)/2, cz=(rc.bz0+rc.cz1)/2, stone='#b6aa95', dark='#7a6f60', flame=['#ff6a2a','#ffb347','#ffe9a0'];
- g.add(slab(roundRectShape(X0,Z0,X1,Z1,.6),.8,0,'#6e6558',riverTex()));
- // Losas de piedra a lo largo del borde (arriba y abajo) y bordillo bajo a los lados
- const slabs=new THREE.InstancedMesh(new RoundedBoxGeometry(1,1,1,2,.08),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.92}),160), m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(); let n=0;
- const put=(x,z,w,d,h)=>{ if(n>=160) return; m4.compose(new THREE.Vector3(x,h/2-.05,z),q.setFromAxisAngle(new THREE.Vector3(0,1,0),(r()-.5)*.03),sc.set(w,h,d)); slabs.setMatrixAt(n,m4); slabs.setColorAt(n,col(stone).lerp(col(r()<.5?'#d8ccb8':dark),r()*.3)); n++; };
- for(let x=X0+.4;x<X1-.3;x+=1.9){ put(x+.9,Z0-.45,1.8,.9,.3+r()*.05); put(x+.9,Z1+.45,1.8,.9,.3+r()*.05); }
- for(let z=Z0;z<Z1;z+=1.9){ put(X0-.35,z+.9,.7,1.8,.24); put(X1+.35,z+.9,.7,1.8,.24); }
+ const X0=rc.bx0, X1=rc.bx1, Z0=rc.bz0, Z1=rc.bz1, ZB=rc.cz1, cx=(X0+X1)/2, cz=(Z0+ZB)/2, stone='#a89c88', dark='#6c6354', flame=['#ff6a2a','#ffb347','#ffe9a0'];
+ // Isla de hierba con acantilado
+ const gt=grassTex(); gt.wrapS=gt.wrapT=THREE.RepeatWrapping; gt.repeat.set(5,5);
+ const isl=slab(roundRectShape(X0-5.2,Z0-5,X1+5.2,ZB+3.6,2.6),3.2,-.2,'#4a4136',null,'#4f6a2e');
+ g.add(isl);
+ const grass=new THREE.Mesh(new THREE.ShapeGeometry(roundRectShape(X0-5.2,Z0-5,X1+5.2,ZB+3.6,2.6),16),new THREE.MeshStandardMaterial({map:gt,roughness:1})); grass.geometry.rotateX(Math.PI/2); grass.position.y=-.02; grass.receiveShadow=true; g.add(grass);
+ // Agua en el fondo (verde azulada oscura) y espuma en las orillas
+ const wm=new THREE.MeshStandardMaterial({color:'#1f6670',emissive:'#0a3a44',roughness:.2,metalness:.15}); const wat=new THREE.Mesh(new THREE.PlaneGeometry(220,220),wm); wat.rotation.x=-Math.PI/2; wat.position.set(cx,-2.6,cz); wat.userData.dyn=true; g.add(wat);
+ anim.push(t=>{ wm.emissive.setHSL(.53,.7,.12+.03*Math.sin(t*1.4)); if(Math.random()<.3){ const an=Math.random()*TAU; emit({p:new THREE.Vector3(cx+Math.cos(an)*(X1-X0)*.9,-2.5,cz+Math.sin(an)*(ZB-Z0)*.9),v:[rnd(.1),.2,rnd(.1)],col:'#d8f4f0',size:.2,size1:0,life:.9}); } });
+ // Suelo del campo
+ g.add(slab(roundRectShape(X0,Z0,X1,Z1,.7),.8,0,'#6e6558',riverTex()));
+ // Gruesas losas arriba y abajo del campo
+ const slabs=new THREE.InstancedMesh(new RoundedBoxGeometry(1,1,1,2,.1),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.95}),90), m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(); let n=0;
+ const put=(x,z,w,d,h)=>{ if(n>=90) return; m4.compose(new THREE.Vector3(x,h/2-.05,z),q.setFromAxisAngle(new THREE.Vector3(0,1,0),0),sc.set(w,h,d)); slabs.setMatrixAt(n,m4); slabs.setColorAt(n,col(stone).lerp(col(r()<.5?'#cfc3ae':dark),.08+r()*.25)); n++; };
+ const sw=(X1-X0)/Math.ceil((X1-X0)/2.3);
+ for(let x=X0;x<X1-.1;x+=sw){ put(x+sw/2,Z0-.55,sw-.06,1.05,.5); put(x+sw/2,Z1+.6,sw-.06,1.05,.46); }
  slabs.count=n; slabs.castShadow=true; slabs.receiveShadow=true; g.add(slabs);
- // Torres de las esquinas con brasero
- for(const [x,z] of [[X0-.95,Z0-.95],[X1+.95,Z0-.95],[X0-.95,Z1+.95],[X1+.95,Z1+.95]]){
-   const tw=new THREE.Mesh(new THREE.CylinderGeometry(.55,.78,2,4),new THREE.MeshStandardMaterial({color:stone,roughness:.9})); tw.rotation.y=Math.PI/4; tw.position.set(x,.9,z); tw.castShadow=true; g.add(tw);
-   const cap=new THREE.Mesh(new THREE.BoxGeometry(1.25,.22,1.25),new THREE.MeshStandardMaterial({color:dark,roughness:.85})); cap.position.set(x,2,z); g.add(cap);
-   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.42,.24,.3,20,1,true),new THREE.MeshStandardMaterial({color:'#3a2c22',side:THREE.DoubleSide,metalness:.4,roughness:.5})); bowl.position.set(x,2.25,z); g.add(bowl);
-   const glow=glowSprite(flame[1],2.6); glow.position.set(x,2.6,z); g.add(glow);
+ // Hileras de urnas hexagonales a los lados
+ const urnM=new THREE.MeshStandardMaterial({color:'#9c9078',roughness:.9,flatShading:true}), urnD=new THREE.MeshStandardMaterial({color:'#3a342c',roughness:1});
+ for(const sx of [-1,1]){ for(let i=0;i<5;i++){ const z=Z0+1.6+i*((Z1-Z0-3.2)/4), x=sx<0?X0-.95:X1+.95;
+   const u=new THREE.Mesh(new THREE.CylinderGeometry(.62,.46,.72,6),urnM); u.position.set(x,.32,z); u.rotation.y=Math.PI/6; u.castShadow=true; g.add(u);
+   const inner=new THREE.Mesh(new THREE.CylinderGeometry(.42,.34,.06,6),urnD); inner.position.set(x,.7,z); inner.rotation.y=Math.PI/6; g.add(inner); } }
+ // Torres de las esquinas con fuego
+ for(const [x,z] of [[X0-1.2,Z0-1.2],[X1+1.2,Z0-1.2],[X0-1.2,Z1+1.4],[X1+1.2,Z1+1.4]]){
+   const base=new THREE.Mesh(new THREE.BoxGeometry(1.9,.7,1.9),new THREE.MeshStandardMaterial({color:dark,roughness:.9})); base.position.set(x,.3,z); base.castShadow=true; g.add(base);
+   const tw=new THREE.Mesh(new THREE.CylinderGeometry(.62,.85,1.9,4),new THREE.MeshStandardMaterial({color:stone,roughness:.9})); tw.rotation.y=Math.PI/4; tw.position.set(x,1.5,z); tw.castShadow=true; g.add(tw);
+   const cap=new THREE.Mesh(new THREE.BoxGeometry(1.35,.24,1.35),new THREE.MeshStandardMaterial({color:dark,roughness:.85})); cap.position.set(x,2.55,z); g.add(cap);
+   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.46,.26,.32,20,1,true),new THREE.MeshStandardMaterial({color:'#2f261e',side:THREE.DoubleSide,metalness:.4,roughness:.5})); bowl.position.set(x,2.82,z); g.add(bowl);
+   const glow=glowSprite(flame[1],2.8); glow.position.set(x,3.15,z); g.add(glow);
    anim.push(t=>{ glow.material.opacity=.7+.25*Math.sin(t*7+x)+.1*Math.sin(t*13+z);
-     for(let k=0;k<2;k++) if(Math.random()<.85) emit({p:new THREE.Vector3(x+rnd(.16),2.3,z+rnd(.16)),v:[rnd(.12),1.2+Math.random()*.9,rnd(.12)],col:flame[Math.random()<.5?0:1],size:.5+Math.random()*.2,size1:.06,life:.55+.3*Math.random(),g:-.6,drag:1.4});
-     if(Math.random()<.5) emit({p:new THREE.Vector3(x+rnd(.08),2.4,z+rnd(.08)),v:[rnd(.05),1],col:flame[2],size:.26,size1:.04,life:.35,g:-.4});
-     if(Math.random()<.07) emit({p:new THREE.Vector3(x+rnd(.15),2.6,z+rnd(.15)),v:[rnd(.5),2.2+Math.random(),rnd(.5)],col:flame[1],size:.07,size1:.02,life:1.2,g:.6}); });
- }
- // Río alrededor (cuatro tramos) con un brillo suave
- const wm=new THREE.MeshStandardMaterial({color:'#3f9fd8',emissive:'#0d4a7a',roughness:.15,metalness:.2});
- const strip=(x0,z0,x1,z1)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,.1,z1-z0),wm); m.position.set((x0+x1)/2,-.84,(z0+z1)/2); m.userData.dyn=true; g.add(m); };
- const zb=rc.cz1+1.2; strip(X0-7,Z0-6.5,X1+7,Z0-3.3); strip(X0-7,zb+3,X1+7,zb+6.3); strip(X0-7,Z0-3.3,X0-3.6,zb+3); strip(X1+3.6,Z0-3.3,X1+7,zb+3);
- anim.push(t=>{ wm.emissive.setHSL(.57,.75,.15+.04*Math.sin(t*1.6)); if(Math.random()<.25) emit({p:new THREE.Vector3(cx+rnd(X1-X0)*.7,-.7,Math.random()<.5?Z0-5+rnd(1.5):zb+4.6+rnd(1.5)),v:[rnd(.1),.2,rnd(.1)],col:'#e8f8ff',size:.14,size1:0,life:.8}); });
- // Pinos, árboles, riscos y flores más allá del río
- const outside=(x,z,m)=>x<X0-m||x>X1+m||z<Z0-m||z>zb+m;
- const pine=(x,z,s2)=>{ const t=new THREE.Group(); const tr=new THREE.Mesh(new THREE.CylinderGeometry(.12*s2,.18*s2,.8*s2,6),new THREE.MeshStandardMaterial({color:'#6a4426',roughness:.9})); tr.position.y=.4*s2; t.add(tr);
-   for(let i=0;i<3;i++){ const c=new THREE.Mesh(new THREE.ConeGeometry((.85-i*.2)*s2,(1.1-i*.1)*s2,8),new THREE.MeshStandardMaterial({color:['#2c6a34','#357a3c','#43904a'][i],roughness:.85,flatShading:true})); c.position.y=(.95+i*.7)*s2; t.add(c); }
-   t.position.set(x,-.9,z); t.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); return t; };
- for(let i=0;i<64;i++){ const a=r()*TAU, d=Math.max(X1-X0,zb-Z0)*.62+6+r()*14, x=cx+Math.cos(a)*d*1.15, z=cz+Math.sin(a)*d*.95; if(!outside(x,z,7.5)) continue; g.add(r()<.62?pine(x,z,1+r()*.9):(()=>{ const t=tree(x,z,.9+r()*.7,r,['#2c7a30','#3f9a3c','#6ab84a']); t.position.y=-.9; return t; })()); }
- for(let i=0;i<46;i++){ const a=r()*TAU, d=Math.max(X1-X0,zb-Z0)*.6+7+r()*12, x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d*.9; if(!outside(x,z,7)) continue; const rock=rockMesh(.6+r()*1.6,r()*20,['#7c7468','#6a6258','#8a8274'][i%3]); rock.position.set(x,-.5,z); rock.scale.y=.9+r()*.5; rock.rotation.y=r()*TAU; g.add(rock); }
- for(let i=0;i<120;i++){ const x=X0-3+r()*(X1-X0+6), z=Z0-3+r()*(zb-Z0+6); if(!outside(x,z,.5)||outside(x,z,3.2)) continue; const fl=new THREE.Mesh(new THREE.SphereGeometry(.09,6,4),new THREE.MeshBasicMaterial({color:['#f4e27a','#f4f4f4','#e88aa8','#a8c8f8'][i%4]})); fl.position.set(x,-.76,z); g.add(fl); }
- anim.push(t=>{ if(Math.random()<.1) emit({p:new THREE.Vector3(cx+rnd(10),6,cz+rnd(8)),v:[rnd(.6)+.4,-.6,rnd(.4)],col:['#f6c4cc','#fff0b8','#b8e890'][Math.random()*3|0],size:.16,size1:.16,life:7,add:false,drag:0}); });
+     for(let k=0;k<2;k++) if(Math.random()<.85) emit({p:new THREE.Vector3(x+rnd(.16),2.85,z+rnd(.16)),v:[rnd(.12),1.2+Math.random()*.9,rnd(.12)],col:flame[Math.random()<.5?0:1],size:.5+Math.random()*.2,size1:.06,life:.55+.3*Math.random(),g:-.6,drag:1.4});
+     if(Math.random()<.5) emit({p:new THREE.Vector3(x+rnd(.08),2.95,z+rnd(.08)),v:[rnd(.05),1],col:flame[2],size:.26,size1:.04,life:.35,g:-.4});
+     if(Math.random()<.07) emit({p:new THREE.Vector3(x+rnd(.15),3.1,z+rnd(.15)),v:[rnd(.5),2.2+Math.random(),rnd(.5)],col:flame[1],size:.07,size1:.02,life:1.2,g:.6}); }); }
+ // Pinos y arbustos en las esquinas de la isla, flores moradas y rocas
+ const pine=(x,z,s2)=>{ const t=new THREE.Group(); const tr=new THREE.Mesh(new THREE.CylinderGeometry(.12*s2,.18*s2,.8*s2,6),new THREE.MeshStandardMaterial({color:'#5e3d22',roughness:.9})); tr.position.y=.4*s2; t.add(tr);
+   for(let i=0;i<4;i++){ const c=new THREE.Mesh(new THREE.ConeGeometry((.95-i*.2)*s2,(1.1-i*.08)*s2,8),new THREE.MeshStandardMaterial({color:['#27583a','#2e6a40','#38794a','#43895a'][i],roughness:.85,flatShading:true})); c.position.y=(.85+i*.62)*s2; t.add(c); }
+   t.position.set(x,-.1,z); t.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); return t; };
+ const spots=[[X0-2.6,Z0-3.2,1.5],[X0-3.6,Z0-1.4,1.2],[X0-1.4,Z0-3.6,1.1],[X1+2.6,Z0-3.2,1.6],[X1+3.6,Z0-1.4,1.25],[X1+1.4,Z0-3.7,1.1],[X0-4,ZB+.5,1.1],[X1+4,ZB+.4,1.2],[X0-3.4,Z1-2,.9],[X1+3.5,Z1-3,1]];
+ for(const [x,z,sz] of spots) g.add(pine(x+rnd(.3),z+rnd(.3),sz*(.9+r()*.3)));
+ for(let i=0;i<46;i++){ const side=r()<.5?-1:1, x=side<0?X0-1.9-r()*3.2:X1+1.9+r()*3.2, z=Z0-3.4+r()*(ZB-Z0+6.2); if(Math.abs(z-cz)<2&&r()<.5) continue;
+   const b=new THREE.Mesh(blob(.42+r()*.4,i*1.7,.2,10,7),new THREE.MeshStandardMaterial({color:['#3f6a2c','#4c7c34','#355a28'][i%3],roughness:.9})); b.scale.y=.75; b.position.set(x,.05,z); b.castShadow=true; g.add(b); }
+ for(let i=0;i<90;i++){ const x=X0-4.5+r()*(X1-X0+9), z=Z0-4.3+r()*(ZB-Z0+7.6); if(x>X0-.6&&x<X1+.6&&z>Z0-.8&&z<ZB+.6) continue; const fl=new THREE.Mesh(new THREE.SphereGeometry(.08,6,4),new THREE.MeshBasicMaterial({color:['#b48ae8','#f2e27a','#f4f0e8','#e88aa8'][i%4]})); fl.position.set(x,.0,z); g.add(fl); }
+ for(let i=0;i<24;i++){ const side=r()<.5?-1:1, x=side<0?X0-2.2-r()*3:X1+2.2+r()*3, z=Z0-3+r()*(ZB-Z0+5.5), rock=rockMesh(.3+r()*.5,r()*20,['#7a7064','#6a6054','#867c6e'][i%3]); rock.position.set(x,-.05,z); rock.rotation.y=r()*TAU; g.add(rock); }
+ // Acantilados lejanos con árboles y una cascada
+ for(let i=0;i<30;i++){ const an=i/30*TAU, dx=(X1-X0)*.5+11+r()*5, dz=(ZB-Z0)*.5+9+r()*5, x=cx+Math.cos(an)*dx, z=cz+Math.sin(an)*dz, h=3+r()*5;
+   const c=new THREE.Mesh(new THREE.CylinderGeometry(1.2+r()*1.6,2+r()*2,h,6),new THREE.MeshStandardMaterial({color:['#4e4a50','#5a5560','#403c46'][i%3],roughness:.95,flatShading:true})); c.position.set(x,h/2-2.6,z); c.rotation.y=r()*TAU; c.castShadow=true; g.add(c);
+   if(r()<.7){ const t=pine(x+rnd(.6),z+rnd(.6),1.1+r()*.8); t.position.y=h-2.6; g.add(t); } }
+ const fall=new THREE.Mesh(new THREE.PlaneGeometry(1.4,5),new THREE.MeshBasicMaterial({color:'#e8f8f6',transparent:true,opacity:.7,depthWrite:false,side:THREE.DoubleSide})); fall.position.set(X0-9.5,0,Z0-7); fall.userData.dyn=true; g.add(fall);
+ anim.push(t=>{ fall.material.opacity=.55+.2*Math.sin(t*5); if(Math.random()<.5) emit({p:new THREE.Vector3(X0-9.5+rnd(.6),-2.4,Z0-7),v:[rnd(.4),.6,rnd(.4)],col:'#e8f8f6',size:.5,size1:.9,life:1.1,add:false,alpha:.5}); if(Math.random()<.1) emit({p:new THREE.Vector3(cx+rnd(10),6,cz+rnd(8)),v:[rnd(.6)+.4,-.6,rnd(.4)],col:['#f6c4cc','#fff0b8','#b8e890'][Math.random()*3|0],size:.16,size1:.16,life:7,add:false,drag:0}); });
 }
 // Plaza del carrusel: arena helada con un mandala de flor en el suelo, riscos de roca azulada alrededor, cristales y flores azules
 function iceTex(){
@@ -331,7 +358,7 @@ function buildIce(g,cx,cz,rad,r,anim){
 function buildArena(kind){
  const g=new THREE.Group(), rc=boardRects(), r=seeded(kind.length*17+3);
  if(kind==='river'){ const anim=[]; g.userData.anim=anim;
-   const ground=new THREE.Mesh(new THREE.CircleGeometry(60,48),new THREE.MeshStandardMaterial({color:'#4c8a34',roughness:1})); ground.rotation.x=-Math.PI/2; ground.position.y=-.9; ground.receiveShadow=true; g.add(ground);
+   const ground=new THREE.Object3D();
    buildRiver(g,rc,r,anim); g.add(slab(roundRectShape(rc.cx0,rc.cz0,rc.cx1,rc.cz1,.3),.5,0,'#6e6558',null,'#b6aa95'));
    g.traverse(o=>{ if(o.isMesh&&o!==ground) o.receiveShadow=true; }); return g; }
  if(kind.startsWith('temple')){ const anim=[]; g.userData.anim=anim; const T=TEMPLE[kind.split('-')[1]]||TEMPLE.grass;
