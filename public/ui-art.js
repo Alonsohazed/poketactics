@@ -102,7 +102,7 @@
     none: ['#262b40', '#4a5270', '#7f88aa', '#c3c9e2', '#7f88aa'] };
   function badge(key, size = 48) {
     const lg = LEAGUE_PAL[key] ? key : 'none';
-    return `<img class="pxBadge" src="img/rank/${lg}.webp" width="${size}" height="${size}" alt="" aria-hidden="true" draggable="false" decoding="async">`;
+    return `<img class="pxBadge" src="${window.ASSET_BASE||""}img/rank/${lg}.webp" width="${size}" height="${size}" alt="" aria-hidden="true" draggable="false" decoding="async">`;
   }
   window.PX = { icon, hydrate, badge, LEAGUE_PAL, names: Object.keys(ICONS), PAL };
 

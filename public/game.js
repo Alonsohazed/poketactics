@@ -1539,8 +1539,11 @@ function makePriv(p){
 function netFlush(force){
  if(NET.mode!=='host'||!NET.named||!G||!G.players.length) return;
  const emit=(t,d)=>NET.named.emit(t,d).catch(()=>{});
- const pub=makePub(), ps=JSON.stringify(pub);
- if(force||ps!==NET.lastPub){ emit('pub',pub); NET.lastPub=ps; }
+ // Ahorro de transferencia: cada tablero (bd) solo viaja cuando cambia (0 = sin cambios; el cliente conserva el que tenía).
+ // Antes iban los 8 tableros cada segundo porque el temporizador cambia; un envío completo cada 10 s cubre a quien se conecte tarde.
+ const pub=makePub(), bdS=pub.bd.map(b=>JSON.stringify(b)); NET.lastBdP=NET.lastBdP||[];
+ pub.bd=pub.bd.map((b,i)=>force||bdS[i]!==NET.lastBdP[i]?b:0); const ps=JSON.stringify(pub);
+ if(force||ps!==NET.lastPub){ emit('pub',pub); NET.lastPub=ps; NET.lastBdP=bdS; }
  for(const p of G.players) if(p.remote){ const d=makePriv(p), s=JSON.stringify(d); if(force||s!==NET.lastPriv[p.id]){ emit('priv',d); NET.lastPriv[p.id]=s; } }
 }
 function netSendCombats(){
@@ -1561,7 +1564,7 @@ function netCarousel(){
 function hostNetTick(){
  if(NET.mode!=='host') return;
  const now=Date.now();
- if(now-NET.lastForce>2000){ NET.lastForce=now; netFlush(true); } else netFlush(false);
+ if(now-NET.lastForce>10000){ NET.lastForce=now; netFlush(true); } else netFlush(false);
  if(G.phase==='carousel'&&now-NET.lastCar>160){ NET.lastCar=now; netCarousel(); }
 }
 // ----- vestíbulo (Socket.io: el servidor lleva las salas y la partida) -----
@@ -3363,8 +3366,20 @@ async function logout(){
 // El socket se abre con la sesión: al entrar o salir de la cuenta hay que rehacerlo
 function resetSocket(){ if(NET.sock){ NET.sock.removeAllListeners(); NET.sock.disconnect(); NET.sock=null; } }
 
+// Ahorro de transferencia de Render: los retratos (art/) y las insignias (img/rank) se piden a jsDelivr fijados al commit
+// desplegado, como los modelos animados. Solo se cambia si jsDelivr responde; si una imagen falla, vuelve a nuestro servidor.
+function cdnAssets(){
+ fetch('/api/build').then(r=>r.ok?r.json():{}).catch(()=>({})).then(b=>{
+  if(!b||!/^[0-9a-f]{7,40}$/.test(b.commit||'')||!/^[\w.-]+\/[\w.-]+$/.test(b.repo||'')) return;
+  const base=`https://cdn.jsdelivr.net/gh/${b.repo}@${b.commit}/public/`;
+  return fetch(base+'art/abra.webp',{method:'HEAD'}).then(r=>{ if(!r.ok) return;
+   window.ASSET_BASE=base; for(const k in CARD_ART) CARD_ART[k]=base+`art/${k}.webp`; });
+ }).catch(()=>{});
+ addEventListener('error',e=>{ const el=e.target, b=window.ASSET_BASE; if(el&&el.tagName==='IMG'&&b&&el.src.startsWith(b)) el.src=el.src.slice(b.length); },true);
+}
 async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');
+ cdnAssets();
  loadSettings();
  G={phase:'idle',me:makePlayer(0,S.name,false,S.avatar,S.trainer),players:[],log:[],speed:S.speed,pool:{}};
  $('muteBtn').innerHTML=muteIcon();
