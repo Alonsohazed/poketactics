@@ -95,6 +95,8 @@ const ROLE={
 };
 const HPM=[1,1.12,1.28,1.5,1.85], ADM=[1,1.12,1.3,1.55,1.9];
 const STAR=[1,1.8,3.24];
+// Tanques a 2★: +20% de vida y +15 de defensa y resistencia, para que aguanten lo que cuestan sin ser inmortales con objetos
+const TANK2={hp:1.2,res:15};
 // A 3★ los costes altos se disparan: los costes 4 y 5 de 3 estrellas son casi una victoria asegurada (como en TFT)
 const STAR3_BY_COST=[3.24,3.24,3.4,5,8], ABIL3_BY_COST=[3,3.1,3.3,6,11];
 const ABIL_BASE=[180,250,330,520,600], ABIL_STAR=[1,1.5,2.6];
@@ -111,7 +113,7 @@ const UNIT_LIST=[
  U('geodude',['Geodude','Graveler','Golem'],[74,75,76],1,'b',['Roca','Coloso'],[['harden','Rizo Defensa',{df:25,heal:.5}],['slam','Rodar',{r:1,m:.9,stun:.8}],['nova','Explosión',{r:2,m:1.75,selfDmg:.3}]]),
  U('gastly',['Gastly','Haunter','Gengar'],[92,93,94],1,'m',['Fantasma','Hechicero','Team Rocket'],[['bolt','Lengüetazo',{m:1.2,stun:1}],['mark','Maldición',{m:.9,amp:.3,dur:4}],['blast','Bola Sombra',{r:1,m:1.15,shred:.3}]]),
  U('abra',['Abra','Kadabra','Alakazam'],[63,64,65],1,'m',['Psíquico','Hechicero'],[['bolt','Confusión',{m:1.3}],['pull','Telequinesis',{r:2,m:.8,stun:.8}],['strike','Premonición',{r:1,m:1.6,delay:1.2,stun:.5,ghost:1}]]),
- U('cleffa',['Cleffa','Clefairy','Clefable'],[173,35,36],1,'h',['Hada','Sanador'],[['heal','Encanto',{n:1,m:.9}],['zone','Luz Lunar',{r:1,m:1.1,dur:3,ally:1,self:1}],['teamShield','Deseo',{m:.45,heal:.25}]]),
+ U('cleffa',['Cleffa','Clefairy','Clefable'],[173,35,36],1,'h',['Hada','Sanador'],[['heal','Encanto',{n:1,m:1.4}],['zone','Luz Lunar',{r:1,m:1.6,dur:3,ally:1}],['teamShield','Deseo',{m:.55,heal:.3}]]),
  U('rattata',['Rattata','Raticate'],[19,20],1,'a',['Normal','Asesino','Depredadores'],[['dash','Ataque Rápido',{m:1.3,to:'low'}],['execute','Hipercolmillo',{m:1.4,th:.25}]]),
  U('dratini',['Dratini','Dragonair','Dragonite'],[147,148,149],1,'r',['Dragón','Tirador','Potencial Evolutivo'],[['bolt','Furia Dragón',{m:1.4}],['frenzy','Danza Dragón',{as:.2,ad:.15}],['line','Hiperrayo',{m:2,stunSelf:1}]]),
  U('meowth',['Meowth','Persian'],[52,53],1,'r',['Normal','Cazatesoros','Team Rocket'],[['gold','Día de Pago',{m:1,g:1}],['gold','Día de Pago',{m:1.1,g:1,r:1}]]),
@@ -121,11 +123,11 @@ const UNIT_LIST=[
  U('eevee',['Eevee'],[133],2,'b',['Normal','Coloso'],[['stack','Adaptación',{m:.6,hp:25,ad:3,mm:50}]]),
  U('growlithe',['Growlithe','Arcanine'],[58,59],2,'b',['Fuego','Coloso','Depredadores'],[['dash','Colmillo Ígneo',{m:1.2,to:'target',burn:.03}],['dash','Velocidad Extrema',{m:1.5,to:'low',r:1,burn:.03}]]),
  U('psyduck',['Psyduck','Golduck'],[54,55],2,'m',['Agua','Hechicero'],[['sing','Confusión',{r:0,s:1.5,m:1}],['wave','Hidropulso',{m:1,w:1,stun:.8}]]),
- U('chikorita',['Chikorita','Bayleef','Meganium'],[152,153,154],2,'h',['Planta','Sanador'],[['heal','Síntesis',{n:2,m:.8}],['teamShield','Pantalla de Luz',{m:.4}],['zone','Aromaterapia',{r:2,m:1,dur:4,ally:1,self:1}]]),
+ U('chikorita',['Chikorita','Bayleef','Meganium'],[152,153,154],2,'t',['Planta','Sanador'],[['heal','Síntesis',{n:2,m:.9}],['teamShield','Pantalla de Luz',{m:.5,heal:.2}],['zone','Aromaterapia',{r:2,m:1.4,dur:4,ally:1}]]),
  U('magnemite',['Magnemite','Magneton','Magnezone'],[81,82,462],2,'r',['Eléctrico','Acero','Tirador'],[['bolt','Onda Voltio',{selfAs:0.08,m:1.3,stun:.5}],['chain','Bomba Imán',{selfAs:0.12,n:3,m:.85}],['line','Cañón Destello',{selfAs:0.2,m:1.6,shred:.3}]]),
- U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Guardián'],[['harden','Fortaleza',{df:30,heal:.8}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
+ U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
  U('drowzee',['Drowzee','Hypno'],[96,97],2,'t',['Psíquico','Guardián','Team Rocket'],[['sing','Hipnosis',{r:0,s:2,m:.6}],['sing','Come Sueños',{r:1,s:1.5,m:.8,drain:.5}]]),
- U('igglybuff',['Igglybuff','Jigglypuff','Wigglytuff'],[174,39,40],2,'h',['Hada','Normal','Sanador'],[['heal','Encanto',{n:2,m:.7}],['sing','Canto',{r:1,s:2,m:.3}],['sing','Voz Cautivadora',{r:2,s:2,m:.6}]]),
+ U('igglybuff',['Igglybuff','Jigglypuff','Wigglytuff'],[174,39,40],2,'t',['Hada','Normal','Sanador'],[['heal','Encanto',{n:2,m:.8}],['sing','Canto',{r:1,s:2,m:.35,healTeam:.25}],['sing','Voz Cautivadora',{r:2,s:2,m:.6,healTeam:.3}]]),
  U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:1.5,th:.2}]]),
  U('poliwag',['Poliwag','Poliwhirl','Poliwrath'],[60,61,62],2,'b',['Agua','Lucha','Coloso'],[['bolt','Burbuja',{m:1.2}],['sing','Hipnosis',{r:1,s:1.2,m:.6}],['combo','Puño Dinámico',{n:3,m:.7,stun:1.2}]]),
  U('sableye',['Sableye'],[302],2,'a',['Siniestro','Cazatesoros','Team Rocket'],[['dash','Ladrón',{m:1.2,to:'low',g:1}]]),
@@ -136,24 +138,24 @@ const UNIT_LIST=[
  U('oddish',['Oddish','Gloom','Vileplume'],[43,44,45],3,'m',['Planta','Hechicero'],[['zone','Somnífero',{r:1,m:.5,dur:2,sleep:1.2}],['poison','Polvo Veneno',{m:1.1,dur:5,r:1,el:'Veneno'}],['zone','Danza Pétalo',{r:2,m:1.2,dur:3}]]),
  U('elekid',['Elekid','Electabuzz','Electivire'],[239,125,466],3,'b',['Eléctrico','Coloso'],[['empower','Puño Trueno',{n:3,m:.55,stun:.3}],['chain','Puño Trueno',{n:3,m:.9}],['slam','Voltio Cruel',{r:1,m:1.4,stun:1}]]),
  U('rhyhorn',['Rhyhorn','Rhydon','Rhyperior'],[111,112,464],3,'b',['Roca','Coloso'],[['dash','Derribo',{m:1.2,to:'target',stun:1}],['nova','Terremoto',{r:2,m:.75}],['strike','Avalancha',{r:1,m:1.5,delay:.5,stun:1,v:'rocks'}]]),
- U('misdreavus',['Misdreavus','Mismagius'],[200,429],3,'h',['Fantasma','Sanador'],[['drain','Mal de Ojo',{m:1,h:1,ally:1}],['drain','Poder Oculto',{m:1.2,h:1.2,ally:1,shred:.3}]]),
+ U('misdreavus',['Misdreavus','Mismagius'],[200,429],3,'h',['Fantasma','Sanador'],[['drain','Mal de Ojo',{m:1.5,h:1.6,ally:1}],['drain','Poder Oculto',{m:1.7,h:1.8,ally:1,shred:.3}]]),
  U('mimejr',['Mime Jr.','Mr. Mime'],[439,122],3,'t',['Psíquico','Hada','Guardián'],[['teamShield','Pantalla de Luz',{m:.4}],['reflect','Barrera',{m:1,pct:.4}]]),
  U('horsea',['Horsea','Seadra','Kingdra'],[116,117,230],3,'m',['Dragón','Hechicero'],[['bolt','Pistola Agua',{m:1.4}],['line','Hidrobomba',{m:1.3}],['blast','Pulso Dragón',{r:2,m:.9}]]),
- U('togepi',['Togepi','Togetic','Togekiss'],[175,176,468],3,'h',['Hada','Sanador'],[['metro','Metrónomo',{}],['heal','Deseo',{n:3,m:.7}],['buff','Gracia Divina',{as:.25,heal:.4}]]),
+ U('togepi',['Togepi','Togetic','Togekiss'],[175,176,468],3,'h',['Hada','Sanador'],[['metro','Metrónomo',{}],['heal','Deseo',{n:3,m:1.3}],['buff','Gracia Divina',{as:.3,heal:.6}]]),
  U('tauros',['Tauros'],[128],3,'b',['Normal','Coloso'],[['dash','Derribo',{m:1.3,to:'target',stun:1,r:1}]]),
  U('gimmighoul',['Gimmighoul','Gholdengo'],[999,1000],3,'m',['Fantasma','Cazatesoros'],[['gold','Moneda Oculta',{m:1.1,g:1}],['gold','Fiebre Dorada',{m:.75,g:2,all:1}]]),
  U('munchlax',['Munchlax','Snorlax'],[446,143],3,'t',['Normal','Guardián'],[['rest','Engullir',{m:1}],['rest','Descanso',{m:2,sleep:1.5}],['slam','Golpe Cuerpo',{r:1,m:1.05,stun:1.3}]]),
  U('absol',['Absol'],[359],3,'a',['Siniestro','Asesino','Depredadores'],[['execute','Tajo Umbrío',{m:1.5,th:.3}]]),
  U('ditto',['Ditto'],[132],3,'b',['Normal','Coloso'],[['copy','Transformación',{}]]),
  U('larvitar',['Larvitar','Pupitar','Tyranitar'],[246,247,248],4,'t',['Roca','Guardián','Potencial Evolutivo'],[['harden','Endurecimiento',{df:40,heal:.6}],['shield','Fortaleza',{m:1.6}],['zone','Tormenta Arena',{r:2,m:1.8,dur:4,self:1,root:1,chill:1,v:'sand'}]]),
- U('ralts',['Ralts','Kirlia','Gardevoir'],[280,281,282],4,'h',['Psíquico','Hada','Sanador'],[['heal','Encanto',{n:2,m:.8}],['teamShield','Paz Mental',{m:.45,ap:10}],['meteor','Fuerza Lunar',{m:.55,healAll:.3}]]),
+ U('ralts',['Ralts','Kirlia','Gardevoir'],[280,281,282],4,'h',['Psíquico','Hada','Sanador'],[['heal','Encanto',{n:2,m:1.1}],['teamShield','Paz Mental',{m:.55,ap:10}],['meteor','Fuerza Lunar',{m:.55,healAll:.4}]]),
  U('gible',['Gible','Gabite','Garchomp'],[443,444,445],4,'a',['Dragón','Asesino','Depredadores'],[['dash','Garra Dragón',{m:1.3,to:'far'}],['execute','Carga Dragón',{m:1.5,th:.25}],['slam','Terremoto',{r:2,m:.85,stun:.3}]]),
  U('duskull',['Duskull','Dusclops','Dusknoir'],[355,356,477],4,'t',['Fantasma','Guardián'],[['sing','Mal de Ojo',{r:0,s:1.5,m:.6}],['taunt','Anulación',{m:1.2}],['pull','Mundo Sombrío',{r:2,m:.9,stun:1.2,self:1}]]),
  U('shinx',['Shinx','Luxio','Luxray'],[403,404,405],4,'a',['Eléctrico','Asesino','Depredadores'],[['dash','Placaje',{m:1.3,to:'far'}],['chain','Chispa',{n:3,m:1}],['execute','Colmillo Rayo',{m:1.6,th:.25,stun:1}]]),
  U('turtwig',['Turtwig','Grotle','Torterra'],[387,388,389],4,'t',['Planta','Guardián','Potencial Evolutivo'],[['harden','Refugio',{df:35,heal:.7}],['drain','Gigadrenado',{m:1.2,h:1.2}],['nova','Terremoto',{r:2,m:1,stun:1}]]),
  U('beldum',['Beldum','Metang','Metagross'],[374,375,376],4,'b',['Acero','Coloso','Potencial Evolutivo'],[['dash','Derribo',{m:1.3,to:'target'}],['empower','Puño Meteoro',{n:3,m:.7}],['slam','Puño Meteoro',{r:1,m:1,stun:.6}]]),
  U('bagon',['Bagon','Shelgon','Salamence'],[371,372,373],4,'m',['Dragón','Hechicero','Potencial Evolutivo'],[['burn','Ascuas',{m:1.2}],['harden','Fortaleza',{df:40,heal:1}],['meteor','Draco Meteoro',{m:.7}]]),
- U('lapras',['Lapras'],[131],4,'h',['Agua','Sanador'],[['wave','Surf',{m:.6,w:1.6,stun:.4,healTeam:.18}]]),
+ U('lapras',['Lapras'],[131],4,'t',['Agua','Sanador'],[['wave','Surf',{m:.6,w:1.6,stun:.4,healTeam:.25}]]),
  U('zorua',['Zorua','Zoroark'],[570,571],4,'a',['Siniestro','Asesino','Team Rocket'],[['dash','Finta',{m:1.4,to:'low',stealth:1}],['dash','Juego Sucio',{m:1.8,to:'low',stealth:2,r:1}]]),
  U('timburr',['Timburr','Gurdurr','Conkeldurr'],[532,533,534],4,'b',['Lucha','Coloso'],[['empower','Ultrapuño',{n:3,m:.6}],['nova','Martillazo',{r:1,m:1.1,stun:1}],['combo','Ultrapuño',{n:5,m:.6}]]),
  U('hatenna',['Hatenna','Hattrem','Hatterene'],[856,857,858],4,'m',['Psíquico','Hada','Hechicero'],[['bolt','Confusión',{m:1.4}],['blast','Brillo Mágico',{r:1,m:1}],['meteor','Velo Mental',{m:.65,stun:.5}]]),
@@ -162,13 +164,13 @@ const UNIT_LIST=[
  U('mewtwo',['Mewtwo'],[150],5,'m',['Psíquico','Hechicero','Legendario'],[['blast','Onda Mental',{r:2,m:1.2,stun:.5,grow:.35,mm:85,mana0:20,unstable:MEW_NEED}]]),
  U('rayquaza',['Rayquaza'],[384],5,'r',['Dragón','Tirador','Legendario'],[['line','Ascenso Draco',{m:.7,refundKill:.2,fall:.3,mm:120,mana0:20}]]),
  U('zapdos',['Zapdos'],[145],5,'r',['Eléctrico','Tirador','Legendario'],[['chain','Electrocañón',{n:6,m:.38,amp:.15,stun:.6,mm:75,mana0:15}]]),
- U('moltres',['Moltres'],[146],5,'m',['Fuego','Hechicero','Legendario'],[['zone','Sofoco',{r:2,m:2.2,dur:4,burn:.04,mm:95,revive:.5,nova:1}]]),
- U('kyogre',['Kyogre'],[382],5,'m',['Agua','Hechicero','Legendario'],[['meteor','Pulso Primigenio',{m:.4,manaTeam:35,chill:1.5,mm:200,mana0:40}]]),
+ U('moltres',['Moltres'],[146],5,'m',['Fuego','Hechicero','Legendario'],[['zone','Sofoco',{r:2,m:1.8,dur:4,burn:.04,mm:95,revive:.5,nova:1}]]),
+ U('kyogre',['Kyogre'],[382],5,'m',['Agua','Hechicero','Legendario'],[['meteor','Pulso Primigenio',{m:.45,manaTeam:35,chill:1.5,mm:200,mana0:80}]]),
  U('groudon',['Groudon'],[383],5,'b',['Roca','Coloso','Legendario'],[['titan','Filo del Abismo',{hp:.45,m:.45,n:6,r:1,dr:.25,dur:5,mm:110,v:'rocks'}]]),
  U('giratina',['Giratina'],[487],5,'a',['Fantasma','Dragón','Asesino','Legendario'],[['devour','Mundo Distorsión',{m:3.8,dur:2,ghp:60,gad:6,mm:60,mana0:20}]]),
- U('lugia',['Lugia'],[249],5,'t',['Psíquico','Guardián','Legendario'],[['wave','Aerochorro',{m:1,w:1.8,push:2,stun:.6,healTeam:.3,asTeam:.25,mm:110}]]),
+ U('lugia',['Lugia'],[249],5,'t',['Psíquico','Guardián','Legendario'],[['wave','Aerochorro',{m:.5,w:1.8,push:2,stun:.6,healTeam:.3,asTeam:.25,mm:110}]]),
  U('hooh',['Ho-Oh'],[250],5,'h',['Fuego','Sanador','Legendario'],[['meteor','Fuego Sagrado',{m:.5,burn:.03,healAll:.45,phoenix:.4,mm:110}]]),
- U('darkrai',['Darkrai'],[491],5,'m',['Siniestro','Hechicero','Legendario'],[['sing','Brecha Negra',{all:1,s:2.5,m:.6,drain:.4,markAll:.3,markDur:6,mm:140,mana0:75}]]),
+ U('darkrai',['Darkrai'],[491],5,'m',['Siniestro','Hechicero','Legendario'],[['sing','Brecha Negra',{all:1,s:3.2,m:.3,drain:.4,markAll:.3,markDur:6,mm:140,mana0:75}]]),
 ];
 const EVOS=[
  U('vaporeon',['Vaporeon'],[134],2,'t',['Agua','Guardián'],[['taunt','Acua Aro',{m:1.2,heal:.5,stk:1}]]),
@@ -184,6 +186,7 @@ const MEGAS=[
  U('megamewtwo',['Mega Mewtwo Y'],['y/150'],5,'m',['Psíquico','Hechicero','Legendario'],[['blast','Psicorrupción',{r:2,m:1.5,stun:.8,grow:.4,mm:80,mana0:30,mega:1}]]),
 ].map(e=>({...e,evoOf:'mewtwo',mult:1.4}));
 const DEF={}; for(const u of [...UNIT_LIST,...EVOS,...MEGAS]) DEF[u.key]=u;
+DEF.lugia.hpm=1.2; // Lugia: menos daño pero más aguante
 // Forma de cada estrella. Los costes 4 de 3 formas empiezan en su 2.ª forma (Pupitar, Kirlia, Gabite…):
 // a 2★ ya son la forma final con su mejor habilidad, porque llevarlos a 3★ es muy difícil
 const formIdx=(d,star,len)=>Math.max(0,Math.min(d.cost===4&&len===3?star:star-1,len-1));
@@ -639,8 +642,8 @@ function applyStats(u,s){
   case 'manaRegen':u.manaRegen+=v;break; case 'regen':u.regen+=v;break; case 'dodge':u.dodge+=v;break; case 'range':u.range+=v;break; } }
 }
 function baseCombatUnit(d,side,star,rand=Math.random){
- const ro=ROLE[d.role], cm=d.cost-1, s=star>=3?STAR3_BY_COST[cm]:STAR[star-1], em=d.mult||1, ab=abOf(d,star);
- return {side,d,star,cost:d.cost,name:nameOf(d,star),ab,maxHp:ro.hp*HPM[cm]*s*em,ad:ro.ad*ADM[cm]*s*em,hp0:ro.hp*HPM[cm]*s*em,ad0:ro.ad*ADM[cm]*s*em,as:ro.as,range:ro.range,df:ro.df,mr:ro.mr,ap:0,
+ const ro=ROLE[d.role], cm=d.cost-1, s=star>=3?STAR3_BY_COST[cm]:STAR[star-1], em=d.mult||1, ab=abOf(d,star), t2=d.role==='t'&&star===2, hm=em*(d.hpm||1)*(t2?TANK2.hp:1), rs=t2?TANK2.res:0;
+ return {side,d,star,cost:d.cost,name:nameOf(d,star),ab,maxHp:ro.hp*HPM[cm]*s*hm,ad:ro.ad*ADM[cm]*s*em,hp0:ro.hp*HPM[cm]*s*hm,ad0:ro.ad*ADM[cm]*s*em,as:ro.as,range:ro.range,df:ro.df+rs,mr:ro.mr+rs,ap:0,
    mana:ab[2].mana0!=null?ab[2].mana0:ro.mana,maxMana:ab[2].mm||ro.maxMana,critC:.25,critM:1.4,dodge:0,burnPct:0,manaPerAtk:0,regen:0,manaRegen:0,omni:0,dr:0,bully:0,shock:0,
    focus:false,berry:false,dmgBonus:0,shield:0,shieldT:0,startShield:0,stun:0,sleepT:0,stealth:0,tdr:0,tdrT:0,reflT:0,reflPct:0,empN:0,empDmg:0,empStun:0,glow:0,
    atkCd:.25+rand()*.35,moveCd:rand()*.2,target:null,burns:[],dead:false,kills:0,flash:0,mt:1,role:d.role,items:[],ref:null,sp:{},atkN:0,titanN:0};
