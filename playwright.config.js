@@ -31,6 +31,7 @@ module.exports = defineConfig({
     env: {
       PORT: String(PORT),
       DATABASE_URL: '',
+      QUEUE_FILL_MS: '2000', // la cola se completa con bots a los 2 s en las pruebas
       DB_FILE: path.join(os.tmpdir(), `poke-tactics-e2e-${process.pid}.json`),
     },
   },

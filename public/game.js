@@ -982,6 +982,16 @@ function simulate(cb){ let g=0; while(!cb.done&&g++<2000) stepCombat(cb); cb.don
 const survivors=(cb,side)=>cb.units.filter(u=>!u.dead&&u.side===side).reduce((s,u)=>s+(u.star>=3?2:1),0);
 
 /* ============================== [BOTS] ============================== */
+// Niveles de los bots: cambian sus decisiones (economía, refrescos, nivel, colocación, objetos y aumentos), nunca sus estadísticas
+const BOT_SKILL={
+ principiante:{lvl:-1,reserve:10,rolls:0,randBuy:.4,randPlace:true,skipEquip:.5},
+ intermedio:{lvl:0,reserve:0,rolls:0,randBuy:0},
+ avanzado:{lvl:1,reserve:-10,rolls:3,randBuy:0,smart:true},
+ experto:{lvl:1,reserve:-10,rolls:3,randBuy:0,smart:true,econ:true,carry:true},
+ maestro:{lvl:2,reserve:-10,rolls:6,randBuy:0,smart:true,econ:true,carry:true},
+};
+const DIFF_SKILL={facil:'principiante',normal:'intermedio',dificil:'avanzado'};
+const botSkill=p=>BOT_SKILL[p.skill]||BOT_SKILL[DIFF_SKILL[G.diff]||'intermedio'];
 function botValue(u,counts){ const d=DEF[u.defId]; return d.cost*Math.pow(3,u.star-1)+u.items.length*1.5+d.traits.reduce((s,t)=>s+(counts[t]||0)*.35,0); }
 function botMakeRoom(p,key){
  const counts=traitCountsOf(allUnits(p));
@@ -989,7 +999,7 @@ function botMakeRoom(p,key){
  if(!cand.length) return false; sellAt(p,{i:cand[0].i}); return true;
 }
 function botShop(p,reserve){
- const easy=G.diff==='facil';
+ const easy=botSkill(p).randBuy>0;
  let bought=true, guard=0;
  while(bought&&guard++<10){
    bought=false; const all=allUnits(p); const counts=traitCountsOf(all);
@@ -998,7 +1008,7 @@ function botShop(p,reserve){
      const k=p.shop[i]; if(!k) continue; const d=DEF[k];
      const copies=all.filter(u=>u.baseId===k).length;
      let want=copies>0||d.traits.some(t=>top.includes(t))||all.length<maxBoard(p)+2||(d.cost>=4&&p.level>=7);
-     if(easy&&Math.random()<.4) want=false;
+     if(easy&&Math.random()<botSkill(p).randBuy) want=false;
      const budget=copies>=2?0:reserve;
      if(!want||p.gold-d.cost<budget) continue;
      if(!canBuy(p,i)&&!botMakeRoom(p,k)) continue;
@@ -1008,7 +1018,7 @@ function botShop(p,reserve){
 }
 function placeBot(p,u){
  const role=DEF[u.defId].role, C=[3,2,4,1,5,0,6]; let order;
- if(G.diff==='facil') order=shuffle([0,1,2,3].flatMap(r=>C.map(c=>[c,r])));
+ if(botSkill(p).randPlace) order=shuffle([0,1,2,3].flatMap(r=>C.map(c=>[c,r])));
  else if(role==='t'||role==='b') order=[0,1].flatMap(r=>C.map(c=>[c,r]));
  else if(role==='a') order=[[0,3],[6,3],[1,3],[5,3],[0,2],[6,2]];
  else order=[3,2].flatMap(r=>C.map(c=>[c,r]));
@@ -1022,10 +1032,13 @@ function botArrange(p){
  for(const u of all){ if(chosen.length<n&&!seen.has(u.defId)){ chosen.push(u); seen.add(u.defId); } else rest.push(u); }
  while(chosen.length<n&&rest.length) chosen.push(rest.shift());
  for(const u of chosen) placeBot(p,u);
+ // Expertos: su mejor atacante (el que más objetos lleva) va a una esquina trasera, lejos del centro
+ if(botSkill(p).carry){ const ks=Object.keys(p.board), car=ks.map(k=>p.board[k]).filter(u=>!['t','b'].includes(DEF[u.defId].role)).sort((a,b)=>b.items.length-a.items.length||botValue(b,counts)-botValue(a,counts))[0];
+   if(car){ const from=ks.find(k=>p.board[k]===car), to=['0,3','6,3'].find(k=>k!==from); if(from&&to&&!['0,3','6,3'].includes(from)){ const o=p.board[to]; p.board[to]=car; if(o) p.board[from]=o; else delete p.board[from]; } } }
  for(const u of rest){ const j=p.bench.findIndex(x=>!x); if(j>=0) p.bench[j]=u; else { p.gold+=sellValue(u); returnToPool(u.baseId,Math.pow(3,u.star-1)); for(const it of u.items) giveItem(p,it); } }
 }
 function botEquip(p){
- if(G.diff==='facil'&&Math.random()<.5) return;
+ if(botSkill(p).skipEquip&&Math.random()<botSkill(p).skipEquip) return;
  const comps=shuffle(p.items.filter(k=>ITEMS[k].comp)), rest=p.items.filter(k=>!ITEMS[k].comp);
  while(comps.length>=2){ const a=comps.pop(), b=comps.pop(); rest.push(combineKey(a,b)); }
  p.items=[...rest,...comps];
@@ -1036,16 +1049,18 @@ function botEquip(p){
  p.items=left;
 }
 function botPlan(p){
- const R=G.round, s=R.s, df=G.diff||'normal';
+ const R=G.round, s=R.s, K=botSkill(p);
  let tgt=s===1?3:s===2?(R.n<=3?4:5):s===3?(R.n<=2?6:7):s===4?8:s===5?9:10;
- if(df==='facil') tgt=Math.max(2,tgt-1);
- if(df==='dificil'&&s>=3) tgt=Math.min(10,tgt+(R.n>=4?1:0));
+ if(K.lvl<0) tgt=Math.max(2,tgt+K.lvl);
+ if(K.lvl>0&&s>=3) tgt=Math.min(10,tgt+(R.n>=4||K.lvl>1?1:0));
  let reserve=s<=1?0:s===2?10:30; if(p.hp<45) reserve=10; if(p.hp<25) reserve=0;
- if(df==='facil') reserve+=10; if(df==='dificil'&&p.hp<60) reserve=Math.max(0,reserve-10);
+ if(K.reserve>0) reserve+=K.reserve; if(K.reserve<0&&p.hp<60) reserve=Math.max(0,reserve+K.reserve);
+ // Economía de experto: guarda 50 de oro para el interés máximo mientras tiene vida, y en 4-1 gasta todo para estabilizar
+ if(K.econ){ if(s>=2&&s<=4&&p.hp>=55) reserve=Math.max(reserve,50); if((s===4&&R.n<=2)||p.hp<35) reserve=Math.min(reserve,10); }
  let g=0; while(p.level<tgt&&p.gold-4>=Math.min(reserve,20)&&g++<40) buyXp(p);
  botShop(p,reserve);
  let rolls=0; let maxRolls=p.hp<40?12:s>=5?6:p.gold>60?3:0;
- if(df==='facil') maxRolls=0; if(df==='dificil') maxRolls+=3;
+ if(K.randBuy>0) maxRolls=0; else maxRolls+=K.rolls; if(K.econ&&s===4&&R.n<=2) maxRolls=Math.max(maxRolls,15);
  while(rolls<maxRolls&&(p.freeRerolls>0||p.gold-2>=reserve)){ reroll(p); rolls++; botShop(p,reserve); }
  while(p.freeRerolls>0){ reroll(p); botShop(p,reserve); }
  botArrange(p); botEquip(p);
@@ -1145,7 +1160,7 @@ function newGame(opts={}){
  let id=opts.server?0:1;
  for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.remote=true; p.peer=h.peer; G.players.push(p); }
  const taken=new Set(G.players.map(p=>p.tr)), bots=shuffle(BOT_NAMES.filter(b=>!taken.has(b[2])));
- while(G.players.length<8){ const [n,e,t]=bots.pop(); G.players.push(makePlayer(id++,n+(G.mp?' 🤖':''),true,e,t)); }
+ while(G.players.length<8){ const [n,e,t]=bots.pop(); const bp=makePlayer(id++,n+(G.mp?' (bot)':''),true,e,t); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.botIdx=G.players.length; G.players.push(bp); }
  // En el servidor no hay jugador local: G.me es un espectador fantasma fuera de la lista
  G.me=opts.server?Object.assign(makePlayer(-1,'',true,''),{alive:false}):G.players[0];
  note(null,`Empieza la partida (bots: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
@@ -1171,7 +1186,7 @@ function nextRound(){
  if(R.aug>=0){
    const tier=G.augTiers[R.aug];
    for(const p of alivePlayers()){
-     if(p.isBot) applyAugment(p,AUG_BY[pick(augmentChoices(p,tier))]);
+     if(p.isBot) applyAugment(p,AUG_BY[botAugPick(p,augmentChoices(p,tier),R.aug)]);
      else { p.augChoices=augmentChoices(p,tier); p.augPicked=false; p.augRR=[0,0,0]; }
    }
    if(alivePlayers().some(isHuman)){ G.phase='augment'; G.augDeadline=G.mp?Date.now()+35000:Infinity; renderUI(); if(G.me.alive&&!G.me.isBot) showAugment(); return; }
@@ -1179,6 +1194,12 @@ function nextRound(){
  startPlanning();
 }
 function checkAugDone(){ if(G.phase==='augment'&&alivePlayers().every(p=>p.isBot||p.augPicked)){ if(NET.modal==='aug') closeModal(); startPlanning(); } }
+function botAugPick(p,choices,stage){
+ if(!botSkill(p).smart||!choices.length) return pick(choices);
+ const top=topTrait(p), score=id=>{ const a=AUG_BY[id]; let s=Math.random()*.5; if(stage===0&&['econ','fast','slow','streak'].includes(a.cat)) s+=2; if(top&&(a.tags||[]).includes(top)) s+=3;
+   if(stage>0&&['trait','emblem','carry'].includes(a.cat)) s+=1.5; if(a.hero&&allUnits(p).some(u=>u.baseId===a.hero)) s+=2.5; if(a.req&&!a.req(p)) s-=9; return s; };
+ return choices.slice().sort((x,y)=>score(y)-score(x))[0];
+}
 function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
 function startPlanning(){
  const R=G.round; G.phase='planning'; G.timer=S.timer||Infinity; if(G.mp&&!isFinite(G.timer)) G.timer=60;
@@ -1317,7 +1338,7 @@ function resolveRound(){
  const dead=G.players.filter(p=>p.alive&&p.hp<=0).sort((a,b)=>a.hp-b.hp);
  let n=alivePlayers().length;
  for(const p of dead){
-   p.place=n--; p.alive=false; p.hp=0;
+   p.finalComp=compSnap(p); p.place=n--; p.alive=false; p.hp=0;
    for(const u of allUnits(p)) returnToPool(u.baseId,Math.pow(3,u.star-1));
    for(const k of p.shop) if(k) returnToPool(k,1);
    p.board={}; p.bench=Array(BENCH).fill(null); p.shop=[null,null,null,null,null];
@@ -1337,7 +1358,7 @@ function resolveRound(){
  for(const a of G.anvils) queue.push(done=>showAnvil(a,done));
  G.anvils=[];
  renderUI();
- if(alivePlayers().length<=1||(!G.mp&&!me.alive)){ if(alivePlayers().length===1) alivePlayers()[0].place=1; later(endGame,900); return; }
+ if(alivePlayers().length<=1||(!G.mp&&!me.alive)){ if(alivePlayers().length===1){ const w=alivePlayers()[0]; w.finalComp=compSnap(w); w.place=1; } later(endGame,900); return; }
  if(G.mp&&!SERVER&&!me.alive&&!G.hostOutShown){ G.hostOutShown=true; queue.push(done=>{ openModal(`<h1>Has quedado eliminado</h1><p>Puesto ${me.place}. Como anfitrión, la partida sigue en tu pestaña: no la cierres hasta que termine para que los demás puedan acabar.</p><button class="btn primary" id="okOut">Seguir como espectador</button>`); $('okOut').onclick=()=>{ closeModal(); done(); }; }); }
  const proceed=()=>later(nextRound,1100);
  if(G.auto){ proceed(); return; }
@@ -1373,6 +1394,10 @@ const releaseAt=idx=>1.5+3.5*Math.floor(idx/2);
 // Cada pareja que sale a la vez empieza en lados opuestos (misma distancia a todos los Pokémon)
 const BALL_OF=idx=>['poke','great','ultra','master'][Math.min(3,Math.floor(idx/2))]; // ball de cada pareja de salida
 const carAng=(j,n)=>Math.floor(j/2)*Math.PI/Math.ceil(n/2)+(j%2)*Math.PI+Math.PI/8;
+// Instantánea del equipo para el historial: guarda nombre y número de Pokédex, no solo la clave (sobrevive a cambios futuros)
+function compSnap(p){ const tt=traitTiers(p), tc=traitCounts(p);
+ return {lvl:p.level,round:G.round?G.round.s+'-'+G.round.n:'',units:Object.entries(p.board).map(([k,u])=>{ const d=DEF[u.defId]; return [u.defId,u.star,u.items.slice(0,3),dexOf(d,u.star),nameOf(d,u.star),d.cost]; }).slice(0,12),
+  traits:Object.keys(tt).filter(t=>tt[t]>0&&t!=='Legendario').map(t=>[t,tc[t],tt[t]]).sort((a,b)=>b[2]-a[2]||b[1]-a[1]).slice(0,9),augs:p.augments.slice(0,3)}; }
 function endGame(){ G.over=true; G.phase='over'; if(G.me.alive&&!G.me.place) G.me.place=1; renderUI(); if(NET.mode==='host') netFlush(true); if(!G.auto&&!HEADLESS) showGameOver(); }
 
 // Acciones de un jugador (las del anfitrión, las de los clientes y las de un jugador solo pasan por aquí)
@@ -1461,16 +1486,18 @@ function sock(){
  const s=io({transports:['websocket','polling']}); NET.sock=s; NET.rooms=[];
  s.on('connect',()=>{ NET.myPeer=s.id; if(NET.screen==='lobby') s.emit('list'); });
  s.on('connect_error',err=>{ if(err&&err.message==='auth'){ resetSocket(); resetNet(); showAuth('Tu sesión ha caducado. Vuelve a entrar.'); } });
- s.on('disconnect',()=>{ if(NET.mode==='client'||NET.mode==='joining'){ toast('Se perdió la conexión con el servidor'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
+ s.on('disconnect',()=>{ if(NET.queue) endQueue(); if(NET.mode==='client'||NET.mode==='joining'){ toast('Se perdió la conexión con el servidor'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
  s.on('rooms',list=>{ NET.rooms=Array.isArray(list)?list.slice(0,50):[]; if(NET.screen==='lobby') renderRoomList(); });
- s.on('err',m=>{ toast(String(m||'Error')); if(NET.mode==='joining'&&NET.screen!=='room') NET.mode='sp'; });
+ s.on('err',m=>{ toast(String(m||'Error')); if(NET.queue&&NET.queue.state!=='matched') endQueue(); if(NET.mode==='joining'&&NET.screen!=='room'&&!NET.queue) NET.mode='sp'; });
  s.on('lobby',d=>{
    if(NET.mode!=='joining'||!d) return;
    NET.cfg={name:String(d.name||'Sala').slice(0,24),max:+d.max||8,diff:DIFF_NAME[d.diff]?d.diff:'normal'};
    NET.code=String(d.code||'').slice(0,5); NET.owner=String(d.owner||''); NET.seats=Array.isArray(d.seats)?d.seats.slice(0,8):[];
    if(NET.screen!=='room') showRoomScreen(); else renderSeats();
  });
- s.on('start',d=>{ if(NET.mode!=='joining') return; const seats=(d&&d.seats)||[]; if(seats.find(x=>x.peer===NET.myPeer)) startClient(); });
+ s.on('start',d=>{ if(NET.mode!=='joining') return; const seats=(d&&d.seats)||[]; if(seats.find(x=>x.peer===NET.myPeer)){ NET.queue=null; renderQueue(); NET.result=null; startClient(); } });
+ s.on('queue',onQueue);
+ s.on('result',onResult);
  s.on('pub',d=>{ if(NET.mode==='client') applyPub(d); });
  s.on('priv',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyPriv(d); });
  s.on('cmb',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyCmb(d); });
@@ -1479,25 +1506,6 @@ function sock(){
  s.on('cmbs',d=>{ if(NET.mode==='client'&&d&&Array.isArray(d.list)){ G.allFights=d.list.slice(0,8); G.allR={s:clamp(d.R&&d.R[0]|0,1,9),n:clamp(d.R&&d.R[1]|0,1,7)}; G.view=null; } });
  s.on('bye',()=>{ if(NET.mode==='client'||NET.mode==='joining'){ toast('La sala se cerró'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
  return s;
-}
-function showMP(){
- const s=sock();
- if(!s){ openModal(`<h1>Multijugador</h1><p>El multijugador necesita el servidor del juego. Abre el juego desde la dirección donde está desplegado (tu app de Render), no como archivo suelto.</p>`,{closable:true}); return; }
- NET.screen='lobby';
- openModal(`<h1>Multijugador</h1>
-  <p class="muted">Los asientos vacíos los ocupan bots.</p>
-  <h3>Crear sala</h3>
-  <div class="row">
-   <div class="field"><label for="rmName">Nombre de la sala</label><input id="rmName" maxlength="24" value="Sala de ${esc(S.name)}"></div>
-   <div class="field"><label for="rmMax">Jugadores humanos</label><select id="rmMax">${[2,3,4,5,6,7,8].map(n=>`<option ${n===8?'selected':''}>${n}</option>`).join('')}</select></div>
-   <div class="field"><label for="rmDiff">Dificultad de los bots</label><select id="rmDiff">${Object.entries(DIFF_NAME).map(([k,v])=>`<option value="${k}" ${k===S.diff?'selected':''}>${v}</option>`).join('')}</select></div>
-  </div>
-  <button class="btn primary" id="rmCreate">Crear sala</button>
-  <h3>Salas abiertas</h3><div class="roomList" id="roomList"></div>
-  <h3>Unirse con código</h3><div class="row"><div class="field"><label for="rmCode">Código</label><input id="rmCode" maxlength="5" placeholder="abc12"></div><button class="btn" id="rmJoin" style="margin-bottom:10px">Unirse</button></div>`,{closable:true,onClose:()=>{ if(NET.screen==='lobby') NET.screen=''; }});
- renderRoomList(); s.emit('list');
- $('rmCreate').onclick=()=>{ S.diff=$('rmDiff').value; saveSettings(); NET.mode='joining'; s.emit('create',{name:$('rmName').value.trim()||'Sala',max:+$('rmMax').value,diff:$('rmDiff').value}); };
- $('rmJoin').onclick=()=>{ const c=$('rmCode').value.trim().toLowerCase(); if(!/^[a-z0-9]{5}$/.test(c)){ toast('El código tiene 5 letras o números'); return; } NET.mode='joining'; s.emit('join',{code:c}); };
 }
 function renderRoomList(){
  const el=$('roomList'); if(!el) return;
@@ -1509,18 +1517,18 @@ function showRoomScreen(){
  NET.screen='room';
  openModal(`<h1>Sala <span class="code">${esc(NET.code)}</span></h1><p class="muted" id="roomInfo"></p><div class="seats" id="seats"></div>
   <div class="row" id="rmActions"></div>
-  <p class="small muted">Pasa el código a tus amigos: lo escriben en Multijugador → Unirse con código.</p>`,{closable:false});
+  <p class="small muted">Pasa el código a tus amigos: lo escriben en Normal → Sala informal → Unirse.</p>`,{closable:false});
  renderSeats();
 }
 function renderSeats(){
  const el=$('seats'); if(!el) return; const cfg=NET.cfg||{name:'Sala',max:8,diff:'normal'};
- $('roomInfo').textContent=`${cfg.name} · hasta ${cfg.max} humanos · bots en ${DIFF_NAME[cfg.diff]}`;
- const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${esc(s.nick)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' 👑':''}</div>`:`<div class="seat bot">🤖 Bot ${DIFF_NAME[cfg.diff]}</div>`); }
- el.innerHTML=rows.join('');
+ $('roomInfo').textContent=`${cfg.name} · sala informal (da caramelos, no cambia tu rango) · los asientos libres son bots de vuestro nivel`;
+ const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${esc(s.nick)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' <em class="hostTag">anfitrión</em>':''}</div>`:`<div class="seat bot"><i data-i="people" data-s="20"></i>Bot</div>`); }
+ el.innerHTML=rows.join(''); if(window.PX) PX.hydrate(el);
  const owner=NET.owner&&NET.owner===NET.myPeer;
  $('rmActions').innerHTML=(owner?'<button class="btn primary" id="rmStart">Empezar partida</button>':'<span class="muted" style="margin-right:auto">Esperando a que el creador de la sala empiece…</span>')+'<button class="btn" id="rmLeave">Salir de la sala</button>';
  if($('rmStart')) $('rmStart').onclick=()=>NET.sock.emit('start',{timer:S.timer||30,speed:S.speed||1});
- $('rmLeave').onclick=()=>{ leaveRoom(); showMP(); };
+ $('rmLeave').onclick=()=>{ leaveRoom(); showNormal(); };
 }
 function resetNet(){ Object.assign(NET,{mode:'sp',code:'',owner:'',seats:[],cfg:null,screen:'',modal:'',shownOver:false,lastToast:0}); updateNetTag(); }
 function leaveRoom(){ if(NET.sock) NET.sock.emit('leave'); if(G&&G.mirror) G.over=true; resetNet(); }
@@ -2183,8 +2191,9 @@ function bindEvents(){
  $('recBtn').addEventListener('click',showRecipes);
  $('dexBtn').addEventListener('click',()=>showDex(0));
  $('menuBtn').addEventListener('click',confirmQuit);
- $('playBtn').addEventListener('click',()=>{ Music.init(); showDifficulty(); });
- $('mpBtn').addEventListener('click',()=>{ Music.init(); showMP(); });
+ $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
+ $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
+ $('histBtn').addEventListener('click',showHistory);
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
@@ -2796,7 +2805,7 @@ function renderCard(){
 }
 
 /* ---------- modales ---------- */
-function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
+function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
 function savedTac(){ if(ACC&&TACS[ACC.trainer]) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]?k:''; }catch(e){ return ''; } }
@@ -2804,7 +2813,7 @@ function savedTac(){ if(ACC&&TACS[ACC.trainer]) return ACC.trainer; try{ const k
 function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
- openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6, 8 y 9 (Mega). Con <b>T</b> saludas 👍.</p>
+ openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6, 8 y 9 (Mega). Con <b>T</b> saluda.</p>
   <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k];
     return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn gold" id="tacOk">Confirmar</button></div>`,{closable:!first,onClose:()=>{ if(ACC) showMenu(); }});
@@ -2816,23 +2825,15 @@ function showTacPick(first){
  };
 }
 const tacHeadHTML=(k,s)=>`<span class="head tacHead" style="--hs:${s}px">${artImg(tacKey({tac:k}))}</span>`;
-function showDifficulty(){
- openModal(`<h1>Contra bots</h1><p class="muted">7 entrenadores rivales. Elige la dificultad.</p>
- <div class="diffs">
-  <button class="choice" data-d="facil"><span class="big">🌱</span><b>Fácil</b><span class="small">No refrescan la tienda, colocan sus Pokémon al azar y equipan objetos a medias.</span></button>
-  <button class="choice" data-d="normal"><span class="big">⚔️</span><b>Normal</b><span class="small">Juegan una economía estándar y buscan sinergias.</span></button>
-  <button class="choice" data-d="dificil"><span class="big">🔥</span><b>Difícil</b><span class="small">Refrescan más, suben de nivel antes y gastan mejor cuando tienen poca vida.</span></button>
- </div>`,{closable:true});
- $('mbox').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ S.diff=b.dataset.d; saveSettings(); closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:S.diff}); });
-}
+
 function showHow(){
  openModal(`<h1>Cómo jugar</h1>
  <p>Juegas contra 7 entrenadores. Cada ronda compras Pokémon, los colocas en el tablero y combaten solos. Si pierdes, pierdes vida de entrenador. El último en pie gana.</p>
  <h3>Habilidades</h3><ul class="help"><li>Cada Pokémon llena su barra azul de maná al atacar y recibir golpes. Al llenarla lanza su habilidad: verás el nombre sobre él, el efecto en el tablero y una línea en «Habilidades en este combate».</li><li>Toca cualquier Pokémon (también los rivales en pleno combate) para ver su ficha completa a la derecha.</li></ul>
  <h3>Economía</h3><ul class="help"><li>Ingreso por ronda: 0 · 2 · 3 en la fase 1, 4 en la 2-1 y 5 desde entonces.</li><li>Interés: +1 por cada 10 de oro (máx. 5). Rachas de 2+ victorias o derrotas dan +1 a +3.</li></ul>
  <h3>Pokémon</h3><ul class="help"><li>3 copias = 2★ y evoluciona con una habilidad nueva. 3 de 2★ = 3★. A 3★ deja de salir en tu tienda.</li><li>Eevee acumula vida y ataque para siempre y evoluciona al derrotar enemigos.</li></ul>
- <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, suelta un componente sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el 🧲 Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
- <h3>Multijugador</h3><ul class="help"><li>Crea una sala, comparte el código y empieza cuando quieras: los asientos vacíos los ocupan bots.</li></ul>
+ <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, suelta un componente sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
+ <h3>Modos de juego</h3><ul class="help"><li><b>Normal</b>: entrenadores de tu nivel y bots que se adaptan a ti (si ganas, juegan mejor; si te cuesta, más asequibles). No cambia tu rango.</li><li><b>Clasificatoria</b>: 3 partidas de posicionamiento y después ligas de Hierro a Retador. Ganas o pierdes LP según tu puesto y la fuerza de la sala.</li><li><b>Sala informal</b>: con amigos y un código. Da caramelos, pero no cambia tu nivel ni tu rango.</li><li>Todas dan caramelos (65 a 100 según el puesto) y quedan en tu historial. La práctica sin conexión no cuenta.</li></ul>
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true});
 }
@@ -2912,25 +2913,153 @@ function showAnvil(a,done){
 }
 function showGameOver(){
  const me=G.me, won=me.place===1;
- if(NET.mode==='sp'&&!G.reported){ G.reported=true; reportResult(me.place); }
  openModal(`<h1>${won?'¡Campeón de la Liga!':me.alive?'Fin de la partida':'Has quedado eliminado'}</h1>
  <p>${won?'Eres el último entrenador en pie.':`Puesto ${me.place||'—'} de 8.`} Ronda ${G.round?G.round.s+'-'+G.round.n:'—'} · nivel ${me.level}.</p>
  <p class="small muted">Aumentos: ${me.augments.map(id=>AUG_BY[id]?AUG_BY[id].name:'').filter(Boolean).join(', ')||'ninguno'}</p>
- <div style="display:flex;gap:8px;flex-wrap:wrap">${NET.mode==='sp'?'<button class="btn primary" id="againBtn">Jugar otra vez</button>':''}${NET.mode==='client'&&!G.over?'<button class="btn" id="watchBtn">Seguir mirando</button>':''}<button class="btn" id="toMenu">Menú principal</button></div>`,{kind:'over'});
- if($('againBtn')) $('againBtn').onclick=()=>{ closeModal(); selected=null; selCombat=null; newGame({diff:S.diff}); };
+ <div id="goRes">${NET.mode==='sp'?'<p class="small muted">Práctica sin conexión: no da caramelos ni cuenta para el historial.</p>':NET.result?resultHTML(NET.result):'<p class="small muted">Guardando el resultado en tu cuenta…</p>'}</div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap">${NET.mode==='sp'?'<button class="btn primary" id="againBtn">Practicar otra vez</button>':''}${NET.mode==='client'&&!G.over?'<button class="btn" id="watchBtn">Seguir mirando</button>':''}<button class="btn" id="toMenu">Menú principal</button></div>`,{kind:'over'});
+ if($('againBtn')) $('againBtn').onclick=()=>{ closeModal(); selected=null; selCombat=null; newGame({diff:'normal'}); };
  if($('watchBtn')) $('watchBtn').onclick=closeModal;
  $('toMenu').onclick=()=>{ closeModal(); if(NET.mode!=='sp') leaveRoom(); showMenu(); };
+ if(window.PX) PX.hydrate($('mbox'));
 }
 function renderMenu(){
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], st=ACC.stats||{};
  $('menuWho').innerHTML=`<div class="stand artStand">${artImg(tk)}</div>
   <div class="tname">${esc(ACC.name)}</div><div class="tfrom">Minileyenda: ${esc(t.name)}</div>
+  ${rankMiniHTML()}
   <div class="stats"><div><i data-i="ball" data-s="20"></i><b>${st.games||0}</b><span>Partidas</span></div><div><i data-i="trophy" data-s="20"></i><b>${st.wins||0}</b><span>Victorias</span></div><div><i data-i="medal" data-s="20"></i><b>${st.top4||0}</b><span>Top 4</span></div><div><i data-i="star" data-s="20"></i><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
   <div class="row"><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
  $('menuWho').insertAdjacentHTML('afterbegin','<div class="mnTag">Entrenador</div>');
- $('pickTr').onclick=()=>showTacPick(false); pxArt($('menu'));
+ $('pickTr').onclick=()=>showTacPick(false); $('rkMini').onclick=showRanked; pxArt($('menu'));
 }
-function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); },0); renderMenu(); $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu')); }
+/* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
+const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
+const MODE_NAME={normal:'Normal',ranked:'Clasificatoria',custom:'Sala informal'};
+const ordinal=n=>n+'.º';
+function rankBadge(rk,size){ return window.PX?PX.badge(rk&&!rk.placing&&rk.league?rk.league:'none',size):''; }
+const rankText=rk=>!rk?'Sin clasificar':rk.placing?`Posicionamiento ${rk.done}/${rk.of}`:`${rk.name}${rk.div?' '+rk.div:''}`;
+// Barra de progreso hacia la siguiente división (o las 3 partidas de posicionamiento)
+function lpBar(rk){
+ if(rk.placing) return `<div class="rkPips" aria-label="Partidas de posicionamiento: ${rk.done} de ${rk.of}">${Array.from({length:rk.of},(_,i)=>`<i class="${i<rk.done?'on':''}"></i>`).join('')}</div>`;
+ const pct=rk.apex?(rk.next?clamp(rk.lp/(rk.lp+rk.next.need)*100,0,100):100):rk.lp;
+ return `<div class="rkBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${R0(pct)}"><i style="width:${pct}%"></i></div><div class="rkNext">${rk.next?`${rk.next.need} LP para ${esc(rk.next.name)}`:'La cima de la clasificación'}</div>`;
+}
+// Panel compacto de rango (ficha del menú)
+function rankMiniHTML(){ const c=COMP(), rk=c.ranked;
+ return `<button class="rkMini" id="rkMini" type="button" aria-label="Ver la clasificatoria">${rankBadge(rk,48)}<span class="rkTxt"><b>${esc(rankText(rk))}</b><small>${rk.placing?'Juega 3 partidas para revelar tu rango':rk.lp+' LP'}</small>${lpBar(rk)}</span></button>
+  <div class="candyRow" title="Caramelos: se ganan en cada partida de Normal, Clasificatoria o sala informal"><i data-i="candy" data-s="20"></i><b>${c.candies}</b><span>caramelos</span></div>`; }
+
+// ----- cola -----
+function startQueue(mode){
+ const s=sock(); if(!s){ toast('Para jugar hace falta el servidor del juego'); return; }
+ if(NET.queue) { toast('Ya estás buscando partida'); return; }
+ NET.queue={mode,since:Date.now(),found:1,fill:12,state:'on'}; NET.mode='joining'; closeModal(); s.emit('queue',{mode}); renderQueue();
+}
+function stopQueue(){ if(NET.sock) NET.sock.emit('unqueue'); endQueue(); }
+function endQueue(){ NET.queue=null; if(NET.mode==='joining'&&!NET.code) NET.mode='sp'; renderQueue(); }
+function onQueue(d){
+ if(!d||!NET.queue&&d.state!=='matched') return;
+ if(d.state==='off'){ endQueue(); return; }
+ NET.queue=Object.assign(NET.queue||{mode:d.mode,since:Date.now()},{state:d.state,found:d.found||NET.queue&&NET.queue.found||1,fill:d.fill||12,humans:d.humans});
+ if(d.state==='on'&&typeof d.wait==='number') NET.queue.since=Date.now()-d.wait*1000;
+ renderQueue();
+}
+function renderQueue(){
+ const el=$('queueBar'); if(!el) return; const q=NET.queue;
+ if(!q){ el.classList.add('hidden'); clearInterval(renderQueue.iv); renderQueue.iv=0; return; }
+ const t=Math.floor((Date.now()-q.since)/1000), mm=`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`, ranked=q.mode==='ranked';
+ el.classList.remove('hidden'); el.classList.toggle('ranked',ranked);
+ el.innerHTML=q.state==='matched'?`<i data-i="${ranked?'ranked':'ball'}" data-s="32"></i><div class="qTxt"><b>¡Partida encontrada!</b><small>${q.humans>1?q.humans+' entrenadores reales':'Tú'} y ${8-(q.humans||1)} bots · preparando el tablero…</small></div>`
+  :`<i data-i="${ranked?'ranked':'ball'}" data-s="32"></i><div class="qTxt"><b>Buscando ${ranked?'clasificatoria':'partida normal'} <span class="qTime">${mm}</span></b><small>${q.found||1}/8 entrenadores con tu nivel · ${t<(q.fill||12)?`se completa con bots en ${Math.max(0,(q.fill||12)-t)} s`:'completando con bots…'}</small></div><button class="pxb" id="qCancel" type="button"><i data-i="close" data-s="16"></i><span>Cancelar</span></button>`;
+ window.PX&&PX.hydrate(el); if($('qCancel')) $('qCancel').onclick=stopQueue;
+ if(!renderQueue.iv) renderQueue.iv=setInterval(()=>{ if(NET.queue&&NET.queue.state==='on') renderQueue(); },1000);
+}
+
+// ----- pantallas de modo -----
+function showNormal(){
+ if(!sock()){ openModal(`<h1>Partida normal</h1><p>Hace falta el servidor del juego. Abre el juego desde su dirección (Render), no como archivo suelto.</p><button class="pxb" id="practiceBtn"><span>Práctica sin conexión</span></button>`,{closable:true}); $('practiceBtn').onclick=startPractice; return; }
+ openModal(`<div class="modeHead"><i data-i="ball" data-s="48"></i><div><h1>Partida normal</h1><p class="muted">8 entrenadores · sin rango en juego</p></div></div>
+  <div class="modeInfo"><p><b>Dificultad adaptativa.</b> Te emparejamos con entrenadores de tu nivel y los asientos libres los ocupan bots que se ajustan a ti: si ganas a menudo, juegan mejor (economía, sinergias y colocación); si te cuesta, son más asequibles. Tu rango no cambia.</p>
+  <p>Cada partida da <b>caramelos</b> (de 65 a 100 según tu puesto) y queda en tu historial.</p></div>
+  <button class="pxb pxb-main wide" id="qNormal" type="button"><i data-i="ball" data-s="40"></i><span class="pxbT"><b>Buscar partida</b><small>Si en 12 s no hay 8 personas, se completa con bots</small></span><i class="pxCaret" aria-hidden="true"></i></button>
+  <h3 class="pxH">Sala informal</h3><p class="small muted">Juega con amigos con un código de sala. Da caramelos, pero no cambia tu dificultad ni tu rango.</p>
+  <div class="roomRow"><button class="pxb" id="rmCreate" type="button"><i data-i="people" data-s="20"></i><span>Crear sala</span></button><div class="field"><label for="rmCode">Código de sala</label><input id="rmCode" maxlength="5" placeholder="abc12" autocomplete="off"></div><button class="pxb" id="rmJoin" type="button"><span>Unirse</span></button></div>
+  <button class="pxLink" id="practiceBtn" type="button">Práctica sin conexión (sin recompensas ni historial)</button>`,{closable:true});
+ const s=sock();
+ $('qNormal').onclick=()=>startQueue('normal');
+ $('rmCreate').onclick=()=>{ if(NET.queue) return toast('Sal de la cola antes de crear una sala'); NET.mode='joining'; s.emit('create',{name:`Sala de ${S.name}`.slice(0,24),max:8}); };
+ $('rmJoin').onclick=()=>{ const c=$('rmCode').value.trim().toLowerCase(); if(!/^[a-z0-9]{5}$/.test(c)){ toast('El código tiene 5 letras o números'); return; } if(NET.queue) return toast('Sal de la cola antes de unirte'); NET.mode='joining'; s.emit('join',{code:c}); };
+ $('practiceBtn').onclick=startPractice;
+}
+function startPractice(){ closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:'normal'}); }
+function leaguesHTML(rk){ const cur=rk.placing?'':rk.league;
+ return [['iron','Hierro'],['bronze','Bronce'],['silver','Plata'],['gold','Oro'],['platinum','Platino'],['emerald','Esmeralda'],['diamond','Diamante'],['master','Maestro'],['grandmaster','Gran Maestro'],['challenger','Retador']]
+  .map(([k,n])=>`<div class="lgItem ${k===cur?'on':''}">${window.PX?PX.badge(k,40):''}<span>${n}</span></div>`).join(''); }
+function showRanked(){
+ const rk=COMP().ranked;
+ openModal(`<div class="rkBig">${rankBadge(rk,128)}<div class="rkBigTxt"><div class="pxKicker">Clasificatoria</div><h1>${esc(rankText(rk))}</h1>${rk.placing?`<p class="muted">Juega ${rk.of-rk.done} partida${rk.of-rk.done===1?'':'s'} más para revelar tu rango.</p>`:`<p class="rkLp">${rk.lp} LP</p>`}${lpBar(rk)}</div></div>
+  <div class="modeInfo"><p>Contra personas de tu nivel y <b>bots competitivos</b>, bastante mejores que en Normal: gestionan la economía, buscan sinergias y colocan bien. El <b>1.º</b> gana muchos LP; del <b>2.º al 4.º</b>, pocos; del <b>5.º al 8.º</b> se pierden, más cuanto más abajo. Si tu nivel real está por encima de tu rango, subes más rápido.</p>
+  <p>Cada partida también da <b>caramelos</b>. De Hierro a Diamante hay 5 divisiones (V a I) de 100 LP; Maestro, Gran Maestro y Retador no tienen divisiones.</p></div>
+  <div class="leagues">${leaguesHTML(rk)}</div>
+  <button class="pxb pxb-alt wide" id="qRanked" type="button"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Buscar clasificatoria</b><small>Personas de tu nivel; si faltan, bots competitivos</small></span><i class="pxCaret" aria-hidden="true"></i></button>`,{closable:true});
+ $('qRanked').onclick=()=>startQueue('ranked');
+}
+
+// ----- resultado de la partida, ascensos y revelación del rango -----
+function onResult(d){
+ if(!d||!d.rec) return; NET.result=d; if(ACC&&d.comp){ ACC.comp=d.comp; renderMenu(); }
+ if(d.rec.promoted||d.rec.revealed||d.rec.demoted) NET.rankFx=d;
+ const el=$('goRes'); if(el){ el.innerHTML=resultHTML(d); window.PX&&PX.hydrate(el); }
+}
+function resultHTML(d){ const r=d.rec, chips=[`<span class="rChip candy"><i data-i="candy" data-s="18"></i>+${r.candies} caramelos</span>`];
+ if(r.mode==='ranked'){ if(r.placement&&!r.revealed) chips.push(`<span class="rChip">Posicionamiento ${r.placement.done}/${r.placement.of}</span>`);
+   else if(r.revealed) chips.push(`<span class="rChip up">Rango revelado: ${esc(rankText(r.revealed))}</span>`);
+   else chips.push(`<span class="rChip ${r.lp>=0?'up':'down'}">${r.lp>=0?'+':'−'}${Math.abs(r.lp)} LP${r.promoted?' · ¡Ascenso!':r.demoted?' · Descenso':''}</span>`); }
+ else if(r.mode==='custom') chips.push('<span class="rChip">Sala informal: sin cambios de rango</span>');
+ return `<div class="goChips">${chips.join('')}</div>`; }
+function showRankChange(d){
+ const r=d.rec, after=r.revealed||r.rankAfter, before=r.rankBefore, title=r.revealed?'¡Rango revelado!':r.promoted?'¡Ascenso!':'Descenso';
+ openModal(`<div class="rkFx ${r.demoted?'down':''}"><div class="rkFxBadges">${before?`<div class="old">${rankBadge(before,72)}<span>${esc(rankText(before))}</span></div><i class="rkArrow" aria-hidden="true"></i>`:''}<div class="new">${rankBadge(after,128)}<span>${esc(rankText(after))}</span></div></div>
+  <h1>${title}</h1><p>${r.revealed?'Tras tus 3 partidas de posicionamiento, empiezas en':'Ahora estás en'} <b>${esc(rankText(after))}</b> con ${after.lp} LP.</p><button class="pxb pxb-main wide" id="rkOk" type="button"><span class="pxbT"><b>Continuar</b></span></button></div>`,{kind:'rank'});
+ $('rkOk').onclick=closeModal;
+}
+
+// ----- historial (6 partidas más recientes, al estilo TFT) -----
+const fmtDate=s=>{ try{ return new Date(s).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
+const fmtDur=s=>s>0?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:'';
+function histUnit(u){ const [key,star,items,dex,name,cost]=u, d=DEF[key];
+ return `<div class="hU" style="--cc:${COST_HEX[(cost||(d&&d.cost)||1)-1]}" title="${esc(name||(d?d.name:key))} ${'★'.repeat(star||1)}"><span class="hStars s${star}">${'★'.repeat(star||1)}</span><img src="${SPRITE(dex||(d?dexOf(d,star):0))}" alt="${esc(name||key)}" loading="lazy"><span class="hItems">${(items||[]).map(k=>ITEMS[k]?itemHTML(k,13):'').join('')}</span></div>`; }
+function histTrait([t,n,tier]){ const Tr=TRAITS[t]; if(!Tr) return ''; const cls=tier>Tr.bp.length?'t4':tier>=Tr.bp.length?'t3':'t'+Math.min(tier,2); return `<span class="hT ${cls}" title="${esc(t)} (${n})">${traitIcon(t)}</span>`; }
+function histRow(m,i){
+ const r=m.data||{}, c=r.comp||{units:[],traits:[],augs:[]}, pl=r.place||8, ranked=m.mode==='ranked';
+ const right=ranked?(r.placement&&!r.revealed?`<span class="rChip">Posicionamiento ${r.placement.done}/${r.placement.of}</span>`:r.revealed?`<span class="rChip up">Revelado</span>`:`<span class="rChip ${r.lp>=0?'up':'down'}">${r.lp>=0?'+':'−'}${Math.abs(r.lp||0)} LP</span>`):'';
+ const det=[];
+ if(r.mmrBefore!=null) det.push(`<div><span>MMR ${ranked?'clasificatorio':'normal'}</span><b>${r.mmrBefore} → ${r.mmrAfter} (${r.mmrAfter-r.mmrBefore>=0?'+':''}${r.mmrAfter-r.mmrBefore})</b></div>`);
+ if(r.rankBefore&&r.rankAfter) det.push(`<div><span>Rango</span><b>${esc(rankText(r.rankBefore))} · ${r.rankBefore.lp} LP → ${esc(rankText(r.rankAfter))} · ${r.rankAfter.lp} LP</b></div>`);
+ if(r.why) det.push(`<div><span>Por qué esos LP</span><b>puesto ${r.why.base>=0?'+':''}${r.why.base} · tu nivel frente a tu rango ${r.why.mmrVsRank>=0?'+':''}${r.why.mmrVsRank} · fuerza de la sala ${r.why.lobby>=0?'+':''}${r.why.lobby}</b></div>`);
+ if(r.oppAvg) det.push(`<div><span>Nivel medio de los rivales</span><b>${r.oppAvg} MMR</b></div>`);
+ det.push(`<div><span>Ronda y nivel</span><b>${esc(c.round||'—')} · nivel ${c.lvl||'—'}</b></div>`);
+ if(c.augs&&c.augs.length) det.push(`<div><span>Aumentos</span><b>${c.augs.map(id=>AUG_BY[id]?esc(AUG_BY[id].name):'').filter(Boolean).join(' · ')}</b></div>`);
+ const parts=(r.participants||[]).slice().sort((a,b)=>(a.place||9)-(b.place||9));
+ return `<div class="hRow pl${pl===1?1:pl<=4?2:3}" data-i="${i}">
+  <button class="hMain" type="button" aria-expanded="false"><div class="hPlace"><b>${ordinal(pl)} lugar</b><small>${MODE_NAME[m.mode]||m.mode}</small><small>${fmtDate(m.created)}${r.duration?' · '+fmtDur(r.duration):''}</small></div>
+   <div class="hLvl" title="Nivel">${c.lvl||'—'}</div>
+   <div class="hMid"><div class="hComp">${(c.units||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon en el tablero</span>'}</div><div class="hTraits">${(c.traits||[]).map(histTrait).join('')}${(c.augs||[]).map(id=>AUG_BY[id]?`<span class="hA">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div></div>
+   <div class="hRight">${right}<span class="rChip candy"><i data-i="candy" data-s="16"></i>+${r.candies||0}</span></div></button>
+  <div class="hDet" hidden><div class="hDetGrid">${det.join('')}</div>${parts.length?`<div class="hParts">${parts.map(p=>`<span class="${p.me?'me':''}">${p.place?ordinal(p.place):'—'} ${esc(String(p.name||'').replace(/ (bot)$/,''))}${p.bot?' <em>bot</em>':''}</span>`).join('')}</div>`:''}</div></div>`;
+}
+async function showHistory(){
+ openModal(`<div class="modeHead"><i data-i="hourglass" data-s="44"></i><div><h1>Historial de partidas</h1><p class="muted">Tus 6 partidas más recientes. Toca una para ver los detalles.</p></div></div><div class="hList" id="hList"><p class="muted">Cargando…</p></div>`,{closable:true});
+ let list=[]; try{ list=(await api('/api/history')).matches||[]; }catch(e){ $('hList').innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; }
+ const el=$('hList'); if(!el) return;
+ el.innerHTML=list.length?list.slice(0,6).map(histRow).join(''):'<div class="hEmpty"><i data-i="ball" data-s="40"></i><p>Aún no has jugado ninguna partida de Normal, Clasificatoria o sala informal.</p></div>';
+ window.PX&&PX.hydrate(el);
+ el.querySelectorAll('.hMain').forEach(b=>b.onclick=()=>{ const det=b.parentElement.querySelector('.hDet'), open=det.hidden; det.hidden=!open; b.setAttribute('aria-expanded',open); b.parentElement.classList.toggle('open',open); });
+}
+function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); },0); renderMenu(); $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
+ // tras una partida con ascenso, descenso o rango revelado, se celebra al volver al menú
+ if(NET.rankFx){ const d=NET.rankFx; NET.rankFx=null; setTimeout(()=>showRankChange(d),250); } }
 // Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
 function pxArt(root){ if(window.PX) PX.hydrate(root||document); if(window.MenuScene) MenuScene.ensure(); }
 const muteIcon=()=>window.PX?PX.icon(S.muted?'mute':'sound',20):(S.muted?'Sin sonido':'Sonido');
@@ -3079,7 +3208,6 @@ async function logout(){
 }
 // El socket se abre con la sesión: al entrar o salir de la cuenta hay que rehacerlo
 function resetSocket(){ if(NET.sock){ NET.sock.removeAllListeners(); NET.sock.disconnect(); NET.sock=null; } }
-function reportResult(place){ if(!ACC||!(place>=1&&place<=8)) return; api('/api/result',{place}).then(d=>{ if(d&&d.user){ ACC=d.user; renderMenu(); } }).catch(()=>{}); }
 
 async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');
@@ -3100,7 +3228,7 @@ function serverCreate(cfg,emit){
  geo=computeGeo(640);
  NET.mode='host'; NET.named={emit:(t,d)=>{ try{ emit(t,d); }catch(e){} return Promise.resolve(); }};
  S.timer=[30,45,60].includes(cfg.timer)?cfg.timer:30; S.speed=[1,2,4].includes(cfg.speed)?cfg.speed:1;
- newGame({mp:true,server:true,diff:DIFF_NAME[cfg.diff]?cfg.diff:'normal',humans:cfg.humans||[]});
+ newGame({mp:true,server:true,diff:DIFF_NAME[cfg.diff]?cfg.diff:'normal',humans:cfg.humans||[],bots:Array.isArray(cfg.bots)?cfg.bots:[]});
  netFlush(true);
 }
 function serverTick(dt){
@@ -3114,7 +3242,8 @@ function serverTick(dt){
 }
 function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
 function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.isBot=true; p.name=p.name+' (bot)'; note(null,`🔌 ${p.name} se desconectó; un bot juega por él`); } }
-function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[]}; }
+function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[],
+  plist:G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,comp:p.peer&&p.place?p.finalComp||null:null})):[]}; }
 
 if(HEADLESS){ module.exports={serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
   // Para las pruebas de aumentos (test/augments.js)

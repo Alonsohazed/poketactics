@@ -63,6 +63,14 @@
     medal: (x, y) => { if (inPoly(x, y, [[4, 1.4], [7, 1.4], [8.8, 7], [6.6, 7]])) return 'r'; if (inPoly(x, y, [[12, 1.4], [9, 1.4], [7.2, 7], [9.4, 7]])) return 'b';
       const d = len(x - 8, y - 10.4); if (d < 4.2) return d > 3.2 ? 'g' : len(x - 6.8, y - 9.2) < 1 ? 'w' : 'y'; },
     star: (x, y) => { const P = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 2.9 : 6.8; P.push([8 + Math.cos(a) * r, 8.4 + Math.sin(a) * r]); } if (!inPoly(x, y, P)) return; return x < 7 && y < 8 ? 'w' : 'y'; },
+    // Caramelos (la moneda gratuita): caramelo envuelto
+    candy: (x, y) => { const d = len((x - 8) / 3.6, (y - 8) / 3); if (d < 1) return len(x - 7, y - 6.8) < 1 ? 'w' : (x + y) % 4 < 2 ? 'B' : 'b';
+      if (inPoly(x, y, [[4.6, 8], [1.2, 4.6], [1.2, 11.4]]) || inPoly(x, y, [[11.4, 8], [14.8, 4.6], [14.8, 11.4]])) return 'P'; },
+    // Historial: reloj de arena
+    hourglass: (x, y) => { if (box(x, y, 3, 1.6, 13, 3.2) || box(x, y, 3, 12.8, 13, 14.4)) return 'n'; const w = Math.abs(y - 8) * .62 + .6; if (Math.abs(x - 8) > w || y < 3.2 || y > 12.8) return;
+      if (y > 9.4 && Math.abs(x - 8) < w - .2) return 'y'; if (y < 6 && y > 4 && Math.abs(x - 8) < w - .6) return 'y'; return 'B'; },
+    // Clasificatoria: escudo con espadas
+    ranked: (x, y) => { if (!inPoly(x, y, [[2.6, 2.4], [13.4, 2.4], [13.4, 8], [8, 14.4], [2.6, 8]])) return; if (seg(x, y, 5, 5, 11, 11) < .8 || seg(x, y, 11, 5, 5, 11) < .8) return 'w'; return x < 8 ? 'p' : 'P'; },
     swap: (x, y) => { if (seg(x, y, 3, 5.4, 11.6, 5.4) < .9 || inPoly(x, y, [[11, 2.4], [14.4, 5.4], [11, 8.4]])) return 'B'; if (seg(x, y, 4.4, 10.6, 13, 10.6) < .9 || inPoly(x, y, [[5, 7.6], [1.6, 10.6], [5, 13.6]])) return 'R'; },
   };
   const grids = {};
@@ -82,7 +90,34 @@
   }
   // Sustituye cada <i data-i="nombre" data-s="tamaño"> por su icono
   function hydrate(root = document) { root.querySelectorAll('i[data-i]').forEach(el => { if (el.dataset.done === el.dataset.i) return; el.innerHTML = icon(el.dataset.i, +(el.dataset.s || 32)); el.dataset.done = el.dataset.i; el.classList.add('pxw'); }); }
-  window.PX = { icon, hydrate, names: Object.keys(ICONS), PAL };
+  /* ---------- insignias de rango (24×24): alas y gema; más alas y corona cuanto más alta la liga ---------- */
+  const LEAGUE_PAL = { iron: ['#2e2a29', '#5f5653', '#958a85', '#c9c2bd'], bronze: ['#4a2716', '#9a5532', '#d98f5e', '#ffc59a'], silver: ['#33404f', '#7d8ea4', '#c8d4e4', '#ffffff'],
+    gold: ['#51330a', '#ad7718', '#f0c75a', '#fff3b0'], platinum: ['#0e434a', '#24919c', '#7fe3e8', '#e8ffff'], emerald: ['#0b4226', '#1c9152', '#5fe39a', '#dcffeb'],
+    diamond: ['#1a2670', '#4062db', '#9fb6ff', '#ffffff'], master: ['#33105a', '#8338d2', '#d39bff', '#ffe6ff'], grandmaster: ['#520f0f', '#c3302a', '#ff8a6a', '#ffe4c8'],
+    challenger: ['#4f3b0d', '#cf9c26', '#ffe27a', '#c8f4ff'], none: ['#2a2f45', '#525a78', '#8d95b5', '#c9cee6'] };
+  const LEAGUE_ORDER = ['none', 'iron', 'bronze', 'silver', 'gold', 'platinum', 'emerald', 'diamond', 'master', 'grandmaster', 'challenger'];
+  const badgeSvg = {};
+  function badge(key, size = 48) {
+    const k = (LEAGUE_PAL[key] ? key : 'none') + '|' + size; if (badgeSvg[k]) return badgeSvg[k];
+    const lg = LEAGUE_PAL[key] ? key : 'none', P = LEAGUE_PAL[lg], t = Math.max(0, LEAGUE_ORDER.indexOf(lg) - 1), N = 24, cx = 12;
+    const W = 8.6 + Math.min(t, 9) * .3, lift = t * .45, wings = lg !== 'none';
+    const f = (x, y) => {
+      const dx = Math.abs(x - cx), gem = inPoly(x, y, [[cx, 6.4], [cx + 4.2, 12.6], [cx, 20], [cx - 4.2, 12.6]]);
+      if (gem) return dx < .7 ? 'd' : x < cx ? (y < 12.6 ? 'd' : 'c') : (y < 12.6 ? 'c' : 'b');
+      if (lg === 'none') return inPoly(x, y, [[cx, 4.4], [cx + 6, 12.6], [cx, 21.8], [cx - 6, 12.6]]) ? 'a' : null;
+      if (wings && inPoly(dx, y, [[3.2, 17.4], [W, 5.2 - lift], [W - 1.6, 10.6], [4.4, 19.6]])) return dx > W - 3.2 ? 'c' : 'b';
+      if (t >= 3 && inPoly(dx, y, [[3.6, 19.4], [W - .6, 13.4 - lift * .4], [W - 2.2, 17.4], [4.6, 21.2]])) return 'a';
+      if (t >= 6 && inPoly(dx, y, [[2.4, 15], [W + 1.4, 9 - lift], [W, 12.4]])) return 'd';
+      if (t >= 7) { for (const sx of [-3.2, 0, 3.2]) if (inPoly(x, y, [[cx + sx - 1.2, 6.4], [cx + sx, 1.6 + Math.abs(sx) * .4], [cx + sx + 1.2, 6.4]])) return 'c'; }
+      if (inPoly(x, y, [[cx - 2.4, 21], [cx + 2.4, 21], [cx, 23.2]])) return 'b';
+    };
+    const g = []; for (let y = 0; y < N; y++) { g.push([]); for (let x = 0; x < N; x++) g[y].push(f(x + .5, y + .5) || null); }
+    const o = g.map(r => r.slice()); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!g[y][x]) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const c = g[y + dy] && g[y + dy][x + dx]; if (c && c !== 'k') { o[y][x] = 'k'; break; } }
+    const col = { a: P[0], b: P[1], c: P[2], d: P[3], k: '#0b0d18' }; let r = '';
+    for (let y = 0; y < N; y++) { let x = 0; while (x < N) { const c = o[y][x]; let e = x + 1; while (e < N && o[y][e] === c) e++; if (c) r += `<rect x="${x}" y="${y}" width="${e - x}" height="1" fill="${col[c]}"/>`; x = e; } }
+    return badgeSvg[k] = `<svg class="pxBadge" width="${size}" height="${size}" viewBox="0 0 24 24" shape-rendering="crispEdges" aria-hidden="true" focusable="false">${r}</svg>`;
+  }
+  window.PX = { icon, hydrate, badge, LEAGUE_PAL, names: Object.keys(ICONS), PAL };
 
   /* =====================================================================
      Escenario del menú: arena-tablero al atardecer (pixel art a baja resolución, sin suavizado)

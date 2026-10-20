@@ -849,6 +849,143 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 }
 /* Con «reducir movimiento» se quitan las animaciones, salvo la apertura de los aumentos: es corta, no se repite y es parte de la elección */
 @media (prefers-reduced-motion:reduce){ :not(.augBox,.augBox *){transition:none!important;animation:none!important} }
+/* ===================== Ventanas, botones de partida y pantallas competitivas (sistema pixel) =====================
+   Mismo lenguaje que el menú: marcos de dos anillos con esquinas escalonadas, Pixelify Sans y la paleta --px*. */
+:root{--pxCutS:polygon(0 4px,2px 4px,2px 2px,4px 2px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 2px,calc(100% - 2px) 2px,calc(100% - 2px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 2px) calc(100% - 4px),calc(100% - 2px) calc(100% - 2px),calc(100% - 4px) calc(100% - 2px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 2px),2px calc(100% - 2px),2px calc(100% - 4px),0 calc(100% - 4px))}
+/* Botones del juego */
+.btn{border:0;border-radius:0;clip-path:var(--pxCutS);background:var(--pxPanel2);color:var(--pxInk);font-family:var(--pxFont);font-weight:600;letter-spacing:.02em;text-shadow:1px 1px 0 var(--pxK);
+  box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxLine),inset 0 6px 0 0 rgba(255,255,255,.07);transition:transform .07s steps(2),filter .07s}
+.btn:hover{filter:brightness(1.15);box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold),inset 0 6px 0 0 rgba(255,255,255,.08)}
+.btn:active{transform:translateY(2px);box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold)}
+.btn:focus-visible{outline:2px solid var(--pxGold);outline-offset:2px}
+.btn.primary{background:linear-gradient(180deg,var(--pxRed) 0 52%,var(--pxRed2) 52% 100%);color:#fff;box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold2);text-shadow:1px 1px 0 var(--pxK)}
+.btn.primary:hover{background:linear-gradient(180deg,var(--pxRedHi) 0 52%,var(--pxRed) 52% 100%);box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold)}
+.btn.primary:active{box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold)}
+.btn.gold{background:linear-gradient(180deg,#ffd23f 0 52%,#e0a524 52% 100%);color:#2b1a03;text-shadow:none;box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px #fff0b0}
+.btn.gold:hover{box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px #ffffff}
+.btn.ghost{background:rgba(0,0,0,.28)}
+.btn:disabled,.btn[disabled]{filter:grayscale(1) brightness(.6);cursor:not-allowed;transform:none}
+/* Ventanas */
+.modal{background:rgba(5,6,16,.72);backdrop-filter:blur(3px)}
+.mbox{background:linear-gradient(180deg,rgba(24,27,48,.98),rgba(14,16,30,.99));border:0;border-radius:0;clip-path:var(--pxCut);color:var(--pxInk);padding:26px 26px 24px;
+  box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxLine),inset 0 0 0 9px rgba(255,255,255,.04)}
+.mbox.bare{clip-path:none;box-shadow:none;background:none;padding:0}
+.mtop{top:-26px}
+.mclose{margin:-6px -6px 0 0;width:38px;height:38px;border-radius:0;border:0;clip-path:var(--pxCutS);background:var(--pxPanel2);display:grid;place-items:center;box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxLine)}
+.mclose:hover{box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold);filter:brightness(1.15)}
+.mbox h1{font-family:var(--pxFont);font-weight:700;font-size:30px;letter-spacing:.03em;text-shadow:2px 2px 0 var(--pxK)}
+.mbox h3,.pxH{font-family:var(--pxFont);font-weight:700;font-size:18px;letter-spacing:.04em;color:var(--pxGold);text-shadow:1px 1px 0 var(--pxK);margin:18px 0 6px}
+.mbox p,.mbox li{color:#d9dcec}
+.mbox .muted{color:var(--pxMut)}
+.field label{font-family:var(--pxFont);font-weight:600;letter-spacing:.02em}
+.field input,.field select{border:0;border-radius:0;background:#0f1122;color:var(--pxInk);font-family:var(--pxFont);font-size:15px;box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxLine)}
+.field input:focus,.field select:focus{outline:none;box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold)}
+.field input[type=range]{box-shadow:none;background:none}
+.kbd{font-family:var(--pxFont);font-weight:700;border:0;border-radius:0;background:#0f1122;padding:1px 7px;box-shadow:inset 0 0 0 2px var(--pxLine),inset 0 -3px 0 2px var(--pxK)}
+.code{font-family:var(--pxFont);font-weight:700;border:0;border-radius:0;background:#0f1122;box-shadow:inset 0 0 0 2px var(--pxGold2);color:var(--pxGold)}
+.chip{border-radius:2px}
+/* Elecciones (augOffer, Eevee…), minileyendas, Pokédex y salas */
+.choice{border:0;border-radius:0;clip-path:var(--pxCut);box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--tc,var(--pxLine));font-family:var(--pxFont)}
+.choice:hover{box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxGold)}
+.choice b{font-family:var(--pxFont);font-weight:700}
+.tacOpt{border:0;border-radius:0;clip-path:var(--pxCut);transition:transform .08s steps(2)}
+.tacOpt::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxLine)}
+.tacOpt.on{box-shadow:none}.tacOpt.on::after{box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxGold)}
+.tacOpt b{font-family:var(--pxFont);font-weight:700;text-shadow:2px 2px 0 var(--pxK)}
+.tacOpt small{font-family:var(--pxFont);font-weight:500}
+.dexFilters .btn[aria-pressed="true"]{background:linear-gradient(180deg,#ffd23f 0 52%,#e0a524 52% 100%);color:#2b1a03;text-shadow:none}
+.dexCard{border:0;border-radius:0;clip-path:var(--pxCut);box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--cc);font-family:var(--pxFont)}
+.dexCard b{font-weight:600}
+.seat{border:0;border-radius:0;clip-path:var(--pxCutS);background:var(--pxPanel2);box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxLine);font-family:var(--pxFont)}
+.seat.host{box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxGold)}
+.seat.bot{gap:8px}.hostTag{font-style:normal;font-size:11px;color:var(--pxGold);text-transform:uppercase;letter-spacing:.06em}
+/* ---------- panel compacto de rango y caramelos (ficha del menú) ---------- */
+.rkMini{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;cursor:pointer;color:var(--pxInk);font-family:var(--pxFont);text-align:left;background:rgba(0,0,0,.3);clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #2a3150;transition:transform .07s steps(2)}
+.rkMini:hover,.rkMini:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--pxGold);transform:translateY(-1px)}
+.rkMini .pxBadge{flex:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5))}
+.rkTxt{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.rkTxt b{font-size:16px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}
+.rkTxt small{font-size:11px;color:var(--pxMut)}
+.rkBar{height:8px;background:#0f1122;box-shadow:inset 0 0 0 2px var(--pxK);position:relative}
+.rkBar i{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--pxGold) 0 6px,#ffe58a 6px 8px);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.rkNext{font-size:10.5px;color:var(--pxMut)}
+.rkPips{display:flex;gap:5px}.rkPips i{width:16px;height:8px;background:#0f1122;box-shadow:inset 0 0 0 2px var(--pxLine)}.rkPips i.on{background:var(--pxGold);box-shadow:inset 0 0 0 2px var(--pxGold2)}
+.candyRow{display:flex;align-items:center;gap:6px;align-self:stretch;justify-content:center;font-family:var(--pxFont);font-size:13px;color:var(--pxMut);margin:-2px 0 2px}
+.candyRow b{color:#9cd3ff;font-size:17px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}
+.mnRow{grid-template-columns:repeat(5,1fr)}
+.pxb-sq{font-size:13px}
+/* ---------- cola ---------- */
+#queueBar{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);bottom:18px;z-index:30;display:flex;align-items:center;gap:14px;padding:14px 16px 14px 18px;min-width:min(520px,calc(100vw - 32px));color:var(--pxInk);animation:pxIn .3s steps(4) both}
+#queueBar.hidden{display:none}
+#queueBar.ranked{box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxBlueHi),inset 0 0 0 9px rgba(255,255,255,.05)}
+#queueBar:not(.ranked){box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxGold2),inset 0 0 0 9px rgba(255,255,255,.05)}
+#queueBar>.pxw:first-child{animation:qSpin 1.2s steps(8) infinite}
+@keyframes qSpin{to{transform:rotate(360deg)}}
+.qTxt{flex:1;display:flex;flex-direction:column;gap:3px}.qTxt b{font-size:17px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}.qTxt small{font-size:12px;color:var(--pxMut)}
+.qTime{color:var(--pxGold);margin-left:6px}
+#queueBar .pxb{padding:10px 12px;gap:6px;font-size:13px}
+/* ---------- pantallas de modo ---------- */
+.modeHead{display:flex;align-items:center;gap:14px;margin-bottom:6px}.modeHead h1{margin:0}.modeHead p{margin:2px 0 0}
+.modeInfo{background:rgba(0,0,0,.28);clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #262c48;padding:10px 14px;margin:10px 0 14px}
+.modeInfo p{margin:6px 0;font-size:14px;line-height:1.45}
+.pxb.wide{width:100%;min-height:72px;padding:12px 22px 12px 18px}
+.pxb.wide b{font-size:26px;text-transform:uppercase}
+.roomRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.roomRow .field{margin:0;flex:1;min-width:140px}.roomRow .pxb{padding:12px 16px;gap:8px;font-size:15px;font-weight:600}
+.pxLink{margin-top:14px;background:none;border:0;padding:4px 0;color:var(--pxMut);font-family:var(--pxFont);font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.pxLink:hover{color:var(--pxInk)}
+.pxKicker{font-family:var(--pxFont);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pxGold)}
+.rkBig{display:flex;align-items:center;gap:20px}.rkBig .pxBadge{flex:none;filter:drop-shadow(0 4px 0 rgba(0,0,0,.5)) drop-shadow(0 0 18px rgba(255,210,63,.18))}
+.rkBigTxt{flex:1;display:flex;flex-direction:column;gap:6px}.rkBigTxt h1{margin:0}.rkLp{font-family:var(--pxFont);font-size:20px;font-weight:700;color:var(--pxGold);margin:0}
+.rkBigTxt .rkBar{height:12px}
+.leagues{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:4px 0 16px}
+.lgItem{display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--pxFont);font-size:10.5px;color:var(--pxMut);opacity:.55;text-align:center}
+.lgItem.on{opacity:1;color:var(--pxGold)}
+/* ---------- resultado, ascenso y revelación ---------- */
+.goChips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.rChip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font-family:var(--pxFont);font-weight:700;font-size:14px;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--pxLine);color:var(--pxInk);white-space:nowrap}
+.rChip.up{color:#7dffa8;box-shadow:inset 0 0 0 2px #2b7c36}.rChip.down{color:#ff8a8a;box-shadow:inset 0 0 0 2px #8f1f1a}.rChip.candy{color:#9cd3ff}
+.rkFx{text-align:center}.rkFx .pxb.wide{justify-content:center}.rkFx .pxbT{align-items:center}.rkFx h1{padding:0;margin:10px 0 4px}.rkFx p{margin:0 auto 16px}
+.rkFxBadges{display:flex;align-items:center;justify-content:center;gap:18px}
+.rkFxBadges>div{display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--pxFont);font-weight:700}
+.rkFxBadges .old{opacity:.6}
+.rkFxBadges .new .pxBadge{animation:rkPop .9s steps(9) both;filter:drop-shadow(0 0 22px rgba(255,210,63,.45))}
+.rkFx.down .new .pxBadge{filter:none}
+.rkArrow{width:18px;height:24px;background:var(--pxGold);clip-path:polygon(0 0,6px 0,6px 6px,12px 6px,12px 12px,18px 12px,12px 12px,12px 18px,6px 18px,6px 24px,0 24px)}
+@keyframes rkPop{0%{transform:scale(.2) translateY(20px);opacity:0}50%{transform:scale(1.18)}70%{transform:scale(.96)}100%{transform:none;opacity:1}}
+/* ---------- historial ---------- */
+.hList{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.hRow{--pc:#6f6a88;background:rgba(0,0,0,.28);clip-path:var(--pxCutS);box-shadow:inset 4px 0 0 0 var(--pc),inset 0 0 0 2px #262c48}
+.hRow.pl1{--pc:var(--pxGold)}.hRow.pl2{--pc:#7fb2ff}.hRow.pl3{--pc:#6f6a88}
+.hRow.open{box-shadow:inset 4px 0 0 0 var(--pc),inset 0 0 0 2px var(--pxGold2)}
+.hMain{display:grid;grid-template-columns:150px 34px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:10px 12px 10px 16px;border:0;background:none;color:var(--pxInk);text-align:left;cursor:pointer;font-family:var(--pxFont)}
+.hMain:hover{background:rgba(255,255,255,.035)}
+.hMain:focus-visible{outline:2px solid var(--pxGold);outline-offset:-4px}
+.hPlace{display:flex;flex-direction:column;gap:2px}.hPlace b{font-size:20px;font-weight:700;text-transform:uppercase;color:var(--pc);text-shadow:1px 1px 0 var(--pxK)}.hPlace small{font-size:11px;color:var(--pxMut)}
+.hLvl{width:30px;height:30px;display:grid;place-items:center;font-weight:700;font-size:14px;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--pc)}
+.hMid{display:flex;flex-direction:column;gap:5px;min-width:0}
+.hComp{display:flex;gap:4px;flex-wrap:wrap}
+.hU{position:relative;width:44px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--cc)}
+.hU{overflow:hidden}.hU img{width:68px;height:68px;max-width:none;image-rendering:pixelated;margin:-6px -12px -10px}
+.hStars{position:absolute;top:1px;left:0;right:0;text-align:center;font-size:9px;line-height:1;letter-spacing:-1px;color:#cd8f52;text-shadow:1px 1px 0 var(--pxK)}.hStars.s2{color:#d6dde8}.hStars.s3{color:#ffcf33}
+.hItems{position:absolute;bottom:1px;left:0;right:0;display:flex;justify-content:center;gap:1px}
+.hItems .ii{--is:13px}
+.hTraits{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.hT{width:24px;height:26px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:#6a5a4a}
+.hT svg{width:15px;height:15px}
+.hT.t1{background:#a8693a}.hT.t2{background:#9aa8bc}.hT.t3{background:#d9a426}.hT.t4{background:linear-gradient(135deg,#ff9ad8,#a594ff,#7fe0ff,#9cffc2)}
+.hA{display:inline-grid;width:22px;height:22px;place-items:center;background:#0f1122;clip-path:var(--pxCutS)}.hA .augImg,.hA img{width:18px;height:18px;image-rendering:pixelated}
+.hRight{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.hDet{padding:0 16px 12px}
+.hDetGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;font-size:13px;padding-top:6px;border-top:2px dashed #262c48}
+.hDetGrid div{display:flex;flex-direction:column;gap:1px}.hDetGrid span{color:var(--pxMut);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.hDetGrid b{font-weight:600}
+.hParts{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:12px;color:var(--pxMut)}.hParts .me{color:var(--pxGold);font-weight:700}.hParts em{font-style:normal;font-size:10px;padding:0 4px;background:#262c48;color:#b9b4d4;margin-left:2px}
+.hEmpty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 10px;color:var(--pxMut);text-align:center}
+@media (max-width:720px){ .hMain{grid-template-columns:1fr auto;grid-template-areas:"pl right" "mid mid"} .hPlace{grid-area:pl} .hLvl{display:none} .hMid{grid-area:mid} .hRight{grid-area:right}
+  .leagues{grid-template-columns:repeat(5,1fr)} .rkBig{flex-direction:column;text-align:center} .mnRow{grid-template-columns:repeat(3,1fr)} }
+@media (prefers-reduced-motion:reduce){ #queueBar,#queueBar .pxw,.rkFxBadges .new .pxBadge{animation:none!important} }
+#tip{border:0;border-radius:0;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--pxK),inset 0 0 0 4px var(--pxLine)}
+#tip h4{font-family:var(--pxFont);font-weight:700;letter-spacing:.02em}
 </style>
 </head>
 <body>
@@ -934,9 +1071,10 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   <div class="mnLayout">
     <h1 class="logo mnLogo"><img src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></h1>
     <nav class="mnNav" aria-label="Menú principal">
-      <button class="pxb pxb-main" id="playBtn"><i data-i="ball" data-s="44"></i><span class="pxbT"><b>Jugar</b><small>Contra 7 entrenadores</small></span><i class="pxCaret" aria-hidden="true"></i></button>
-      <button class="pxb pxb-alt" id="mpBtn"><i data-i="people" data-s="36"></i><span class="pxbT"><b>Multijugador</b><small>Salas de hasta 8 jugadores</small></span><i class="pxCaret" aria-hidden="true"></i></button>
+      <button class="pxb pxb-main" id="playBtn"><i data-i="ball" data-s="44"></i><span class="pxbT"><b>Normal</b><small>Dificultad adaptativa · salas con amigos</small></span><i class="pxCaret" aria-hidden="true"></i></button>
+      <button class="pxb pxb-alt" id="rankedBtn"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Clasificatoria</b><small>Rango, divisiones y LP</small></span><i class="pxCaret" aria-hidden="true"></i></button>
       <div class="mnRow">
+        <button class="pxb pxb-sq" id="histBtn"><i data-i="hourglass" data-s="32"></i><span>Historial</span></button>
         <button class="pxb pxb-sq" id="dexMenuBtn"><i data-i="dex" data-s="32"></i><span>Pokédex</span></button>
         <button class="pxb pxb-sq" id="recMenuBtn"><i data-i="bag" data-s="32"></i><span>Objetos</span></button>
         <button class="pxb pxb-sq" id="howBtn"><i data-i="book" data-s="32"></i><span>Guía</span></button>
@@ -949,6 +1087,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 </div>
 
 <div class="modal hidden" id="modal"><div class="mbox" id="mbox"></div></div>
+<div id="queueBar" class="pxpanel hidden" role="status" aria-live="polite"></div>
 <div id="toast"></div>
 <div id="ghost"></div>
 <div id="tip"></div>

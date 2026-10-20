@@ -56,8 +56,10 @@ function limiter(max, windowMs) {
   };
 }
 
+const { publicComp } = require('./competitive');
+// Lo que ve el navegador de su cuenta: nunca el MMR, solo su rango (o el posicionamiento) y sus caramelos
 function publicUser(u) {
-  return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {} };
+  return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp) };
 }
 function cleanSettings(s) {
   const out = {};
@@ -165,13 +167,11 @@ function createAuth(db, { trainers }) {
     res.json({ user: publicUser(updated) });
   }));
 
-  // Resultado de una partida en solitario (las de multijugador las apunta el servidor)
-  router.post('/result', needUser(async (req, res, user) => {
-    const place = (req.body || {}).place;
-    if (!Number.isInteger(place) || place < 1 || place > 8) return res.status(400).json({ error: 'Puesto no válido' });
-    await db.addResult(user.id, place);
-    res.json({ user: publicUser(await db.userById(user.id)) });
-  }));
+  // Ya no se aceptan resultados enviados por el navegador: todas las partidas que cuentan las ejecuta y apunta el servidor
+  router.post('/result', (req, res) => res.status(410).json({ error: 'Los resultados los registra el servidor' }));
+
+  // Historial: las 6 partidas más recientes (en la base se guardan todas)
+  router.get('/history', needUser(async (req, res, user) => res.json({ matches: await db.matches(user.id, 6) })));
 
   // Socket.io: solo entran jugadores con sesión
   function socketGuard(socket, next) {
