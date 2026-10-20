@@ -133,6 +133,15 @@ const combatOf = (p, k) => { const cb = E.createCombatSnap(E.teamSnap(p), null, 
   ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 12, 'Fuerza Creciente: +12 de poder tras 3 rondas'); }
 ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite');
 
+// 10. Determinismo: dibujar el combate (efectos, retrasos visuales de impacto) no cambia su resultado
+{ const big = ['machop', 'onix', 'charmander', 'pichu', 'abra', 'gastly', 'magnemite', 'riolu', 'cleffa'], big2 = ['magikarp', 'bulbasaur', 'squirtle', 'meowth', 'dratini', 'larvitar', 'cleffa', 'abra', 'pichu'];
+  const cells = ['3,0', '2,0', '4,0', '1,0', '5,0', '2,3', '3,3', '4,3', '1,3'], snap = (l, st, it) => ({ ag: [], m: {}, u: l.map((k, i) => [cells[i], k, st, it, 0, 0]) });
+  let same = 0, fxN = 0; const N = 20;
+  for (let s = 1; s <= N; s++) { const a = snap(big, 1 + (s % 3), s % 2 ? ['soothe', 'energy'] : []), b = snap(big2, 1 + (s % 3), ['sharp']);
+    const run = vis => { const cb = E.createCombatSnap(a, b, { s: 4, n: 2, type: 'pvp' }, { seed: s * 7919, visual: vis }); E.simulate(cb); if (vis) fxN += cb.fx.length; return JSON.stringify([cb.winner, +cb.t.toFixed(3), cb.units.map(u => Math.round(u.hp))]); };
+    if (run(false) === run(true)) same++; }
+  ok(same === N, `mismo resultado con y sin efectos visuales (${same}/${N})`); ok(fxN > 0, 'los combates visuales generan efectos'); }
+
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');
