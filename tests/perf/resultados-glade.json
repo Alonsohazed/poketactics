@@ -1,0 +1,277 @@
+{
+  "etiqueta": "glade",
+  "fecha": "2026-10-20T11:06:04.306Z",
+  "segundos": 6,
+  "escenarios": [
+    {
+      "escenario": "A",
+      "unidades": 4,
+      "modelos": "4/4",
+      "fps": 133.78,
+      "frameP50": 6.9,
+      "frameP95": 9.4,
+      "frameP99": 19.5,
+      "drawMsMedio": 3.46,
+      "drawMsP95": 5.1,
+      "drawMsMax": 25.6,
+      "drawMsPrimeros": [
+        18.9,
+        3.5,
+        4.9,
+        3.6
+      ],
+      "largasEn": [
+        61
+      ],
+      "tareasLargas": 1,
+      "tareaLargaMax": 61,
+      "errores": 0,
+      "efectosMax": 15,
+      "fotogramasRepetidosPct": 0,
+      "combateTerminado": false,
+      "3d_actorsMs": 0.5,
+      "3d_fxMs": 0.1,
+      "3d_glMs": 2.38,
+      "3d_calls": 86.69,
+      "3d_tris": 43383.46,
+      "3d_geo": 74.58,
+      "3d_tex": 134,
+      "escena": {
+        "mallas": 79,
+        "piel": 33,
+        "actores": 45,
+        "efectos": 0,
+        "escenario": 34,
+        "sprites": 1,
+        "puntos": 4,
+        "materiales": 72,
+        "programas": 33,
+        "sombras": true
+      },
+      "lentos": [],
+      "calidad": 2
+    },
+    {
+      "escenario": "B",
+      "unidades": 12,
+      "modelos": "12/12",
+      "fps": 130.34,
+      "frameP50": 7.1,
+      "frameP95": 10.9,
+      "frameP99": 13.7,
+      "drawMsMedio": 5.63,
+      "drawMsP95": 7.5,
+      "drawMsMax": 144.1,
+      "drawMsPrimeros": [
+        24.9,
+        4.4,
+        5.3,
+        4.2
+      ],
+      "largasEn": [
+        150
+      ],
+      "tareasLargas": 1,
+      "tareaLargaMax": 150,
+      "errores": 0,
+      "efectosMax": 35,
+      "fotogramasRepetidosPct": 0.4,
+      "combateTerminado": false,
+      "3d_actorsMs": 1.15,
+      "3d_fxMs": 0.11,
+      "3d_glMs": 3.68,
+      "3d_calls": 144.54,
+      "3d_tris": 85424.69,
+      "3d_geo": 113.69,
+      "3d_tex": 254,
+      "escena": {
+        "mallas": 130,
+        "piel": 64,
+        "actores": 94,
+        "efectos": 2,
+        "escenario": 34,
+        "sprites": 3,
+        "puntos": 4,
+        "materiales": 115,
+        "programas": 35,
+        "sombras": true
+      },
+      "lentos": [
+        {
+          "ms": 143.5,
+          "actores": 1.6,
+          "efectos": 0.8,
+          "gpu": 141.1,
+          "nuevos": [
+            "banner",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "hit",
+            "banner"
+          ],
+          "progs": 38,
+          "progsAntes": 37
+        }
+      ],
+      "calidad": 2
+    },
+    {
+      "escenario": "C",
+      "unidades": 18,
+      "modelos": "15/15",
+      "fps": 72.32,
+      "frameP50": 11.8,
+      "frameP95": 28.3,
+      "frameP99": 41,
+      "drawMsMedio": 8.95,
+      "drawMsP95": 13.8,
+      "drawMsMax": 81.7,
+      "drawMsPrimeros": [
+        29.6,
+        6.1,
+        8.2,
+        6.4
+      ],
+      "largasEn": [
+        63,
+        94
+      ],
+      "tareasLargas": 2,
+      "tareaLargaMax": 94,
+      "errores": 0,
+      "efectosMax": 100,
+      "fotogramasRepetidosPct": 2.08,
+      "combateTerminado": false,
+      "3d_actorsMs": 1.67,
+      "3d_fxMs": 0.28,
+      "3d_glMs": 5.76,
+      "3d_calls": 208.93,
+      "3d_tris": 114178.43,
+      "3d_geo": 141.14,
+      "3d_tex": 319,
+      "escena": {
+        "mallas": 181,
+        "piel": 85,
+        "actores": 124,
+        "efectos": 22,
+        "escenario": 35,
+        "sprites": 11,
+        "puntos": 4,
+        "materiales": 162,
+        "programas": 37,
+        "sombras": true
+      },
+      "lentos": [
+        {
+          "ms": 80,
+          "actores": 1.6,
+          "efectos": 0.6,
+          "gpu": 77.8,
+          "nuevos": [
+            "banner",
+            "banner",
+            "banner",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text",
+            "text"
+          ],
+          "progs": 37,
+          "progsAntes": 37
+        }
+      ],
+      "calidad": 2
+    },
+    {
+      "escenario": "D",
+      "unidades": 18,
+      "modelos": "15/15",
+      "fps": 78.59,
+      "frameP50": 11.8,
+      "frameP95": 19.6,
+      "frameP99": 38.9,
+      "drawMsMedio": 7.99,
+      "drawMsP95": 11.5,
+      "drawMsMax": 70.1,
+      "drawMsPrimeros": [
+        70.1,
+        36.3,
+        11.3,
+        11.1
+      ],
+      "largasEn": [
+        72,
+        68
+      ],
+      "tareasLargas": 2,
+      "tareaLargaMax": 72,
+      "errores": 0,
+      "efectosMax": 116,
+      "fotogramasRepetidosPct": 0,
+      "combateTerminado": false,
+      "3d_actorsMs": 1.54,
+      "3d_fxMs": 0.23,
+      "3d_glMs": 5.31,
+      "3d_calls": 251.33,
+      "3d_tris": 107311.2,
+      "3d_geo": 237.4,
+      "3d_tex": 563,
+      "escena": {
+        "mallas": 223,
+        "piel": 81,
+        "actores": 123,
+        "efectos": 64,
+        "escenario": 36,
+        "sprites": 3,
+        "puntos": 4,
+        "materiales": 208,
+        "programas": 43,
+        "sombras": true
+      },
+      "lentos": [
+        {
+          "ms": 68.7,
+          "actores": 34.5,
+          "efectos": 1.6,
+          "gpu": 32.6,
+          "nuevos": [],
+          "progs": 43,
+          "progsAntes": 43
+        }
+      ],
+      "calidad": 2
+    }
+  ],
+  "carga": {
+    "primerContenidoMs": 80,
+    "interactivoMs": 95,
+    "cargaMs": 123,
+    "tablero3DListoMs": 242,
+    "primerPokemonMs": 275,
+    "seisPokemonMs": 533,
+    "porModelo": {
+      "4": 275,
+      "7": 275,
+      "25": 275,
+      "66": 275,
+      "92": 325,
+      "130": 533
+    }
+  },
+  "gpu": "ANGLE (AMD, AMD Radeon RX 6600 XT (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "erroresConsola": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ]
+}

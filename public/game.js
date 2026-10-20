@@ -2376,7 +2376,7 @@ function arenaHost(){
  if(G.phase==='combat'){ if(v&&v.cb) return v.flip?(v.opp||viewedPlayer()):(G.players.find(p=>p.id===v.pid)||me); return G.flip?(byName(G.myOpp)||me):me; }
  return viewedPlayer();
 }
-function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'river'; }
+function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'glade'; }
 const STAR_SCALE=[1,1.13,1.27];
 // Etapa evolutiva: las primeras formas son más pequeñas y al evolucionar se nota el cambio (líneas de 1, 2 o 3 formas)
 const STAGE_SCALE={2:[.75,1.1],3:[.78,.93,1.08]};
@@ -2412,7 +2412,7 @@ function drawHud(a){
  const isz=o.items&&o.items.length?Math.max(22,R*.8):0; let itemsY=hy-isz-4;
  ctx.save();
  if(o.hp!==undefined){
-   const w=R*1.45, bx=Math.round(hx-w/2), hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+3:0));
+   const w=Math.max(22,R*.8)*3+4, bx=Math.round(hx-w/2), hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+3:0));
    itemsY=by+hh+(hasM?mh+1:0)+3;
    ctx.fillStyle='rgba(10,12,24,.85)'; ctx.fillRect(bx-1.5,by-1.5,w+3,hh+(hasM?mh+1:0)+3);
    const hpK=clamp(o.hp/o.maxHp,0,1); if(a.cu){ let tr=HP_TRAIL.get(a.cu); if(tr==null||tr<hpK) tr=hpK; else tr=Math.max(hpK,tr-(tr-hpK)*.06-.003); HP_TRAIL.set(a.cu,tr); if(tr>hpK){ ctx.fillStyle='rgba(255,236,200,.9)'; ctx.fillRect(bx+w*hpK,by,w*(tr-hpK),hh); } }
@@ -2834,7 +2834,6 @@ function renderPlayers(){
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
    ${upBadge(p)}<span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
    <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}<span class="lv">${p.level}</span></span></div>`).join('');
- $('plHint').textContent=combat?'Toca un entrenador para ver su combate':'Toca un entrenador para ver su tablero'+(po.size?' · ⚔️ = posible rival':'');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
