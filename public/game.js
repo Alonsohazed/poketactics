@@ -3099,7 +3099,7 @@ function histRow(m,i){
    <div class="hLvl" title="Nivel">${c.lvl||'—'}</div>
    <div class="hMid"><div class="hComp">${(c.units||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon en el tablero</span>'}</div><div class="hTraits">${(c.traits||[]).map(histTrait).join('')}${(c.augs||[]).map(id=>AUG_BY[id]?`<span class="hA">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div></div>
    <div class="hRight">${right}<span class="rChip candy"><i data-i="candy" data-s="16"></i>+${r.candies||0}</span></div></button>
-  <div class="hDet" hidden><div class="hDetGrid">${det.join('')}</div>${parts.length?`<div class="hParts">${parts.map(p=>`<span class="${p.me?'me':''}">${p.place?ordinal(p.place):'—'} ${esc(String(p.name||'').replace(/ (bot)$/,''))}${p.bot?' <em>bot</em>':''}</span>`).join('')}</div>`:''}</div></div>`;
+  <div class="hDet" hidden><div class="hDetGrid">${det.join('')}</div>${parts.length?`<div class="hParts">${parts.map(p=>`<span class="${p.me?'me':''}">${p.place?ordinal(p.place):'—'} ${esc(String(p.name||'').replace(/ (bot)$/,''))}</span>`).join('')}</div>`:''}</div></div>`;
 }
 async function showHistory(){
  openModal(`<div class="modeHead"><i data-i="hourglass" data-s="44"></i><div><h1>Historial de partidas</h1><p class="muted">Tus 6 partidas más recientes. Toca una para ver los detalles.</p></div></div><div class="hList" id="hList"><p class="muted">Cargando…</p></div>`,{closable:true});
