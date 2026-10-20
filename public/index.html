@@ -420,7 +420,7 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .lvl #xpTxt{font-family:var(--display);font-size:15px}
 .lvl .lvN{font-size:15px}
 /* Tienda flotante (escritorio): una barra compacta centrada abajo, para que el campo se vea entero */
-body.fullField .shop{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(1500px,calc(100vw - 330px));padding:4px 10px 8px;border:1px solid rgba(184,147,62,.6);border-bottom:0;border-radius:14px 14px 0 0;
+body.fullField .shop{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(1500px,calc(100vw - 2 * var(--shopH,190px) - 44px));padding:4px 10px 8px;border:1px solid rgba(184,147,62,.6);border-bottom:0;border-radius:14px 14px 0 0;
   background:linear-gradient(180deg,rgba(14,22,36,.94),rgba(8,12,22,.97));box-shadow:0 -8px 26px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
 body.fullField .shopTop{margin-bottom:4px;position:relative}
 body.fullField .shopTop .goldWrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0}
@@ -1030,10 +1030,14 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 /* ---------- lista de jugadores y minimapa (estilo TFT: sin fondo, etiqueta de vida con punta y retrato con anillo dorado) ---------- */
 .side{background:none;border:0;box-shadow:none;padding:0}
 .sideTabs{justify-content:flex-end;gap:5px;margin-bottom:6px}
-.sideTabs button,.sideTabs button[data-tab="log"]{flex:none;width:30px;height:30px;padding:0;display:grid;place-items:center;border-radius:7px;background:rgba(8,12,24,.62);border:1px solid rgba(184,147,62,.55);color:#e8d9a8}
+.sideTabs button{flex:none;width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:7px;background:rgba(8,12,24,.62);border:1px solid rgba(184,147,62,.55);color:#e8d9a8}
 .sideTabs button span{display:none}
 .sideTabs button[aria-selected="true"]{background:rgba(184,147,62,.35);border-color:#e0b24a}
-.sideTabs i[data-i]{display:block;line-height:0}
+.sideTabs svg{display:block;fill:#f3e3b0;filter:drop-shadow(0 1px 1px #000)}
+.sideTabs button[aria-selected="true"] svg{fill:#fff}
+.sideTabs button:hover{border-color:#e0b24a}
+/* sin barra de desplazamiento horizontal bajo la lista */
+.right,.side,.tabBody{overflow-x:hidden}
 .pl{gap:0;margin-bottom:6px;border-radius:0}
 .pl .nm{background:none;border:0;padding:0 10px 0 0;max-width:140px;font-size:13px;font-weight:800;color:#e8eef9;text-shadow:0 1px 3px #000,0 0 6px rgba(0,0,0,.8)}
 .pl.click:hover .nm{background:none;color:#fff}
@@ -1047,7 +1051,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .pl .ring .head{--hs:40px;border:2px solid #0c1018}
 .pl .lv{font-size:10px;right:-3px;bottom:-3px}
 /* Minimapa 3×3: cada casilla es el campo de un jugador, con la miniatura de su minileyenda y, en combate, la de quien lo visita */
-.islands{width:156px;height:156px;padding:6px;border-radius:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:6px;background:rgba(7,11,16,.78);border:2px solid #b8933e;box-shadow:inset 0 0 0 1px #000,0 6px 18px rgba(0,0,0,.5)}
+.islands{right:10px;bottom:0;top:auto;width:var(--shopH,190px);height:var(--shopH,190px);border-radius:8px 8px 0 0;border-bottom:0;padding:8px;border-radius:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:6px;background:rgba(7,11,16,.78);border:2px solid #b8933e;box-shadow:inset 0 0 0 1px #000,0 6px 18px rgba(0,0,0,.5)}
 .isleCell{position:relative;display:grid;place-items:center;border:2px solid rgba(60,110,100,.55);border-radius:4px;background:rgba(20,40,40,.55);padding:0;cursor:pointer;overflow:visible}
 .isleCell:hover{border-color:#bfe9dc;background:rgba(40,80,70,.6)}
 .isleCell.cur{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35),0 0 10px rgba(255,255,255,.6)}
@@ -1090,9 +1094,9 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
     <div class="ucard hidden" id="ucard" aria-live="polite"></div>
     <div class="side">
       <div class="sideTabs" role="tablist">
-        <button role="tab" data-tab="pl" aria-selected="true" title="Entrenadores" aria-label="Entrenadores"><i data-i="people" data-s="16"></i></button>
-        <button role="tab" data-tab="dmg" aria-selected="false" title="Registro de daño" aria-label="Registro de daño"><i data-i="swords" data-s="16"></i></button>
-        <button role="tab" data-tab="log" aria-selected="false" title="Registro de la partida: aumentos, botín, Caos…" aria-label="Registro de la partida"><i data-i="book" data-s="16"></i></button>
+        <button role="tab" data-tab="pl" aria-selected="true" title="Vida de los entrenadores" aria-label="Vida de los entrenadores"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="9" cy="7.5" r="3.6"/><path d="M2.5 20c0-4 2.9-6.6 6.5-6.6s6.5 2.6 6.5 6.6z"/><circle cx="17" cy="8.5" r="2.9" opacity=".75"/><path d="M15.8 13.6c3.4.2 5.7 2.6 5.7 6.4h-4.6c0-2.6-.4-4.6-1.1-6.4z" opacity=".75"/></svg></button>
+        <button role="tab" data-tab="dmg" aria-selected="false" title="Daño del combate" aria-label="Daño del combate"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 3h4.5l9 9-1.4 1.4-1.6-1.6-1.6 1.6L3 4.5z"/><path d="M21 3h-4.5l-9 9 1.4 1.4 1.6-1.6 1.6 1.6L21 4.5z" opacity=".8"/><path d="M5.6 15.6l2.8 2.8-2 2-1.1-1.1-1.9 1.9-1.1-1.1 1.9-1.9-1.1-1.1zM18.4 15.6l-2.8 2.8 2 2 1.1-1.1 1.9 1.9 1.1-1.1-1.9-1.9 1.1-1.1z"/></svg></button>
+        
       </div>
       <div class="tabBody" id="tabPl"><div id="players"></div></div>
       <div class="tabBody" id="tabDmg" hidden>
