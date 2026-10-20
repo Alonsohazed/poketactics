@@ -163,7 +163,7 @@ const UNIT_LIST=[
  U('rayquaza',['Rayquaza'],[384],5,'r',['Dragón','Tirador','Legendario'],[['line','Ascenso Draco',{m:1,refundKill:.2,fall:.25,mm:70,mana0:20}]]),
  U('zapdos',['Zapdos'],[145],5,'r',['Eléctrico','Tirador','Legendario'],[['chain','Electrocañón',{n:6,m:.38,amp:.15,stun:.6,mm:75,mana0:15}]]),
  U('moltres',['Moltres'],[146],5,'m',['Fuego','Hechicero','Legendario'],[['zone','Sofoco',{r:2,m:2.2,dur:4,burn:.04,mm:95,revive:.5,nova:1}]]),
- U('kyogre',['Kyogre'],[382],5,'m',['Agua','Hechicero','Legendario'],[['meteor','Pulso Primigenio',{m:.75,manaTeam:35,chill:1.5,mm:150,mana0:80}]]),
+ U('kyogre',['Kyogre'],[382],5,'m',['Agua','Hechicero','Legendario'],[['meteor','Pulso Primigenio',{m:.6,manaTeam:35,chill:1.5,mm:150,mana0:60}]]),
  U('groudon',['Groudon'],[383],5,'b',['Roca','Coloso','Legendario'],[['titan','Filo del Abismo',{hp:.45,m:.45,n:6,r:1,dr:.25,dur:5,mm:110,v:'rocks'}]]),
  U('giratina',['Giratina'],[487],5,'a',['Fantasma','Dragón','Asesino','Legendario'],[['devour','Mundo Distorsión',{m:3.8,dur:2,ghp:60,gad:6,mm:60,mana0:20}]]),
  U('lugia',['Lugia'],[249],5,'t',['Psíquico','Guardián','Legendario'],[['wave','Aerochorro',{m:1,w:1.8,push:2,stun:.6,healTeam:.3,asTeam:.25,mm:110}]]),

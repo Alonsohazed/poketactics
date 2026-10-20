@@ -90,10 +90,10 @@ for (const [id, k] of Object.entries(HEROES)) { const { G, p } = fresh(); const 
   const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'abra', 2, [], 0, 0], ['4,0', 'gastly', 2, [], 0, 0]].filter(r => E.DEF[r[1]]) };
   const cb = E.createCombatSnap(snap, foe, { s: 4, n: 2 }, { seed: 4242 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k);
   if (id === 'h_lucario') ok(h.echo, 'Aura Implacable: doble lanzamiento');
-  if (id === 'h_machamp') ok(h.sp.rage === .05, 'Furia Creciente: cargas de velocidad');
+  if (id === 'h_machamp') ok(h.sp.rage === .07, 'Furia Creciente: cargas de velocidad');
   if (id === 'h_clefable') ok(h.critAbil, 'Precisión Lunar: habilidades críticas');
   if (id === 'h_clefable') ok(h.ab[0] === 'lunar' && h.ab[2].grow > 0, 'Precisión Lunar: cambia su habilidad por Rayo Lunar, que crece al lanzar');
-  if (id === 'h_charizard') ok(h.dragonRamp === .03, 'Calor Acumulado: daño creciente');
+  if (id === 'h_charizard') ok(h.dragonRamp === .05, 'Calor Acumulado: daño creciente');
   E.simulate(cb); ok(cb.done && cb.units.every(u => Number.isFinite(u.hp)), `${id}: el combate termina sin valores rotos`);
   if (id === 'h_ditto') ok(h.copied && h.copied[0] !== 'copy', 'Adaptación Perfecta: Ditto copia una habilidad enemiga'); }
 // Sustitutos de los clásicos planos
@@ -131,7 +131,7 @@ const combatOf = (p, k) => { const cb = E.createCombatSnap(E.teamSnap(p), null, 
   E.applyAugment(p, E.AUG_BY.entreno_combate); E.resolvePick(p, p.picks[0].id, 0); for (let i = 0; i < 2; i++) event(p, 'roundEnd', {});
   ok(u.stk.ad === 6 && u.stk.hp === 40 && u.stk.ap === 9, 'Entrenamiento de Combate: +6 de ataque, +9 de poder y +40 de vida permanentes'); ok(/\+6 de ataque, \+9 de poder y \+40 de vida/.test(E.augProgress(p, 'entreno_combate')), 'Entrenamiento de Combate: contador'); }
 { const { p } = fresh(); p.board = { '3,0': E.makeInst('abra') }; const base = combatOf(p, '3,0'); E.applyAugment(p, E.AUG_BY.h_alakazam); for (let i = 0; i < 3; i++) event(p, 'roundStart', {});
-  ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 12, 'Fuerza Creciente: +12 de poder tras 3 rondas'); }
+  ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 15, 'Fuerza Creciente: +15 de poder tras 3 rondas'); }
 ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite');
 
 // 11. Cada aumento de héroe mejora de verdad a su Pokémon (mismo combate y semilla, con y sin el aumento; media de 12 semillas)
