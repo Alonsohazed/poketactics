@@ -49,7 +49,8 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - ingreso base 0/2/3/4 al principio y después 5;
   - interés de 1 por cada 10 de oro (máximo 5);
   - racha de 2-3 da +1, de 4 da +2 y de 5 o más da +3;
-  - refrescar la tienda cuesta 2; comprar EXP cuesta 4 por 4 EXP.
+  - refrescar la tienda cuesta 2; comprar EXP cuesta 4 por 4 EXP;
+  - el oro ganado en los resultados (combate, victoria, Cazatesoros, aumentos) queda en `p.pendGold` y se cobra en `nextRound` justo después de refrescar la tienda (en el carrusel espera a la ronda siguiente), para que no se gaste en la tienda de la ronda que acaba.
 - **Estrellas y formas**: los costes 4 de 3 formas empiezan en su 2.ª forma (`formIdx`): a 2★ ya son la forma final con su mejor habilidad. A 3★ las estadísticas usan `STAR3_BY_COST=[3.24,3.24,3.4,5,8]` y las habilidades `ABIL3_BY_COST=[3,3.1,3.3,6,11]` (los costes 4 y 5 a 3★ son casi victoria segura). Además, a 3★ cada lanzamiento suma +20 % de poder (+25 % en costes 4 y 5) durante el combate, sin límite (`u.castBoost`).
 - **Clases** (`applyTraits` + enganches en `dealDamage`/`castAbility`/`stepCombat`), inspiradas en TFT: Guardián = guardaespaldas (provocan a los 1,5 s con escudo, `bodyguard`), Coloso = matones (vida a todo el equipo, doble para ellos), Tirador = +daño por casilla de distancia (`hexAmp`), Hechicero = académicos (+poder cada vez que un aliado lanza, `scholar`), Asesino = salto + críticos y habilidades críticas (`critAbil`), Sanador = encantadores (+curas y escudos de habilidad para todo el equipo, `healAmp`, y resistencia), Fortuna = dado de oro tras cada combate, **Rival** = retadores (+vel. y acelerón con salto al matar, `rival`/`rushT`) y **Team Rocket** = quimtech (al bajar del 60 %: reducción de daño, velocidad y regeneración 4 s, `rocket`).
 - **Legendarios**: cada uno tiene una mecánica propia mediante parámetros de habilidad: `grow` (crece al lanzar), `refundKill` (recupera maná por baja), `amp` (cadena que se amplifica), `revive`/`nova` (renace), `phoenix` (el primer aliado que cae renace), `markAll`, `asTeam`, `mana0` (maná inicial) y `mm` (maná máximo), y los tipos nuevos `titan` (escudo y golpes) y `devour` (si derrota, crece para siempre).
@@ -106,6 +107,8 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - El menú y el acceso usan de fondo el propio campo 3D (`menuActors()`); la escena pixel art (`Scene`) ya no se muestra.
 - Retratos de la tienda y de las minileyendas (selector, menú, cabezas de la lista de jugadores y salas): ilustraciones recortadas de cartas TCG en `public/art/<clave>.webp` (414×256, sin texto; `CARD_ART` y `artImg()` en `game.js`), sacadas de pokemon-tcg-data, pokemon-tcg-pocket-database y tcgdex. Ahí no se cargan modelos 3D. Son arte oficial: sustituibles por arte propio cuando lo haya.
 - Logo y favicon propios en `public/img/` (`logo.png` del menú y del acceso; `favicon-32.png`, `favicon-512.png` y `apple-touch-icon.png`), con el fondo ya transparente.
+- Sonidos: los propios se sintetizan con WebAudio en `Music` (`hurry`, `xp`, `drop`); los grabados se cargan en caliente con `Music.sample`: gritos al comprar el primer ejemplar (Showdown `audio/cries/<nombre>.mp3`, con PokeAPI/cries de reserva), evolución y Poké Ball de PokeMiners/pogo_assets (`SFX`).
+- Aumentos: cada carta llega como una ball con volumen (CSS: `.augBox`, `.lidT`/`.lidB`), se entreabre y se estira hasta la carta con arriba y abajo redondeados. Los modelos FBX de pogo_assets son de una pieza y sin textura, así que no se usan.
 - No uses fan art de terceros sin permiso; inspírate en el estilo de los juegos oficiales.
 
 ## Cuentas y seguridad

@@ -414,7 +414,7 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .streak b{color:#fff;font-weight:400}
 /* Barra de EXP en tramos de 4 y números más grandes */
 .xpbar{position:relative;height:11px}
-.xpbar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(var(--seg,25%) - 2px),rgba(6,8,18,.9) calc(var(--seg,25%) - 2px) var(--seg,25%));pointer-events:none}
+.xpbar::after{content:"";position:absolute;inset:0;background:var(--sep,none);pointer-events:none}
 .lvl #xpTxt{font-family:var(--display);font-size:15px}
 .lvl .lvN{font-size:15px}
 /* Tienda flotante (escritorio): una barra compacta centrada abajo, para que el campo se vea entero */
@@ -437,31 +437,33 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .card .cardArt{background-size:cover;background-position:60% 40%}
 .card .cardArt::before,.card .cardArt::after{display:none}
 /* ---------- planificador de fases (estilo TFT) ---------- */
-.roundBar{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 30px 7px;
+.roundBar{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:6;display:flex;flex-direction:row;align-items:center;gap:18px;padding:7px 44px 9px;
   clip-path:polygon(0 0,100% 0,calc(100% - 26px) 100%,26px 100%);background:linear-gradient(180deg,#1c3344,#0d1822 75%);color:#eef2ff;
-  box-shadow:inset 0 -2px 0 #b8933e,inset 0 1px 0 rgba(255,255,255,.1);min-width:300px}
+  box-shadow:inset 0 -2px 0 #b8933e,inset 0 1px 0 rgba(255,255,255,.1);min-width:640px;justify-content:space-between}
+.rbLeft{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:120px}
+.rbAlive{display:none!important}
 .rbTitle{font-family:var(--display);font-size:13px;letter-spacing:.03em;color:#f4e3b0;text-shadow:0 1px 0 #000;white-space:nowrap}
 .rbTitle b{color:#fff;font-weight:400}
-.roundBar .pills{display:flex;align-items:center;gap:7px}
-.roundBar .pill{position:relative;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 50% 35%,#3a5266,#142230);
+.roundBar .pills{display:flex;align-items:center;gap:13px}
+.roundBar .pill{position:relative;width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 50% 35%,#3a5266,#142230);
   border:2px solid #5d7286;box-shadow:0 2px 0 rgba(0,0,0,.6);opacity:1;overflow:visible}
-.roundBar .pill svg{width:17px;height:17px;filter:drop-shadow(0 1px 0 rgba(0,0,0,.7))}
+.roundBar .pill svg{width:19px;height:19px;filter:drop-shadow(0 1px 0 rgba(0,0,0,.7))}
 .roundBar .pill img{width:34px;height:34px;image-rendering:pixelated;margin-top:-4px;filter:drop-shadow(0 1px 1px #000)}
 .pill.rt-pve{border-color:#7fae5e}.pill.rt-pvp svg{fill:#ff7a5a}.pill.rt-carousel svg{fill:#5fd6e8}.pill.rt-pve svg{fill:#8fd06a}
 .roundBar .pill.past{opacity:.38;filter:grayscale(.8)}
-.roundBar .pill.cur{width:38px;height:38px;border-color:#ffd75e;box-shadow:0 0 0 2px rgba(255,215,94,.35),0 0 14px rgba(255,215,94,.6)}
-.roundBar .pill.cur svg{width:21px;height:21px}
+.roundBar .pill.cur{width:50px;height:50px;border-color:#ffd75e;box-shadow:0 0 0 2px rgba(255,215,94,.35),0 0 14px rgba(255,215,94,.6)}
+.roundBar .pill.cur svg{width:24px;height:24px}
 .augDot{position:absolute;top:-3px;right:-3px;width:10px;height:10px;transform:rotate(45deg);background:#c97bff;border:1px solid #fff;box-shadow:0 0 6px #c97bff}
 .rbLow{display:flex;align-items:center;gap:10px;margin-top:1px}
 .rbPhase,.rbAlive{font-size:12px;font-weight:900;padding:3px 12px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);white-space:nowrap}
 .rbPhase{color:#cfe8ff}
 .rbAlive{color:#f4e3b0}
-.rbClock{position:relative;width:40px;height:40px;display:grid;place-items:center;margin:-2px 0 -6px}
+.rbClock{position:relative;width:48px;height:48px;display:grid;place-items:center;flex:none}
 .rbClock svg{position:absolute;inset:0;transform:rotate(-90deg)}
 .rbClock circle{fill:none;stroke-width:4}
 .rbClock .bg{stroke:rgba(0,0,0,.65);fill:#0b1520}
 .rbClock .fg{stroke:#7fe8ff;stroke-linecap:round;transition:stroke-dashoffset .25s linear,stroke .2s}
-.rbTimer{position:relative;font-family:var(--display);font-size:16px;text-shadow:0 2px 0 #000}
+.rbTimer{position:relative;font-family:var(--display);font-size:19px;text-shadow:0 2px 0 #000}
 .roundBar.hurry .rbClock .fg{stroke:#ff6a3a}
 .roundBar.hurry .rbTimer{color:#ff8a5a;animation:hurry .5s ease-in-out infinite alternate}
 @keyframes hurry{to{transform:scale(1.18)}}
@@ -491,40 +493,45 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .ac2Tier{position:absolute;left:35.6%;right:36.1%;top:88%;height:5.6%;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
 .augCard2.tierP .ac2Tier{background:linear-gradient(90deg,#ff7ac8,#c49bff,#8fb2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 /* Apertura: la carta llega cerrada como su ball (mismo contorno), brilla el botón y las dos mitades se separan con suavidad */
-/* Apertura: la carta llega como una ball perfectamente redonda (recorte circular de la carta, 774×1126),
-   brilla el botón y, mientras las dos mitades se separan, el círculo se estira hasta ser la carta rectangular */
+/* Apertura: la carta llega como una ball con volumen (perfectamente redonda), se entreabre, deja ver la luz y el aumento de dentro
+   y, al separarse las dos mitades, el círculo se estira hasta la carta con la parte de arriba y de abajo redondeadas */
 .augBox{position:relative;--d:0s}
+.augBox .augCard2{border-radius:50% / 14%;box-shadow:inset 0 0 0 5px #fff}
 .augBox:not(.opened) .augCard2{pointer-events:none}
-.augClip{position:relative;clip-path:inset(15.63% 0 round 50% / 34.37%)}
+.augClip{position:relative;perspective:900px;clip-path:inset(15.63% 0 round 50% / 34.37%)}
 .augBox.opened .augClip{clip-path:none}
-.augBox .lidT,.augBox .lidB,.augBox .ballBtn,.augBox .ballRing{position:absolute;pointer-events:none;z-index:2}
-.augBox .lidT,.augBox .lidB{left:0;right:0;height:50%;box-sizing:border-box}
-.augBox .lidT{top:0;border-bottom:8px solid #15151c;background:radial-gradient(42% 26% at 34% 52%,rgba(255,255,255,.5),transparent 70%),linear-gradient(180deg,#ff4a44 40%,#d8141c)}
-.augBox .lidB{bottom:0;border-top:8px solid #15151c;background:radial-gradient(70% 45% at 50% 0%,#fff,#e6e6ec 70%,#c9cbd4)}
-.augBox.tG .lidT{background:radial-gradient(42% 26% at 34% 52%,rgba(255,255,255,.3),transparent 70%),linear-gradient(90deg,transparent 16%,#ffc61a 16% 31%,transparent 31% 69%,#ffc61a 69% 84%,transparent 84%),linear-gradient(180deg,#30303a 40%,#121218)}
-.augBox.tP .lidT{background:radial-gradient(42% 26% at 34% 52%,rgba(255,255,255,.35),transparent 70%),radial-gradient(circle at 25% 74%,#ff5aa8 0 9.5%,transparent 10%),radial-gradient(circle at 75% 74%,#ff5aa8 0 9.5%,transparent 10%),linear-gradient(180deg,#7f71d8 40%,#5846b6)}
-.augBox.tP .lidT::after{content:"M";position:absolute;left:50%;top:66%;transform:translate(-50%,-50%);font-family:var(--display);font-size:44px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.3)}
-.augBox .ballBtn{z-index:3;left:50%;top:50%;width:22%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#e2e2ea 60%,#babcc8);border:8px solid #15151c;box-shadow:0 0 0 4px #fff}
-.augBox .ballRing{z-index:4;left:0;right:0;top:15.63%;aspect-ratio:1;border-radius:50%;box-shadow:inset 0 0 0 5px #fff,inset 0 -14px 26px rgba(0,0,0,.18)}
-.augBox.opened .lidT,.augBox.opened .lidB,.augBox.opened .ballBtn,.augBox.opened .ballRing{display:none}
-.augBox.closed{animation:augIn .5s cubic-bezier(.22,1,.36,1) var(--d) both,augWob .7s ease-in-out calc(var(--d) + .45s) both}
-.augBox.closed .ballBtn{animation:btnGlow .55s ease-in-out calc(var(--d) + .5s) 2 alternate,btnFade .35s ease-out calc(var(--d) + 1.15s) forwards}
-.augBox.closed .ballRing{animation:ringFade .4s ease-out calc(var(--d) + 1.2s) forwards}
-.augBox.closed .augClip{animation:ballToCard .8s cubic-bezier(.22,1,.36,1) calc(var(--d) + 1.2s) forwards}
-.augBox.closed .lidT{animation:lidUp .75s cubic-bezier(.22,1,.36,1) calc(var(--d) + 1.2s) forwards}
-.augBox.closed .lidB{animation:lidDn .75s cubic-bezier(.22,1,.36,1) calc(var(--d) + 1.2s) forwards}
-.augBox.closed::after{content:"";position:absolute;z-index:4;left:50%;top:50%;width:120%;aspect-ratio:1;border-radius:50%;pointer-events:none;opacity:0;transform:translate(-50%,-50%) scale(.2);
-  background:radial-gradient(circle,rgba(255,255,255,.7),color-mix(in srgb,var(--glow) 60%,transparent) 32%,transparent 62%);animation:augFlash .8s ease-out calc(var(--d) + 1.18s)}
+.augBox .lidT,.augBox .lidB,.augBox .ballBtn,.augBox .seamGlow{position:absolute;pointer-events:none}
+.augBox .lidT{z-index:3;left:0;right:0;top:15.63%;height:34.37%;border-radius:50% 50% 0 0 / 100% 100% 0 0;transform-origin:50% 0%;border-bottom:7px solid #121218;box-sizing:border-box;
+  box-shadow:inset 0 -12px 16px rgba(0,0,0,.28);background:radial-gradient(26% 24% at 33% 30%,rgba(255,255,255,.95),rgba(255,255,255,0) 70%),radial-gradient(60% 46% at 40% 36%,rgba(255,255,255,.22),transparent 70%),radial-gradient(118% 128% at 50% 100%,transparent 50%,rgba(0,0,0,.5) 100%),linear-gradient(180deg,#ff6158,#e3171f 55%,#a30c13)}
+.augBox .lidB{z-index:3;left:0;right:0;top:50%;height:34.37%;border-radius:0 0 50% 50% / 0 0 100% 100%;border-top:7px solid #121218;box-sizing:border-box;
+  background:radial-gradient(70% 34% at 50% 0%,rgba(0,0,0,.28),transparent 75%),radial-gradient(36% 26% at 62% 72%,rgba(255,255,255,.7),transparent 70%),radial-gradient(118% 128% at 50% 0%,transparent 48%,rgba(30,34,52,.5) 100%),linear-gradient(180deg,#fbfbfd,#d6d8e1)}
+.augBox.tG .lidT{background:radial-gradient(26% 24% at 33% 30%,rgba(255,255,255,.95),rgba(255,255,255,0) 70%),radial-gradient(60% 46% at 40% 36%,rgba(255,255,255,.22),transparent 70%),radial-gradient(118% 128% at 50% 100%,transparent 50%,rgba(0,0,0,.5) 100%),linear-gradient(90deg,transparent 15%,#ffc61a 15% 31%,transparent 31% 69%,#ffc61a 69% 85%,transparent 85%),linear-gradient(180deg,#3a3a46,#16161c 60%,#08080b)}
+.augBox.tP .lidT{background:radial-gradient(26% 24% at 33% 30%,rgba(255,255,255,.95),rgba(255,255,255,0) 70%),radial-gradient(60% 46% at 40% 36%,rgba(255,255,255,.22),transparent 70%),radial-gradient(118% 128% at 50% 100%,transparent 50%,rgba(0,0,0,.5) 100%),radial-gradient(circle at 24% 66%,#ff8cc4 0 5%,#ff4f9f 8.5%,#c22a72 10.5%,transparent 11%),radial-gradient(circle at 76% 66%,#ff8cc4 0 5%,#ff4f9f 8.5%,#c22a72 10.5%,transparent 11%),linear-gradient(180deg,#8f82e6,#5d4bbd 55%,#3c2c8a)}
+.augBox.tP .lidT::after{content:"M";position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);font-family:var(--display);font-size:44px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 8px rgba(255,255,255,.4)}
+.augBox .ballBtn{z-index:4;left:50%;top:50%;width:23%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:7px solid #121218;
+  background:radial-gradient(circle at 50% 50%,transparent 38%,rgba(0,0,0,.18) 40%,transparent 46%),radial-gradient(circle at 38% 32%,#fff 0,#f1f2f7 32%,#b7bbc9 76%,#8a8fa0);
+  box-shadow:0 0 0 3px #f2f2f6,0 0 0 4px rgba(0,0,0,.25),inset 0 -3px 6px rgba(0,0,0,.25),0 3px 6px rgba(0,0,0,.4)}
+.augBox .seamGlow{z-index:2;left:4%;right:4%;top:50%;height:18%;transform:translateY(-50%) scaleX(.3);opacity:0;border-radius:50%;
+  background:radial-gradient(50% 50% at 50% 50%,#fff,color-mix(in srgb,var(--glow) 80%,#fff) 30%,transparent 70%)}
+.augBox.opened .lidT,.augBox.opened .lidB,.augBox.opened .ballBtn,.augBox.opened .seamGlow{display:none}
+/* Secuencia (sin desplazar la ball): aparece, brilla el botón, se entreabre con luz dentro y se abre hasta ser la carta */
+.augBox.closed{animation:augFade .35s ease-out var(--d) both}
+.augBox.closed .ballBtn{animation:btnGlow .4s ease-in-out calc(var(--d) + .3s) 2 alternate,btnFade .3s ease-out calc(var(--d) + 1.15s) forwards}
+.augBox.closed .lidT{animation:lidOpenT 1.5s cubic-bezier(.45,0,.25,1) calc(var(--d) + .55s) forwards}
+.augBox.closed .lidB{animation:lidOpenB 1.5s cubic-bezier(.45,0,.25,1) calc(var(--d) + .55s) forwards}
+.augBox.closed .augClip{animation:ballToCard 1.5s cubic-bezier(.45,0,.25,1) calc(var(--d) + .55s) forwards}
+.augBox.closed .seamGlow{animation:seam 1.5s ease-out calc(var(--d) + .55s) forwards}
+.augBox.closed::after{content:"";position:absolute;z-index:5;left:50%;top:50%;width:120%;aspect-ratio:1;border-radius:50%;pointer-events:none;opacity:0;transform:translate(-50%,-50%) scale(.2);
+  background:radial-gradient(circle,rgba(255,255,255,.6),color-mix(in srgb,var(--glow) 55%,transparent) 32%,transparent 62%);animation:augFlash .9s ease-out calc(var(--d) + 1.15s)}
 .augBox.tS{--glow:#ff6464}.augBox.tG{--glow:#ffc61a}.augBox.tP{--glow:#c49bff}
-@keyframes augIn{from{opacity:0;transform:translateY(24px) scale(.9)}to{opacity:1;transform:none}}
-@keyframes augWob{0%,100%{transform:rotate(0)}30%{transform:rotate(-5deg)}70%{transform:rotate(4deg)}}
-@keyframes btnGlow{to{box-shadow:0 0 0 4px #fff,0 0 18px 6px var(--glow)}}
-@keyframes btnFade{to{opacity:0;transform:translate(-50%,-50%) scale(1.15)}}
-@keyframes ringFade{to{opacity:0}}
-@keyframes ballToCard{to{clip-path:inset(-40px round 40px)}}
-@keyframes lidUp{to{transform:translateY(-34%);opacity:0}}
-@keyframes lidDn{to{transform:translateY(34%);opacity:0}}
-@keyframes augFlash{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:.9}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+@keyframes augFade{from{opacity:0}to{opacity:1}}
+@keyframes btnGlow{to{box-shadow:0 0 0 3px #f2f2f6,0 0 0 4px rgba(0,0,0,.25),inset 0 -3px 6px rgba(0,0,0,.25),0 0 20px 7px var(--glow)}}
+@keyframes btnFade{to{opacity:0}}
+@keyframes lidOpenT{0%{transform:none}30%,42%{transform:translateY(-5%) rotateX(-34deg)}85%{transform:translateY(-45.5%) rotateX(-14deg);opacity:1}100%{transform:translateY(-45.5%);opacity:0}}
+@keyframes lidOpenB{0%,40%{transform:none}85%{transform:translateY(45.5%);opacity:1}100%{transform:translateY(45.5%);opacity:0}}
+@keyframes ballToCard{0%,40%{clip-path:inset(15.63% 0 round 50% / 34.37%)}85%,100%{clip-path:inset(0 round 50% / 14%)}}
+@keyframes seam{0%{opacity:0;transform:translateY(-50%) scaleX(.3)}25%,42%{opacity:1;transform:translateY(-50%) scaleX(1)}75%,100%{opacity:0;transform:translateY(-50%) scaleX(1.2)}}
+@keyframes augFlash{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:.85}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
 .aug .augImg{width:82%;height:82%;object-fit:contain;image-rendering:pixelated}.augTipIco{width:26px;height:26px;object-fit:contain;image-rendering:pixelated;vertical-align:middle}
 .augRR{width:64px;height:40px;border-radius:10px;border:2px solid #f2d27a;background:linear-gradient(180deg,#3a3020,#1c160c);color:#ffe9a6;font-size:22px;cursor:pointer}
 .augRR:disabled{opacity:.35;cursor:not-allowed}
@@ -737,7 +744,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   /* Móvil: barra superior y tienda compactas para que el tablero y el banquillo quepan entre las dos */
   .top{gap:6px;padding:6px 8px}
   .top .stage{font-size:13px;padding:2px 8px}
-  .roundBar{padding:3px 14px 5px;gap:2px;margin:0;min-width:0} .rbTitle{font-size:11px} .roundBar .pill{width:22px;height:22px} .roundBar .pill.cur{width:28px;height:28px} .roundBar .pill svg{width:13px;height:13px} .roundBar .pill img{width:26px;height:26px} .rbLow{gap:6px} .rbPhase,.rbAlive{font-size:10.5px;padding:2px 8px} .rbClock{width:32px;height:32px} .rbTimer{font-size:13px} .roundBar .phase{display:none}
+  .roundBar{padding:3px 14px 5px;gap:2px;margin:0;min-width:0} .rbTitle{font-size:11px} .roundBar .pill{width:22px;height:22px} .roundBar .pill.cur{width:28px;height:28px} .roundBar .pill svg{width:13px;height:13px} .roundBar .pill img{width:26px;height:26px} .roundBar{gap:8px;min-width:0} .rbLeft{min-width:0} .roundBar .pills{gap:4px} .rbPhase{font-size:10.5px;padding:2px 8px} .rbClock{width:34px;height:34px} .rbTimer{font-size:13px} .roundBar .phase{display:none}
   .pills{gap:2px} .pill{width:22px;height:20px;font-size:10px;border-radius:6px}
   .phase{flex:1 1 calc(100% - 190px);min-width:0;font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .top .btn{padding:5px 8px;font-size:13px} .top .btn.icon{min-width:34px;padding:5px 6px}
@@ -766,7 +773,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 <header class="top">
   <div class="brand"><span class="ball" aria-hidden="true"></span>Poké Tactics</div>
   <span class="netTag" id="netTag" hidden></span>
-  <div class="roundBar" id="roundBar"><div class="rbTitle" id="stage">Fase 1-1</div><div class="pills" id="pills"></div><div class="rbLow"><span class="rbPhase" id="rbPhase">Planificación</span><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" title="Entrenadores que siguen vivos">👤 8/8</span></div><div class="phase" id="phase"></div></div>
+  <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div><span class="rbPhase" id="rbPhase">Planificación</span></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
   <button class="btn ghost icon" id="dexBtn" title="Pokédex">📕</button>
   <button class="btn ghost icon" id="recBtn" title="Recetas de objetos">⚒️</button>
   <button class="btn ghost icon" id="muteBtn" title="Música">🔊</button>

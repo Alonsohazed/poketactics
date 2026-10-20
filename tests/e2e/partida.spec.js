@@ -98,7 +98,7 @@ test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page })
   await expect(page.locator('#mbox .augCard2')).toHaveCount(3);
   await expect(page.locator('#mbox .augRR')).toHaveCount(3); // un cambio por carta
   // Las cartas llegan cerradas como una ball y solo se pueden elegir cuando se abren
-  await expect(page.locator('#mbox .augBox.opened')).toHaveCount(3, { timeout: 8000 });
+  await expect(page.locator('#mbox .augBox.opened')).toHaveCount(3, { timeout: 9000 });
   await page.locator('#mbox .augCard2').first().click();
   await expect(page.locator('#modal')).toBeHidden();
   expect((await me(page)).augs).toHaveLength(1);

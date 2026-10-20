@@ -1153,10 +1153,12 @@ function nextRound(){
  for(const p of alivePlayers()){
    if(R.type==='carousel') continue;
    addXp(p,(idx<PASSIVE_XP.length?PASSIVE_XP[idx]:2)+(idx>0?p.mods.xpRound:0));
-   p.gold+=income(p,idx).total;
    p.freeRerolls=p.mods.freeRerolls;
    augFire(p,'roundStart',{idx});
    if(!p.locked) refreshShop(p); p.locked=false;
+   // Primero cambia la tienda y después llega el oro (el pendiente de los resultados y el ingreso de la ronda)
+   if(p.pendGold){ p.gold+=p.pendGold; p.pendGold=0; }
+   p.gold+=income(p,idx).total;
    if(idx===0) giveUnitTo(p,drawUnitOfCost(1));
  }
  if(R.type==='carousel'){ startCarousel(); return; }
@@ -1273,7 +1275,7 @@ function growPotential(){
 }
 function resolveRound(){
  if(G.phase!=='combat') return;
- const R=G.round, base=STAGE_DMG[R.s]||22, me=G.me; const msgs=new Map(), extraGold={};
+ const R=G.round, base=STAGE_DMG[R.s]||22, me=G.me; const msgs=new Map(), extraGold={}, gold0=new Map(G.players.map(p=>[p,p.gold]));
  G.anvils=[]; const won=new Map();
  const say=(p,m)=>msgs.set(p,m);
  for(const f of G.fights){
@@ -1315,6 +1317,9 @@ function resolveRound(){
    p.board={}; p.bench=Array(BENCH).fill(null); p.shop=[null,null,null,null,null];
    note(null,`💀 ${p.name} queda eliminado (puesto ${p.place})`);
  }
+ // Lo ganado en los resultados se guarda y se cobra en la ronda siguiente, cuando ya ha cambiado la tienda:
+ // así no se puede gastar en la tienda de la ronda que acaba
+ for(const p of G.players){ const d=p.gold-(gold0.get(p)||0); if(d>0){ p.gold-=d; p.pendGold=(p.pendGold||0)+d; } }
  G.phase='results'; G.combat=null; G.view=null;
  growPotential();
  for(const p of alivePlayers()) combine(p);
@@ -1708,6 +1713,26 @@ const Music=(()=>{
   setVol(){ if(master) master.gain.setTargetAtTime(S.muted?0:S.vol*.9,ac.currentTime,.05); },
   // Pitido corto (aviso de tiempo)
   beep(f,dur){ if(!ac||S.muted) return; voice(waves.p25||'square',f,ac.currentTime+.01,dur,.22); },
+  // Nota de cristal: seno con un armónico suave, ataque rápido y cola larga (eco ligero)
+  chime(f,t,vol,len){ const o=ac.createOscillator(), o2=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o2.type='triangle'; o.frequency.value=f; o2.frequency.value=f*2.01;
+   const g2=ac.createGain(); g2.gain.value=.18; o2.connect(g2); g2.connect(g); o.connect(g); g.connect(master);
+   g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.012); g.gain.exponentialRampToValueAtTime(.0001,t+len);
+   o.start(t); o2.start(t); o.stop(t+len+.05); o2.stop(t+len+.05); },
+  // Reloj: dos notas que suben cada segundo (5 → 1), cada vez más agudas y juntas, para meter prisa sin sonar a alarma
+  sample(url,vol=1,alt){ if(HEADLESS||S.muted||!S.vol) return; const a=new Audio(url); a.volume=Math.min(1,S.vol*vol); a.onerror=()=>{ if(alt) this.sample(alt,vol); }; a.play().catch(()=>{}); },
+  cry(name,dex){ const id=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,''); if(id) this.sample('https://play.pokemonshowdown.com/audio/cries/'+id+'.mp3',.55,dex?'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/'+dex+'.ogg':null); },
+  sfx(k){ const u=SFX[k]; if(u) this.sample(u[0],u[1]); },
+  hurry(sec){ if(!ac||S.muted) return; const t=ac.currentTime+.01, k=5-sec, base=[659,784,880,1047,1175][Math.max(0,Math.min(4,k))], gap=.11-k*.012;
+   this.chime(base,t,.16,.38); this.chime(base*1.5,t+gap,.13,.45); if(sec<=2) this.chime(base*2,t+gap*2,.08,.5); },
+  // Comprar EXP: oro que se convierte en energía (barrido ascendente con brillo al final)
+  xp(){ if(!ac||S.muted) return; const t=ac.currentTime+.01, o=ac.createOscillator(), f=ac.createBiquadFilter(), g=ac.createGain();
+   o.type='sawtooth'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(880,t+.22); f.type='lowpass'; f.frequency.setValueAtTime(600,t); f.frequency.exponentialRampToValueAtTime(3200,t+.22); f.Q.value=6;
+   g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.09,t+.03); g.gain.exponentialRampToValueAtTime(.0001,t+.28); o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t+.3);
+   this.chime(1319,t+.2,.1,.35); this.chime(1760,t+.27,.08,.4); },
+  // Soltar una ficha: golpe suave y redondo, sin estridencias
+  drop(){ if(!ac||S.muted) return; const t=ac.currentTime+.005, o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(260,t); o.frequency.exponentialRampToValueAtTime(120,t+.09);
+   g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.2,t+.008); g.gain.exponentialRampToValueAtTime(.0001,t+.14); o.connect(g); g.connect(master); o.start(t); o.stop(t+.16);
+   const s=ac.createBufferSource(); s.buffer=noise; const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900; const gn=ac.createGain(); gn.gain.setValueAtTime(.05,t); gn.gain.exponentialRampToValueAtTime(.0001,t+.05); s.connect(f); f.connect(gn); gn.connect(master); s.start(t); s.stop(t+.06); },
  };
 })();
 function wantedSong(){
@@ -2073,7 +2098,7 @@ function bindEvents(){
    if(!d.moved){ selected=d.u; selCombat=null; renderUI(); return; }
    if(overShop(e)){ doAct({t:'sell',loc:d.loc}); if(selected===d.u) selected=null; return; }
    let to=null; const b=hitBench(x,y); if(b>=0) to={i:b}; else if(G.phase!=='combat'&&G.phase!=='carousel'){ const cell=hitCell(x,y); if(cell&&cell[1]>=4) to={b:cell[0]+','+(cell[1]-4)}; }
-   if(to) doAct({t:'move',from:d.loc,to},()=>moveTo(me,d.loc,to)); else renderUI();
+   if(to){ Music.drop(); doAct({t:'move',from:d.loc,to},()=>moveTo(me,d.loc,to)); } else renderUI();
  });
  $('items').addEventListener('pointerdown',e=>{
    const el=e.target.closest('.item'); if(!el||!inGame()) return; e.preventDefault();
@@ -2105,8 +2130,10 @@ function bindEvents(){
      if(hit){ doAct({t:'item',idx:d.idx,loc:hit.loc},()=>useItem0(me,d.idx,hit.u,hit.loc)); selected=hit.u; selCombat=null; renderUI(); }
    }
  });
- $('cards').addEventListener('click',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||!inGame()) return; hideTip(); doAct({t:'buy',i:+el.dataset.i}); });
- $('xpBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'xp'}); });
+ $('cards').addEventListener('click',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||!inGame()) return; hideTip(); const me=G.me, i=+el.dataset.i, k=me.shop[i];
+   if(k&&DEF[k]&&canBuy(me,i)&&!allUnits(me).some(u=>u.baseId===k)){ const d=DEF[k]; Music.cry(shopName(d),dexOf(d,1)); }
+   doAct({t:'buy',i}); });
+ $('xpBtn').addEventListener('click',()=>{ if(inGame()){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); } });
  $('rerollBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'reroll'}); });
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
  $('readyBtn').addEventListener('click',onReady);
@@ -2144,7 +2171,7 @@ function bindEvents(){
    if(['INPUT','SELECT'].includes(e.target.tagName)) return;
    const k=e.key.toLowerCase();
    if(k==='d') doAct({t:'reroll'});
-   else if(k==='f') doAct({t:'xp'});
+   else if(k==='f'){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); }
    else if(k==='e'&&hover){ doAct({t:'sell',loc:hover.loc}); if(selected===hover.u) selected=null; hover=null; }
    else if(k===' '){ e.preventDefault(); onReady(); }
    else if(k==='t'){ trEmote={t0:performance.now(),txt:'👍'}; }
@@ -2452,7 +2479,7 @@ function planStats(u){
  const cu=prepUnit(u); if(cu) return {maxHp:cu.maxHp,mana:cu.mana,maxMana:cu.maxMana};
  try{ const b=makeCombatUnit(u,G.me,traitTiers(G.me),0); return {maxHp:b.maxHp,mana:b.mana,maxMana:b.maxMana}; }catch(e){ return {maxHp:1,mana:0,maxMana:99999}; }
 }
-function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); if(G.me.picks&&G.me.picks.length&&!modalOpen()) setTimeout(showPick,0); else if((G.me.reveals||[]).some(x=>x[0]>(G.rvSeen||0))&&!modalOpen()) setTimeout(showReveal,0); }
+function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; soundWatch(); renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); if(G.me.picks&&G.me.picks.length&&!modalOpen()) setTimeout(showPick,0); else if((G.me.reveals||[]).some(x=>x[0]>(G.rvSeen||0))&&!modalOpen()) setTimeout(showReveal,0); }
 // Iconos de las rondas: salvajes (garra), PvP (espadas cruzadas) y carrusel
 const ROUND_SVG={pve:'<svg viewBox="0 0 24 24"><path d="M6 3l2.2 7.6L4 9l3.4 6.6L5 21l5-4 2 5 2-5 5 4-2.4-5.4L20 9l-4.2 1.6L18 3l-6 5z"/></svg>',pvp:'<svg viewBox="0 0 24 24"><path d="M3 3l7.5 7.5-1.4 1.4L2 4.8V3zm18 0v1.8l-7.1 7.1-1.4-1.4L20 3zM5 14l5 5-2 2-1.5-1.5L4 22l-2-2 2.5-2.5L3 16zm14 0l2 2-1.5 1.5L22 20l-2 2-2.5-2.5L16 21l-2-2z"/></svg>',carousel:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 8.5 6h-3a6.2 6.2 0 0 0-11 0h-3A9 9 0 0 1 12 3zm0 18a9 9 0 0 1-8.5-6h3a6.2 6.2 0 0 0 11 0h3A9 9 0 0 1 12 21zm0-12a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>'};
 let lastBeep=-1;
@@ -2464,7 +2491,7 @@ function updatePhase(){
  // Reloj circular: se vacía durante la planificación; en combate se queda lleno
  const frac=plan?clamp(G.timer/tot,0,1):G.phase==='combat'?1:0; $('rbRing').setAttribute('stroke-dashoffset',(100.5*(1-frac)).toFixed(1)); $('roundBar').classList.toggle('hurry',plan&&sec<=5);
  $('rbPhase').textContent=PHASE_TAG[G.phase]||'Esperando'; const alive=G.players.filter(p=>p.alive).length; $('rbAlive').textContent=`👤 ${alive}/${G.players.length}`;
- if(plan&&sec<=5&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.beep(sec<=2?1180:880,.09); } if(!plan) lastBeep=-1;
+ if(plan&&sec<=5&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.hurry(sec); } if(!plan) lastBeep=-1;
  switch(G.phase){
   case 'planning': t=(isFinite(G.timer)?`Planificación · ${Math.max(0,Math.ceil(G.timer))}s`:'Planificación')+(G.mp?` · listos ${G.players.filter(p=>!p.isBot&&p.alive&&p.ready).length}/${G.players.filter(p=>!p.isBot&&p.alive).length}`:''); break;
   case 'combat': t=G.myOpp?`Combate contra ${G.myOpp}`:'Combates en curso'; break;
@@ -2541,7 +2568,8 @@ function renderShop(){
  $('lvl').textContent=me.level;
  $('xpTxt').textContent=me.level>=10?'Máx.':`${me.xp}/${XP_NEED[me.level]}`;
  $('xpbar').style.width=me.level>=10?'100%':(me.xp/XP_NEED[me.level]*100)+'%';
- $('xpbar').parentElement.style.setProperty('--seg',me.level>=10?'100%':(4/XP_NEED[me.level]*100)+'%');
+ { const need=XP_NEED[me.level], cut=[]; if(me.level<10) for(let x=need%4||4;x<need;x+=4) cut.push(x/need*100);
+   $('xpbar').parentElement.style.setProperty('--sep',cut.length?'linear-gradient(90deg,'+cut.map(p=>`transparent calc(${p}% - 1px),rgba(6,8,18,.9) calc(${p}% - 1px) calc(${p}% + 1px),transparent calc(${p}% + 1px)`).join(',')+')':'none'); }
  $('gold').textContent=me.gold;
  $('odds').innerHTML=SHOP_ODDS[me.level].map((o,i)=>`<span style="color:${COST_HEX[i]}" title="Coste ${i+1}">${o}%</span>`).join('');
  $('xpBtn').disabled=(me.gold<xpCost(me)&&!xpByHp(me))||me.level>=10||!me.alive; $('xpBtn').querySelector('span').textContent=xpByHp(me)?`${me.mods.xpHp} de vida`:`${xpCost(me)} de oro`;
@@ -2595,6 +2623,17 @@ function renderTraits(){
 }
 // Avisos de subida de estrellas: se ven unos segundos junto al nombre
 const UPS={}, UP_MS=12000;
+const POGO='https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Sounds/';
+const SFX={evo:[POGO+'Evolution/ME_evolution_short.wav',.55],evoBig:[POGO+'Evolution/se_go_evolution.wav',.5],mega:[POGO+'Evolution/se_go_mega_evolution.wav',.5],ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
+// Nombre de la forma que sale en la tienda (para su grito)
+const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.name;
+// Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
+let sndWatch={g:null,up:0,tac:0};
+function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me);
+ if(sndWatch.g!==G){ sndWatch={g:G,up,tac}; return; }
+ if(up>sndWatch.up) Music.sfx('evo');
+ if(tac>sndWatch.tac) Music.sfx(tac>=3?'mega':'evoBig');
+ sndWatch.up=up; sndWatch.tac=tac; }
 function upBadge(p){
  const u=p.lastUp; if(!u||p===G.me) return ''; const [dex,star,seq]=u, now=performance.now();
  let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderPlayers(); },UP_MS+50); }
@@ -2770,10 +2809,10 @@ function showAugment(){
  // Cada carta llega cerrada como su ball, se tambalea con suavidad y se abre hacia arriba y hacia abajo
  let k=0; const anim=choices.map(a=>augSeen.ids.has(a.id)?-1:k++);
  // Solo las cartas: cada una con el color de su rareza y su botón de refresco debajo
- openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><div class="augBox t${a.tier} ${anim[i]<0?'opened':'closed'}" style="--d:${Math.max(0,anim[i])*.18}s"><div class="augClip"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${augIcon(a)}</span><b>${esc(a.name)}</b><span class="ac2Desc${a.desc.length>150?' long':''}">${esc(a.desc)}</span><span class="ac2Tier">${TIER_NAME[a.tier]}</span></button><i class="lidT"></i><i class="lidB"></i><i class="ballBtn"></i><i class="ballRing"></i></div></div>
+ openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><div class="augBox t${a.tier} ${anim[i]<0?'opened':'closed'}" style="--d:${Math.max(0,anim[i])*.18}s"><div class="augClip"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${augIcon(a)}</span><b>${esc(a.name)}</b><span class="ac2Desc${a.desc.length>150?' long':''}">${esc(a.desc)}</span><span class="ac2Tier">${TIER_NAME[a.tier]}</span></button><i class="lidT"></i><i class="lidB"></i><i class="ballBtn"></i><i class="seamGlow"></i></div></div>
    <button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
  choices.forEach(a=>augSeen.ids.add(a.id));
- $('mbox').querySelectorAll('.augBox.closed').forEach(b=>{ const d=parseFloat(b.style.getPropertyValue('--d'))||0; setTimeout(()=>b.classList.add('opened'),(d+1.95)*1000); });
+ $('mbox').querySelectorAll('.augBox.closed').forEach(b=>{ const d=parseFloat(b.style.getPropertyValue('--d'))||0; setTimeout(()=>b.classList.add('opened'),(d+2.1)*1000); setTimeout(()=>Music.sfx('ball'),(d+1)*1000); });
  $('mbox').querySelectorAll('.augCard2').forEach(b=>b.onclick=()=>{ if(!b.closest('.augBox').classList.contains('opened')) return; const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });
 }

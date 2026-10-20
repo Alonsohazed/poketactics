@@ -9,6 +9,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // d: número de la Pokédex (carpeta regular) o 'carpeta/número' para formas especiales (mega/3, x/6, y/9…)
 const MODEL_URL=d=>`https://cdn.jsdelivr.net/gh/Pokemon-3D-api/assets@main/models/opt/${String(d).includes('/')?d:'regular/'+d}.glb`;
@@ -48,7 +49,7 @@ function roundRectShape(x0,z0,x1,z1,rad){ const s=new THREE.Shape(); s.moveTo(x0
 function slab(shape,depth,top,sideCol,topTex,topCol){
  const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSize:.08,bevelThickness:.08,bevelSegments:2,curveSegments:8});
  g.rotateX(Math.PI/2); g.translate(0,top,0);
- const side=new THREE.MeshStandardMaterial({color:sideCol,roughness:.9,flatShading:true});
+ const side=new THREE.MeshStandardMaterial({color:sideCol,roughness:.9});
  const m=new THREE.Mesh(g,side); m.receiveShadow=true; m.castShadow=true;
  const sg=new THREE.ShapeGeometry(shape,12); sg.rotateX(Math.PI/2);
  // UV de la cara de arriba en [0,1] según su caja
@@ -166,11 +167,18 @@ function fieldTex(kind){
   }
  });
 }
+function blob(rad,seed,amt=.18,ws=18,hs=12){
+ const g=new THREE.SphereGeometry(rad,ws,hs), p=g.attributes.position, v=new THREE.Vector3();
+ for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i); const u=v.clone().normalize(), n=Math.sin(u.x*3.1+seed)*Math.sin(u.y*2.7+seed*1.7)*Math.sin(u.z*3.3+seed*.7)+.5*Math.sin(u.x*6.3+u.z*5.1+seed*2.3);
+   v.multiplyScalar(1+amt*n*.7); p.setXYZ(i,v.x,v.y,v.z); }
+ g.computeVertexNormals(); return g; }
+// Roca redondeada y aplastada
+function rockMesh(rad,seed,color){ const m=new THREE.Mesh(blob(rad,seed,.26,14,10),new THREE.MeshStandardMaterial({color,roughness:.85})); m.scale.y=.68; m.castShadow=true; m.receiveShadow=true; return m; }
 function tree(x,z,s,r,leaf){
  const t=new THREE.Group();
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12*s,.18*s,.9*s,6),new THREE.MeshStandardMaterial({color:'#805028',flatShading:true})); trunk.position.y=.45*s; t.add(trunk);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.1*s,.2*s,.95*s,12),new THREE.MeshStandardMaterial({color:'#7a4c28',roughness:.9})); trunk.position.y=.45*s; t.add(trunk);
  const cols=leaf||['#286828','#409840','#60b858'];
- for(let i=0;i<3;i++){ const c=new THREE.Mesh(new THREE.IcosahedronGeometry((.75-i*.15)*s,0),new THREE.MeshStandardMaterial({color:cols[i],flatShading:true})); c.position.set(rnd(.15)*s,(1.1+i*.42)*s,rnd(.15)*s); c.rotation.y=r()*TAU; t.add(c); }
+ for(let i=0;i<3;i++){ const c=new THREE.Mesh(blob((.75-i*.15)*s,r()*10,.16),new THREE.MeshStandardMaterial({color:cols[i],roughness:.8})); c.scale.y=.86; c.position.set(rnd(.15)*s,(1.1+i*.42)*s,rnd(.15)*s); c.rotation.y=r()*TAU; t.add(c); }
  t.position.set(x,0,z); t.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); t.userData.sway=r()*TAU; return t;
 }
 const TEMPLE={
@@ -190,7 +198,7 @@ function buildTemple(g,theme,rc,r,anim){
  const T=TEMPLE[theme]||TEMPLE.grass, X0=rc.bx0, X1=rc.bx1, Z0=rc.bz0, Z1=rc.cz1, cx=(X0+X1)/2, cz=(Z0+Z1)/2;
  const sh=roundRectShape(rc.bx0,rc.bz0,rc.bx1,rc.bz1,.6); g.add(slab(sh,.8,0,T.dark,templeTex(T)));
  // Muro de bloques de piedra alrededor (con huecos en los laterales)
- const blocks=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.9,flatShading:true}),220); const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(); let n=0;
+ const blocks=new THREE.InstancedMesh(new RoundedBoxGeometry(1,1,1,3,.14),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.9}),220); const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), sc=new THREE.Vector3(); let n=0;
  const put=(x,z,w,d,hh)=>{ if(n>=220) return; m4.compose(new THREE.Vector3(x,hh/2-.1,z),q.setFromAxisAngle(new THREE.Vector3(0,1,0),(r()-.5)*.06),sc.set(w,hh,d)); blocks.setMatrixAt(n,m4); blocks.setColorAt(n,col(r()<.5?T.stone:T.dark).lerp(col('#ffffff'),r()*.15)); n++; };
  const pad=.45;
  for(let x=X0-pad;x<=X1+pad;x+=1.15){ put(x,Z0-pad-.2,1.05,.7,.55+r()*.25); put(x,Z1+pad+.2,1.05,.7,.4+r()*.2); }
@@ -198,16 +206,20 @@ function buildTemple(g,theme,rc,r,anim){
  blocks.count=n; blocks.castShadow=true; blocks.receiveShadow=true; g.add(blocks);
  // Columnas en las esquinas con braseros encendidos
  for(const [x,z] of [[X0-pad-.3,Z0-pad-.3],[X1+pad+.3,Z0-pad-.3],[X0-pad-.3,Z1+pad+.3],[X1+pad+.3,Z1+pad+.3]]){
-   const col1=new THREE.Mesh(new THREE.CylinderGeometry(.42,.52,1.7,6),new THREE.MeshStandardMaterial({color:T.stone,roughness:.85,flatShading:true})); col1.position.set(x,.75,z); col1.castShadow=true; g.add(col1);
-   const cap=new THREE.Mesh(new THREE.CylinderGeometry(.55,.45,.25,6),new THREE.MeshStandardMaterial({color:T.dark,flatShading:true})); cap.position.set(x,1.72,z); g.add(cap);
-   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.42,.22,.3,10,1,true),new THREE.MeshStandardMaterial({color:'#4a3a2a',side:THREE.DoubleSide,metalness:.4,roughness:.5})); bowl.position.set(x,1.98,z); g.add(bowl);
+   const col1=new THREE.Mesh(new THREE.CylinderGeometry(.4,.5,1.7,28),new THREE.MeshStandardMaterial({color:T.stone,roughness:.85})); col1.position.set(x,.75,z); col1.castShadow=true; g.add(col1);
+   const cap=new THREE.Mesh(new THREE.CylinderGeometry(.55,.45,.25,28),new THREE.MeshStandardMaterial({color:T.dark,roughness:.8})); cap.position.set(x,1.72,z); g.add(cap);
+   const base=new THREE.Mesh(new THREE.TorusGeometry(.5,.08,10,32),new THREE.MeshStandardMaterial({color:T.dark,roughness:.8})); base.rotation.x=Math.PI/2; base.position.set(x,.02,z); g.add(base);
+   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.42,.22,.3,28,1,true),new THREE.MeshStandardMaterial({color:'#4a3a2a',side:THREE.DoubleSide,metalness:.4,roughness:.5})); bowl.position.set(x,1.98,z); g.add(bowl);
    const glow=glowSprite(T.flame[1],2.2); glow.position.set(x,2.3,z); g.add(glow);
-   anim.push(t=>{ glow.material.opacity=.7+.3*Math.sin(t*9+x); if(Math.random()<.7) emit({p:new THREE.Vector3(x+rnd(.18),2.05,z+rnd(.18)),v:[rnd(.2),1.4+Math.random(),rnd(.2)],col:T.flame[Math.random()*3|0],size:.34,size1:.05,life:.55,g:-1}); });
+   anim.push(t=>{ glow.material.opacity=.65+.25*Math.sin(t*7+x)+.1*Math.sin(t*13+z);
+     for(let k=0;k<2;k++) if(Math.random()<.8) emit({p:new THREE.Vector3(x+rnd(.16),2.02,z+rnd(.16)),v:[rnd(.12),1.1+Math.random()*.8,rnd(.12)],col:T.flame[Math.random()<.5?0:1],size:.42+Math.random()*.18,size1:.06,life:.5+Math.random()*.25,g:-.6,drag:1.5});
+     if(Math.random()<.5) emit({p:new THREE.Vector3(x+rnd(.08),2.1,z+rnd(.08)),v:[rnd(.05),.9,rnd(.05)],col:T.flame[2],size:.22,size1:.04,life:.35,g:-.4});
+     if(Math.random()<.06) emit({p:new THREE.Vector3(x+rnd(.15),2.3,z+rnd(.15)),v:[rnd(.5),2.2+Math.random(),rnd(.5)],col:T.flame[1],size:.07,size1:.02,life:1.1,g:.6}); });
  }
  // Árboles y rocas alrededor
  const outside=(x,z,m)=>x<X0-m||x>X1+m||z<Z0-m||z>Z1+m;
  for(let i=0;i<60;i++){ const a=r()*TAU, d=Math.max(X1-X0,Z1-Z0)*.62+2.5+r()*13, x=cx+Math.cos(a)*d*1.15, z=cz+Math.sin(a)*d*.9; if(!outside(x,z,2.4)) continue; const t=tree(x,z,.9+r()*.8,r,T.leaf); t.position.y=-.9; g.add(t); anim.push(tt=>{ t.rotation.z=Math.sin(tt*1.2+t.userData.sway)*.03; }); }
- for(let i=0;i<40;i++){ const a=r()*TAU, d=Math.max(X1-X0,Z1-Z0)*.6+1.8+r()*9, x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d*.85; if(!outside(x,z,1.6)) continue; const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.25+r()*.45,0),new THREE.MeshStandardMaterial({color:r()<.5?T.stone:T.dark,flatShading:true})); rock.position.set(x,-.75,z); rock.rotation.set(r()*3,r()*3,0); rock.castShadow=true; g.add(rock); }
+ for(let i=0;i<40;i++){ const a=r()*TAU, d=Math.max(X1-X0,Z1-Z0)*.6+1.8+r()*9, x=cx+Math.cos(a)*d, z=cz+Math.sin(a)*d*.85; if(!outside(x,z,1.6)) continue; const rock=rockMesh(.25+r()*.45,r()*20,r()<.5?T.stone:T.dark); rock.position.set(x,-.78,z); rock.rotation.y=r()*TAU; g.add(rock); }
  // Agua: un foso que rodea el templo (variante de agua)
  if(theme==='water'){ const moat=new THREE.Mesh(new THREE.RingGeometry(Math.max(X1-X0,Z1-Z0)*.75,Math.max(X1-X0,Z1-Z0)*.75+2.2,64),new THREE.MeshStandardMaterial({color:'#3a9ad8',emissive:'#0a3a6a',roughness:.15,metalness:.2,transparent:true,opacity:.9})); moat.rotation.x=-Math.PI/2; moat.position.set(cx,-.86,cz); g.add(moat); anim.push(t=>{ moat.material.emissive.setHSL(.58,.7,.14+.04*Math.sin(t*2)); }); }
  // Hojas o pavesas en el aire
@@ -238,9 +250,9 @@ function buildArena(kind){
    // fuente central
    const basin=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.6,.45,24,1,true),new THREE.MeshStandardMaterial({color:'#d8d0c0',side:THREE.DoubleSide})); basin.position.set(cx,.22,cz); g.add(basin);
    const water=new THREE.Mesh(new THREE.CircleGeometry(1.45,24),new THREE.MeshStandardMaterial({color:'#3890f8',emissive:'#103060',roughness:.2,metalness:.1})); water.rotation.x=-Math.PI/2; water.position.set(cx,.36,cz); g.add(water);
-   const pillar=new THREE.Mesh(new THREE.CylinderGeometry(.18,.25,1.1,10),new THREE.MeshStandardMaterial({color:'#e8e0d8'})); pillar.position.set(cx,.55,cz); pillar.castShadow=true; g.add(pillar);
+   const pillar=new THREE.Mesh(new THREE.CylinderGeometry(.18,.25,1.1,24),new THREE.MeshStandardMaterial({color:'#e8e0d8'})); pillar.position.set(cx,.55,cz); pillar.castShadow=true; g.add(pillar);
    anim.push(t=>{ water.material.emissive.setHSL(.6,.7,.18+.05*Math.sin(t*3)); if(Math.random()<.5) emit({p:new THREE.Vector3(cx,1.15,cz),v:[rnd(.9),2.4+Math.random(),rnd(.9)],col:'#bfe8ff',size:.14,life:.9,g:5,add:true}); });
-   for(let i=0;i<20;i++){ const a=i/20*TAU, b=new THREE.Mesh(new THREE.IcosahedronGeometry(.42,0),new THREE.MeshStandardMaterial({color:'#409840',flatShading:true})); b.position.set(cx+Math.cos(a)*(rad+.5),-.1,cz+Math.sin(a)*(rad+.5)); b.castShadow=true; g.add(b);
+   for(let i=0;i<20;i++){ const a=i/20*TAU, b=new THREE.Mesh(blob(.42,i*1.7,.18),new THREE.MeshStandardMaterial({color:'#3f9a40',roughness:.8})); b.scale.y=.85; b.position.set(cx+Math.cos(a)*(rad+.5),-.1,cz+Math.sin(a)*(rad+.5)); b.castShadow=true; g.add(b);
      const fl=new THREE.Mesh(new THREE.SphereGeometry(.09,6,4),new THREE.MeshBasicMaterial({color:['#f05878','#f8d038','#f8f8f8','#68b8f8'][i%4]})); fl.position.copy(b.position).add(new THREE.Vector3(0,.38,0)); g.add(fl); }
  }
   // banquillo (no en la plaza del carrusel)
