@@ -10,13 +10,13 @@ test('dos jugadores crean sala, se unen con código y juegan', async ({ browser 
   const userA = await register(A, undefined, 'charmander');
   const userB = await register(B, undefined, 'squirtle');
 
-  await A.locator('#mpBtn').click();
+  await A.locator('#playBtn').click();
   await A.locator('#rmCreate').click();
   await expect(A.locator('#mbox .code')).toBeVisible();
   const code = (await A.locator('#mbox .code').textContent()).trim();
   expect(code).toMatch(/^[a-z0-9]{5}$/);
 
-  await B.locator('#mpBtn').click();
+  await B.locator('#playBtn').click();
   await B.locator('#rmCode').fill(code);
   await B.locator('#rmJoin').click();
   await expect(B.locator('#mbox .code')).toHaveText(code);

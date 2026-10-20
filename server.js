@@ -12,8 +12,10 @@ const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
 const { Server } = require('socket.io');
+const crypto = require('crypto');
 const db = require('./db');
 const { createAuth } = require('./auth');
+const CMP = require('./competitive');
 
 const PORT = process.env.PORT || 3000;
 const MAX_ROOMS = +process.env.MAX_ROOMS || 50;
@@ -22,6 +24,9 @@ const TICK_MS = 50;
 const GAME_SRC = ['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirname, 'public', f), 'utf8')).join('\n');
 const GAME_SCRIPT = new vm.Script(GAME_SRC, { filename: 'game.js' });
 const DIFFS = ['facil', 'normal', 'dificil'];
+// Colas: si no aparecen 8 personas compatibles, a los QUEUE_FILL_MS se completa la partida con bots
+const QUEUE_FILL_MS = +process.env.QUEUE_FILL_MS || 12000;
+const MODES = ['normal', 'ranked'];
 // El campo «trainer» de las cuentas guarda ahora la minileyenda elegida en el menú
 const TRAINER_KEYS = makeGame().TAC_KEYS;
 
@@ -94,9 +99,11 @@ function closeRoom(room, reason) {
 function startGame(room, opts) {
   room.state = 'game';
   room.game = makeGame(room);
+  room.matchId = room.matchId || crypto.randomUUID(); room.startedAt = Date.now(); room.mode = room.mode || 'custom';
+  if (!room.botInfo) room.botInfo = CMP.botsFor('normal', room.seats.map(s => s.nmmr || CMP.CFG.START_MMR), 8 - room.seats.length);
   io.to(room.code).emit('start', { seats: publicSeats(room.seats) });
   room.game.serverCreate(
-    { diff: room.diff, humans: publicSeats(room.seats), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
+    { diff: room.diff, humans: publicSeats(room.seats), bots: room.botInfo.map(b => ({ skill: b.skill })), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
     (t, d) => route(room, t, d)
   );
   let last = Date.now();
@@ -106,28 +113,69 @@ function startGame(room, opts) {
     try { room.game.serverTick(dt); }
     catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
     const info = room.game.serverInfo();
-    recordPlaces(room, info.places);
+    recordPlaces(room, info);
     if (info.over) { if (!room.endAt) room.endAt = now + 30000; else if (now > room.endAt) closeRoom(room, 'fin'); }
     else if (info.humans === 0 && !room.seats.some(s => s.connected)) closeRoom(room, 'vacía');
   }, TICK_MS);
   broadcastRooms();
 }
 
-// Apunta en la cuenta de cada jugador su puesto final (una sola vez por asiento)
-function recordPlaces(room, places) {
-  for (const [peer, place] of places) {
-    const seat = room.seats.find(s => s.peer === peer);
-    if (!seat || seat.recorded) continue;
+// Apunta el resultado de cada persona en cuanto queda eliminada: MMR, LP, caramelos e historial (una sola vez por asiento;
+// además la base rechaza repetir la misma partida y usuario). Los rivales que siguen vivos cuentan como por encima.
+function recordPlaces(room, info) {
+  const pl = info.plist || [];
+  pl.forEach((e, i) => {
+    if (!e.peer || !e.place) return;
+    const seat = room.seats.find(s => s.peer === e.peer);
+    if (!seat || seat.recorded) return;
     seat.recorded = true;
-    db.addResult(seat.uid, place).catch(e => console.error(`[${room.code}] no se pudo guardar el resultado`, e.message));
-  }
+    const mode = room.mode, mmrOf = (x, j) => { if (x.peer) { const s = room.seats.find(q => q.peer === x.peer); return s ? (mode === 'ranked' ? s.rmmr : s.nmmr) || CMP.CFG.START_MMR : CMP.CFG.START_MMR; } const b = room.botInfo[j - room.seats.length]; return b ? b.mmr : CMP.CFG.START_MMR; };
+    const opps = pl.map((x, j) => j === i ? null : { mmr: mmrOf(x, j), place: x.place || 0 }).filter(Boolean);
+    const participants = pl.map((x, j) => ({ name: x.name, place: x.place || null, me: j === i }));
+    db.recordMatch(seat.uid, room.matchId, mode, comp => {
+      const r = CMP.applyMatch(comp, { mode, place: e.place, opps });
+      Object.assign(r.rec, { comp: e.comp || null, participants, duration: Math.round((Date.now() - room.startedAt) / 1000) });
+      return r;
+    }).then(r => { if (r && !r.dup) io.to(seat.peer).emit('result', { mode, rec: r.rec, comp: CMP.publicComp(r.comp) }); })
+      .catch(err => console.error(`[${room.code}] no se pudo guardar el resultado`, err.message));
+  });
 }
 // Asiento con los datos de la cuenta (no se fía de lo que mande el navegador)
 async function seatFor(socket) {
   const u = socket.data.user;
   const fresh = await db.userById(u.id).catch(() => null);
-  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), tr: (fresh || u).trainer || '', connected: true };
+  const c = CMP.normComp(fresh && fresh.comp);
+  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), tr: (fresh || u).trainer || '', connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
 }
+
+// ---------- colas Normal y Clasificatoria ----------
+const queues = { normal: [], ranked: [] };
+const inQueue = uid => MODES.some(m => queues[m].some(e => e.uid === uid));
+const inGame = uid => [...rooms.values()].some(r => r.seats.some(s => s.uid === uid && (r.state === 'lobby' || (s.connected && !s.recorded))));
+function unqueue(socket) { for (const m of MODES) { const i = queues[m].findIndex(e => e.sid === socket.id); if (i >= 0) { queues[m].splice(i, 1); socket.emit('queue', { mode: m, state: 'off' }); } } }
+// Cada segundo: el más antiguo de cada cola busca compañeros con MMR parecido (margen que crece con la espera);
+// con 8 personas, o al cumplirse el tiempo de espera, empieza la partida y los asientos libres son bots
+function matchmake() {
+  const now = Date.now();
+  for (const mode of MODES) {
+    const q = queues[mode];
+    while (q.length) {
+      q.sort((a, b) => a.since - b.since); const A = q[0], wait = (now - A.since) / 1000, win = 150 + 60 * wait;
+      const group = q.filter(e => Math.abs(e.mmr - A.mmr) <= win).slice(0, 8);
+      if (group.length < 8 && now - A.since < QUEUE_FILL_MS) { for (const e of q) e.socket.emit('queue', { mode, state: 'on', wait: Math.floor((now - e.since) / 1000), found: q.filter(x => Math.abs(x.mmr - e.mmr) <= 150 + 60 * (now - e.since) / 1000).length, fill: Math.ceil(QUEUE_FILL_MS / 1000) }); break; }
+      for (const e of group) q.splice(q.indexOf(e), 1);
+      const live = group.filter(e => e.socket.connected && !e.socket.data.room);
+      if (!live.length) continue;
+      if (rooms.size >= MAX_ROOMS) { for (const e of live) e.socket.emit('err', 'El servidor está lleno, prueba en un rato'), e.socket.emit('queue', { mode, state: 'off' }); continue; }
+      const room = { code: newCode(), name: mode === 'ranked' ? 'Clasificatoria' : 'Partida normal', mode, max: 8, diff: 'normal', owner: null, state: 'lobby', game: null, timer: null, seats: live.map(e => e.seat) };
+      room.botInfo = CMP.botsFor(mode, live.map(e => e.mmr), 8 - live.length);
+      rooms.set(room.code, room);
+      for (const e of live) { e.socket.join(room.code); e.socket.data.room = room.code; e.socket.emit('queue', { mode, state: 'matched', humans: live.length }); }
+      startGame(room, { timer: 30, speed: 1 });
+    }
+  }
+}
+setInterval(matchmake, 1000).unref();
 
 function leave(socket) {
   const code = socket.data.room;
@@ -160,10 +208,23 @@ io.on('connection', socket => {
 
   socket.on('list', () => socket.emit('rooms', roomList()));
 
+  // Entrar en la cola de un modo (un usuario solo puede estar en una cola o partida a la vez)
+  socket.on('queue', async d => {
+    if (limited() || !d || typeof d !== 'object' || !MODES.includes(d.mode)) return;
+    const uid = socket.data.user.id;
+    if (socket.data.room || inQueue(uid) || inGame(uid)) return socket.emit('err', 'Ya estás en una cola o en una partida');
+    const seat = await seatFor(socket);
+    if (!socket.connected || socket.data.room || inQueue(uid)) return;
+    queues[d.mode].push({ sid: socket.id, socket, uid, seat, mmr: d.mode === 'ranked' ? seat.rmmr : seat.nmmr, since: Date.now() });
+    socket.emit('queue', { mode: d.mode, state: 'on', wait: 0, found: 1, fill: Math.ceil(QUEUE_FILL_MS / 1000) });
+  });
+  socket.on('unqueue', () => unqueue(socket));
+
   socket.on('create', async cfg => {
     if (limited() || !cfg || typeof cfg !== 'object') return;
     if (socket.data.room) leave(socket);
     if (rooms.size >= MAX_ROOMS) return socket.emit('err', 'El servidor está lleno, prueba en un rato');
+    if (inQueue(socket.data.user.id)) return socket.emit('err', 'Sal de la cola antes de crear una sala');
     const seat = await seatFor(socket);
     if (!socket.connected || socket.data.room) return;
     const room = {
@@ -189,6 +250,7 @@ io.on('connection', socket => {
     if (room.state !== 'lobby') return socket.emit('err', 'Esa partida ya empezó');
     if (room.seats.some(s => s.peer === socket.id)) return;
     if (room.seats.length >= room.max) return socket.emit('err', 'La sala está llena');
+    if (inQueue(seat.uid)) return socket.emit('err', 'Sal de la cola antes de unirte a una sala');
     if (socket.data.room) leave(socket);
     room.seats.push(seat);
     socket.join(code); socket.data.room = code;
@@ -209,7 +271,7 @@ io.on('connection', socket => {
   });
 
   socket.on('leave', () => leave(socket));
-  socket.on('disconnect', () => leave(socket));
+  socket.on('disconnect', () => { unqueue(socket); leave(socket); });
 });
 
 if (process.env.RENDER && !process.env.DATABASE_URL) {
@@ -221,4 +283,4 @@ if (require.main === module) {
     server.listen(PORT, () => console.log(`Poké Tactics escuchando en el puerto ${PORT} · cuentas en ${db.kind}`));
   }, e => { console.error('No se pudo abrir la base de datos', e); process.exit(1); });
 }
-module.exports = { server, rooms, ready };
+module.exports = { server, rooms, ready, queues };

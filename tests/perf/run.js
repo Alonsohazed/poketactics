@@ -17,7 +17,7 @@ async function login(page) {
   await page.locator('.tacOpt[data-k="bulbasaur"]').click(); await page.locator('#tacOk').click(); await page.locator('#menu').waitFor({ state: 'visible' });
 }
 async function solo(page) {
-  await page.locator('#playBtn').click(); await page.locator('.choice[data-d="normal"]').click();
+  await page.locator('#playBtn').click(); await page.locator('#practiceBtn').click();
   await page.locator('#menu').waitFor({ state: 'hidden' }); await page.evaluate(() => { G.timer = Infinity; });
   await page.waitForFunction(() => window.B3 && B3.ready);
 }

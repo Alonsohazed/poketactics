@@ -10,14 +10,17 @@ Autochess de Pokémon al estilo Teamfight Tactics: modo solitario contra 7 bots 
 | Archivo | Qué hace |
 |---|---|
 | `server.js` | Express + Socket.io. Gestiona las salas y ejecuta cada partida multijugador **en el servidor** (autoritativo), con un tick de 50 ms. |
-| `auth.js` | Registro, login y sesiones (`/api/register`, `/api/login`, `/api/logout`, `/api/me`, `/api/result`) y el guardián de Socket.io. |
+| `auth.js` | Registro, login y sesiones (`/api/register`, `/api/login`, `/api/logout`, `/api/me`, `/api/history`) y el guardián de Socket.io. `/api/result` ya no acepta resultados del navegador (410). |
 | `db.js` | Cuentas y sesiones. Usa PostgreSQL si existe `DATABASE_URL` (Neon en producción); si no, `data/db.json` (local, ignorado por git). |
 | `public/augments.js` | **Aumentos**: catálogo declarativo (Plata, Oro, Prismático), motor de efectos por eventos (`augFire`), elecciones pendientes (`augOffer`/`resolvePick`), efectos de combate deterministas (`augSnap`/`augCombat`) y Llamada al Caos. Se carga **antes** que `game.js` (en el navegador y concatenado en el servidor). |
 | `public/game.js` | **Todo el juego**: datos, combate, bots, flujo de rondas, red, música e interfaz. Lo usan el navegador **y** el servidor. |
+| `public/ui-art.js` | Arte de interfaz (solo navegador): iconos pixel art propios (`PX.icon`, `PX.hydrate` sobre `<i data-i="nombre">`) y el escenario pixel del menú y del acceso (`MenuScene`: arena-tablero, braseros y sprites animados de 5.ª gen). Se carga antes que `game.js`. |
 | `public/board3d.js` | **Tablero 3D** (módulo ES, solo navegador): three.js, arenas, casillas, modelos de los Pokémon, animaciones y efectos de las habilidades. Expone `window.B3`. |
 | `public/index.html` | Marcado y todo el CSS (tokens de color en `:root`, tema oscuro por defecto). Carga three.js 0.169 desde jsDelivr con un `importmap`. |
 | `test/smoke.js` | Prueba rápida sin navegador: cuentas, seguridad básica, emparejamiento y 2 jugadores por Socket.io durante 12 rondas. |
 | `test/augments.js` | Pruebas del sistema de aumentos: ofertas, efectos, rachas, emblemas, Caos, topes, combates deterministas y partidas completas (`npm run test:aug`). |
+| `competitive.js` | Sistema competitivo (solo servidor, funciones puras): ligas y divisiones, MMR normal y clasificatorio, LP, posicionamiento, caramelos y nivel de los bots. |
+| `test/competitivo.js` | Pruebas del sistema competitivo y de las colas con el servidor real (`npm run test:comp`). |
 | `tests/e2e/*.spec.js` | Pruebas de navegador con Playwright (`playwright.config.js`): acceso, menús, tienda, tablero, rondas, objetos, sinergias, aumentos, espectador y multijugador con 2 navegadores. |
 | `.claude/skills/` | Skills propias del proyecto (ver «Herramientas para Claude»). |
 | `.mcp.json` | Servidor MCP `playwright` del proyecto. |
@@ -78,6 +81,14 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - **Ficha y tooltips de habilidad estilo TFT** (`abHTML`): números reales con el icono del stat que escala, ratio al pasar el ratón (el poder ✨ se muestra empezando en 100) y valores [1★/2★/3★]. Pruebas: `npm run test:sin` (`test/sinergias.js`).
 - **Eevee**: al llegar a las bajas necesarias, su evolución es una elección pendiente (`augOffer` con `__eevee`, valor `ev:<uid>|<clave>`) que también funciona en multijugador; tras elegir, la carta de Eevee de tu tienda muestra esa evolución (`p.eeveeForm`, `priv.ef`).
 - **Objetos**: los componentes se combinan también en el inventario; para quitar objetos de un Pokémon se usa el 🧲 Imán Removedor.
+- **Modos de juego** (todo se calcula en el servidor; ver `competitive.js`):
+  - **Normal**: cola `queue {mode:"normal"}`; MMR normal propio que decide el nivel de los bots (principiante, intermedio, avanzado, experto: cambian sus decisiones, no sus estadísticas, `BOT_SKILL` en `game.js`). Adaptativo: Elo por puestos con un pequeño empujón en rachas de 3 de 4.
+  - **Clasificatoria**: MMR propio, 3 partidas de posicionamiento (rango de entrada entre Hierro III y Oro IV), ligas de Hierro a Retador (5 divisiones de 100 LP hasta Diamante; Maestro, Gran Maestro y Retador sin divisiones) y LP = base por puesto + diferencia entre MMR y rango + fuerza de la sala, acotado. El progreso se guarda como «escalera» de LP totales, así ascensos, descensos y el exceso de LP son una suma.
+  - **Sala informal**: las salas con código de siempre; dan caramelos e historial, pero no cambian MMR ni rango.
+  - **Colas** (`matchmake` en `server.js`, cada segundo): busca personas con MMR parecido (el margen crece con la espera) y a los `QUEUE_FILL_MS` (12 s; 1,5-2 s en las pruebas) completa con bots. Un usuario solo puede estar en una cola o partida a la vez.
+  - **Resultado**: cada persona se procesa al quedar eliminada (los que siguen vivos cuentan como por encima): MMR, LP, caramelos (100 a 65 del 1.º al 8.º), composición histórica (`compSnap`) y participantes. El servidor lo envía con el evento `result`; el historial (`/api/history`) muestra las 6 más recientes.
+  - **Práctica sin conexión**: la partida local contra bots de antes (sin recompensas ni historial). La usan las pruebas de navegador (`startSolo`).
+- **Menú y acceso (pixel art)**: botones `.pxb` (marco de dos anillos con esquinas escalonadas, `.pxb-main` rojo Poké Ball, `.pxb-alt` azul, `.pxb-sq` cuadrados), panel `.pxpanel`, fuente Pixelify Sans y colores en las variables `--px*` de `index.html`. Sin emojis: los iconos salen de `PX` (para añadir uno, una función más en `ICONS`). El escenario corre a 15 fps y se para solo al salir del menú.
 - **Presentación del combate (solo visual, nunca toca la simulación)**:
   - Los efectos (`cb.fx`) envejecen en cada fotograma (`ageFx` en `frame()`) y la posición de las unidades se interpola con el tiempo real desde el último tick (`drawSub`): todo se mueve a la frecuencia de la pantalla, no a 30 Hz.
   - `cb.visDelay` retrasa los textos y la reacción de impacto hasta que llega el proyectil (un efecto con `t` negativo aún no ha empezado). El daño se sigue aplicando en el mismo tick.
@@ -131,7 +142,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 
 - Contraseñas con scrypt y sal por usuario. La sesión va en una cookie `pt_sid` HttpOnly + SameSite=Lax (+ Secure en https), y en la base de datos solo se guarda su hash SHA-256.
 - Hay límite de intentos por IP y por cuenta. Las rutas POST exigen JSON y el mismo origen. Socket.io rechaza conexiones sin sesión (`connect_error` con mensaje `auth`).
-- Las cuentas guardan: entrenador, ajustes (`vol, muted, timer, speed, theme, diff`) y estadísticas (`games, wins, top4, best`). Las partidas multijugador las apunta el servidor (`recordPlaces`); las de solitario, el cliente (`/api/result`).
+- Las cuentas guardan: entrenador, ajustes (`vol, muted, timer, speed, theme, diff`), estadísticas (`games, wins, top4, best`) y el perfil competitivo `comp` (`nmmr`, `rmmr`, partidas, posicionamiento, escalera de LP y caramelos). Cada partida se guarda en `matches` con (partida, usuario) único: un resultado se procesa una sola vez. Todas las partidas que cuentan (Normal, Clasificatoria y sala informal) las ejecuta y apunta el servidor (`recordPlaces` → `db.recordMatch`); la práctica sin conexión no cuenta.
 
 ## Trabajar en local
 
@@ -142,6 +153,8 @@ npm start                         # http://localhost:3000 (cuentas en data/db.js
 npm run check                     # sintaxis de game.js, augments.js y board3d.js (no hay paso de compilación)
 npm test                          # prueba de humo; debe terminar en "OK: prueba de humo superada"
 npm run test:aug                  # pruebas de aumentos; debe terminar en "OK: pruebas de aumentos superadas"
+npm run test:sin                  # sinergias, aumentos de héroe y determinismo visual
+npm run test:comp                 # MMR, LP, ligas, colas y resultados con el servidor real
 npm run test:e2e                  # Playwright (levanta su propio servidor en :3100 con una base de datos temporal)
 npm run test:all                  # humo + aumentos + 5 pruebas de navegador básicas (@rapido, ~2 min)
 npm run test:completo             # todo, con las ~20 pruebas de navegador (~10 min: el campo 3D va lento sin GPU)

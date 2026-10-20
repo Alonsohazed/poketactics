@@ -7,7 +7,8 @@ test('la página carga en la pantalla de acceso sin errores @rapido', async ({ p
   await expect(page.locator('#auth .logo')).toBeVisible();
   await expect(page.locator('#auGo')).toHaveText('Entrar');
   await expect(page.locator('#auPass2Wrap')).toBeHidden(); // solo aparece al crear cuenta
-  await expect(page.locator('#boardStack')).toBeVisible(); // de fondo, el campo 3D
+  await expect(page.locator('#menuScene')).toBeVisible(); // de fondo, el escenario pixel del menú (el 3D queda oculto)
+  await expect.poll(() => page.evaluate(() => window.MenuScene && MenuScene.on)).toBe(true);
 });
 
 test('el formulario valida antes de enviar', async ({ page }) => {

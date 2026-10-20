@@ -44,7 +44,7 @@ async function register(page, user = uniqueUser(), tac = 'bulbasaur') {
 // Empieza una partida contra bots y deja la planificación sin límite de tiempo para que nada avance solo
 async function startSolo(page, diff = 'normal') {
   await page.locator('#playBtn').click();
-  await page.locator(`.choice[data-d="${diff}"]`).click();
+  await page.locator('#practiceBtn').click(); // práctica sin conexión: partida local contra bots (sin recompensas)
   await expect(page.locator('#menu')).toBeHidden();
   await expect(page.locator('.tacPick')).toHaveCount(0); // la minileyenda ya viene de la cuenta: no se pregunta al empezar
   await page.evaluate(() => { G.timer = Infinity; });
