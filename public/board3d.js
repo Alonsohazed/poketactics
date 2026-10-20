@@ -531,7 +531,7 @@ function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[d
 // Cada uno tiene public/anims/<n.º>.json (fotograma de impacto y, opcional, "glb": true para usar anims/<n.º>.glb con los clips ya
 // renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
 // Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
-const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150]);
+const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,230,249,250,570,571]);
 // En producción los modelos animados salen de jsDelivr fijados al commit desplegado (mismos archivos, caché de un año y
 // sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
 let ANIM_BASE='';
@@ -664,7 +664,17 @@ const boneName=o=>o.name.replace(/^\d+\s+/,'').replace(/_\d+$/,'');
 const COIL=new Set([147,148,384]); // Dratini, Dragonair y Rayquaza: cuerpo enroscado como una serpiente
 const _q=new THREE.Quaternion(), _v=new THREE.Vector3();
 // loose: también quita prefijos como "004_" (Growlithe y otros); solo lo usan las animaciones por estados
-function bonesOf(root,loose){ const B={}; root.traverse(o=>{ if(o.isBone){ const n=loose?boneName(o).replace(/^\d+_/,''):boneName(o); if(!B[n]) B[n]=o; } }); return B; }
+// Nombres de Escarlata/Púrpura y Pokémon HOME (left_arm_01, tail_03, left_wing_a_02…) → los de arriba, para generar los clips que falten
+function svName(n){ let m;
+ if(n==='hips') return 'Hips'; if(n==='waist') return 'Waist'; if(n==='head') return 'Head';
+ if((m=n.match(/^spine_0?(\d+)$/))) return 'Spine'+m[1]; if(/^neck(_0?1)?$/.test(n)) return 'Neck';
+ if(/^(lower_)?jaw(_0?1|_a)?$/.test(n)) return 'Jaw'; if(n==='tail') return 'Tail1'; if((m=n.match(/^tail_0?(\d+)$/))) return 'Tail'+m[1];
+ if(!(m=n.match(/^(left|right)_(.+)$/))) return null; const s=m[1]==='left'?'L':'R', r=m[2];
+ if(/^ear(_0?1)?$/.test(r)) return s+'Ear'; if(/^arm(_0?1)?$/.test(r)) return s+'Arm'; if(/^arm_0?2$/.test(r)) return s+'ForeArm';
+ if(/^leg(_0?1)?$/.test(r)) return s+'Thigh'; if(/^leg_0?2$/.test(r)) return s+'Leg'; if((m=r.match(/^wing(_a)?_0?(\d+)$/))) return s+'Feeler'+m[2];
+ return null; }
+function bonesOf(root,loose){ const B={}; root.traverse(o=>{ if(o.isBone){ const n=loose?boneName(o).replace(/^\d+_/,''):boneName(o); if(!B[n]) B[n]=o; const a=loose&&svName(o.name.replace(/^\d+\s+/,'')); if(a&&!B[a]) B[a]=o; } }); // con el nombre entero: boneName quita el _01 de left_wing_01
+ if(loose&&!B.Hips&&B.Waist) B.Hips=B.Waist; return B; }
 function chainOf(B,re){ return Object.keys(B).filter(n=>re.test(n)).sort((a,b)=>(+(a.match(/\d+$/)||[0])[0])-(+(b.match(/\d+$/)||[0])[0])).map(n=>B[n]); }
 // Gira un hueso con una rotación dada en el espacio del modelo
 function rotModel(b,q){ const pw=b.parent.getWorldQuaternion(new THREE.Quaternion()), bw=b.getWorldQuaternion(new THREE.Quaternion()); b.quaternion.copy(pw.invert().multiply(q.clone().multiply(bw))); b.updateMatrixWorld(true); }
