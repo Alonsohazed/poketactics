@@ -1325,7 +1325,8 @@ function resolveRound(){
  for(const p of alivePlayers()) combine(p);
  const queue=[];
  for(const p of alivePlayers()) for(const u of allUnits(p)) if(u.defId==='eevee'&&u.kills>=p.mods.eeveeKills){
-   if(p!==G.me||G.auto||p.isBot){ u.defId=pick(EVOS).key; note(p,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,true); } else queue.push(done=>showEvolve(u,done));
+   if(G.auto||p.isBot){ u.defId=pick(EVOS).key; p.eeveeForm=u.defId; note(p,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,true); }
+   else if(!u.evoOffer){ u.evoOffer=1; augOffer(p,'__eevee','🌀 ¡Eevee va a evolucionar!','Ha derrotado a suficientes enemigos. Elige su evolución: conserva todo lo que ha acumulado y gana una habilidad nueva.',shuffle(EVOS.slice()).slice(0,3).map(e=>({t:e.name,i:'🌀',d:e.traits.join(' · '),v:'ev:'+u.uid+'|'+e.key}))); }
  }
  for(const a of G.anvils) queue.push(done=>showAnvil(a,done));
  G.anvils=[];
@@ -1410,12 +1411,12 @@ function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
    pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',p.isBot?1:0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
-   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0)])};
+   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
 function makePriv(p){
  const d={to:p.peer,id:p.id,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
-   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r]),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
+   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],ef:p.eeveeForm||'',lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r]),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
  if(JSON.stringify(d).length>3900){ d.lg=d.lg.slice(0,2); d.ts=d.ts.slice(-1); }
  return d;
 }
@@ -1535,7 +1536,7 @@ function applyPub(d){
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
    Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac});
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
-   if(p!==G.me&&Array.isArray(bd)) unpackBoard(p,bd);
+   if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
  }
  G.players=list;
@@ -1570,7 +1571,7 @@ function applyPriv(d){
  me.bench=Array(BENCH).fill(null).map((_,i)=>d.be&&d.be[i]?unpackInst(d.be[i]):null);
  me.board={}; for(const row of d.bo||[]){ const u=unpackInst(row[1]); if(u&&/^[0-6],[0-3]$/.test(row[0])) me.board[row[0]]=u; }
  selected=selUid?allUnits(me).find(u=>u.uid===selUid)||null:null;
- const hadChoices=!!me.augChoices; me.augChoices=Array.isArray(d.ac)?d.ac.filter(a=>AUG_BY[a]):null; me.augRR=Array.isArray(d.ar)?d.ar.slice(0,3).map(x=>x?1:0):[0,0,0];
+ const hadChoices=!!me.augChoices; me.augChoices=Array.isArray(d.ac)?d.ac.filter(a=>AUG_BY[a]):null; me.eeveeForm=DEF[d.ef]?d.ef:''; me.augRR=Array.isArray(d.ar)?d.ar.slice(0,3).map(x=>x?1:0):[0,0,0];
  G.log=Array.isArray(d.lg)?d.lg.map(String):[];
  for(const [seq,msg] of d.ts||[]) if(seq>NET.lastToast){ NET.lastToast=seq; toast(String(msg)); }
  if(G.phase==='augment'&&me.augChoices&&me.augChoices.length&&(NET.modal!=='aug'||!hadChoices||NET.augKey!==me.augChoices.join()+'|'+(me.augRR||[]).join())) showAugment();
@@ -1724,6 +1725,25 @@ const Music=(()=>{
   sfx(k){ const u=SFX[k]; if(u) this.sample(u[0],u[1]); },
   hurry(sec){ if(!ac||S.muted) return; const t=ac.currentTime+.01, k=5-sec, base=[659,784,880,1047,1175][Math.max(0,Math.min(4,k))], gap=.11-k*.012;
    this.chime(base,t,.16,.38); this.chime(base*1.5,t+gap,.13,.45); if(sec<=2) this.chime(base*2,t+gap*2,.08,.5); },
+  // Evolución épica propia: subida brillante en arpegio, golpe grave y acorde mayor que se abre con destellos.
+  // big: minileyenda (más larga); mega: Mega evolución (más grave, con segunda subida)
+  evolve(kind){ if(!ac||S.muted) return; const t0=ac.currentTime+.02, big=kind!=='unit', mega=kind==='mega';
+   const pad=(f,t,len,vol,type='sawtooth')=>{ const o=ac.createOscillator(), fl=ac.createBiquadFilter(), g=ac.createGain(); o.type=type; o.frequency.value=f; o.detune.value=(Math.random()-.5)*14;
+     fl.type='lowpass'; fl.frequency.setValueAtTime(400,t); fl.frequency.exponentialRampToValueAtTime(4200,t+len*.4); fl.Q.value=2;
+     g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+Math.min(.25,len*.2)); g.gain.exponentialRampToValueAtTime(.0001,t+len);
+     o.connect(fl); fl.connect(g); g.connect(master); o.start(t); o.stop(t+len+.05); };
+   // 1) arpegio que sube (cada vez más rápido) hacia la tónica
+   const run=mega?[262,330,392,523,659,784,1047,1319]:big?[294,370,440,587,740,880,1175]:[392,494,587,784,988];
+   let t=t0; run.forEach((f,i)=>{ this.chime(f,t,.1,.35); t+=Math.max(.045,(big?.11:.08)-i*.009); });
+   // 2) golpe grave y acorde mayor amplio (con quinta y octava) que crece
+   const hit=t+.02, root=mega?131:big?147:196;
+   { const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(root*1.5,hit); o.frequency.exponentialRampToValueAtTime(root/2,hit+.35);
+     g.gain.setValueAtTime(.0001,hit); g.gain.exponentialRampToValueAtTime(.32,hit+.01); g.gain.exponentialRampToValueAtTime(.0001,hit+.5); o.connect(g); g.connect(master); o.start(hit); o.stop(hit+.55); }
+   const len=mega?2.4:big?1.9:1.2, chord=[1,1.25,1.5,2,2.5,3].map(m=>root*2*m);
+   chord.forEach((f,i)=>pad(f,hit+i*.012,len,(i<3?.05:.03)*(big?1.15:1)));
+   // 3) destellos que caen en cascada sobre el acorde
+   for(let i=0;i<(big?9:5);i++) this.chime(root*8*[1,1.25,1.5,2][i%4]*(i%2?1.0:2),hit+.08+i*(big?.09:.07),.05,.5);
+   if(mega){ const t2=hit+.55; [523,659,784,1047].forEach((f,i)=>this.chime(f*2,t2+i*.05,.07,.6)); pad(root*4,t2,1.6,.035,'triangle'); } },
   // Comprar EXP: oro que se convierte en energía (barrido ascendente con brillo al final)
   xp(){ if(!ac||S.muted) return; const t=ac.currentTime+.01, o=ac.createOscillator(), f=ac.createBiquadFilter(), g=ac.createGain();
    o.type='sawtooth'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(880,t+.22); f.type='lowpass'; f.frequency.setValueAtTime(600,t); f.frequency.exponentialRampToValueAtTime(3200,t+.22); f.Q.value=6;
@@ -1825,16 +1845,28 @@ const viewCombat=()=>G&&G.view&&G.view.cb?G.view.cb:G&&G.combat;
 const curFlip=()=>G.view&&G.view.cb?G.view.flip:!!G.flip;
 // Tablero que se está mirando fuera del combate (el tuyo o el de otro entrenador)
 const viewedPlayer=()=>G.view&&G.view.board&&G.players.find(p=>p.id===G.view.pid)||G.me;
+const viewOwner=()=>G.view&&G.players.find(p=>p.id===G.view.pid)||G.me;
 function fightsList(){
  if(G.mirror) return G.allFights||[];
  return (G.fights||[]).map(f=>({seed:f.seed,a:f.sa,b:f.sb,ia:f.a.id,ib:f.b?f.b.id:-1,pve:f.pve?1:0,ghost:f.ghost?1:0}));
 }
+// Transición de «vuelo» entre islas al cambiar de tablero
+function warp(){ const el=$('boardStack'); if(!el) return; el.classList.remove('warp'); void el.offsetWidth; el.classList.add('warp'); }
+const ISLE_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water'};
+function renderIslands(){
+ let box=$('islands'); if(!box){ box=document.createElement('div'); box.id='islands'; box.className='islands'; box.setAttribute('aria-label','Mapa de islas'); $('boardWrap').appendChild(box);
+   box.addEventListener('click',e=>{ const b=e.target.closest('[data-pid]'); if(b) spectate(+b.dataset.pid); }); }
+ const ps=G.players, n=ps.length||1, cur=viewOwner(), key=ps.map(p=>p.id+':'+R0(p.hp)+':'+(p.alive?1:0)+':'+(p.tac||'')).join()+'|'+cur.id+'|'+G.phase;
+ if(box.dataset.k===key) return; box.dataset.k=key;
+ box.innerHTML='<b class="isleT">Islas</b>'+ps.map((p,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n, x=50+Math.cos(a)*38, y=54+Math.sin(a)*34;
+   return `<button class="isle ${ISLE_THEME[tacKey(p)]||'grass'} ${p===G.me?'me':''} ${p===cur?'cur':''} ${p.alive?'':'dead'}" data-pid="${p.id}" style="left:${x}%;top:${y}%" title="${esc(p.name)} · ${p.alive?R0(p.hp)+' de vida':'eliminado'}">${artImg(tacKey(p))}<i>${p.alive?R0(p.hp):'💀'}</i></button>`; }).join('');
+}
 function spectate(pid){
  if(!G||!G.players.length) return;
- const me=G.me, back=()=>{ G.view=null; selCombat=null; renderUI(); };
+ const me=G.me, back=()=>{ if(G.view) warp(); G.view=null; selCombat=null; renderUI(); };
  if(pid===me.id) return back();
  if(G.phase==='carousel'){ toast('En el carrusel no se pueden mirar tableros'); return; }
- if(G.phase!=='combat'){ const p=G.players.find(x=>x.id===pid); if(!p||!p.alive) return; G.view={board:true,pid}; selected=null; selCombat=null; renderUI(); return; }
+ if(G.phase!=='combat'){ const p=G.players.find(x=>x.id===pid); if(!p||!p.alive) return; if(!G.view||G.view.pid!==pid) warp(); G.view={board:true,pid}; selected=null; selCombat=null; renderUI(); return; }
  const list=fightsList(), f=list.find(x=>x.ia===pid)||list.find(x=>x.ib===pid&&!x.ghost);
  if(!f){ toast('Ese entrenador no está combatiendo'); return; }
  if((f.ia===me.id||(f.ib===me.id&&!f.ghost))) return back(); // es tu propio combate
@@ -1842,11 +1874,14 @@ function spectate(pid){
  // Lo adelanta hasta el mismo segundo que tu combate (con los objetos que se hayan puesto): como es determinista, se ve igual que en el servidor
  const target=G.combat?G.combat.t:0, cb=rebuildCombat(f.a,f.b,R,f.seed,(G.fightEv||{})[f.seed],target);
  const oid=side===0?f.ib:f.ia, opp=G.players.find(p=>p.id===oid);
+ if(!G.view||G.view.pid!==pid) warp();
  G.view={cb,flip:side===1,pid,opp:f.pve?null:opp||null,pve:!!f.pve,ghost:!!f.ghost,acc:0,seed:f.seed,data:{a:f.a,b:f.b,R,seed:f.seed}};
  selCombat=null; renderUI();
 }
 const benchXY=i=>[geo.ox+geo.bs*i+geo.bs/2, geo.pad+geo.bh+18+geo.bs/2];
-function unitXY(u){ const [x1,y1]=vXY(u.pc,u.pr), [x2,y2]=vXY(u.c,u.r), k=clamp(u.mt/.3,0,1); return [x1+(x2-x1)*k,y1+(y2-y1)*k]; }
+// Al dibujar se suma la parte del paso de simulación ya transcurrida (drawSub) y se suaviza el inicio y el final: el movimiento no va a saltos de 0,05 s
+let drawSub=0;
+function unitXY(u){ const [x1,y1]=vXY(u.pc,u.pr), [x2,y2]=vXY(u.c,u.r), q=clamp((u.mt+(u.mt<.3?drawSub:0))/.3,0,1), k=q*q*(3-2*q); return [x1+(x2-x1)*k,y1+(y2-y1)*k]; }
 // Devuelve el punto del suelo (píxeles de tablero) bajo el puntero y guarda su posición en pantalla
 function canvasPos(e){ const b=cv.getBoundingClientRect(); ptr=[(e.clientX-b.left)*(view.W/b.width),(e.clientY-b.top)*(view.H/b.height)]; return b3On()?B3.unproject(ptr[0],ptr[1]):ptr.slice(); }
 function hitCell(x,y){ let best=null,bd=1e9; for(let r=0;r<8;r++) for(let c=0;c<7;c++){ const [cx,cy]=cellXY(c,r); const d=Math.hypot(x-cx,y-cy); if(d<bd){bd=d;best=[c,r];} } return bd<geo.R*.95?best:null; }
@@ -2012,7 +2047,7 @@ function drawBoardCount(){
 }
 function drawTotemIcons(){
  hudAugs=[]; const tt=B3.totemTop&&B3.totemTop(); if(!tt) return;
- const list=viewedPlayer().augments.map(id=>AUG_BY[id]).filter(Boolean), R=geo.R, sz=Math.max(30,R*1.05), n=Math.max(1,list.length), w=n*(sz+3)+5, x0=tt[0]-w/2, y0=tt[1]-sz-6;
+ const list=(viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean), R=geo.R, sz=Math.max(30,R*1.05), n=Math.max(1,list.length), w=n*(sz+3)+5, x0=tt[0]-w/2, y0=tt[1]-sz-6;
  ctx.save(); ctx.fillStyle='rgba(6,8,18,.85)'; rrPath(ctx,x0,y0,w,sz+6,5); ctx.fill(); ctx.strokeStyle='rgba(255,215,94,.7)'; ctx.lineWidth=1.5; ctx.stroke();
  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`${sz*.7}px system-ui`;
  if(!list.length){ ctx.fillStyle='#ffd75e'; ctx.font=`900 ${sz*.7}px Nunito,system-ui`; ctx.fillText('?',tt[0],y0+sz/2+3); }
@@ -2044,7 +2079,7 @@ function carGeo(){ const cx=geo.W/2, cy=geo.pad+geo.bh/2, rr=Math.min(geo.W*.42,
 function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+C.rot; return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.55]; }
 function updateCarousel(dt){
  const C=G.carousel; if(!C||C.finished||C.mirror) return;
- C.t+=dt; C.rot+=.32*dt;
+ C.t+=dt; C.rot+=.2*dt; // despacio: da tiempo a correr hasta el Pokémon que quieres
  const {cx,cy,rr}=carGeo(), sp=geo.R*4.2;
  const toward=(a,tx,ty)=>{ const dx=tx-a.x, dy=ty-a.y, d=Math.hypot(dx,dy); if(d>1){ const st=Math.min(d,sp*dt); a.x+=dx/d*st; a.y+=dy/d*st; } return d; };
  C.order.forEach((p,idx)=>{
@@ -2101,7 +2136,7 @@ function bindEvents(){
    if(to){ Music.drop(); doAct({t:'move',from:d.loc,to},()=>moveTo(me,d.loc,to)); } else renderUI();
  });
  $('items').addEventListener('pointerdown',e=>{
-   const el=e.target.closest('.item'); if(!el||!inGame()) return; e.preventDefault();
+   const el=e.target.closest('.item'); if(!el||!inGame()||viewOwner()!==G.me) return; e.preventDefault();
    itemDrag={idx:+el.dataset.i,sx:e.clientX,sy:e.clientY,moved:false,target:-1,t0:0}; $('ghost').innerHTML=itemHTML(G.me.items[itemDrag.idx],48);
  });
  window.addEventListener('pointermove',e=>{
@@ -2315,8 +2350,13 @@ function orbList(){
  const cbm=G.phase==='combat'&&G.combat; if(!G.me.orbs||!G.me.orbs.length||(cbm&&!cbm.done)||G.phase==='carousel'||(G.view&&G.view.board)) return [];
  return G.me.orbs.map((o,i)=>{ const j=((o.id*37)%7)/7-.5, [x,y]=o.c!=null?cellXY(o.c,o.r):cellXY([1,5,3,0,6,2,4][i%7],4+(i*3)%4); return {id:o.id,tier:o.tier,x:x+j*geo.R*.8,y:y+((o.id*53)%5/5-.5)*geo.R*.6}; });
 }
+let synCache={v:-1,who:null,t:{}};
+function activeTraits(who){ if(synCache.v!==G.uiV||synCache.who!==who){ const t=traitTiers(who); synCache={v:G.uiV,who,t}; } return synCache.t; }
+let sceneLinks=[];
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
+ sceneLinks=[];
+ drawSub=inCombat&&!inCombat.done?Math.min(DT,(G.view&&G.view.cb===inCombat?G.view.acc:G.acc)||0):0;
  if(inCombat){
    const cb=viewCombat(), mySide=curFlip()?1:0;
    for(const u of cb.units){
@@ -2330,7 +2370,9 @@ function sceneActors(){
  } else {
    const who=viewedPlayer(), mine=who===me;
    for(const k in who.board){ const u=who.board[k]; if(drag&&drag.moved&&drag.u===u) continue; const [c,r]=k.split(',').map(Number); const [x,y]=cellXY(c,4+r), st=mine?planStats(u):null, d=DEF[u.defId];
-     A.push({key:u,u,loc:{b:k},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
+     const syn=G.phase==='planning'||G.phase==='augment'||G.phase==='results'?unitTraits(u).filter(t=>(activeTraits(who)[t]||0)>=1):null;
+     if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
+     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
    if(G.preview&&G.phase==='planning') for(const cr of G.preview){ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:cr,dex:cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:1,hud:{creep:true}}); }
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
@@ -2341,7 +2383,7 @@ function sceneActors(){
    if(opp&&opp!==me) A.push({key:'tac:'+opp.id,tac:true,dex:tacDex(opp),star:tacStage(opp)+1,x:sp.opp[0],y:sp.opp[1],face:-Math.PI*.15,ring:'#ef4b3a',scale:.72,hud:{}}); }
  else { const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:a.x,y:a.y+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
- (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
+ (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,still:true,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
@@ -2361,7 +2403,8 @@ function draw(){
  const tP=viewedPlayer(), tsp=trainerSpots();
  const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; return {id:p.id,x:a.x,y:a.y+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length); return {id:p.id,x:cx+Math.cos(an)*rr*1.12,y:cy+Math.sin(an)*rr*1.12+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
- B3.render({arena:playing?bgKind():'stadium',car:inCar?carGeo():null,pads,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
+ const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
+ B3.render({arena:playing?bgKind():'stadium',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
    interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
@@ -2479,7 +2522,7 @@ function planStats(u){
  const cu=prepUnit(u); if(cu) return {maxHp:cu.maxHp,mana:cu.mana,maxMana:cu.maxMana};
  try{ const b=makeCombatUnit(u,G.me,traitTiers(G.me),0); return {maxHp:b.maxHp,mana:b.mana,maxMana:b.maxMana}; }catch(e){ return {maxHp:1,mana:0,maxMana:99999}; }
 }
-function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; soundWatch(); renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); if(G.me.picks&&G.me.picks.length&&!modalOpen()) setTimeout(showPick,0); else if((G.me.reveals||[]).some(x=>x[0]>(G.rvSeen||0))&&!modalOpen()) setTimeout(showReveal,0); }
+function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) return; G.uiV=(G.uiV||0)+1; soundWatch(); renderIslands(); renderTop(); renderShop(); renderTraits(); renderPlayers(); renderItems(); renderCard(); renderLog(); layout(); if(G.me.picks&&G.me.picks.length&&!modalOpen()) setTimeout(showPick,0); else if((G.me.reveals||[]).some(x=>x[0]>(G.rvSeen||0))&&!modalOpen()) setTimeout(showReveal,0); }
 // Iconos de las rondas: salvajes (garra), PvP (espadas cruzadas) y carrusel
 const ROUND_SVG={pve:'<svg viewBox="0 0 24 24"><path d="M6 3l2.2 7.6L4 9l3.4 6.6L5 21l5-4 2 5 2-5 5 4-2.4-5.4L20 9l-4.2 1.6L18 3l-6 5z"/></svg>',pvp:'<svg viewBox="0 0 24 24"><path d="M3 3l7.5 7.5-1.4 1.4L2 4.8V3zm18 0v1.8l-7.1 7.1-1.4-1.4L20 3zM5 14l5 5-2 2-1.5-1.5L4 22l-2-2 2.5-2.5L3 16zm14 0l2 2-1.5 1.5L22 20l-2 2-2.5-2.5L16 21l-2-2z"/></svg>',carousel:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 8.5 6h-3a6.2 6.2 0 0 0-11 0h-3A9 9 0 0 1 12 3zm0 18a9 9 0 0 1-8.5-6h3a6.2 6.2 0 0 0 11 0h3A9 9 0 0 1 12 21zm0-12a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>'};
 let lastBeep=-1;
@@ -2548,6 +2591,7 @@ const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><pa
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
 // Ilustraciones recortadas de cartas TCG (public/art): retratos de la tienda y de las minileyendas, sin cargar modelos 3D
+const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
 const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 const artImg=k=>CARD_ART[k]?`<img src="${CARD_ART[k]}" alt="" class="artPic">`:portraitImg(TACS[k]?TACS[k].dex[0]:dexOf(DEF[k],1));
@@ -2580,7 +2624,7 @@ function renderShop(){
  // Comprarla completaría un 2★ (y, si ya hay dos 2★, un 3★)
  const need=k=>me.mods.cheapCombine&&DEF[k].cost===1?1:2, upTo=k=>(owned[k]||0)>=need(k)?((two[k]||0)>=need(k)?3:2):0;
  // Solo se rehacen las cartas si cambia algo (así no parpadean los retratos)
- const key=me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0)+(have.has(k)?'h':'')+upTo(k):'_').join();
+ const key=(me.eeveeForm||'')+me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0)+(have.has(k)?'h':'')+upTo(k):'_').join();
  if(key!==renderShop.key){ renderShop.key=key;
    // Precarga los modelos 3D de la tienda y de la siguiente evolución de lo que tienes, para que no haya esperas
    if(window.B3&&B3.preload) B3.preload([...me.shop.filter(k=>k&&DEF[k]).map(k=>dexOf(DEF[k],1)),...allUnits(me).map(u=>dexOf(DEF[u.defId],Math.min(3,u.star+1)))]);
@@ -2588,9 +2632,9 @@ function renderShop(){
      if(!k||!DEF[k]) return `<div class="card empty"></div>`;
      const d=DEF[k], can=canBuy(me,i)&&me.alive;
      return `<button class="card c${d.cost} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
-       ${CARD_ART[k]?`<span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
+       ${CARD_ART[shopArtKey(k)]?`<span class="art cardArt" style="background-image:url('${CARD_ART[shopArtKey(k)]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
        <i class="frame"></i>${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
-       <span class="cn">${d.name}</span>
+       <span class="cn">${DEF[shopArtKey(k)].name}</span>
        <span class="tr">${d.traits.map(t=>`<span title="${t}"><i>${traitIcon(t)}</i>${t}</span>`).join('')}</span>
        <span class="cc">${d.cost}</span></button>`;
    }).join('');
@@ -2624,15 +2668,15 @@ function renderTraits(){
 // Avisos de subida de estrellas: se ven unos segundos junto al nombre
 const UPS={}, UP_MS=12000;
 const POGO='https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Sounds/';
-const SFX={evo:[POGO+'Evolution/ME_evolution_short.wav',.55],evoBig:[POGO+'Evolution/se_go_evolution.wav',.5],mega:[POGO+'Evolution/se_go_mega_evolution.wav',.5],ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
+const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 // Nombre de la forma que sale en la tienda (para su grito)
 const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.name;
 // Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
 let sndWatch={g:null,up:0,tac:0};
 function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me);
  if(sndWatch.g!==G){ sndWatch={g:G,up,tac}; return; }
- if(up>sndWatch.up) Music.sfx('evo');
- if(tac>sndWatch.tac) Music.sfx(tac>=3?'mega':'evoBig');
+ if(up>sndWatch.up) Music.evolve('unit');
+ if(tac>sndWatch.tac) Music.evolve(tac>=3?'mega':'big');
  sndWatch.up=up; sndWatch.tac=tac; }
 function upBadge(p){
  const u=p.lastUp; if(!u||p===G.me) return ''; const [dex,star,seq]=u, now=performance.now();
@@ -2671,8 +2715,8 @@ function renderPlayers(){
 }
 // Banca de objetos: en escritorio, casillas fijas (las vacías punteadas) a la izquierda del tablero
 function renderItems(){
- const me=G.me, slots=window.matchMedia&&matchMedia('(min-width:1101px)').matches;
- const key=me.items.join()+'|'+slots;
+ const me=viewOwner(), spy=me!==G.me, slots=window.matchMedia&&matchMedia('(min-width:1101px)').matches;
+ const key=me.id+':'+(me.items||[]).join()+'|'+slots; $('items').classList.toggle('spy',spy); $('items').title=spy?'Objetos de '+me.name:'';
  if(key===renderItems.last&&$('items').childElementCount) return; renderItems.last=key;
  const groups=[]; me.items.forEach((k,i)=>{ const g=ITEMS[k]&&ITEMS[k].tool&&groups.find(x=>x.k===k); if(g) g.n++; else groups.push({k,i,n:1}); });
  const it=groups.map(g=>`<div class="item" data-i="${g.i}" data-tip="item:${g.k}" tabindex="0">${itemHTML(g.k)}${g.n>1?`<b class="icount">×${g.n}</b>`:''}</div>`).join('');
@@ -2828,14 +2872,15 @@ function showReveal(){
 }
 function showPick(){
  const pk=G.me.picks&&G.me.picks[0]; if(!pk||modalOpen()) return;
+ if(pk.src==='__eevee'){ showEvolve(pk); return; }
  openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>`<button class="choice" data-i="${i}"><span class="big">${esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`).join('')}</div>`,{kind:'pick'});
  $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
 }
-function showEvolve(u,done){
- const opts=shuffle(EVOS.slice()).slice(0,3);
+function showEvolve(pk){
+ const opts=pk.opts.map(o=>DEF[String(o.v).split('|')[1]]).filter(Boolean), u={star:1};
  openModal(`<h1>¡Eevee va a evolucionar!</h1><p>Ha derrotado a suficientes enemigos. Elige su evolución: conserva todo lo que ha acumulado y gana una habilidad nueva.</p>
  <div class="choices">${opts.map((e,i)=>{ const cu=baseCombatUnit(e,0,u.star); return `<button class="choice" data-i="${i}">${CARD_ART[e.key]?`<span class="evoArt" style="background-image:url('${CARD_ART[e.key]}')"></span>`:spriteHTML(e,64)}<b>${e.name}</b><span class="small">${e.traits.map(t=>TRAITS[t].icon+' '+t).join(' · ')} · ${ROLE_NAME[e.role]}<br><b style="display:inline;font-size:12px">${e.ab[0][1]}:</b> ${abDesc(e.ab[0],abilPower(cu),u.star)}</span></button>`; }).join('')}</div>`);
- $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ u.defId=opts[+b.dataset.i].key; note(G.me,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,true); closeModal(); renderUI(); done(); });
+ $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
 }
 function showAnvil(a,done){
  openModal(`<h1>⚒️ ${a.kind==='ca'?'Yunque de componentes':'Yunque de objeto'}</h1><p>Elige uno.</p>

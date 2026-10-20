@@ -76,6 +76,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - **Forja de insignias**: Medalla + componente crea la insignia y abre una elección (`forgeOffer`, valor `fg:`) entre 3 sinergias afines (`FORGE_OF`). Los componentes al azar salen Medalla 1 de cada 6.
 - **Aumentos de héroe** (`HERO` en `augments.js`): dan el Pokémon y potencian solo a su línea (`isHero`). Efectos que necesitan ver a los dos equipos van en `cb.startFns`.
 - **Ficha y tooltips de habilidad estilo TFT** (`abHTML`): números reales con el icono del stat que escala, ratio al pasar el ratón (el poder ✨ se muestra empezando en 100) y valores [1★/2★/3★]. Pruebas: `npm run test:sin` (`test/sinergias.js`).
+- **Eevee**: al llegar a las bajas necesarias, su evolución es una elección pendiente (`augOffer` con `__eevee`, valor `ev:<uid>|<clave>`) que también funciona en multijugador; tras elegir, la carta de Eevee de tu tienda muestra esa evolución (`p.eeveeForm`, `priv.ef`).
 - **Objetos**: los componentes se combinan también en el inventario; para quitar objetos de un Pokémon se usa el 🧲 Imán Removedor.
 - **Limitación conocida**: si un jugador se desconecta, un bot sigue por él y **no puede volver a su asiento**.
 
@@ -107,7 +108,10 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - El menú y el acceso usan de fondo el propio campo 3D (`menuActors()`); la escena pixel art (`Scene`) ya no se muestra.
 - Retratos de la tienda y de las minileyendas (selector, menú, cabezas de la lista de jugadores y salas): ilustraciones recortadas de cartas TCG en `public/art/<clave>.webp` (414×256, sin texto; `CARD_ART` y `artImg()` en `game.js`), sacadas de pokemon-tcg-data, pokemon-tcg-pocket-database y tcgdex. Ahí no se cargan modelos 3D. Son arte oficial: sustituibles por arte propio cuando lo haya.
 - Logo y favicon propios en `public/img/` (`logo.png` del menú y del acceso; `favicon-32.png`, `favicon-512.png` y `apple-touch-icon.png`), con el fondo ya transparente.
-- Sonidos: los propios se sintetizan con WebAudio en `Music` (`hurry`, `xp`, `drop`); los grabados se cargan en caliente con `Music.sample`: gritos al comprar el primer ejemplar (Showdown `audio/cries/<nombre>.mp3`, con PokeAPI/cries de reserva), evolución y Poké Ball de PokeMiners/pogo_assets (`SFX`).
+- Sonidos: los propios se sintetizan con WebAudio en `Music` (`hurry`, `xp`, `drop` y `evolve` para las evoluciones de fichas y minileyendas); los grabados se cargan en caliente con `Music.sample`: gritos al comprar el primer ejemplar (Showdown `audio/cries/<nombre>.mp3`, con PokeAPI/cries de reserva) y la Poké Ball de PokeMiners/pogo_assets (`SFX`).
+- Rendimiento del 3D: `bakeStatic` junta lo estático de cada arena en una sola malla (lo animado lleva `userData.dyn`); `B3.info` da llamadas de dibujo, triángulos y ms por parte. Las fichas quietas (`still`) no giran y un salto grande cuenta como teletransporte. En combate, `unitXY` interpola con `drawSub` (solo dibujo; no toca la simulación).
+- Sinergias en planificación: `synFx` (partículas por tipo, escudo de Guardián, anillo por clase) y `stepLinks` (bandas entre los Coloso) en `board3d.js`; los datos salen de `activeTraits` y `sceneLinks` en `game.js`.
+- Espectador: minimapa de islas (`renderIslands`, transición `warp`); al mirar a otro, el inventario y el tótem muestran sus objetos y aumentos (`viewOwner`; viajan en `pub.bd`).
 - Aumentos: cada carta llega como una ball con volumen (CSS: `.augBox`, `.lidT`/`.lidB`), se entreabre y se estira hasta la carta con arriba y abajo redondeados. Los modelos FBX de pogo_assets son de una pieza y sin textura, así que no se usan.
 - No uses fan art de terceros sin permiso; inspírate en el estilo de los juegos oficiales.
 

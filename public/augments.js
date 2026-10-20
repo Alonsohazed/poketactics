@@ -53,6 +53,8 @@ function unitOptions(p,filter,n=3){ // Pokémon (claves) para elegir: distintos,
 // Recompensas genéricas codificadas en texto (para opciones de elecciones y la Llamada al Caos)
 function augGrant(p,v){
  const [k,a]=String(v).split(':');
+ if(k==='ev'){ const [uid,key]=String(a).split('|'), u=allUnits(p).find(x=>String(x.uid)===uid&&x.defId==='eevee'), e=DEF[key];
+   if(!u||!e||e.evoOf!=='eevee') return ''; u.defId=key; p.eeveeForm=key; return 'Eevee evolucionó en '+e.name; }
  if(k==='g'){ p.gold+=+a; return `${a} de oro`; }
  if(k==='xp'){ addXp(p,+a); return `${a} de EXP`; }
  if(k==='c'){ const it=giveItem(p,pick(BASIC)); return ITEMS[it].name; }
