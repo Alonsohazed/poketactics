@@ -2209,7 +2209,8 @@ function floorCountSpec(){
 }
 function drawTotemIcons(){
  hudAugs=[]; const tt=B3.totemTop&&B3.totemTop(); if(!tt) return;
- const list=(viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean), R=geo.R, sz=Math.max(30,R*1.05), n=Math.max(1,list.length), w=n*(sz+3)+5, x0=tt[0]-w/2, y0=tt[1]-sz-6;
+ const list=(viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean); if(!list.length) return; // sin aumentos no hay recuadro (ni «?»): el trofeo se ve solo hasta elegir el primero
+ const R=geo.R, sz=Math.max(30,R*1.05), n=Math.max(1,list.length), w=n*(sz+3)+5, x0=tt[0]-w/2, y0=tt[1]-sz-6;
  ctx.save(); ctx.fillStyle='rgba(6,8,18,.85)'; rrPath(ctx,x0,y0,w,sz+6,5); ctx.fill(); ctx.strokeStyle='rgba(255,215,94,.7)'; ctx.lineWidth=1.5; ctx.stroke();
  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`${sz*.7}px system-ui`;
  if(!list.length){ ctx.fillStyle='#ffd75e'; ctx.font=`900 ${sz*.7}px Nunito,system-ui`; ctx.fillText('?',tt[0],y0+sz/2+3); }

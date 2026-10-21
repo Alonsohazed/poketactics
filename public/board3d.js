@@ -883,26 +883,11 @@ function stepBubbles(list,now){
 // Los cristales salen de los 5 huecos pintados en la imagen del escenario (FLAT_IMG.holes)
 let totem=null; const crystals=[];
 function buildProps(){
- const g=new THREE.Group(), gold=new THREE.MeshStandardMaterial({color:'#e8b84a',metalness:.75,roughness:.3,emissive:'#4a3000',emissiveIntensity:.3});
- const stone=new THREE.MeshStandardMaterial({color:'#3a3f5c',roughness:.7}), gem=new THREE.MeshStandardMaterial({color:'#b9a6ff',emissive:'#6a4bff',emissiveIntensity:.8,roughness:.2,metalness:.2});
- // pedestal: zócalo de piedra en dos escalones con filos dorados, columna con dos anillos y una copa que sostiene la ball
- const stoneL=new THREE.MeshStandardMaterial({color:'#4a5070',roughness:.65});
- const base=new THREE.Group(), add=(geo,mat,y,rx=0)=>{ const m=new THREE.Mesh(geo,mat); m.position.y=y; m.rotation.x=rx; base.add(m); return m; };
- add(new THREE.CylinderGeometry(.56,.62,.16,32),stone,.08); add(new THREE.TorusGeometry(.56,.03,8,40),gold,.16,Math.PI/2);
- add(new THREE.CylinderGeometry(.42,.48,.14,32),stoneL,.23); add(new THREE.TorusGeometry(.42,.025,8,40),gold,.3,Math.PI/2);
- const col=new THREE.Mesh(new THREE.CylinderGeometry(.15,.2,1.05,16),stone); col.position.y=.82;
- add(new THREE.TorusGeometry(.2,.03,8,28),gold,.42,Math.PI/2); add(new THREE.TorusGeometry(.16,.025,8,28),gold,1.0,Math.PI/2);
- const ring=new THREE.Mesh(new THREE.CylinderGeometry(.3,.16,.16,24,1,true),gold); ring.position.y=1.38; ring.material.side=THREE.DoubleSide;
- // Master Ball: mitad morada con dos bultos rosas y la "M", mitad blanca, franja negra y botón
- const top=new THREE.Group(), mb=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.3,metalness:.1});
- const up=new THREE.Mesh(new THREE.SphereGeometry(.34,28,14,0,TAU,0,Math.PI/2),mb('#6a2fb8')), dn=new THREE.Mesh(new THREE.SphereGeometry(.34,28,14,0,TAU,Math.PI/2,Math.PI/2),mb('#f4f4f4'));
- const band=new THREE.Mesh(new THREE.CylinderGeometry(.345,.345,.05,28),mb('#15151c')), btn=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,18),mb('#f4f4f4')); btn.rotation.x=Math.PI/2; btn.position.z=.34;
- for(const sx of [-1,1]){ const bump=new THREE.Mesh(new THREE.SphereGeometry(.09,14,10),mb('#ff6fb0')); bump.position.set(sx*.17,.21,.21); bump.scale.set(1,.7,.7); top.add(bump); }
- const mTex=canvasTex(64,64,(g2)=>{ g2.fillStyle='#fff'; g2.font='900 46px system-ui'; g2.textAlign='center'; g2.textBaseline='middle'; g2.fillText('M',32,36); },false);
- const mLogo=new THREE.Mesh(new THREE.PlaneGeometry(.2,.2),new THREE.MeshBasicMaterial({map:mTex,transparent:true,depthWrite:false})); mLogo.position.set(0,.2,.29); mLogo.rotation.x=-.6;
- top.add(up,dn,band,btn,mLogo); top.position.y=1.72; top.rotation.y=-.35; top.rotation.x=.12; // quieta, girada un poco hacia la cámara
- const halo=glowSprite('#c9a2ff',1.6); halo.position.y=1.72;
- g.add(base,col,ring,top,halo); g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.userData.top=top; scene.add(g); totem=g;
+ // Trofeo de los aumentos: una imagen (img/trofeo.webp, 36 KB) en un sprite anclado por su base al suelo, con una sombra suave debajo. Antes eran ~19 mallas con sombra (cilindros, aros, esfera, bultos y un texto), unas 20 llamadas de dibujo y ~10 000 triángulos
+ const g=new THREE.Group(), tex=new THREE.TextureLoader().load('img/trofeo.webp'); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false})), H=2.35; sp.center.set(.5,0); sp.scale.set(H*436/808,H,1); sp.position.y=0; sp.renderOrder=2;
+ const sh=new THREE.Mesh(blobGeo,blobMat); sh.scale.setScalar(1.3); sh.position.y=.01;
+ g.add(sh,sp); scene.add(g); totem=g;
  const cg=new THREE.OctahedronGeometry(.26,0);
  for(let i=0;i<10;i++){ const m=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:'#4a6c9a',emissive:'#000000',roughness:.25,metalness:.2,transparent:true,opacity:.65})); m.scale.y=1.9; const h=glowSprite('#7fe0ff',1.3); h.visible=false; const c=new THREE.Group(); c.add(m,h); c.userData={m,h}; scene.add(c); crystals.push(c); }
 }

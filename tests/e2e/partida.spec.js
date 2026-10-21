@@ -351,3 +351,9 @@ test('subida de estrellas de otro jugador: recuadro con su nombre, la cara, el n
   expect(g3.n).toBe('Webas'); expect(g3.s).toBe('★★★'); expect(g3.col).toBe('rgb(255, 207, 51)'); expect(s2.s).toBe('★★'); expect(s2.col).toBe('rgb(223, 230, 241)'); expect(g3.img && s2.img).toBe(true);
   expect(await page.evaluate(() => { const lefts = [...document.querySelectorAll('#players .pl .plInfo')].map(e => e.getBoundingClientRect().left); return [...document.querySelectorAll('#upLayer .upCard')].every(c => c.getBoundingClientRect().right <= Math.max(...lefts) + 1); })).toBe(true);
 });
+
+test('trofeo de aumentos: es una imagen (no decenas de mallas) y sin aumentos no hay recuadro con «?»', async ({ page }) => {
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => ({ esc: B3.debugInfo().escenario, hud: (() => { G.me.augments = []; hudAugs = []; ctx.save(); const spy = []; const fr = ctx.fillText; ctx.fillText = function (t) { spy.push(t); return fr.apply(this, arguments); }; drawTotemIcons(); ctx.fillText = fr; ctx.restore(); return { qs: spy.includes('?'), icons: hudAugs.length }; })(), tex: !!(B3.flatInfo && B3.flatInfo.totem) }));
+  expect(r.esc).toBeLessThan(10); expect(r.hud).toEqual({ qs: false, icons: 0 }); expect(r.tex).toBe(true);
+});
