@@ -104,7 +104,17 @@ ready.then(() => server.listen(0, async () => {
     assert(Object.keys(dos.board).length > 0, 'su tablero sigue peleando: se le coloca lo que tenga, como a cualquier jugador que no actúa');
     assert(dos.gold >= gold0 + 20, 'la economía sigue: oro base + interés + racha (' + gold0 + ' → ' + dos.gold + ')');
     assert(dos.hp < vida0 || dos.streak > 0, 'su tablero ha peleado las rondas (vida ' + vida0 + ' → ' + dos.hp + ')');
-        // vuelve con otra conexión
+        // aumentos: al acabar el plazo se le aplica uno al azar, como a cualquiera que no elige (2-1 es la primera ronda con aumento)
+    // carrusel: el ausente no camina; cuando los presentes han elegido, se le da uno de los Pokémon que sobran (9 opciones para 8 jugadores)
+    for (let i = 0; i < 12000 && G.phase !== 'carousel' && !G.over; i++) { if (G.phase === 'planning') uno.ready = true; T += 50; E.serverTick(.05); if (G.resolving || G.phase === 'results') await sleep(25); }
+    assert.strictEqual(G.phase, 'carousel', 'se llega al primer carrusel (ronda ' + (G.round && G.round.s + '-' + G.round.n) + ')');
+    assert(dos.augments.length >= 1, 'al ausente se le aplicó un aumento al azar en 2-1 (aumentos: ' + dos.augments.length + ')');
+    const C = G.carousel, u0 = unidades();
+    for (let i = 0; i < 6000 && G.carousel === C; i++) { T += 50; E.serverTick(.05); if (G.resolving) await sleep(25); }
+    assert.notStrictEqual(G.carousel, C, 'el carrusel termina sin esperar al ausente');
+    assert.strictEqual(C.opts.filter(o => o.taken === dos).length, 1, 'el ausente recibe exactamente uno de los sobrantes');
+    assert(C.av[dos.id].carry, 'con su objeto'); assert.strictEqual(unidades(), u0 + 1, 'y ese Pokémon entra en su banquillo o tablero');
+    // vuelve con otra conexión
     assert.strictEqual(E.serverRejoin('x-no-existe', 'z'), false, 'un id desconocido no recupera ningún asiento');
     assert.strictEqual(E.serverRejoin('b', 'b2'), true, 'recupera su asiento'); assert.strictEqual(dos.away, false); assert.strictEqual(dos.remote, true); assert.strictEqual(dos.peer, 'b2'); assert.strictEqual(dos.isBot, false);
     assert.strictEqual(E.serverRejoin('b', 'b3'), false, 'el asiento ya no está libre');

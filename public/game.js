@@ -2235,6 +2235,7 @@ function updateCarousel(dt){
    if(a.x===null){ a.x=cx+Math.cos(a.ang)*rr*1.12; a.y=cy+Math.sin(a.ang)*rr*1.12; }
    if(a.done){ toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
+   if(p.away){ a.rel=true; return; } // desconectado: no camina; al final se le da uno de los que sobran (más abajo)
    if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Fuera el campo de fuerza! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
    if(a.target!=null&&C.opts[a.target].taken) a.target=null;
@@ -2243,6 +2244,9 @@ function updateCarousel(dt){
    // Se lleva el Pokémon que toque al pasar por encima
    for(let i=0;i<C.opts.length;i++){ const o=C.opts[i]; if(o.taken) continue; const [ox,oy]=optPos(C,i); if(Math.hypot(ox-a.x,oy-a.y)<geo.R*.6&&takeCarousel(p,i)){ a.done=true; a.carry=o; a.ang=Math.atan2(a.y-cy,a.x-cx); renderUI(); break; } }
  });
+ // Cuando todos los presentes han elegido, a quien está desconectado se le da uno de los Pokémon que sobran (con su objeto)
+ const pend=C.order.filter(p=>p.away&&C.av[p.id]&&!C.av[p.id].done);
+ if(pend.length&&C.order.every(p=>p.away||(C.av[p.id]&&C.av[p.id].done))){ for(const p of pend){ const a=C.av[p.id], i=carouselChoice(p); if(i!=null&&takeCarousel(p,i)){ a.carry=C.opts[i]; a.ang=Math.atan2(a.y-cy,a.x-cx); } a.done=true; a.rel=true; } renderUI(); }
  if(C.order.every(p=>C.av[p.id]&&C.av[p.id].done)||C.opts.every(o=>o.taken)){ if(!C.endT) C.endT=C.t; if(C.t-C.endT>1.3){ C.finished=true; if(NET.mode==='host') netCarousel(); finishCarousel(); } }
 }
 
