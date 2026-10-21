@@ -379,3 +379,9 @@ test('objetos: los 47 sprites son WebP ligeros propios (no se pide PokeAPI) y se
     await new Promise(r => setTimeout(r, 1500)); const im = [...host.querySelectorAll('img')]; const o = { n: im.length, ok: im.filter(i => i.complete && i.naturalWidth > 0).length, hq: im.filter(i => i.classList.contains('hq')).length, smooth: getComputedStyle(im[0]).imageRendering, w: im[0].naturalWidth }; host.remove(); return o; });
   expect(r.n).toBe(n); expect(r.ok).toBe(n); expect(r.hq).toBe(n); expect(r.smooth).toBe('auto'); expect(r.w).toBe(80); expect(remote).toEqual([]);
 });
+
+test('objetos: marco dorado en la banca y efectos animados en tres componentes', async ({ page }) => {
+  await page.evaluate(() => { G.me.items = ['water', 'spoon', 'wing', 'claw']; renderItems.last = null; renderUI(); });
+  const r = await page.evaluate(() => { const it = [...document.querySelectorAll('#items .item .ii')]; return { n: it.length, fx: it.map(e => /fx-(water|spoon|wing)/.test(e.className)), border: getComputedStyle(it[3]).borderTopColor, bw: getComputedStyle(it[3]).borderTopWidth, anim: getComputedStyle(it[0], '::before').animationName }; });
+  expect(r.n).toBe(4); expect(r.fx).toEqual([true, true, true, false]); expect(r.border).toBe('rgb(207, 168, 79)'); expect(r.bw).toBe('3px'); expect(r.anim).toBe('fxPulse');
+});
