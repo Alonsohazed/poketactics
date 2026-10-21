@@ -1130,30 +1130,18 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 .upCard.s3 .st{color:#ffcf33;text-shadow:0 0 9px #ffb400,0 1px 0 #000}
 @keyframes upOut{from{transform:scale(.04,.5);opacity:0}to{transform:none;opacity:1}}
 @keyframes upFade{to{opacity:0;transform:translateX(14px)}}
-/* Recuadro dorado opaco de los objetos en la banca (componentes y completos): marco definido y nítido */
-.items .item .ii,#boardWrap .items .item .ii{border:3px solid #cfa84f;border-radius:4px;background:radial-gradient(circle at 50% 38%,#2a3150,#0a0e1c 82%);box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px rgba(255,236,170,.25),0 0 0 1px #2b1f08,0 3px 5px rgba(0,0,0,.6)}
+/* Recuadro dorado de los objetos en la banca (componentes y completos): marco metálico grueso, opaco y bien definido */
+.items .item .ii,#boardWrap .items .item .ii{border:4px solid transparent;border-radius:5px;background:radial-gradient(circle at 50% 38%,#2a3150,#0a0e1c 82%) padding-box,linear-gradient(145deg,#fff2b8,#e6b84e 32%,#a8741a 68%,#f3d27a) border-box;background-origin:border-box;background-clip:padding-box,border-box;box-shadow:inset 0 0 0 1px rgba(0,0,0,.7),inset 0 0 7px rgba(0,0,0,.55),0 0 0 1px #2b1f08,0 3px 6px rgba(0,0,0,.65)}
 .items .item .ii img{filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
 /* itemfx:start */
-/* Efectos animados de tres componentes, al estilo de los iconos de TFT: aura que respira detrás y destellos encima (solo transform y opacity: no pesan) */
+/* Aura de fondo de los 8 componentes básicos, del color de cada uno: respira despacio detrás del sprite (solo transform y opacity: no pesa) */
 .ii[class*=" fx-"]>img{position:relative;z-index:1}
-.ii[class*=" fx-"]::before,.ii[class*=" fx-"]::after{content:"";position:absolute;pointer-events:none;border-radius:inherit}
-.ii[class*=" fx-"]::before{inset:-15%;z-index:0}
-.ii[class*=" fx-"]::after{inset:0;z-index:2}
+.ii[class*=" fx-"]::before{content:"";position:absolute;inset:-15%;z-index:0;pointer-events:none;border-radius:inherit;background:radial-gradient(circle at 50% 56%,rgba(var(--fx),.85),rgba(var(--fx),.28) 46%,transparent 72%);animation:fxPulse 2.6s ease-in-out infinite}
 @keyframes fxPulse{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.1)}}
-@keyframes fxSpin{to{transform:rotate(360deg)}}
-@keyframes fxTwinkle{0%,100%{opacity:0;transform:scale(.3) rotate(0)}45%,55%{opacity:1;transform:scale(1) rotate(45deg)}}
-@keyframes fxBub{from{background-position:24% 0,62% 38%,80% 14%}to{background-position:24% -100%,62% -62%,80% -86%}}
-@keyframes fxWind{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}
-/* Agua Mística: aura azul que respira y burbujitas que suben */
-.ii.fx-water::before{background:radial-gradient(circle at 50% 58%,rgba(90,200,255,.85),rgba(40,120,255,.3) 46%,transparent 72%);animation:fxPulse 2.4s ease-in-out infinite}
-.ii.fx-water::after{background:radial-gradient(circle at 24% 82%,#fff 0 1.4px,rgba(160,225,255,.9) 1.6px 2.4px,transparent 3px) 0 0/100% 100% repeat-y,radial-gradient(circle at 62% 80%,#fff 0 1px,rgba(160,225,255,.9) 1.2px 1.9px,transparent 2.4px) 0 0/100% 100% repeat-y,radial-gradient(circle at 80% 84%,#fff 0 1.2px,rgba(160,225,255,.9) 1.4px 2.1px,transparent 2.6px) 0 0/100% 100% repeat-y;animation:fxBub 3.2s linear infinite}
-/* Cuchara Torcida: remolino psíquico violeta que gira y una estrellita que centellea */
-.ii.fx-spoon::before{inset:-35%;background:conic-gradient(from 0deg,transparent 0 50%,rgba(176,84,255,.75) 72%,rgba(255,130,225,.95) 90%,transparent 100%);-webkit-mask:radial-gradient(circle,transparent 30%,#000 38% 62%,transparent 68%);mask:radial-gradient(circle,transparent 30%,#000 38% 62%,transparent 68%);filter:blur(1.5px);animation:fxSpin 3.4s linear infinite}
-.ii.fx-spoon::after{inset:6% 6% auto auto;width:34%;height:34%;background:linear-gradient(#0000 42%,#fff 50%,#0000 58%),linear-gradient(90deg,#0000 42%,#fff 50%,#0000 58%);filter:drop-shadow(0 0 3px #e9b6ff);animation:fxTwinkle 2.6s ease-in-out infinite}
-/* Pluma Veloz: halo celeste suave y rachas de viento que cruzan */
-.ii.fx-wing::before{background:radial-gradient(circle at 50% 50%,rgba(200,245,255,.75),rgba(120,210,255,.25) 50%,transparent 74%);animation:fxPulse 2.8s ease-in-out infinite}
-.ii.fx-wing::after{background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.95) 46%,transparent 54%),linear-gradient(112deg,transparent 60%,rgba(190,240,255,.85) 66%,transparent 72%);animation:fxWind 2.4s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.ii[class*=" fx-"]::before,.ii[class*=" fx-"]::after{animation:none}}
+.ii.fx-water{--fx:70,170,255}.ii.fx-wing{--fx:170,235,255}.ii.fx-spoon{--fx:190,110,255}.ii.fx-claw{--fx:210,222,245}
+.ii.fx-coat{--fx:150,195,225}.ii.fx-goggles{--fx:255,110,90}.ii.fx-club{--fx:255,228,160}.ii.fx-lens{--fx:120,150,255}
+.ii.fx-wing::before{animation-duration:2.8s}.ii.fx-claw::before{animation-duration:2.9s}.ii.fx-coat::before{animation-duration:3s}.ii.fx-club::before{animation-duration:2.7s}.ii.fx-lens::before{animation-duration:2.5s}
+@media (prefers-reduced-motion:reduce){.ii[class*=" fx-"]::before{animation:none}}
 /* itemfx:end */
 </style>
 </head>

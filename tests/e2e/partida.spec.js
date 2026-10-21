@@ -380,8 +380,9 @@ test('objetos: los 47 sprites son WebP ligeros propios (no se pide PokeAPI) y se
   expect(r.n).toBe(n); expect(r.ok).toBe(n); expect(r.hq).toBe(n); expect(r.smooth).toBe('auto'); expect(r.w).toBe(80); expect(remote).toEqual([]);
 });
 
-test('objetos: marco dorado en la banca y efectos animados en tres componentes', async ({ page }) => {
-  await page.evaluate(() => { G.me.items = ['water', 'spoon', 'wing', 'claw']; renderItems.last = null; renderUI(); });
-  const r = await page.evaluate(() => { const it = [...document.querySelectorAll('#items .item .ii')]; return { n: it.length, fx: it.map(e => /fx-(water|spoon|wing)/.test(e.className)), border: getComputedStyle(it[3]).borderTopColor, bw: getComputedStyle(it[3]).borderTopWidth, anim: getComputedStyle(it[0], '::before').animationName }; });
-  expect(r.n).toBe(4); expect(r.fx).toEqual([true, true, true, false]); expect(r.border).toBe('rgb(207, 168, 79)'); expect(r.bw).toBe('3px'); expect(r.anim).toBe('fxPulse');
+test('objetos: marco dorado en la banca, aura del color de cada componente y los dos objetos nuevos', async ({ page }) => {
+  await page.evaluate(() => { G.me.items = ['water', 'spoon', 'wing', 'claw', 'lens', 'zoom', 'medal']; renderItems.last = null; renderUI(); });
+  const r = await page.evaluate(() => { const it = [...document.querySelectorAll('#items .item .ii')]; return { n: it.length, fx: it.map(e => /fx-/.test(e.className)), bw: getComputedStyle(it[3]).borderTopWidth, grad: /linear-gradient/.test(getComputedStyle(it[3]).backgroundImage), anim: getComputedStyle(it[3], '::before').animationName, after: getComputedStyle(it[0], '::after').content, names: [ITEMS.lens.name, ITEMS.zoom.name, ITEM_ART.lens, ITEM_ART.zoom] }; });
+  expect(r.n).toBe(7); expect(r.fx).toEqual([true, true, true, true, true, false, false]); expect(r.bw).toBe('4px'); expect(r.grad).toBe(true); expect(r.anim).toBe('fxPulse'); expect(r.after).toBe('none');
+  expect(r.names).toEqual(['Paracontacto', 'Guante de Boxeo', 'protective-pads', 'punching-glove']);
 });

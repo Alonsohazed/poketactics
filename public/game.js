@@ -323,7 +323,7 @@ const COMPS={
  claw:{name:'Garra Afilada',icon:'🗡️',s:{adPct:.10}}, wing:{name:'Pluma Veloz',icon:'🪶',s:{asPct:.10}},
  spoon:{name:'Cuchara Torcida',icon:'🥄',s:{ap:10}}, water:{name:'Agua Mística',icon:'🧪',s:{mana:15}},
  coat:{name:'Revestimiento Metálico',icon:'🔩',s:{df:20}}, goggles:{name:'Gafas Protectoras',icon:'🥽',s:{mr:20}},
- club:{name:'Hueso Grueso',icon:'🦴',s:{hp:150}}, lens:{name:'Lente Zoom',icon:'🔍',s:{crit:.2}}, medal:{name:'Medalla',icon:'🏅',s:{}},
+ club:{name:'Hueso Grueso',icon:'🦴',s:{hp:150}}, lens:{name:'Paracontacto',icon:'🧤',s:{crit:.2}}, medal:{name:'Medalla',icon:'🏅',s:{}},
 };
 const BASIC=['claw','wing','spoon','water','coat','goggles','club','lens'];
 const ORDER=[...BASIC,'medal'];
@@ -364,7 +364,7 @@ const FULL=[
  ['goggles','lens','whiteherb','Hierba Blanca','🌼','Inmune a aturdimientos. +10% de prob. crítica.',{crit:.1},{noStun:1}],
  ['club','club','leftovers','Restos','🍎','+300 de vida adicional y regenera 2% de vida por segundo.',{hp:300,regen:.02}],
  ['club','lens','hook','Garra Garfio','🪝','Remata a los enemigos que bajen del 12% de vida.',{},{execute:.12}],
- ['lens','lens','zoom','Lente Zoom+','🔭','+40% de prob. crítica y +30% de daño crítico adicionales.',{crit:.4,critM:.3}],
+ ['lens','lens','zoom','Guante de Boxeo','🥊','+40% de prob. crítica y +30% de daño crítico adicionales.',{crit:.4,critM:.3}],
 ];
 const EMBLEM_OF={claw:'Coloso',wing:'Tirador',spoon:'Hechicero',water:'Agua',coat:'Guardián',goggles:'Hada',club:'Dragón',lens:'Asesino'};
 // Sinergias afines de cada componente (la primera es la de siempre): al forjar Medalla + componente se elige entre ellas
@@ -1931,14 +1931,14 @@ function loadImg(key,src){
 const getImg=dex=>loadImg(dex,SPRITE(dex));
 const getTrImg=k=>loadImg('tr:'+k,TRAINER_SPRITE(k));
 // Arte de cada objeto (sprites de objetos de PokeAPI); las insignias se dibujan con el icono de su sinergia
-const ITEM_ART={claw:'razor-claw',wing:'swift-wing',spoon:'twisted-spoon',water:'mystic-water',coat:'metal-coat',goggles:'safety-goggles',club:'thick-club',lens:'zoom-lens',medal:'gold-bottle-cap',
+const ITEM_ART={claw:'razor-claw',wing:'swift-wing',spoon:'twisted-spoon',water:'mystic-water',coat:'metal-coat',goggles:'safety-goggles',club:'thick-club',lens:'protective-pads',medal:'gold-bottle-cap',
  band:'choice-band',expert:'expert-belt',shellbell:'shell-bell',mental:'mental-herb',sash:'focus-sash',blood:'big-root',sitrus:'sitrus-berry',sharp:'scope-lens',scarf:'choice-scarf',rage:'muscle-band',
  light:'light-ball',titan:'protector',twin:'quick-claw',quick:'quick-powder',razorfang:'razor-fang',specs:'choice-specs',moon:'moon-stone',royal:'kings-rock',veil:'light-clay',charcoal:'charcoal',
  wise:'wise-glasses',soothe:'soothe-bell',energy:'energy-root',holy:'fresh-water',cure:'lum-berry',justice:'life-orb',helmet:'rocky-helmet',vest:'assault-vest',flame:'flame-orb',sturdy:'eviolite',
- scale:'dragon-scale',bright:'bright-powder',whiteherb:'white-herb',leftovers:'leftovers',hook:'grip-claw',zoom:'wide-lens',master:'master-ball',magnet:'magnet'};
+ scale:'dragon-scale',bright:'bright-powder',whiteherb:'white-herb',leftovers:'leftovers',hook:'grip-claw',zoom:'punching-glove',master:'master-ball',magnet:'magnet'};
 const BADGE_SPRITE=n=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${n}.png`;
 // Objetos: sprites de Wikidex (Escarlata/Púrpura) reducidos a 80 px en WebP (2 KB cada uno), en public/items/<clave>.webp y por CDN como los retratos; si fallan, cae al sprite pequeño de PokeAPI (data-alt). Las insignias siguen con sus sprites pixelados de PokeAPI
-const ITEM_FX=new Set(['water','spoon','wing']); // componentes con efecto animado (agua, psíquico, viento)
+const ITEM_FX=new Set(['claw','wing','spoon','water','coat','goggles','club','lens']); // los 8 componentes básicos llevan un aura de fondo del color de su sprite
 const itemHQ=k=>!!(ITEM_ART[k]&&!(ITEMS[k]&&ITEMS[k].badge));
 const itemAlt=k=>ITEM_ART[k]?ITEM_SPRITE(ITEM_ART[k]):'';
 const itemSrc=k=>ITEMS[k]&&ITEMS[k].badge?BADGE_SPRITE(ITEMS[k].badge):ITEM_ART[k]?(window.ASSET_BASE||'')+'items/'+k+'.webp':'';
