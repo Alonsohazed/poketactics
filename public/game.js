@@ -1230,6 +1230,7 @@ function buildRounds(){
 }
 const ROUNDS=buildRounds();
 function newGame(opts={}){
+ if(!HEADLESS&&!opts.auto&&typeof guardBack==='function') guardBack();
  if(!HEADLESS&&window.B3&&B3.dropQueue) B3.dropQueue();
  UID=1;
  G={pool:{},players:[],roundIdx:-1,round:null,phase:'idle',timer:0,combat:null,fights:[],log:[],over:false,speed:S.speed,auto:!!opts.auto,acc:0,resolving:false,myOpp:'',anvils:[],augTiers:rollAugTiers(),carousel:null,diff:opts.diff||'normal',mp:!!opts.mp,resolveNotBefore:0};
@@ -1475,7 +1476,7 @@ function startCarousel(){
 }
 function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return false; o.taken=p; giveUnitTo(p,o.key); giveItem(p,o.item); note(p,`🎠 Elegiste ${DEF[o.key].name} con ${ITEMS[o.item].name}`,true); return true; }
 function finishCarousel(){ const C=G.carousel; for(const o of C.opts) if(!o.taken) returnToPool(o.key,1); G.carousel=null; renderUI(); later(nextRound,400); }
-const releaseAt=idx=>5+3.5*Math.floor(idx/2); // la primera pareja sale a los 5 s (da tiempo a ver el carrusel); las demás, cada 3,5 s
+const releaseAt=idx=>8+3.5*Math.floor(idx/2); // la primera pareja sale a los 8 s (da tiempo a ver todos los Pokémon y objetos y elegir); las demás, cada 3,5 s
 // Cada pareja que sale a la vez empieza en lados opuestos (misma distancia a todos los Pokémon)
 const BALL_OF=idx=>['poke','great','ultra','master'][Math.min(3,Math.floor(idx/2))]; // ball de cada pareja de salida
 const carAng=(j,n)=>Math.floor(j/2)*Math.PI/Math.ceil(n/2)+(j%2)*Math.PI+Math.PI/8;
@@ -1501,6 +1502,8 @@ function applyAct(p,a){
   case 'pick': return resolvePick(p,a.id|0,idx(a.i));
   case 'tac': { if(!TACS[a.k]) return {ok:false}; p.tac=a.k; return {ok:true}; }
   case 'orb': { return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
+  // Burla de Charmander (H): se cuenta para que todos los que miran su tablero la vean (el contador viaja en pub.pl[i][17])
+  case 'taunt': { if((TACS[p.tac]?p.tac:'charmander')!=='charmander') return {ok:false}; const t=Date.now(); if(t-(p.tauntAt||0)<1400) return {ok:false}; p.tauntAt=t; p.tn=((p.tn||0)+1)%1000; return {ok:true}; }
   // Dónde está tu minileyenda para los demás: tablero que miras y destino (en radios de casilla desde la esquina del tablero)
   case 'tpos': { const b=idx(a.b), q=v=>Math.round(clamp(+v||0,-3,20)*100)/100; if(!G.players.some(o=>o.id===b)) return {ok:false}; p.tp=[b,q(a.x),q(a.y)]; return {ok:true}; }
   case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,true); return r; }
@@ -1527,7 +1530,7 @@ function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk
 function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0)}; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
@@ -1548,11 +1551,11 @@ function netFlush(force){
  if(force||ps!==NET.lastPub){ emit('pub',pub); NET.lastPub=ps; NET.lastBdP=bdS; }
  for(const p of G.players) if(p.remote){ const d=makePriv(p), s=JSON.stringify(d); if(force||s!==NET.lastPriv[p.id]){ emit('priv',d); NET.lastPriv[p.id]=s; } }
 }
-function netSendCombats(){
- // Todos los combates de la ronda, para que cada jugador pueda ver el de cualquier otro
- NET.named.emit('cmbs',{R:[G.round.s,G.round.n],list:G.fights.map(f=>({seed:f.seed,a:f.sa,b:f.sb,ia:f.a.id,ib:f.b?f.b.id:-1,pve:f.pve?1:0,ghost:f.ghost?1:0}))}).catch(()=>{});
+function netSendCombats(only){
+ // Todos los combates de la ronda, para que cada jugador pueda ver el de cualquier otro (con `only`: solo para ese jugador, al reconectarse)
+ NET.named.emit('cmbs',{...(only?{to:only.peer}:{}),R:[G.round.s,G.round.n],list:G.fights.map(f=>({seed:f.seed,a:f.sa,b:f.sb,ia:f.a.id,ib:f.b?f.b.id:-1,pve:f.pve?1:0,ghost:f.ghost?1:0}))}).catch(()=>{});
  for(const f of G.fights){
-   const send=(p,side)=>{ if(!p||!p.remote) return; const o=f.pve?null:side===0?f.b:f.a; NET.named.emit('cmb',{to:p.peer,seed:f.seed,side,a:f.sa,b:f.sb,R:[G.round.s,G.round.n],opp:oppLabel(f,side),ot:o?o.tr:''}).catch(()=>{}); };
+   const send=(p,side)=>{ if(!p||!p.remote||(only&&p!==only)) return; const o=f.pve?null:side===0?f.b:f.a; NET.named.emit('cmb',{to:p.peer,seed:f.seed,side,a:f.sa,b:f.sb,R:[G.round.s,G.round.n],opp:oppLabel(f,side),ot:o?o.tr:''}).catch(()=>{}); };
    send(f.a,0); if(!f.ghost) send(f.b,1);
  }
 }
@@ -1574,9 +1577,14 @@ function sock(){
  if(NET.sock) return NET.sock;
  if(HEADLESS||typeof io==='undefined') return null;
  const s=io({transports:['websocket','polling']}); NET.sock=s; NET.rooms=[];
- s.on('connect',()=>{ NET.myPeer=s.id; if(NET.screen==='lobby') s.emit('list'); });
+ s.on('connect',()=>{ NET.myPeer=s.id; if(NET.screen==='lobby') s.emit('list'); if(NET.lost){ NET.mode='joining'; s.emit('rejoin'); } }); // tras un corte, vuelve solo a su asiento
  s.on('connect_error',err=>{ if(err&&err.message==='auth'){ resetSocket(); resetNet(); showAuth('Tu sesión ha caducado. Vuelve a entrar.'); } });
- s.on('disconnect',()=>{ if(NET.queue) endQueue(); if(NET.mode==='client'||NET.mode==='joining'){ toast('Se perdió la conexión con el servidor'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
+ s.on('disconnect',reason=>{ if(NET.queue) endQueue();
+   if(NET.mode==='client'){ connLost(reason,s); }
+   else if(NET.mode==='joining'&&NET.lost){ showLostBar(reason); if(reason==='io server disconnect') s.connect(); } // otro corte mientras volvía: sigue intentándolo
+   else if(NET.mode==='joining'){ toast('Se perdió la conexión con el servidor ('+reasonText(reason)+')'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
+ s.on('resume',d=>{ NET.resume=d&&typeof d==='object'?{mode:String(d.mode||'').slice(0,12),round:String(d.round||'').slice(0,6)}:null; renderResume(); });
+ s.on('rejoinfail',d=>{ toast(String(d&&d.why||'No se pudo volver a la partida')); giveUpLost(); });
  s.on('rooms',list=>{ NET.rooms=Array.isArray(list)?list.slice(0,50):[]; if(NET.screen==='lobby') renderRoomList(); });
  s.on('err',m=>{ toast(String(m||'Error')); if(NET.queue&&NET.queue.state!=='matched') endQueue(); if(NET.mode==='joining'&&NET.screen!=='room'&&!NET.queue) NET.mode='sp'; });
  s.on('lobby',d=>{
@@ -1585,7 +1593,7 @@ function sock(){
    NET.code=String(d.code||'').slice(0,5); NET.owner=String(d.owner||''); NET.seats=Array.isArray(d.seats)?d.seats.slice(0,8):[];
    if(NET.screen!=='room') showRoomScreen(); else renderSeats();
  });
- s.on('start',d=>{ if(NET.mode!=='joining') return; const seats=(d&&d.seats)||[]; if(seats.find(x=>x.peer===NET.myPeer)){ NET.queue=null; renderQueue(); NET.result=null; startClient(); } });
+ s.on('start',d=>{ if(NET.mode!=='joining') return; const seats=(d&&d.seats)||[]; if(seats.find(x=>x.peer===NET.myPeer)){ NET.queue=null; renderQueue(); NET.result=null; NET.lost=null; NET.resume=null; hideLostBar(); startClient(); } });
  s.on('queue',onQueue);
  s.on('result',onResult);
  s.on('pub',d=>{ if(NET.mode==='client') applyPub(d); });
@@ -1593,9 +1601,38 @@ function sock(){
  s.on('cmb',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyCmb(d); });
  s.on('car',d=>{ if(NET.mode==='client') applyCar(d); });
  s.on('cmbev',d=>{ if(NET.mode==='client'&&d&&d.ev) onCmbEv(d); });
- s.on('cmbs',d=>{ if(NET.mode==='client'&&d&&Array.isArray(d.list)){ G.allFights=d.list.slice(0,8); G.allR={s:clamp(d.R&&d.R[0]|0,1,9),n:clamp(d.R&&d.R[1]|0,1,7)}; G.view=null; } });
- s.on('bye',()=>{ if(NET.mode==='client'||NET.mode==='joining'){ toast('La sala se cerró'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
+ s.on('cmbs',d=>{ if(NET.mode==='client'&&d&&Array.isArray(d.list)&&(!d.to||d.to===NET.myPeer)){ G.allFights=d.list.slice(0,8); G.allR={s:clamp(d.R&&d.R[0]|0,1,9),n:clamp(d.R&&d.R[1]|0,1,7)}; G.view=null; } });
+ s.on('bye',d=>{ if(NET.mode==='client'||NET.mode==='joining'){ hideLostBar(); NET.lost=null; toast(d&&d.reason==='otra ventana'?'Tu partida se abrió en otra ventana':'La sala se cerró'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
  return s;
+}
+// ---- corte de conexión: se explica el motivo, se intenta volver solo y se puede forzar con el botón ----
+const reasonText=r=>({'ping timeout':'el servidor dejó de responder','transport close':'se cortó la red o el servidor se reinició','transport error':'falló la red','io server disconnect':'el servidor cerró la conexión','io client disconnect':'te desconectaste'}[r]||String(r||'desconocido'));
+function connLost(reason,s){
+ NET.lost=Date.now(); console.warn('Conexión perdida:',reason); try{ localStorage.setItem('pt_dc',new Date().toISOString()+' '+reason); }catch(e){}
+ showLostBar(reason); if(reason==='io server disconnect') s.connect(); // el servidor nos echó: socket.io no reintenta solo en ese caso
+ clearTimeout(NET.lostT); NET.lostT=setTimeout(()=>{ if(NET.lost&&Date.now()-NET.lost>=290000){ toast('No se pudo recuperar la conexión'); giveUpLost(); } },300000);
+}
+function showLostBar(reason){
+ let b=$('lostBar'); if(!b){ b=document.createElement('div'); b.id='lostBar'; b.setAttribute('role','alert'); document.body.appendChild(b); b.addEventListener('click',e=>{ const a=e.target.closest('button'); if(!a) return; if(a.dataset.a==='back') tryRejoin(); else if(a.dataset.a==='menu') giveUpLost(); }); }
+ b.innerHTML=`<b>Conexión perdida</b> · ${esc(reasonText(reason))}. Reconectando…<span><button class="btn sm" data-a="back">Volver a mi partida</button><button class="btn sm" data-a="menu">Salir al menú</button></span>`; b.hidden=false;
+}
+function hideLostBar(){ const b=$('lostBar'); if(b) b.hidden=true; clearTimeout(NET.lostT); }
+function tryRejoin(){ const s=sock(); if(!s) return; NET.mode='joining'; if(s.connected) s.emit('rejoin'); else s.connect(); }
+function giveUpLost(){ hideLostBar(); NET.lost=null; if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); }
+// Botón del menú para volver a una partida a medias (el servidor guarda tu asiento unos minutos; un bot juega por ti mientras tanto)
+function renderResume(){
+ const nav=document.querySelector('.mnNav'); if(!nav) return; let b=$('resumeBtn');
+ if(!NET.resume){ if(b) b.remove(); return; }
+ if(!b){ b=document.createElement('button'); b.id='resumeBtn'; b.className='pxb pxb-main'; b.innerHTML='<i data-i="swap" data-s="44"></i><span class="pxbT"><b>Volver a tu partida</b><small></small></span>'; nav.prepend(b); b.onclick=()=>{ NET.lost=NET.lost||Date.now(); tryRejoin(); }; if(window.PX) PX.hydrate(b); }
+ b.querySelector('small').textContent='Ronda '+(NET.resume.round||'?')+' · tu asiento te espera';
+}
+// El botón Atrás del navegador no saca de la partida: al volver atrás se avisa y se queda; al recargar o cerrar la pestaña en multijugador, el navegador pide confirmación
+const liveGame=()=>!!(G&&G.players&&G.players.length&&!G.over&&$('menu')&&$('menu').classList.contains('hidden'));
+function guardBack(){
+ if(!history.state||!history.state.pt) history.pushState({pt:1},'',location.href);
+ if(guardBack.on) return; guardBack.on=true;
+ addEventListener('popstate',()=>{ if(liveGame()){ history.pushState({pt:1},'',location.href); toast('El botón Atrás está bloqueado durante la partida. Usa el menú ☰ para salir.'); } });
+ addEventListener('beforeunload',e=>{ if(liveGame()&&NET.mode==='client'){ e.preventDefault(); e.returnValue=''; } });
 }
 function renderRoomList(){
  const el=$('roomList'); if(!el) return;
@@ -1624,7 +1661,7 @@ function resetNet(){ Object.assign(NET,{mode:'sp',code:'',owner:'',seats:[],cfg:
 function leaveRoom(){ if(NET.sock) NET.sock.emit('leave'); if(G&&G.mirror) G.over=true; resetNet(); }
 // ----- cliente: espejo del estado que manda el anfitrión -----
 function startClient(){
- NET.mode='client'; closeModal(); NET.screen=''; $('menu').classList.add('hidden'); selected=null; selCombat=null; NET.shownOver=false; NET.lastToast=0;
+ guardBack(); NET.mode='client'; closeModal(); NET.screen=''; $('menu').classList.add('hidden'); selected=null; selCombat=null; NET.shownOver=false; NET.lastToast=0;
  const me=makePlayer(-1,S.name,false,S.avatar,S.trainer);
  G={mirror:true,players:[me],me,phase:'idle',roundIdx:0,round:ROUNDS[0],timer:0,log:[],speed:1,pool:{},augTiers:['G','G','G'],diff:'normal',over:false,combat:null,acc:0,flip:false,myOpp:'',mp:true};
  me.tac=savedTac()||me.tac; updateNetTag(); renderUI();
@@ -1636,9 +1673,9 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn]=r;
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
-   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null});
+   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000});
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
@@ -2176,6 +2213,7 @@ function tacFire(){
  const now=performance.now(); if(now-(TAC.fireT||0)<1500) return; TAC.fireT=now; TAC.castN=(TAC.castN||0)+1; trEmote={t0:now,txt:'🔥'};
  const [tx,ty]=cellXY(3,1); TAC.fx=tx; TAC.fy=ty;
  setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty); },170);
+ if(NET.mode==='client') doAct({t:'taunt'}); // los demás la ven en su pantalla (stepOthers)
 }
 const EMOTES=['¡Vamos!','😤','👍','¡Allá voy!','😎','GG','🔥','¿Eso es todo?'];
 function hitMyTrainer(){ if(!G||!G.players.length||G.phase==='carousel'||!myTrBox) return false; const [x,y]=ptr, [tx,ty,s]=myTrBox; return Math.abs(x-tx)<s*.4&&y<ty+s*.1&&y>ty-s*.95; }
@@ -2486,8 +2524,16 @@ function tacSync(){
 // Minileyendas de los demás en el tablero que miras: las que están en él (llegan por la red) caminan hasta su destino;
 // el dueño del tablero y su rival, si no están en él, en su sitio de siempre
 const tacVis=new Map(); let tacOthers=[];
+// Burla de Charmander de otros jugadores: cuando sube su contador (pub), lanza su animación y su bola de fuego si están en el tablero que miras
+const tauntFx=new Map();
+function otherTaunt(o,now){
+ const f=tauntFx.get(o.p.id); if(!f) return;
+ if(f.fire){ const [tx,ty]=cellXY(3,1); setTimeout(()=>{ if(G&&window.B3&&B3.fireball&&tacOthers.some(q=>q.p===o.p)) B3.fireball(o.x,o.y-geo.R*.2,tx,ty); },170); f.fire=false; }
+ o.cast=f.castN; if(now-f.t<1100){ const [tx,ty]=cellXY(3,1); o.tx=tx; o.ty=ty; }
+}
 function stepOthers(inCombat){
  const me=G.me, v=G.view, bp=v?v.pid:me.id, sp=trainerSpots(), now=performance.now(), out=[], seen=new Set([me.id]);
+ for(const p of G.players){ if(p===me) continue; let f=tauntFx.get(p.id); if(!f){ f={n:p.tn||0,castN:0,t:0,fire:false}; tauntFx.set(p.id,f); } if((p.tn||0)!==f.n){ f.n=p.tn||0; f.castN++; f.t=now; f.fire=true; } } // contadores de todos (aunque no se vean)
  const at=(p,x,y,face,col)=>{ if(!p||seen.has(p.id)) return; seen.add(p.id); out.push({p,x,y,face,col}); };
  for(const p of G.players){ if(p===me||!p.alive||!p.tp||p.tp[0]!==bp) continue;
    const tx=geo.ox+p.tp[1]*geo.R, ty=geo.pad+p.tp[2]*geo.R; let s=tacVis.get(p.id);
@@ -2500,7 +2546,7 @@ function stepOthers(inCombat){
  // El rival del combate: arriba si es un bot o si está mirando su propio combate (que es este mismo)
  const opp=inCombat&&G.round&&G.round.type!=='pve'?(v?v.opp:G.players.find(p=>p!==me&&G.myOpp&&G.myOpp.replace(' (fantasma)','')===p.name)):null;
  if(opp&&opp!==me&&(!opp.tp||opp.tp[0]===opp.id)) at(opp,sp.opp[0],sp.opp[1],-Math.PI*.15,'#ef4b3a');
- return tacOthers=out;
+ tacOthers=out; for(const o of out) otherTaunt(o,now); for(const [id,f] of tauntFx) if(f.fire&&!out.some(o=>o.p.id===id)) f.fire=false; return out;
 }
 function orbList(){
  const cbm=G.phase==='combat'&&G.combat; if(!G.me.orbs||!G.me.orbs.length||(cbm&&!cbm.done)||G.phase==='carousel'||(G.view&&G.view.board)) return [];
@@ -2530,7 +2576,7 @@ function sceneActors(){
        hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
  } else if(inCar){
-   const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=optPos(C,i); A.push({key:o,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
+   const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=optPos(C,i); A.push({key:'co'+i+':'+o.key,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
  } else {
    const who=viewedPlayer(), mine=who===me, ctx=who.id+'|'+G.phase+'|'+G.roundIdx, quiet=ctx!==synCtx, now=performance.now(); synCtx=ctx;
    const info=[], fr=++synFrame, tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
@@ -2549,7 +2595,7 @@ function sceneActors(){
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
    A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
-   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDex(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,ring:o.col,scale:.72,hud:{}}); }
+   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDex(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
  else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,a.x,a.y); A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:u.star,still:true,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:u.star}}); });
@@ -3226,7 +3272,7 @@ async function showHistory(){
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }
-function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
+function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
  // tras una partida con ascenso, descenso o rango revelado, se celebra al volver al menú
  if(NET.rankFx){ const d=NET.rankFx; NET.rankFx=null; setTimeout(()=>showRankChange(d),250); } }
 // Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
@@ -3423,10 +3469,22 @@ function serverTick(dt){
 }
 function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
 function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.isBot=true; p.tp=null; note(null,`🔌 ${p.name} se desconectó`); } }
+// Reconexión: el asiento de un jugador que se fue (un bot juega por él) vuelve a ser suyo con otro id de conexión
+function serverRejoin(oldPeer,newPeer){
+ if(!G||!G.players||G.over) return false; const p=G.players.find(x=>x.peer===oldPeer&&x.alive&&!x.remote); if(!p) return false;
+ p.peer=newPeer; p.remote=true; p.isBot=false; p.tp=null; NET.lastPriv[p.id]=''; NET.lastPub=''; NET.lastBdP=[]; note(null,`🔌 ${p.name} volvió a la partida`); return true;
+}
+// Reenvía a quien vuelve lo que solo se manda una vez: su estado, el combate de la ronda y el carrusel
+function serverResend(peer){
+ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return;
+ netFlush(true);
+ if(G.phase==='combat'&&G.fights) netSendCombats(p);
+ if(G.phase==='carousel') netCarousel();
+}
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[],
   plist:G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,comp:p.peer&&p.place?p.finalComp||null:null})):[]}; }
 
-if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,serverLeave,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
+if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js

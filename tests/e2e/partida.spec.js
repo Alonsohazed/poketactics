@@ -188,6 +188,36 @@ test('en combate nada tiembla: bloque, 3D, imagen, torre y cristales quedan quie
   expect(r.distintas, 'ninguna posición cambia durante el combate: ' + JSON.stringify(r.ejemplo)).toBe(1);
 });
 
+// Regresión: en multijugador cada mensaje del carrusel (cada 160 ms) creaba objetos nuevos y los Pokémon del carrusel se recreaban sin parar (se «reiniciaban»)
+test('carrusel multijugador: los Pokémon no se recrean con cada mensaje del servidor', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel'); await page.waitForTimeout(2500);
+  const r = await page.evaluate(async () => { const C = G.carousel, msg = () => ({ rot: C.rot, t: C.t, opts: C.opts.map(o => [o.key, o.item, -1]), av: C.order.map(p => [p.id, null, null, 0, 0, '', -1]) });
+    const m0 = B3.made; for (let i = 0; i < 14; i++) { applyCar(msg()); await new Promise(r => setTimeout(r, 160)); } return { nuevos: B3.made - m0, opciones: C.opts.length }; });
+  expect(r.opciones).toBeGreaterThan(5);
+  expect(r.nuevos, 'ningún modelo nuevo mientras llegan mensajes iguales').toBeLessThanOrEqual(1);
+});
+
+// El carrusel espera 8 s antes de soltar a la primera pareja: tiempo para ver todos los Pokémon y objetos
+test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
+  const r = await page.evaluate(() => ({ s0: releaseAt(0), s1: releaseAt(1), s2: releaseAt(2) }));
+  expect(r).toEqual({ s0: 8, s1: 8, s2: 11.5 });
+});
+
+// La burla de Charmander (H) de otro jugador sube su contador en pub; quien mira su mismo tablero ve su animación de lanzamiento y la bola de fuego
+test('la burla de otro jugador se anima en tu pantalla', async ({ page }) => {
+  const r = await page.evaluate(async () => {
+    const o = G.players[1]; o.tp = [G.me.id, 3, 6]; o.alive = true;
+    const act = () => sceneActors().find(a => a.key === 'tac:' + o.id);
+    await new Promise(r => setTimeout(r, 400)); const antes = act();
+    o.tn = 1; await new Promise(r => setTimeout(r, 300)); const durante = act();
+    await new Promise(r => setTimeout(r, 1300)); const despues = act();
+    return { existe: !!antes, castAntes: antes.cast, castDurante: durante.cast, apuntaDurante: durante.tx != null, apuntaDespues: despues.tx != null };
+  });
+  expect(r.existe).toBe(true); expect(r.castAntes).toBe(0); expect(r.castDurante).toBe(1);
+  expect(r.apuntaDurante).toBe(true); expect(r.apuntaDespues).toBe(false);
+});
+
 test('Llamada al Caos: se elige y aparece una ventana con el resultado', async ({ page }) => {
   await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
   await expect(page.locator('#mbox h1')).toHaveText('Llamada al Caos');

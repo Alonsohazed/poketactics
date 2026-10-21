@@ -119,8 +119,8 @@ const EL={
 const elOf=f=>EL[f.el]||{c:[f.color||'#ffffff',f.color||'#ffffff','#ffffff'],g:0,drag:3,life:.5};
 function elBurst(el,p,n,speed,o={}){ burst(p,el.c,n,speed,{g:el.g,drag:el.drag,life:el.life,add:el.add,...o}); }
 
-/* ---------- arenas ---------- */
-const arenas={}; let board={}, hexMesh=null, hexRing=null, benchPads=null, curArena='';
+/* ---------- tablero y escenario (el fondo son imágenes: ver «escenario por capas») ---------- */
+let board={}, hexMesh=null, hexRing=null, benchPads=null, curArena='';
 function buildBoard(G){
  if(board.group){ scene.remove(board.group); board.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
  const grp=new THREE.Group(); board={group:grp,G};
@@ -139,7 +139,6 @@ function buildBoard(G){
  G.bench.forEach(([x,y],i)=>{ const p=W3(x,y); m4.makeScale(s,1,s).setPosition(p.x,TOP-.02,p.z); benchPads.setMatrixAt(i,m4); benchPads.setColorAt(i,col('#3a2a20')); });
  benchPads.receiveShadow=true; grp.add(benchPads);
  scene.add(grp);
- for(const k in arenas){ scene.remove(arenas[k]); } for(const k in arenas) delete arenas[k];
  curArena='';
 }
 // Rectángulos (en mundo) de la plataforma del tablero y del banquillo
@@ -148,83 +147,6 @@ function boardRects(){
  const a=W3(G.ox-R*.5,G.pad*.4), b=W3(G.ox+G.bw+R*.5,G.pad+G.bh+R*.05);
  const c=W3(G.ox-R*.2,G.pad+G.bh+18-R*.1), d=W3(G.ox+G.bw+R*.2,G.pad+G.bh+18+G.bs+R*.1);
  return {bx0:a.x,bz0:a.z,bx1:b.x,bz1:b.z,cx0:c.x,cz0:c.z,cx1:d.x,cz1:d.z};
-}
-function blob(rad,seed,amt=.18,ws=18,hs=12){
- const g=new THREE.SphereGeometry(rad,ws,hs), p=g.attributes.position, v=new THREE.Vector3();
- for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i); const u=v.clone().normalize(), n=Math.sin(u.x*3.1+seed)*Math.sin(u.y*2.7+seed*1.7)*Math.sin(u.z*3.3+seed*.7)+.5*Math.sin(u.x*6.3+u.z*5.1+seed*2.3);
-   v.multiplyScalar(1+amt*n*.7); p.setXYZ(i,v.x,v.y,v.z); }
- g.computeVertexNormals(); return g; }
-// Roca redondeada y aplastada
-function rockMesh(rad,seed,color){ const m=new THREE.Mesh(blob(rad,seed,.26,10,7),new THREE.MeshStandardMaterial({color,roughness:.85})); m.scale.y=.68; m.castShadow=true; m.receiveShadow=true; return m; }
-function tree(x,z,s,r,leaf){
- const t=new THREE.Group();
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.1*s,.2*s,.95*s,8),new THREE.MeshStandardMaterial({color:'#7a4c28',roughness:.9})); trunk.position.y=.45*s; t.add(trunk);
- const cols=leaf||['#286828','#409840','#60b858'];
- for(let i=0;i<3;i++){ const c=new THREE.Mesh(blob((.75-i*.15)*s,r()*10,.16,12,8),new THREE.MeshStandardMaterial({color:cols[i],roughness:.8})); c.scale.y=.86; c.position.set(rnd(.15)*s,(1.1+i*.42)*s,rnd(.15)*s); c.rotation.y=r()*TAU; t.add(c); }
- t.position.set(x,0,z); t.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); t.userData.sway=r()*TAU; return t;
-}
-// Junta en una sola malla (color por vértice) todo lo estático, opaco y sin textura de la arena: árboles, rocas, columnas, arbustos…
-// Pasa de cientos de llamadas de dibujo (y otras tantas en la pasada de sombras) a una. Lo animado lleva userData.dyn y se queda aparte.
-function bakeStatic(g){
- g.updateMatrixWorld(true); const parts=[], keep=new Set();
- g.traverse(o=>{ if(!o.isMesh||o.isInstancedMesh||o.userData.dyn||o.children.length) return; const m=o.material;
-   if(Array.isArray(m)||!m.isMeshStandardMaterial||m.vertexColors||m.map||m.transparent||m.side!==THREE.FrontSide||m.metalness>.05||(m.emissive&&m.emissive.getHex())) return;
-   for(let p=o.parent;p&&p!==g;p=p.parent) if(p.userData.dyn) return;
-   parts.push(o); });
- if(parts.length<2) return g;
- const geos=parts.map(o=>{ let q=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
-   const keepAttr=new THREE.BufferGeometry(); keepAttr.setAttribute('position',q.attributes.position); keepAttr.setAttribute('normal',q.attributes.normal||q.computeVertexNormals()||q.attributes.normal);
-   keepAttr.applyMatrix4(o.matrixWorld); const c=o.material.color, n=keepAttr.attributes.position.count, col=new Float32Array(n*3);
-   for(let i=0;i<n;i++){ col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b; } keepAttr.setAttribute('color',new THREE.BufferAttribute(col,3)); return keepAttr; });
- const merged=mergeGeometries(geos,false); if(!merged) return g;
- const mesh=new THREE.Mesh(merged,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85}));
- mesh.castShadow=true; mesh.receiveShadow=true; mesh.matrixAutoUpdate=false;
- for(const o of parts){ o.parent.remove(o); o.geometry.dispose(); o.material.dispose(); }
- g.add(mesh); g.traverse(o=>{ if(o!==g&&!o.userData.dyn) { o.matrixAutoUpdate=false; o.updateMatrix(); } });
- return g;
-}
-// Plaza del carrusel: arena helada con un mandala de flor en el suelo, riscos de roca azulada alrededor, cristales y flores azules
-function iceTex(){
- return canvasTex(1024,1024,(g,w)=>{ const m=w/2, rr=seeded(77);
-   const bg=g.createRadialGradient(m,m,0,m,m,m); bg.addColorStop(0,'#e6dcff'); bg.addColorStop(.35,'#a9a4f0'); bg.addColorStop(.7,'#7f93e8'); bg.addColorStop(1,'#5266b8'); g.fillStyle=bg; g.fillRect(0,0,w,w);
-   // grietas de hielo con brillo eléctrico
-   for(let i=0;i<46;i++){ let x=m+(rr()-.5)*40, y=m+(rr()-.5)*40, a=rr()*Math.PI*2; g.beginPath(); g.moveTo(x,y); for(let k=0;k<9;k++){ a+=(rr()-.5)*.9; x+=Math.cos(a)*(34+rr()*40); y+=Math.sin(a)*(34+rr()*40); g.lineTo(x,y); } g.strokeStyle='rgba(200,235,255,.30)'; g.lineWidth=2+rr()*2; g.stroke(); g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=1; g.stroke(); }
-   // mandala de flor: anillos de pétalos
-   for(const [ring,n,len,wid,alpha] of [[.62,18,.1,.035,.16],[.5,14,.13,.05,.22],[.37,11,.14,.06,.3],[.24,8,.13,.07,.4],[.11,6,.09,.06,.55]]){
-     for(let i=0;i<n;i++){ const an=i/n*Math.PI*2; g.save(); g.translate(m+Math.cos(an)*ring*m,m+Math.sin(an)*ring*m); g.rotate(an); g.beginPath(); g.ellipse(0,0,len*m,wid*m*2,0,0,Math.PI*2); g.fillStyle='rgba(235,225,255,'+alpha+')'; g.fill(); g.strokeStyle='rgba(255,255,255,'+(alpha+.18)+')'; g.lineWidth=3; g.stroke(); g.restore(); } }
-   g.beginPath(); g.arc(m,m,m*.07,0,Math.PI*2); g.fillStyle='rgba(255,240,255,.85)'; g.fill();
-   // anillo de lucecitas
-   for(let i=0;i<40;i++){ const an=i/40*Math.PI*2, x=m+Math.cos(an)*m*.7, y=m+Math.sin(an)*m*.7; const gr=g.createRadialGradient(x,y,0,x,y,14); gr.addColorStop(0,'rgba(255,255,255,.95)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(x-14,y-14,28,28); }
-   for(let i=0;i<900;i++){ g.fillStyle=rr()<.5?'rgba(255,255,255,.07)':'rgba(40,50,120,.07)'; g.fillRect(rr()*w,rr()*w,3,3); }
- },false);
-}
-function buildIce(g,cx,cz,rad,r,anim){
- const base=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad+.2,.8,64),new THREE.MeshStandardMaterial({color:'#5c6aa8',roughness:.7})); base.position.set(cx,-.4,cz); base.receiveShadow=true; g.add(base);
- const tex=iceTex(); tex.anisotropy=8; const top=new THREE.Mesh(new THREE.CircleGeometry(rad-.04,64),new THREE.MeshStandardMaterial({map:tex,roughness:.4,metalness:.05})); top.rotation.x=-Math.PI/2; top.position.set(cx,.01,cz); top.receiveShadow=true; g.add(top);
- // Riscos de roca azulada alrededor (más altos al fondo)
- const rockCols=['#4a5272','#59628a','#3c4466','#6a74a0'];
- for(let i=0;i<46;i++){ const an=i/46*TAU+rnd(.05), front=Math.max(0,Math.sin(an)), back=Math.max(0,-Math.sin(an)), d=rad+.5+front*1.6+r()*1.2, h=(1.6+r()*2.4)*(1-.62*front)+back*3.2;
-   const c=new THREE.Mesh(new THREE.ConeGeometry(.55+r()*.7,h,5+(r()*3|0)),new THREE.MeshStandardMaterial({color:rockCols[i%4],roughness:.9,flatShading:true}));
-   c.position.set(cx+Math.cos(an)*d,h/2-.8,cz+Math.sin(an)*d); c.rotation.set(rnd(.18),r()*TAU,rnd(.18)); c.castShadow=true; g.add(c); }
- // Cristales brillantes
- const crys=[]; for(let i=0;i<16;i++){ const an=r()*TAU, d=rad+.2+r()*1.4, pink=i%3===0, col2=pink?'#ff8ad8':'#7fe8ff';
-   for(let k=0;k<3;k++){ const h=.5+r()*1.2, m=new THREE.Mesh(new THREE.ConeGeometry(.14+r()*.12,h,5),new THREE.MeshStandardMaterial({color:col2,emissive:col2,emissiveIntensity:.55,roughness:.2,metalness:.1,flatShading:true})); m.position.set(cx+Math.cos(an)*d+rnd(.3),h/2-.7,cz+Math.sin(an)*d+rnd(.3)); m.rotation.set(rnd(.4),r()*TAU,rnd(.4)); g.add(m); crys.push(m); } }
- // Flores azules con centro amarillo
- for(let i=0;i<14;i++){ const an=r()*TAU, d=rad+.1+r()*1.1, fx=cx+Math.cos(an)*d, fz=cz+Math.sin(an)*d, fl=new THREE.Group();
-   for(let k=0;k<6;k++){ const pt=new THREE.Mesh(new THREE.SphereGeometry(.17,8,6),new THREE.MeshStandardMaterial({color:'#7fb4ff',emissive:'#2a5ab8',emissiveIntensity:.35,roughness:.6})); pt.scale.set(1,.35,1.4); const a2=k/6*TAU; pt.position.set(Math.cos(a2)*.2,0,Math.sin(a2)*.2); pt.rotation.y=-a2; fl.add(pt); }
-   const ce=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),new THREE.MeshStandardMaterial({color:'#ffd94a',emissive:'#a07a00',emissiveIntensity:.5})); ce.position.y=.05; fl.add(ce); fl.position.set(fx,-.4,fz); fl.rotation.x=rnd(.2); g.add(fl); }
- anim.push(t=>{ for(let i=0;i<crys.length;i++) crys[i].material.emissiveIntensity=.45+.25*Math.sin(t*1.6+i*1.3);
-   });
-}
-// Única arena 3D que queda: la plaza del carrusel (hielo, flores y cristales). El tablero usa el escenario por capas (más abajo).
-function buildArena(){
- const g=new THREE.Group(), rc=boardRects(), r=seeded(7), anim=[]; g.userData.anim=anim;
- const ground=new THREE.Mesh(new THREE.CircleGeometry(60,48),new THREE.MeshStandardMaterial({color:'#8ea6d4',roughness:1}));
- ground.rotation.x=-Math.PI/2; ground.position.y=-.9; ground.receiveShadow=true; g.add(ground);
- const bw=rc.bx1-rc.bx0, bd=rc.bz1-rc.bz0, cp=M.car?W3(M.car.cx,M.car.cy):null, cx=cp?cp.x:(rc.bx0+rc.bx1)/2, cz=cp?cp.z:(rc.bz0+rc.bz1)/2, rad=M.car?M.car.rr*1.36/M.R:Math.max(bw,bd)*.56;
- buildIce(g,cx,cz,rad,r,anim);
- g.traverse(o=>{ if(o.isMesh&&o!==ground) o.receiveShadow=true; });
- return g;
 }
 /* ---------- escenario por capas (el único del tablero) ----------
    Detrás del lienzo (transparente) va el escenario pintado, deformado en perspectiva (matrix3d) para que su campo coincida con el
@@ -236,8 +158,11 @@ const flatSeen=new Set(); function flatFail(e){ const k=String(e&&e.message||e);
 // vídeos en bucle del agua (opacos: se recortan con mask-image, la alfa del fondo en su rectángulo) y tiras de sprites del fuego (capas.json).
 // Se sirven por jsDelivr fijadas al commit (como los modelos: ANIM_BASE) y, si falla, desde nuestro servidor.
 // back: esquinas del fondo del campo; bench: extremos del banquillo (sus 9 losas = nuestras 9 casillas); holes: huecos de la izquierda; totem: esquina superior izquierda
-const FLAT_IMG={dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:[423,336]};
-let flatEl=null, flatKey='', flatH=null, flatCfg=null;
+const FLAT_IMG={dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:{row:3,dx:1.3,dy:.25}}; // totem: junto al borde izquierdo del tablero, a la altura de la fila `row`, `dx` radios de casilla hacia fuera y `dy` hacia abajo
+// Carrusel (arena_astrolabio): imagen única de 2880×1860 (la original de 1920×1080 en x+480, y+300, con los bordes extendidos y difuminados para cubrir toda la pantalla);
+// N/S/W/E = extremos del suelo circular en la imagen y k = a qué radio del carrusel (en radios rr) corresponde ese borde del suelo
+const PLAZA_IMG={w:2880,h:1860,N:[969+480,93+300],S:[969+480,1077+300],W:[226+480,585+300],E:[1712+480,585+300],k:1.3};
+let flatEl=null, plazaEl=null, flatKey='', plazaKey='', flatH=null, flatCfg=null;
 // capas.json se pide la primera vez que hace falta (animFetch se define más abajo: no puede usarse al cargar el módulo)
 let flatReq=false; function flatLoad(){ if(flatReq) return; flatReq=true; animFetch(FLAT_IMG.dir+'capas.json').then(r=>r.json()).then(j=>{ flatCfg=j; }).catch(()=>{ flatCfg={capas:[]}; }); }
 // Homografía (s → d) por mínimos cuadrados con N≥4 puntos: [a,b,c,d,e,f,g,h] con u=(ax+by+c)/(gx+hy+1), v=(dx+ey+f)/(gx+hy+1)
@@ -246,6 +171,13 @@ function homography(s,d){ const M=Array.from({length:8},()=>new Float64Array(9))
  for(let c=0;c<8;c++){ let p=c; for(let r=c+1;r<8;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c])) p=r; [M[c],M[p]]=[M[p],M[c]];
    for(let r=0;r<8;r++){ if(r===c) continue; const k=M[r][c]/M[c][c]; for(let j=c;j<9;j++) M[r][j]-=k*M[c][j]; } }
  return M.map((r,i)=>r[8]/r[i]); }
+// Transformación afín por mínimos cuadrados (s → d), como matrix3d de CSS: la imagen del carrusel ya trae su propia perspectiva, no se le aplica otra
+function affineCss(s,dst){ const n=s.length; let Sx=0,Sy=0,Sxx=0,Sxy=0,Syy=0,Su=0,Sux=0,Suy=0,Sv=0,Svx=0,Svy=0;
+ for(let i=0;i<n;i++){ const [x,y]=s[i],[u,v]=dst[i]; Sx+=x; Sy+=y; Sxx+=x*x; Sxy+=x*y; Syy+=y*y; Su+=u; Sux+=u*x; Suy+=u*y; Sv+=v; Svx+=v*x; Svy+=v*y; }
+ const M=[[Sxx,Sxy,Sx],[Sxy,Syy,Sy],[Sx,Sy,n]], det=m=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+ const solve=b=>{ const D=det(M), r=[]; for(let c=0;c<3;c++){ const m=M.map((row,i)=>row.map((v,j)=>j===c?b[i]:v)); r.push(det(m)/D); } return r; };
+ const [a,b,c]=solve([Sux,Suy,Su]), [d,e,f]=solve([Svx,Svy,Sv]);
+ return 'matrix3d('+[a,d,0,0, b,e,0,0, 0,0,1,0, c,f,0,1].join(',')+')'; }
 const hApply=(h,[x,y])=>{ const w=h[6]*x+h[7]*y+1; return [(h[0]*x+h[1]*y+h[2])/w,(h[3]*x+h[4]*y+h[5])/w]; };
 // Punto de la imagen → mundo, sobre el plano de altura y (para poner cosas 3D justo encima de algo pintado en la imagen)
 const _rv=new THREE.Vector3(), _rd=new THREE.Vector3();
@@ -265,35 +197,43 @@ function buildFlat(cvs){
    else { const d=document.createElement('div'), im=new Image(); d.style.cssText=box+`;--fw:-${c.ancho*c.frames}px;animation:ptFire ${(c.frames/c.fps).toFixed(3)}s steps(${c.frames}) infinite`;
      const use=u=>{ d.style.background=`url(${u}) 0 0/${c.ancho*c.frames}px ${c.alto}px no-repeat`; }; im.onload=()=>use(im.src); im.onerror=()=>{ if(im.src.indexOf(L)!==0){ im.src=L+c.nombre+'.webp'; } }; im.src=D+c.nombre+'.webp'; el.appendChild(d); } }
  cvs.parentElement.insertBefore(el,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; return el; }
+function buildPlaza(cvs){
+ const L=FLAT_IMG.dir, D=ANIM_BASE?ANIM_BASE+L:L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${PLAZA_IMG.w}px;height:${PLAZA_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
+ const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?'carrusel1x.webp':'carrusel.webp';
+ const im=document.createElement('img'); im.src=D+bn; im.alt=''; im.style.cssText='position:absolute;inset:0;width:100%;height:100%'; im.onerror=()=>{ if(im.src.indexOf(L)!==0) im.src=L+bn; }; el.appendChild(im);
+ cvs.parentElement.insertBefore(el,cvs); return el; }
 // Precarga desde el menú: construye el escenario (oculto y en pausa) para que sus archivos ya estén cuando empiece la partida
-function prefetchArena(){ if(!FLAT||!renderer) return; flatLoad(); const t=setInterval(()=>{ if(!flatCfg) return; clearInterval(t); if(!flatEl){ flatEl=buildFlat(renderer.domElement); flatEl.hidden=true; flatPlay(false); } },150); }
+function prefetchArena(){ if(!FLAT||!renderer) return; flatLoad(); if(!plazaEl){ plazaEl=buildPlaza(renderer.domElement); plazaEl.hidden=true; } const t=setInterval(()=>{ if(!flatCfg) return; clearInterval(t); if(!flatEl){ flatEl=buildFlat(renderer.domElement); flatEl.hidden=true; flatPlay(false); } },150); }
 function prefetch(dexes){ prefetchArena(); for(const d of dexes||[]) wantModel(d); }
 let flatOn=null;
 function flatPlay(on){ if(on===flatOn||!flatEl) return; flatOn=on; for(const v of flatEl.querySelectorAll('video')){ if(on&&!flatLite) v.play().catch(()=>{}); else v.pause(); } for(const d of flatEl.querySelectorAll('div[style*="ptFire"]')) d.style.animationPlayState=on?'running':'paused'; }
 if(FLAT) document.addEventListener('visibilitychange',()=>{ if(document.hidden) flatPlay(false); else if(flatEl&&!flatEl.hidden) flatPlay(true); });
+const _scr=(v,W,H)=>{ v3.copy(v).project(camera); return [(v3.x+1)/2*W,(1-v3.y)/2*H]; };
+const cssMatrix=h=>'matrix3d('+[h[0],h[3],0,h[6], h[1],h[4],0,h[7], 0,0,1,0, h[2],h[5],0,1].join(',')+')';
 function stepFlat(){
  if(FLAT&&!flatReq) flatLoad();
- const on=FLAT&&curArena==='glade'&&board.G&&flatCfg; if(!on){ if(flatEl){ flatEl.hidden=true; flatPlay(false); } flatH=null; flatKey=''; return; } // flatKey a '' para recalcular el encaje al volver (tras el carrusel flatH se quedaba en null)
- const cvs=renderer.domElement, G=board.G; if(!flatEl) flatEl=buildFlat(cvs);
+ const cvs=renderer.domElement, G=board.G, onG=curArena==='glade'&&G&&flatCfg, onP=curArena==='plaza'&&G&&M.car;
+ // Carrusel: la imagen del astrolabio se encaja con el suelo circular del carrusel (4 puntos del borde del suelo ↔ 4 puntos de la circunferencia de radio k·rr)
+ if(plazaEl) plazaEl.hidden=!onP;
+ if(onP){ if(!plazaEl) plazaEl=buildPlaza(cvs); plazaEl.hidden=false; plazaEl.style.left=cvs.offsetLeft+'px'; plazaEl.style.top=cvs.offsetTop+'px';
+   const W=cvs.clientWidth, H=cvs.clientHeight, {cx,cy,rr}=M.car, R=rr*PLAZA_IMG.k;
+   const d=[[cx,cy-R],[cx,cy+R],[cx-R,cy],[cx+R,cy]].map(([x,y])=>_scr(W3(x,y,0),W,H)), k=d.map(p=>p.map(Math.round).join(',')).join(';');
+   if(k!==plazaKey){ plazaKey=k; plazaEl.style.transform=affineCss([PLAZA_IMG.N,PLAZA_IMG.S,PLAZA_IMG.W,PLAZA_IMG.E],d); } }
+ else plazaKey='';
+ if(!onG){ if(flatEl){ flatEl.hidden=true; flatPlay(false); } flatH=null; flatKey=''; return; } // flatKey a '' para recalcular el encaje al volver
+ if(!flatEl) flatEl=buildFlat(cvs);
  flatEl.hidden=false; if(!document.hidden) flatPlay(true); flatEl.style.left=cvs.offsetLeft+'px'; flatEl.style.top=cvs.offsetTop+'px';
  const rc=boardRects(), W=cvs.clientWidth, H=cvs.clientHeight, [bx0,bx1,by]=FLAT_IMG.bench, bw=(bx1-bx0)/9;
- const scr=v=>{ v3.copy(v).project(camera); return [(v3.x+1)/2*W,(1-v3.y)/2*H]; };
  // se encajan las dos esquinas del fondo y el centro de las 9 losas del banquillo (mínimos cuadrados): las fichas de la banca caen justo en su losa
- const src=[...FLAT_IMG.back,...G.bench.map((_,i)=>[bx0+bw*(i+.5),by])], d=[scr(new THREE.Vector3(rc.bx0,0,rc.bz0)),scr(new THREE.Vector3(rc.bx1,0,rc.bz0)),...G.bench.map(([x,y])=>scr(W3(x,y,TOP)))];
+ const src=[...FLAT_IMG.back,...G.bench.map((_,i)=>[bx0+bw*(i+.5),by])], d=[_scr(new THREE.Vector3(rc.bx0,0,rc.bz0),W,H),_scr(new THREE.Vector3(rc.bx1,0,rc.bz0),W,H),...G.bench.map(([x,y])=>_scr(W3(x,y,TOP),W,H))];
  const k=d.map(p=>p.map(Math.round).join(',')).join(';'); if(k===flatKey) return; flatKey=k; const h=homography(src,d); flatH=h;
- flatEl.style.transform='matrix3d('+[h[0],h[3],0,h[6], h[1],h[4],0,h[7], 0,0,1,0, h[2],h[5],0,1].join(',')+')'; }
-const SKY={plaza:['#7f93e6','#dfe8ff']};
+ flatEl.style.transform=cssMatrix(h); }
 function setArena(kind){
- if(kind===curArena) return; const prev=curArena; curArena=kind; if(renderer) renderer.shadowMap.needsUpdate=true;
+ if(kind===curArena) return; const prev=curArena; curArena=kind;
  if(benchPads) benchPads.visible=kind!=='plaza';
- // La cámara encuadra la plaza entera en el carrusel y el tablero en el resto
+ // La cámara encuadra el carrusel entero y el tablero en el resto; detrás solo hay imágenes (stepFlat), nada 3D
  if(board.G&&(kind==='plaza')!==(prev==='plaza')) fitCamera(board.G);
- if(kind!=='plaza'){ for(const k in arenas) arenas[k].visible=false; scene.background=null; scene.fog=null; return; } // el tablero es el escenario por capas: no hay nada 3D detrás
- if(!arenas[kind]){ arenas[kind]=bakeStatic(buildArena()); scene.add(arenas[kind]); }
- for(const k in arenas) arenas[k].visible=k===kind;
- const [a,b]=SKY[kind]; scene.background=canvasTex(2,64,(g)=>{ const gr=g.createLinearGradient(0,0,0,64); gr.addColorStop(0,a); gr.addColorStop(1,b); g.fillStyle=gr; g.fillRect(0,0,2,64); },false);
- scene.fog=new THREE.Fog(b,camDist+12,camDist+55);
- hemi.intensity=1.5; sun.intensity=2.4; sun.color.set('#fff0d8');
+ scene.background=null; scene.fog=null; hemi.intensity=1.5; sun.intensity=2.4; sun.color.set(kind==='plaza'?'#e6e9ff':'#ffffff');
 }
 
 /* ---------- modelos ---------- */
@@ -953,7 +893,7 @@ function buildProps(){
 }
 function stepProps(F,now){
  if(!totem) buildProps();
- const T=F.totem; totem.visible=!!T; if(T){ const p=flatH?flatWorld(FLAT_IMG.totem,0):W3(T.x,T.y,0); totem.position.set(p.x,flatH?0:TOP-.05,p.z); } // la ball se queda quieta
+ const T=F.totem; totem.visible=!!T; if(T){ const G=board.G, tt=FLAT_IMG.totem, p=W3(G.ox+G.hw*(.5*(tt.row&1))+G.hw/2-tt.dx*G.R,G.pad+G.R+tt.row*1.5*G.R+tt.dy*G.R); totem.position.set(p.x,0,p.z); } // la ball se queda quieta
  const I=F.interest, flat=!!flatH;
  if(!I||!flat){ for(const c of crystals){ c.visible=false; if(c.userData.v!=null){ c.userData.v=0; c.userData.want=false; c.userData.from=null; } } return; } // carrusel y menú: sin intereses
  // Solo se ven los cristales ganados: cada uno brota de su hueco (sube, crece y se enciende en 0,7 s) al alcanzar ese interés y se hunde si se pierde
@@ -1100,7 +1040,6 @@ function render(F){
  if(!ready) return;
  const now=performance.now()/1000, raw=lastT?now-lastT:0, dt=Math.min(.1,raw); lastT=now;
  watchPerf(raw); if(F.car) M.car=F.car; setArena(F.arena); try{ stepFlat(); }catch(e){ flatFail(e); }
- if(arenas[curArena]) for(const a of arenas[curArena].userData.anim) a(now);
  // casillas resaltadas al arrastrar
  for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,ccol(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
  hexMesh.instanceColor.needsUpdate=true; hexMesh.material.opacity=F.cells&&F.cells.drop?.7:.38;

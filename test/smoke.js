@@ -83,7 +83,7 @@ ready.then(() => server.listen(0, async () => {
 
   // ---- partida ----
   const mk = cookie => io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookie } });
-  const A = mk(cookieA), B = mk(cookieB);
+  const A = mk(cookieA); let B = mk(cookieB);
   const st = { A: { pub: 0, priv: null, cmb: 0, rounds: new Set() }, B: { pub: 0, priv: null, cmb: 0, rounds: new Set() } };
   let lobby = null, started = 0, lastPub = null;
   for (const [k, s] of [['A', A], ['B', B]]) {
@@ -106,10 +106,32 @@ ready.then(() => server.listen(0, async () => {
   assert.strictEqual(lobby.seats.length, 2, 'dos jugadores en la sala');
   A.emit('start', { timer: 30, speed: 4 });
   const t0 = Date.now();
-  let tposSent = false, idA = -1;
+  let tposSent = false, idA = -1, rejoined = false;
   while (Date.now() - t0 < 120000) {
+    // Corte y reconexión de B a mitad de partida: su asiento lo recupera con otro id de conexión y recibe su estado
+    if (!rejoined && st.A.rounds.size >= 5) { rejoined = true;
+      B.disconnect(); await sleep(600);
+      const B2 = mk(cookieB), got = { start: 0, seats: [], priv: null, resume: undefined, fail: null, pub: null };
+      B2.on('start', d => { got.start++; got.seats = d.seats; }); B2.on('priv', d => { if (d.to === B2.id) { got.priv = d; st.B.priv = d; } }); B2.on('resume', d => { if (got.resume === undefined) got.resume = d; });
+      B2.on('rejoinfail', d => { got.fail = d; }); B2.on('pub', d => { got.pub = d; st.B.ph = d.ph; }); B2.on('cmb', d => { if (d.to === B2.id) st.B.cmb++; }); B2.on('err', m => console.log('B2 err', m));
+      await sleep(600);
+      assert(got.resume && got.resume.round, 'el servidor avisa de que hay una partida a medias: ' + JSON.stringify(got.resume));
+      B2.emit('rejoin'); await sleep(1000);
+      assert.strictEqual(got.fail, null, 'la reconexión no falla: ' + JSON.stringify(got.fail));
+      assert.strictEqual(got.start, 1, 'recibe start al volver');
+      assert(got.seats.some(x => x.peer === B2.id), 'el asiento lleva su nueva conexión');
+      assert(got.priv, 'recibe su estado privado al volver');
+      assert(got.pub && got.pub.pl.some(p => p[8] === B2.id), 'el estado público apunta a su nueva conexión');
+      B = B2; // sigue jugando con la conexión nueva
+      // Burla de Charmander (H): solo cuenta quien lleva Charmander (Beto), una vez cada 1,4 s, y llega a todos en pub.pl[i][17]
+      B.emit('act', { t: 'taunt' }); B.emit('act', { t: 'taunt' }); A.emit('act', { t: 'taunt' }); await sleep(700);
+      const tn = nick => lastPub.pl.find(p => p[1] === nick)[17];
+      assert.strictEqual(tn('Beto'), 1, 'la burla de Charmander llega a todos (y la segunda seguida se ignora)');
+      assert.strictEqual(tn('Ana'), 0, 'quien no lleva Charmander no puede burlarse');
+      // sin partida a medias no se puede «volver»: el usuario A tiene su asiento conectado, así que rejoin le cede el asiento solo a una ventana nueva (no se prueba aquí)
+    }
     // Minileyenda de B en el tablero de A: entradas inválidas (jugador inexistente, tipos raros, fuera de rango) y luego una válida
-    if (lastPub && !tposSent && st.A.rounds.size >= 3) { tposSent = true; idA = lastPub.pl.find(p => p[1] === 'Ana')[0];
+    if (lastPub && !tposSent && rejoined) { tposSent = true; idA = lastPub.pl.find(p => p[1] === 'Ana')[0];
       B.emit('act', { t: 'tpos', b: 99, x: 1, y: 1 }); B.emit('act', { t: 'tpos', b: 'x', x: {}, y: [] }); B.emit('act', { t: 'tpos', b: idA, x: 1e9, y: -1e9 });
       B.emit('act', { t: 'tpos', b: idA, x: 4.5, y: 9.25 }); }
     for (const [k, s] of [['A', A], ['B', B]]) {
