@@ -171,24 +171,21 @@ test('con intereses, el carrusel no rompe el dibujo y el escenario por capas sig
   expect(errs).toEqual([]);
 });
 
-// Regresión: con el escenario por capas el temblor de los golpes fuertes movía solo la cámara 3D; la torre, los cristales y los Pokémon bailaban
-// sobre su base pintada. Ahora tiembla el bloque entero: imagen, lienzo 3D y capa 2D se desplazan juntos y al acabar vuelve todo a su sitio.
-test('el temblor mueve imagen, 3D y capa 2D a la vez (la torre no baila sobre su base)', async ({ page }) => {
-  await page.evaluate(() => { G.me.gold = 60; renderUI(); });
-  await page.waitForTimeout(2500);
+// Sin temblor: nunca se mueve la pantalla ni el escenario ni la torre ni los cristales, ni siquiera en los golpes fuertes (terremotos, impactos, explosiones).
+test('en combate nada tiembla: bloque, 3D, imagen, torre y cristales quedan quietos', async ({ page }) => {
+  await page.evaluate(() => { G.me.gold = 60; G.me.level = 7; const put = (k, c) => { const u = makeInst(k); G.me.board[c] = u; }; G.me.board = {};
+    [['rhyhorn', '3,2'], ['geodude', '2,3'], ['golem', '4,3'], ['onix', '1,3'], ['machop', '5,3']].forEach(([k, c]) => { if (DEF[k]) put(k, c); }); renderUI(); });
+  await page.waitForTimeout(2000);
   const r = await page.evaluate(async () => {
     const st = document.getElementById('boardStack'), img = [...st.children].find(e => e.querySelector && e.querySelector('video')), gl = document.getElementById('gl'), cv = document.getElementById('cv');
-    const rel = () => { const a = img.getBoundingClientRect(), g = gl.getBoundingClientRect(), c = cv.getBoundingClientRect(); return { gx: g.left - a.left, gy: g.top - a.top, cx: c.left - a.left, cy: c.top - a.top, bx: st.getBoundingClientRect().left, by: st.getBoundingClientRect().top }; };
-    const sin = rel(); const m = []; let movio = 0;
-    for (let i = 0; i < 30; i++) { B3.debugShake(.16); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); const x = rel(); m.push(x); movio = Math.max(movio, Math.abs(x.bx - sin.bx), Math.abs(x.by - sin.by)); }
-    const dif = Math.max(...m.map(x => Math.max(Math.abs(x.gx - sin.gx), Math.abs(x.gy - sin.gy), Math.abs(x.cx - sin.cx), Math.abs(x.cy - sin.cy))));
-    await new Promise(r => setTimeout(r, 2500)); const fin = rel();
-    return { movio: +movio.toFixed(1), difRelativa: +dif.toFixed(2), vuelve: Math.abs(fin.bx - sin.bx) < .6 && Math.abs(fin.by - sin.by) < .6, transform: st.style.transform };
+    const pos = () => { const b = e => { const q = e.getBoundingClientRect(); return [q.left, q.top, q.width, q.height].map(v => +v.toFixed(2)).join(','); }; return b(st) + '|' + b(img) + '|' + b(gl) + '|' + b(cv) + '|' + st.style.transform + '|' + (B3.flatInfo.t || '') + '|' + JSON.stringify(B3.flatInfo.totem) + JSON.stringify(B3.flatInfo.crys); };
+    const base = pos(); const vistos = new Set([base]); G.speed = 4; G.timer = .2;
+    const t0 = performance.now(); let combate = 0;
+    while (performance.now() - t0 < 14000) { await new Promise(r => requestAnimationFrame(r)); if (G.phase === 'combat') combate++; vistos.add(pos()); }
+    return { distintas: vistos.size, fotogramasEnCombate: combate, ejemplo: [...vistos].slice(0, 3) };
   });
-  expect(r.movio, 'el bloque sí tiembla').toBeGreaterThan(.5);
-  expect(r.difRelativa, 'imagen, 3D y 2D se mueven juntos (sin diferencia entre ellos)').toBeLessThan(.6);
-  expect(r.vuelve, 'al acabar el temblor vuelve a su sitio').toBe(true);
-  expect(r.transform).toBe('');
+  expect(r.fotogramasEnCombate, 'hubo combate').toBeGreaterThan(30);
+  expect(r.distintas, 'ninguna posición cambia durante el combate: ' + JSON.stringify(r.ejemplo)).toBe(1);
 });
 
 test('Llamada al Caos: se elige y aparece una ventana con el resultado', async ({ page }) => {

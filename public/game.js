@@ -2395,8 +2395,8 @@ const b3On=()=>!HEADLESS&&window.B3&&B3.ready;
 function b3Geo(){ const cells=[]; for(let r=0;r<8;r++) for(let c=0;c<7;c++) cells.push(cellXY(c,r)); return {...geo,cells,bench:[...Array(BENCH)].map((_,i)=>benchXY(i))}; }
 function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready){ B3.init($('gl')); applyGfx(); $('gl').addEventListener('webglcontextlost',()=>toast('El navegador perdió el dibujo 3D; intentando recuperarlo… Si se queda gris, recarga (F5)')); $('gl').addEventListener('webglcontextrestored',()=>toast('Dibujo 3D recuperado')); } B3.resize(b3Geo(),window.devicePixelRatio||1,view); }
 // Calidad gráfica y temblor de cámara: preferencias de este dispositivo (no de la cuenta)
-const GFX={get q(){ try{ return localStorage.getItem('pt_gfx')||'auto'; }catch(e){ return 'auto'; } },get shake(){ try{ return localStorage.getItem('pt_shake')!=='0'; }catch(e){ return true; } }};
-function applyGfx(){ if(!window.B3||!B3.ready) return; const q=GFX.q; if(B3.setAuto) B3.setAuto(q==='auto'); if(q!=='auto') B3.setQuality(+q); if(B3.setShake) B3.setShake(GFX.shake&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)); }
+const GFX={get q(){ try{ return localStorage.getItem('pt_gfx')||'auto'; }catch(e){ return 'auto'; } }};
+function applyGfx(){ if(!window.B3||!B3.ready) return; const q=GFX.q; if(B3.setAuto) B3.setAuto(q==='auto'); if(q!=='auto') B3.setQuality(+q); }
 // De píxeles de tablero (suelo) a pantalla; h en radios de casilla
 const scr=(x,y,h=0)=>b3On()?B3.project(x,y,h/1):[x,y];
 const TAC_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water',dratini:'water',pichu:'fire',abra:'grass',eevee:'grass'};
@@ -3020,10 +3020,9 @@ function showOptions(){
  <div class="field"><label for="optSpeed">Velocidad de combate</label><select id="optSpeed">${[1,2,4].map(v=>`<option value="${v}" ${S.speed===v?'selected':''}>x${v}</option>`).join('')}</select></div>
  <div class="field"><label for="optTheme">Tema</label><select id="optTheme">${[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']].map(([v,t])=>`<option value="${v}" ${S.theme===v?'selected':''}>${t}</option>`).join('')}</select></div>
  <div class="field"><label for="optGfx">Calidad gráfica (este dispositivo)</label><select id="optGfx">${[['auto','Automática (baja sola si va lento)'],['2','Alta: sombras nítidas y todas las partículas'],['1','Media'],['0','Baja: sin sombras y menos partículas']].map(([v,t])=>`<option value="${v}" ${GFX.q===v?'selected':''}>${t}</option>`).join('')}</select></div>
- <div class="field"><label for="optShake">Temblor de cámara en los golpes fuertes</label><select id="optShake"><option value="1" ${GFX.shake?'selected':''}>Sí</option><option value="0" ${GFX.shake?'':'selected'}>No</option></select></div>
  <div class="row" style="justify-content:space-between;margin-top:16px"><button class="btn primary" id="saveOpt">Guardar</button><button class="btn ghost" id="logoutBtn">Cerrar sesión</button></div>`,{closable:true});
  $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; Music.init(); Music.setVol(); $('muteBtn').innerHTML=muteIcon(); };
- $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',$('optGfx').value); localStorage.setItem('pt_shake',$('optShake').value); }catch(e){} applyGfx(); S.timer=+$('optTimer').value; S.speed=+$('optSpeed').value; S.theme=$('optTheme').value; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
+ $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',$('optGfx').value); }catch(e){} applyGfx(); S.timer=+$('optTimer').value; S.speed=+$('optSpeed').value; S.theme=$('optTheme').value; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
  $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
 }
 function confirmQuit(){
