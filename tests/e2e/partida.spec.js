@@ -106,6 +106,9 @@ test('rasgos: colocar Pokémon activa sus sinergias en el panel', async ({ page 
   await expect(page.locator('#traits .trait:not(.off)', { hasText: 'Fuego' })).toBeVisible();
 });
 
+// Algunos aumentos (emblemas, héroes…) abren una elección pendiente al elegirlos: se acepta la primera opción hasta que no queden
+async function resolverElecciones(page) { for (let i = 0; i < 4; i++) { const hay = await page.locator('#mbox .choice').count(); if (!hay) return; await page.locator('#mbox .choice').first().click(); await page.waitForTimeout(400); } }
+
 test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page }) => {
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
   await expect(page.locator('#mbox .augCard2')).toHaveCount(3);
@@ -113,6 +116,7 @@ test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page })
   // Las cartas llegan cerradas como una ball y solo se pueden elegir cuando se abren
   await expect(page.locator('#mbox .augBox.opened')).toHaveCount(3, { timeout: 9000 });
   await page.locator('#mbox .augCard2').first().click();
+  await page.waitForTimeout(500); await resolverElecciones(page);
   await expect(page.locator('#modal')).toBeHidden();
   expect((await me(page)).augs).toHaveLength(1);
 });
@@ -227,6 +231,7 @@ test('Llamada al Caos: se elige y aparece una ventana con el resultado', async (
   await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
   await expect(page.locator('#mbox h1')).toHaveText('Llamada al Caos');
   await page.locator('#mbox .choice').first().click(); // aceptar el Caos
+  for (let i = 0; i < 4 && !(await page.locator('#mbox .reveal').count()); i++) { await page.waitForTimeout(500); if (await page.locator('#mbox .choice').count()) await page.locator('#mbox .choice').first().click(); } // el resultado al azar puede abrir antes una elección
   await expect(page.locator('#mbox .reveal')).toBeVisible();
   await expect(page.locator('#mbox .reveal h1')).not.toBeEmpty();
   await page.locator('#rvOk').click();

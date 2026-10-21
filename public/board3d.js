@@ -245,7 +245,7 @@ function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[d
 // Cada uno tiene public/anims/<n.º>.json (fotograma de impacto y, opcional, "glb": true para usar anims/<n.º>.glb con los clips ya
 // renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
 // Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
-const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,230,250,570,571]);
+const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,152,230,250,570,571]);
 // En producción los modelos animados salen de jsDelivr fijados al commit desplegado (mismos archivos, caché de un año y
 // sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
 let ANIM_BASE='';
