@@ -399,3 +399,13 @@ test('carga: la CDN lenta o caída no retrasa los modelos (petición en carrera 
   expect(r.caida[0]).toBe('rapida'); expect(r.caida[1]).toBeLessThan(800); expect(r.ambas).toBe('rechazó');
   expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.webp', 'items/water.webp', 'dex/4.png']);
 });
+
+test('objetos: el marco dorado es solo de la banca; sobre un Pokémon (lienzo y ficha) el marco es negro', async ({ page }) => {
+  const r = await page.evaluate(() => { const strokes = [], o = ctx.strokeRect; ctx.strokeRect = function () { strokes.push(this.strokeStyle); return o.apply(this, arguments); };
+    for (const k of ['claw', 'zoom', 'band']) drawItemBadge(k, 100, 100, 30, 0); ctx.strokeRect = o;
+    G.me.items = ['claw']; renderItems.last = null; renderUI();
+    const bench = getComputedStyle(document.querySelector('#items .item .ii')).backgroundImage;
+    const tmp = document.createElement('div'); tmp.className = 'uc-items'; tmp.innerHTML = '<div class="slot full">' + itemHTML('zoom', 34) + '</div>'; document.body.appendChild(tmp);
+    const eq = getComputedStyle(tmp.querySelector('.ii')); const out = { strokes, bench: /linear-gradient/.test(bench), eqBorder: eq.borderTopColor, eqBg: /linear-gradient/.test(eq.backgroundImage) }; tmp.remove(); return out; });
+  expect(r.strokes.every(s => s === '#000000')).toBe(true); expect(r.strokes.length).toBe(3); expect(r.bench).toBe(true); expect(r.eqBorder).toBe('rgb(0, 0, 0)'); expect(r.eqBg).toBe(false);
+});

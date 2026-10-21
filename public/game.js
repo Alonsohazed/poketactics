@@ -2493,7 +2493,7 @@ function pickActor(test){
 function drawItemBadge(k,x,y,sz,n){
  const I=ITEMS[k]; if(!I) return;
  ctx.save(); const col=itemColor(I);
- const g=ctx.createRadialGradient(x,y-sz*.1,0,x,y,sz*.7); g.addColorStop(0,col); g.addColorStop(1,'#0a0f22'); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.globalAlpha=.85; ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
+ const g=ctx.createRadialGradient(x,y-sz*.1,0,x,y,sz*.7); g.addColorStop(0,'#2a3150'); g.addColorStop(1,'#0a0f22'); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.globalAlpha=.85; ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
  const e=getItemImg(k);
  if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
