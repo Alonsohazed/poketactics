@@ -1906,6 +1906,9 @@ function spriteHTML(d,size,star=1){ return `<span class="spr" style="--s:${size}
 function hydrate(root){
  root.querySelectorAll('.spr:not([data-h])').forEach(el=>{ el.dataset.h=1; el.innerHTML=portraitImg(+el.dataset.dex); el.firstChild.alt=el.dataset.name; });
 }
+// Quien tiene la pestaña abierta desde antes de un despliegue sigue con el código viejo hasta recargar: se le avisa una sola vez (en local no hay commit y no avisa)
+let build0=null, buildWarned=false;
+async function checkBuild(){ try{ const b=await (await fetch('/api/build',{cache:'no-store'})).json(); if(!b||!b.commit) return; if(!build0){ build0=b.commit; return; } if(b.commit!==build0&&!buildWarned){ buildWarned=true; toast('Hay una versión nueva del juego. Recarga con Ctrl+Shift+R cuando termines esta partida.'); } }catch(e){} }
 function toast(msg){
  if(HEADLESS||(G&&G.auto)) return; const box=$('toast'); const d=document.createElement('div'); d.textContent=msg; box.appendChild(d);
  setTimeout(()=>d.remove(),2800); while(box.children.length>3) box.firstChild.remove();
@@ -2399,13 +2402,7 @@ const GFX={get q(){ try{ return localStorage.getItem('pt_gfx')||'auto'; }catch(e
 function applyGfx(){ if(!window.B3||!B3.ready) return; const q=GFX.q; if(B3.setAuto) B3.setAuto(q==='auto'); if(q!=='auto') B3.setQuality(+q); }
 // De píxeles de tablero (suelo) a pantalla; h en radios de casilla
 const scr=(x,y,h=0)=>b3On()?B3.project(x,y,h/1):[x,y];
-const TAC_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water',dratini:'water',pichu:'fire',abra:'grass',eevee:'grass'};
-// Anfitrión: en tu combate, tú, salvo que juegues en el campo del rival; si miras otra mesa, su dueño (o su rival si juega fuera)
-function arenaHost(){
- const me=G.me, v=G.view, byName=n=>G.players.find(p=>p!==me&&n&&n.replace(' (fantasma)','')===p.name);
- if(G.phase==='combat'){ if(v&&v.cb) return v.flip?(v.opp||viewedPlayer()):(G.players.find(p=>p.id===v.pid)||me); return G.flip?(byName(G.myOpp)||me):me; }
- return viewedPlayer();
-}
+// Fondo del tablero: el escenario por capas en todas las fases; solo el carrusel usa la plaza 3D
 function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'glade'; }
 const STAR_SCALE=[1,1.13,1.27];
 // Etapa evolutiva: las primeras formas son más pequeñas y al evolucionar se nota el cambio (líneas de 1, 2 o 3 formas)
@@ -2573,7 +2570,7 @@ function draw(){
  const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,a.x,a.y); return {id:p.id,x:vx,y:vy+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length); return {id:p.id,x:cx+Math.cos(an)*rr*1.12,y:cy+Math.sin(an)*rr*1.12+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
- B3.render({arena:playing?bgKind():'stadium',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
+ B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
    floorCount:playing&&!inCar?floorCountSpec():null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
@@ -3401,7 +3398,7 @@ async function boot(){
  layout(); applyTheme(); bindEvents(); Scene.init();
  // Sin precarga en el menú: los modelos se piden al entrar en la partida (primero los tuyos)
  if(!window.B3) window.addEventListener('b3ready',()=>sizeB3());
- setInterval(tick,33); requestAnimationFrame(frame);
+ setInterval(tick,33); requestAnimationFrame(frame); checkBuild(); setInterval(checkBuild,300000);
  try{ const {user}=await api('/api/me'); applyAccount(user); if(!TACS[user.trainer]) showTacPick(true); else showMenu(); }
  catch(err){ showAuth(err.status===401?'':err.message); }
 }
