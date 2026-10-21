@@ -1937,19 +1937,25 @@ const ITEM_ART={claw:'razor-claw',wing:'swift-wing',spoon:'twisted-spoon',water:
  wise:'wise-glasses',soothe:'soothe-bell',energy:'energy-root',holy:'fresh-water',cure:'lum-berry',justice:'life-orb',helmet:'rocky-helmet',vest:'assault-vest',flame:'flame-orb',sturdy:'eviolite',
  scale:'dragon-scale',bright:'bright-powder',whiteherb:'white-herb',leftovers:'leftovers',hook:'grip-claw',zoom:'wide-lens',master:'master-ball',magnet:'magnet'};
 const BADGE_SPRITE=n=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${n}.png`;
-const itemSrc=k=>ITEMS[k]&&ITEMS[k].badge?BADGE_SPRITE(ITEMS[k].badge):ITEM_ART[k]?ITEM_SPRITE(ITEM_ART[k]):'';
+// Objetos: sprites de Wikidex (Escarlata/Púrpura) reducidos a 80 px en WebP (2 KB cada uno), en public/items/<clave>.webp y por CDN como los retratos; si fallan, cae al sprite pequeño de PokeAPI (data-alt). Las insignias siguen con sus sprites pixelados de PokeAPI
+const itemHQ=k=>!!(ITEM_ART[k]&&!(ITEMS[k]&&ITEMS[k].badge));
+const itemAlt=k=>ITEM_ART[k]?ITEM_SPRITE(ITEM_ART[k]):'';
+const itemSrc=k=>ITEMS[k]&&ITEMS[k].badge?BADGE_SPRITE(ITEMS[k].badge):ITEM_ART[k]?(window.ASSET_BASE||'')+'items/'+k+'.webp':'';
 const getItemImg=k=>itemSrc(k)?loadImg('it:'+k,itemSrc(k)):{status:'fail'};
 const itemTier=I=>I.comp||I.tool?'comp':I.emblem?'emb':'full';
 const itemColor=I=>I.tool?'#ff6a5f':I.emblem&&TRAITS[I.emblem]?TRAITS[I.emblem].color:I.comp?'#aab4c8':'#f4c04e';
 function itemHTML(k,size){
  const I=ITEMS[k]; if(!I) return '';
  const art=itemSrc(k)&&getItemImg(k).status!=='fail';
- return `<span class="ii ${itemTier(I)}" style="--ic:${itemColor(I)}${size?`;--is:${size}px`:''}">${art?`<img src="${itemSrc(k)}" alt="${esc(I.name)}" data-fb="${esc(I.icon)}">`:I.emblem&&TRAIT_SVG[I.emblem]?`<i class="isvg">${traitIcon(I.emblem)}</i>`:`<i>${I.icon}</i>`}</span>`;
+ return `<span class="ii ${itemTier(I)}" style="--ic:${itemColor(I)}${size?`;--is:${size}px`:''}">${art?`<img src="${itemSrc(k)}" alt="${esc(I.name)}" data-fb="${esc(I.icon)}"${itemHQ(k)?` class="hq" data-alt="${itemAlt(k)}" decoding="async"`:''}>`:I.emblem&&TRAIT_SVG[I.emblem]?`<i class="isvg">${traitIcon(I.emblem)}</i>`:`<i>${I.icon}</i>`}</span>`;
 }
 const trainerOf=p=>p&&TRAINER_BY[p.tr]?p.tr:'';
 function headHTML(p,size){ const t=typeof p==='string'?p:trainerOf(p); return t?`<span class="head em" style="--src:url('${TRAINER_SPRITE(t)}')${size?`;--hs:${size}px`:''}"></span>`:`<span class="head em">${esc(p&&p.emoji||'🧢')}</span>`; }
 // Si una imagen de objeto no carga, se sustituye por su emoji
-if(!HEADLESS) document.addEventListener('error',e=>{ const el=e.target; if(el&&el.tagName==='IMG'&&el.dataset&&el.dataset.fb){ const i=document.createElement('i'); i.textContent=el.dataset.fb; el.replaceWith(i); } },true);
+if(!HEADLESS) document.addEventListener('error',e=>{ const el=e.target; if(!el||el.tagName!=='IMG'||!el.dataset) return;
+ if(el.dataset.hop){ delete el.dataset.hop; return; } // el manejador de la CDN acaba de reintentar desde nuestro servidor
+ if(el.dataset.alt&&!el.dataset.fb5){ el.dataset.fb5=1; el.src=el.dataset.alt; el.classList.remove('hq'); return; }
+ if(el.dataset.fb){ const i=document.createElement('i'); i.textContent=el.dataset.fb; el.replaceWith(i); } },true);
 function initials(name){ return name.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑ]/g,'').slice(0,3); }
 function spriteHTML(d,size,star=1){ return `<span class="spr" style="--s:${size}px" data-dex="${dexOf(d,star)}" data-name="${esc(nameOf(d,star))}" data-color="${typeColor(d)}"></span>`; }
 // Los huecos .spr se rellenan con el retrato 3D del Pokémon
@@ -2486,7 +2492,7 @@ function drawItemBadge(k,x,y,sz,n){
  ctx.save(); const col=itemColor(I);
  const g=ctx.createRadialGradient(x,y-sz*.1,0,x,y,sz*.7); g.addColorStop(0,col); g.addColorStop(1,'#0a0f22'); ctx.fillStyle='#05070f'; ctx.fillRect(x-sz/2-1.5,y-sz/2-1.5,sz+3,sz+3); ctx.globalAlpha=.85; ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle=col; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
  const e=getItemImg(k);
- if(e.status==='ok'){ ctx.imageSmoothingEnabled=false; ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
+ if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
  // Contador de acumulaciones dentro del objeto, como en TFT (cargas de la Cinta Furia, poder ganado con la Piedra Lunar…)
  if(n){ const t=String(n), fs=Math.max(8,sz*.4), bh=fs*.95; ctx.globalAlpha=.78; ctx.fillStyle='#05070f'; ctx.fillRect(x-sz/2,y+sz/2-bh,sz,bh); ctx.globalAlpha=1; ctx.font=`900 ${fs}px Nunito,system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=2.5; ctx.strokeStyle='#000'; ctx.fillStyle='#ffd75e'; ctx.strokeText(t,x,y+sz/2-bh/2+.5); ctx.fillText(t,x,y+sz/2-bh/2+.5); }
@@ -3495,7 +3501,7 @@ function cdnAssets(){
    window.ASSET_BASE=base; for(const k in CARD_ART) CARD_ART[k]=base+`art/${k}.webp`; });
  }).catch(()=>{}).then(()=>preloadArt(TAC_KEYS));
  addEventListener('error',e=>{ const el=e.target, b=window.ASSET_BASE; if(!el||el.tagName!=='IMG') return;
-   if(b&&el.src.startsWith(b)) el.src=el.src.slice(b.length);
+   if(b&&el.src.startsWith(b)){ el.dataset.hop=1; el.src=el.src.slice(b.length); }
    else if(el.dataset&&el.dataset.sp&&!el.dataset.fb3){ el.dataset.fb3=1; el.src=SPRITE(el.dataset.sp); }
    else if(el.dataset&&el.dataset.dex&&!el.dataset.fb2){ el.dataset.fb2=1; el.src='dex/'+String(el.dataset.dex).split('/').pop()+'.png'; el.classList.add('artFb'); } },true);
 }

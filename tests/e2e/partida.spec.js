@@ -368,3 +368,14 @@ test('subida de estrellas de todos a la vez: los 7 recuadros caben sin solaparse
     await page.evaluate(() => { G.players.forEach(p => { p.lastUp = null; }); UP_CARDS.forEach(c => c.remove()); UP_CARDS.clear(); });
   }
 });
+
+test('objetos: los 47 sprites son WebP ligeros propios (no se pide PokeAPI) y se ven nítidos', async ({ page }) => {
+  const fs = require('fs'), path = require('path'), dir = path.join(__dirname, '..', '..', 'public', 'items');
+  const files = fs.readdirSync(dir), kb = files.reduce((a, f) => a + fs.statSync(path.join(dir, f)).size, 0) / 1024;
+  const n = await page.evaluate(() => Object.keys(ITEM_ART).length);
+  expect(files.length).toBe(n); expect(kb).toBeLessThan(130); // 47 sprites, ~99 KB en total
+  const remote = []; page.on('request', r => { if (/PokeAPI\/sprites\/master\/sprites\/items/.test(r.url())) remote.push(r.url()); });
+  const r = await page.evaluate(async () => { const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;z-index:99;display:flex;flex-wrap:wrap;width:900px'; host.innerHTML = Object.keys(ITEM_ART).map(k => itemHTML(k, 40)).join(''); document.body.appendChild(host);
+    await new Promise(r => setTimeout(r, 1500)); const im = [...host.querySelectorAll('img')]; const o = { n: im.length, ok: im.filter(i => i.complete && i.naturalWidth > 0).length, hq: im.filter(i => i.classList.contains('hq')).length, smooth: getComputedStyle(im[0]).imageRendering, w: im[0].naturalWidth }; host.remove(); return o; });
+  expect(r.n).toBe(n); expect(r.ok).toBe(n); expect(r.hq).toBe(n); expect(r.smooth).toBe('auto'); expect(r.w).toBe(80); expect(remote).toEqual([]);
+});
