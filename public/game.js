@@ -245,7 +245,13 @@ function abHTML(ab,u,star,opt={}){
    const key=lb+'|'+x; if(!seen.has(key)){ seen.add(key); rows.push([lb,x]); }
    return `<b class="sv" title="${ratio(x)}">${R0(P*x)}<i>${ic}</i></b>`; });
  if(opt.short) return t;
- const list=rows.map(([lb,x])=>`<div class="abv"><span>${lb}</span><span>${[1,2,3].map(s=>same[s-1]?`<b class="${s===star?'on':''}">${R0(P/sm*starMul(u.cost,s)*x)}</b>`:'<b>—</b>').join(' / ')}</span><small>${ratio(x).split(' · ')[0]}</small></div>`).join('');
+ // Si la habilidad cambia con la estrella, cada una calcula sus propios números: siempre se ven los 3 niveles para comparar el escalado (solo queda «—» si esa estrella no tiene ese efecto)
+ const rowsOf=(abx,s)=>{ const v2=[], out=[], sn=new Set(); ABD=v2; let t2; try{ t2=abDesc(abx,P,s); } finally{ ABD=null; }
+   t2.replace(/\u0001(\d+)\u0002/g,(m,i,off,str)=>{ const x=v2[+i], lb=abLabel(str.slice(Math.max(0,off-30),off),str.slice(off+m.length,off+m.length+24)), key=lb+'|'+x; if(!sn.has(key)){ sn.add(key); out.push([lb,x]); } return m; }); return out; };
+ const byStar=[1,2,3].map(s=>same[s-1]?rows:rowsOf(abOf(d,s),s)), labels=[], seenL=new Set();
+ for(const rs of [rows,...byStar]) for(const [lb] of rs){ const bs=lb.split(' ')[0]; if(!seenL.has(lb)&&!(rs!==rows&&labels.length&&labels.some(l=>l.split(' ')[0]===bs&&rows.every(r=>r[0]!==lb)&&!byStar.some(q=>q!==rs&&q.some(r=>r[0]===l))))){ seenL.add(lb); labels.push(lb); } }
+ const list=labels.map(lb=>{ const mine=rows.find(r=>r[0]===lb), cells=[1,2,3].map(s=>{ const bs=lb.split(' ')[0], r=byStar[s-1].find(q=>q[0]===lb)||byStar[s-1].find(q=>q[0].split(' ')[0]===bs); return r?`<b class="${s===star?'on':''}">${R0(P/sm*starMul(u.cost,s)*r[1])}</b>`:'<b>—</b>'; }).join(' / ');
+   return `<div class="abv"><span>${lb}</span><span>${cells}</span>${mine?`<small>${ratio(mine[1]).split(' · ')[0]}</small>`:''}</div>`; }).join('');
  const bonus=u.castBoost>0?`<div class="abBonus">Bonificación actual: <b>+${R0(u.castBoost*100)}%</b> de ${ic}</div>`:'';
  return `<p>${t}</p>${bonus}${list?`<div class="abList">${list}</div>`:''}`;
 }

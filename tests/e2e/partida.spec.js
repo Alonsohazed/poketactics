@@ -293,3 +293,14 @@ test('ficha de la tienda: puño en cuerpo a cuerpo y diana en los de más de 2 h
   expect(bad).toEqual([]);
   expect(r.sableye[1]).toBe('Cuerpo a cuerpo'); expect(r.abra[1]).toMatch(/^A distancia/);
 });
+
+test('habilidades: el daño se ve siempre con los 3 niveles de estrellas, aunque la habilidad cambie con la estrella', async ({ page }) => {
+  const bad = await page.evaluate(() => { const out = [];
+    for (const k of Object.keys(DEF)) { const d = DEF[k]; if (!d.names) continue;
+      const rowsOf = view => [...abHTML(abOf(d, view), baseCombatUnit(d, 0, view), view).matchAll(/<div class="abv"><span>(Da[^<]*)<\/span><span>(.*?)<\/span>/g)].map(r => r[2].split(' / '));
+      // estrellas cuya propia habilidad hace daño (tiene fila «Daño»): su número debe verse desde cualquier vista
+      const dmg = [1, 2, 3].filter(s => rowsOf(s).some(c => c[s - 1] && !/—/.test(c[s - 1])));
+      for (const view of [1, 2, 3]) { const cells = rowsOf(view); for (const s of dmg) if (!cells.some(c => c[s - 1] && !/—/.test(c[s - 1]))) out.push(k + ' vista ' + view + '★: sin daño de ' + s + '★'); } }
+    return out; });
+  expect(bad).toEqual([]);
+});
