@@ -81,6 +81,37 @@ ready.then(() => server.listen(0, async () => {
     }
   }
 
+  // ---- desconexión: el asiento se guarda, pero NADIE juega por el ausente (ni bot ni automatismos) ----
+  {
+    const vm = require('vm');
+    let T = Date.now(); // reloj simulado: el motor espera tiempo real para resolver combates y fases con plazo
+    const ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval, Date: class extends Date { static now() { return T; } } };
+    vm.createContext(ctx);
+    vm.runInContext(['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8')).join('\n'), ctx);
+    const E = ctx.module.exports;
+    E.serverCreate({ diff: 'normal', timer: 30, speed: 4, humans: [{ nick: 'Uno', peer: 'a', tr: 'charmander' }, { nick: 'Dos', peer: 'b', tr: 'squirtle' }] }, () => {});
+    const G = E.G, uno = G.players.find(p => p.name === 'Uno'), dos = G.players.find(p => p.name === 'Dos');
+    E.serverTick(.05);
+    E.serverLeave('b');
+    assert.strictEqual(dos.isBot, false, 'el ausente NO se convierte en bot'); assert.strictEqual(dos.away, true); assert.strictEqual(dos.remote, false);
+    const bench0 = dos.bench.map(u => u && u.uid).join(), board0 = Object.keys(dos.board).join(), gold0 = dos.gold;
+    const r0 = G.roundIdx; let ticks = 0;
+    for (; ticks < 6000 && G.roundIdx < r0 + 4 && !G.over; ticks++) { if (G.phase === 'planning') uno.ready = true; T += 50; E.serverTick(.05); if (G.resolving || G.phase === 'results') await sleep(25); } // resolveRound usa temporizadores reales
+    assert(G.roundIdx >= r0 + 4, 'la partida avanza sin esperar al ausente (rondas: ' + (G.roundIdx - r0) + ')');
+    assert.strictEqual(dos.isBot, false, 'sigue sin ser bot tras varias rondas');
+    assert.strictEqual(dos.bench.map(u => u && u.uid).join(), bench0, 'no se compra, vende ni mueve nada de su banquillo');
+    assert.strictEqual(Object.keys(dos.board).join(), board0, 'no se coloca nada en su tablero');
+    assert(dos.gold >= gold0, 'solo gana oro (' + gold0 + ' → ' + dos.gold + ')');
+    assert(!dos.augPicked || !dos.augments.length, 'no se le elige ningún aumento');
+    // vuelve con otra conexión
+    assert.strictEqual(E.serverRejoin('x-no-existe', 'z'), false, 'un id desconocido no recupera ningún asiento');
+    assert.strictEqual(E.serverRejoin('b', 'b2'), true, 'recupera su asiento'); assert.strictEqual(dos.away, false); assert.strictEqual(dos.remote, true); assert.strictEqual(dos.peer, 'b2'); assert.strictEqual(dos.isBot, false);
+    assert.strictEqual(E.serverRejoin('b', 'b3'), false, 'el asiento ya no está libre');
+    // si no vuelve a tiempo, queda eliminado en el último puesto de los que siguen vivos
+    E.serverLeave('b2'); const vivos = G.players.filter(p => p.alive).length; E.serverForfeit();
+    assert.strictEqual(dos.alive, false); assert.strictEqual(dos.place, vivos, 'abandona en el último puesto de los vivos'); assert.strictEqual(uno.alive, true);
+  }
+
   // ---- partida ----
   const mk = cookie => io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookie } });
   const A = mk(cookieA); let B = mk(cookieB);

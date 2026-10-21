@@ -131,9 +131,9 @@ ready.then(() => server.listen(0, async () => {
     const r2room = [...rooms.values()].find(r => r.mode === 'normal' && r.seats.length === 2);
     ok(r2room && r2room.botInfo.length === 6 && r2room.game.G.players.filter(p => !p.isBot).length === 2, 'Normal: 2 personas reales y 6 bots en la misma partida');
     ok(r2room && r2room.botInfo.every(b => C.SKILLS.indexOf(b.skill) <= 1), 'Normal con MMR inicial: bots de nivel bajo');
-    // desconexión en plena partida: un bot sigue por esa persona y su resultado se apunta igual (sin duplicar)
+    // desconexión en plena partida: el asiento queda reservado como ausente y NADIE juega por esa persona (ni bot)
     const ckBid = (await me(ckB)).id; sb.close(); await sleep(300);
-    const bP = r2room.game.G.players.find(p => p.name.startsWith('Berta')); ok(bP && bP.isBot, 'al desconectarse, un bot juega por esa persona');
+    const bP = r2room.game.G.players.find(p => p.name.startsWith('Berta')); ok(bP && !bP.isBot && bP.away && !bP.remote, 'al desconectarse queda ausente: no se convierte en bot ni nadie juega por esa persona');
     // partida cancelada antes de terminar: sin recompensas
     const before = (await db.matches(ckBid, 100)).length; r2room.timer && clearInterval(r2room.timer); rooms.delete(r2room.code);
     await sleep(300); ok((await db.matches(ckBid, 100)).length === before, 'partida cancelada: no hay registro ni caramelos');

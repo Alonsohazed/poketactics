@@ -116,16 +116,19 @@ function startGame(room, opts) {
   room.timer = setInterval(() => {
     const now = Date.now();
     const dt = Math.min(0.25, (now - last) / 1000); last = now;
-    try { room.game.serverTick(dt); }
-    catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
+    // Sin ningún humano vivo conectado la partida se PAUSA (nadie juega por los ausentes): espera a que vuelvan hasta REJOIN_MS y, si no, quedan eliminados
+    const activos = room.seats.filter(s => !s.recorded), pausada = activos.length > 0 && !activos.some(s => s.connected);
+    if (!pausada) {
+      try { room.game.serverTick(dt); }
+      catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
+    }
     const info = room.game.serverInfo();
     recordPlaces(room, info);
     if (info.over) { if (!room.endAt) room.endAt = now + 30000; else if (now > room.endAt) closeRoom(room, 'fin'); }
-    else if (!room.seats.some(s => s.connected)) {
-      // nadie conectado: si todos están eliminados, se cierra ya; si alguien sigue vivo (un bot juega por él), se espera por si vuelve
-      if (!room.seats.some(s => !s.recorded)) closeRoom(room, 'vacía');
-      else { room.emptySince = room.emptySince || now; if (now - room.emptySince > REJOIN_MS) closeRoom(room, 'vacía'); }
-    } else room.emptySince = 0;
+    else if (pausada) {
+      room.emptySince = room.emptySince || now;
+      if (now - room.emptySince > REJOIN_MS) { try { room.game.serverForfeit(); recordPlaces(room, room.game.serverInfo()); } catch (e) { console.error(e); } closeRoom(room, 'abandono'); }
+    } else { room.emptySince = 0; if (!room.seats.some(s => s.connected)) closeRoom(room, 'vacía'); } // todos eliminados y fuera
   }, TICK_MS);
   broadcastRooms();
 }
@@ -161,7 +164,7 @@ async function seatFor(socket) {
 // ---------- colas Normal y Clasificatoria ----------
 const queues = { normal: [], ranked: [] };
 const inQueue = uid => MODES.some(m => queues[m].some(e => e.uid === uid));
-const REJOIN_MS = 4 * 60 * 1000; // una sala sin nadie conectado espera tanto antes de cerrarse (para poder volver)
+const REJOIN_MS = +process.env.REJOIN_MS || 4 * 60 * 1000; // una sala sin nadie conectado espera tanto antes de cerrarse (para poder volver)
 const inGame = uid => [...rooms.values()].some(r => r.seats.some(s => s.uid === uid && (r.state === 'lobby' || (r.state === 'game' && !s.recorded))));
 // La partida que puede retomar un usuario: sala en juego, su asiento sin cerrar (no eliminado) y sin conexión
 function resumable(uid) { for (const r of rooms.values()) { if (r.state !== 'game' || !r.game) continue; const s = r.seats.find(x => x.uid === uid && !x.recorded); if (s) return { room: r, seat: s }; } return null; }

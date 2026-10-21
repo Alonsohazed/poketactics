@@ -1272,14 +1272,14 @@ function nextRound(){
  }
  startPlanning();
 }
-function checkAugDone(){ if(G.phase==='augment'&&alivePlayers().every(p=>p.isBot||p.augPicked)){ if(NET.modal==='aug') closeModal(); startPlanning(); } }
+function checkAugDone(){ if(G.phase==='augment'&&alivePlayers().every(p=>p.isBot||p.away||p.augPicked)){ if(NET.modal==='aug') closeModal(); startPlanning(); } }
 function botAugPick(p,choices,stage){
  if(!botSkill(p).smart||!choices.length) return pick(choices);
  const top=topTrait(p), score=id=>{ const a=AUG_BY[id]; let s=Math.random()*.5; if(stage===0&&['econ','fast','slow','streak'].includes(a.cat)) s+=2; if(top&&(a.tags||[]).includes(top)) s+=3;
    if(stage>0&&['trait','emblem','carry'].includes(a.cat)) s+=1.5; if(a.hero&&allUnits(p).some(u=>u.baseId===a.hero)) s+=2.5; if(a.req&&!a.req(p)) s-=9; return s; };
  return choices.slice().sort((x,y)=>score(y)-score(x))[0];
 }
-function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
+function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.away&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
 function startPlanning(){
  const R=G.round; G.phase='planning'; G.timer=S.timer||Infinity; if(G.mp&&!isFinite(G.timer)) G.timer=60;
  G.preview=R.type==='pve'?pveWave(R.s,R.n):null;
@@ -1288,7 +1288,7 @@ function startPlanning(){
  renderUI();
  if(G.auto) later(startCombat,0);
 }
-function humansReady(){ const hs=alivePlayers().filter(isHuman); return hs.length>0&&hs.every(p=>p.ready); }
+function humansReady(){ const hs=alivePlayers().filter(p=>isHuman(p)&&!p.away); return hs.length>0&&hs.every(p=>p.ready); }
 function autoFill(p){
  let free=maxBoard(p)-boardUnits(p).length; if(free<=0) return 0; let n=0; const C=[3,2,4,1,5,0,6];
  for(let i=0;i<BENCH&&free>0;i++){
@@ -1302,7 +1302,7 @@ function startCombat(){
  if(G.phase!=='planning') return;
  const R=G.round, me=G.me;
  for(const p of alivePlayers()) for(const o of p.orbs.slice()) openPlayerOrb(p,o.id,true);
- for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
+ for(const p of alivePlayers()) if(isHuman(p)&&!p.away){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
  G.phase='combat'; G.acc=0; G.resolving=false;
  const alive=alivePlayers(); G.fights=[];
  if(R.type==='pve') for(const p of alive) G.fights.push({a:p,b:null,pve:true});
@@ -2234,6 +2234,7 @@ function updateCarousel(dt){
    if(a.x===null){ a.x=cx+Math.cos(a.ang)*rr*1.12; a.y=cy+Math.sin(a.ang)*rr*1.12; }
    if(a.done){ toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
+   if(p.away){ a.rel=true; a.done=true; return; } // desconectado: no se lleva nada y nadie elige por él
    if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Fuera el campo de fuerza! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
    if(a.target!=null&&C.opts[a.target].taken) a.target=null;
@@ -3468,11 +3469,12 @@ function serverTick(dt){
  hostNetTick();
 }
 function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
-function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.isBot=true; p.tp=null; note(null,`🔌 ${p.name} se desconectó`); } }
+// Un jugador desconectado queda «ausente» (p.away): conserva su asiento y su tablero tal como estaban, pero NADIE juega por él (ni bot ni automatismos) y la partida no se espera a que esté listo
+function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.away=true; p.tp=null; note(null,`🔌 ${p.name} se desconectó (su asiento queda reservado)`); } }
 // Reconexión: el asiento de un jugador que se fue (un bot juega por él) vuelve a ser suyo con otro id de conexión
 function serverRejoin(oldPeer,newPeer){
- if(!G||!G.players||G.over) return false; const p=G.players.find(x=>x.peer===oldPeer&&x.alive&&!x.remote); if(!p) return false;
- p.peer=newPeer; p.remote=true; p.isBot=false; p.tp=null; NET.lastPriv[p.id]=''; NET.lastPub=''; NET.lastBdP=[]; note(null,`🔌 ${p.name} volvió a la partida`); return true;
+ if(!G||!G.players||G.over) return false; const p=G.players.find(x=>x.peer===oldPeer&&x.alive&&!x.remote&&x.away); if(!p) return false;
+ p.peer=newPeer; p.remote=true; p.away=false; p.tp=null; if(G.phase==='augment'&&G.augDeadline) G.augDeadline=Math.max(G.augDeadline,Date.now()+20000); NET.lastPriv[p.id]=''; NET.lastPub=''; NET.lastBdP=[]; note(null,`🔌 ${p.name} volvió a la partida`); return true;
 }
 // Reenvía a quien vuelve lo que solo se manda una vez: su estado, el combate de la ronda y el carrusel
 function serverResend(peer){
@@ -3481,10 +3483,15 @@ function serverResend(peer){
  if(G.phase==='combat'&&G.fights) netSendCombats(p);
  if(G.phase==='carousel') netCarousel();
 }
+// Pasado el plazo de reconexión, los ausentes quedan eliminados (último puesto entre los vivos) para que su resultado se apunte
+function serverForfeit(){
+ if(!G||!G.players||G.over) return; let n=alivePlayers().length;
+ for(const p of G.players.filter(x=>x.away&&x.alive)){ p.finalComp=compSnap(p); p.place=n--; p.alive=false; p.hp=0; }
+}
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[],
   plist:G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,comp:p.peer&&p.place?p.finalComp||null:null})):[]}; }
 
-if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
+if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js
