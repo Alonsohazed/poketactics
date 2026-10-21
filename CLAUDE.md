@@ -45,7 +45,7 @@ Autochess de Pokémon al estilo Teamfight Tactics: modo solitario contra 7 bots 
 El detalle, con los nombres de las funciones, está en la skill `autochess-systems-architect`.
 
 - **Rondas** (`buildRounds`):
-  - fase 1: tres rondas PvE; en la 1-1 no se compra ni se vende (`firstRound` en `canBuy`/`sellAt`; la tienda sale apagada con la clase `first`): se juega con el Pokémon que te tocó;
+  - fase 1: tres rondas PvE; en la 1-1 no se compra ni se vende (`firstRound` en `canBuy`/`sellAt`/`reroll`/`xp`; la tienda se tapa con el mismo panel azul noche de vender, sin texto, con la clase `first`): se juega con el Pokémon que te tocó;
   - fases 2-9: siete rondas cada una (la 4.ª es carrusel, la 7.ª es PvE y el resto PvP); desde la fase 5 el PvE es un único Gyarados variocolor grande (`shiny`/`big` en `CREEP`; en `board3d.js` un dex `'shiny:130'` tiñe de rojo los azules del modelo con `shinyMat`, porque Pokemon-3D-api no tiene ese variocolor);
   - aumentos en 2-1, 3-2 y 4-2 (3 opciones de categorías distintas y un cambio, con «Confirmar»; la rareza la sortea `rollAugTiers` y es la misma para todos).
 - **Economía**:

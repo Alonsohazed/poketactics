@@ -12,6 +12,10 @@ test('tienda: comprar resta oro, refrescar cuesta 2 y la EXP sube de nivel @rapi
   // Ronda 1-1: aunque haya oro, no se compra ni se vende (se juega con el Pokémon que te tocó)
   await page.evaluate(() => { G.me.gold = 50; renderUI(); });
   await expect(page.locator('#shopPanel')).toHaveClass(/\bfirst\b/);
+  // el panel azul noche tapa la tienda, sin texto, y recibe los clics (no se puede tocar nada de debajo)
+  const cover = await page.evaluate(() => { const m = document.getElementById('sellMsg'), cs = getComputedStyle(m), r = document.getElementById('cards').getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { disp: cs.display, txt: parseFloat(cs.fontSize), top: top && top.id }; });
+  expect(cover).toEqual({ disp: 'grid', txt: 0, top: 'sellMsg' });
   const r11 = await page.evaluate(() => { const b = G.me.bench.filter(Boolean).length, loc = { i: G.me.bench.findIndex(Boolean) };
     const buyR = applyAct(G.me, { t: 'buy', i: 0 }), sellR = applyAct(G.me, { t: 'sell', loc }); return { buy: buyR.ok, sell: sellR.ok, why: buyR.why, gold: G.me.gold, bench: G.me.bench.filter(Boolean).length - b }; });
   expect(r11).toEqual({ buy: false, sell: false, why: 'En la primera ronda juegas con el Pokémon que te tocó', gold: 50, bench: 0 });

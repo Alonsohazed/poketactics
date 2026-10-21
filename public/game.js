@@ -1494,8 +1494,8 @@ function applyAct(p,a){
  const ph=G.phase, idx=x=>Number.isInteger(x)?x:-1;
  switch(a.t){
   case 'buy': { const i=idx(a.i); if(i<0||i>4) return {ok:false}; const k=p.shop[i]; if(!k) return {ok:false}; if(!buy(p,i)) return {ok:false,why:firstRound()?'En la primera ronda juegas con el Pokémon que te tocó':p.gold<DEF[k].cost?'No tienes oro suficiente':'Banquillo lleno'}; return {ok:true}; }
-  case 'reroll': return {ok:reroll(p),why:'No tienes oro suficiente'};
-  case 'xp': return {ok:buyXp(p),why:'No tienes oro suficiente'};
+  case 'reroll': return {ok:!firstRound()&&reroll(p),why:firstRound()?'En la primera ronda juegas con el Pokémon que te tocó':'No tienes oro suficiente'};
+  case 'xp': return {ok:!firstRound()&&buyXp(p),why:firstRound()?'En la primera ronda juegas con el Pokémon que te tocó':'No tienes oro suficiente'};
   case 'lock': p.locked=!p.locked; return {ok:true};
   case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:firstRound()?'En la primera ronda no se puede vender':'No puedes vender eso ahora'}; }
   case 'move': { const f=normLoc(a.from), to=normLoc(a.to); if(!f||!to) return {ok:false}; if((ph==='combat'||ph==='carousel')&&(f.b!==undefined||to.b!==undefined)) return {ok:false}; return {ok:moveTo(p,f,to)}; }

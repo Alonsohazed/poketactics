@@ -265,11 +265,8 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .sellMsg{display:none;position:absolute;inset:-2px;place-items:center;font-family:var(--display);font-size:30px;letter-spacing:.02em;color:#f3e3b0;text-shadow:0 2px 0 #000,0 0 14px rgba(0,0,0,.6);background:linear-gradient(180deg,#14203a,#0b1324);border:2px solid #2c4a7a;border-radius:6px;box-shadow:inset 0 0 40px rgba(60,120,220,.18);pointer-events:none;z-index:5;text-align:center;padding:0 12px}
 @media (max-width:640px){.sellMsg{font-size:20px}}
 .shop.sell .sellMsg{display:grid}
-/* Ronda 1-1: tienda apagada (se juega con el Pokémon que te tocó) */
-.shop.first #cards{position:relative;pointer-events:none}
-.shop.first #cards .card{opacity:.35;filter:grayscale(.8)}
-.shop.first #cards::after{content:"Primera ronda: juegas con el Pokémon que te tocó";position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 12px;font-family:var(--display);font-size:24px;color:#f3e3b0;text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8)}
-@media (max-width:640px){.shop.first #cards::after{font-size:16px}}
+/* Ronda 1-1: la tienda se tapa con el mismo panel azul noche de vender, sin texto, y no deja tocar nada */
+.shop.first .sellMsg{display:grid;pointer-events:auto;font-size:0}
 .shopTop{display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap}
 /* Nivel y probabilidades sobre un panel inclinado, como en la referencia */
 .shopTop .lvl,.shopTop .odds{position:relative}
