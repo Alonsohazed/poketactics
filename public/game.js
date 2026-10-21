@@ -2393,7 +2393,7 @@ function hideTip(){ if(!tipOn) return; tipOn=false; tipAnchor=null; $('tip').sty
 let ptr=[0,0], hudActors=[], hudItems=[], myTrBox=null;
 const b3On=()=>!HEADLESS&&window.B3&&B3.ready;
 function b3Geo(){ const cells=[]; for(let r=0;r<8;r++) for(let c=0;c<7;c++) cells.push(cellXY(c,r)); return {...geo,cells,bench:[...Array(BENCH)].map((_,i)=>benchXY(i))}; }
-function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready){ B3.init($('gl')); applyGfx(); } B3.resize(b3Geo(),window.devicePixelRatio||1,view); }
+function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready){ B3.init($('gl')); applyGfx(); $('gl').addEventListener('webglcontextlost',()=>toast('El navegador perdió el dibujo 3D; intentando recuperarlo… Si se queda gris, recarga (F5)')); $('gl').addEventListener('webglcontextrestored',()=>toast('Dibujo 3D recuperado')); } B3.resize(b3Geo(),window.devicePixelRatio||1,view); }
 // Calidad gráfica y temblor de cámara: preferencias de este dispositivo (no de la cuenta)
 const GFX={get q(){ try{ return localStorage.getItem('pt_gfx')||'auto'; }catch(e){ return 'auto'; } },get shake(){ try{ return localStorage.getItem('pt_shake')!=='0'; }catch(e){ return true; } }};
 function applyGfx(){ if(!window.B3||!B3.ready) return; const q=GFX.q; if(B3.setAuto) B3.setAuto(q==='auto'); if(q!=='auto') B3.setQuality(+q); if(B3.setShake) B3.setShake(GFX.shake&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)); }
@@ -2660,7 +2660,11 @@ function stepVisual(dt,isHost){
 // Contador de FPS (F3): media, peor fotograma y calidad del 3D, cada medio segundo
 let fpsOn=false, fpsT=[];
 function toggleFps(){ fpsOn=!fpsOn; let el=$('fpsTag'); if(!el){ el=document.createElement('div'); el.id='fpsTag'; el.className='fpsTag'; document.body.appendChild(el); } el.hidden=!fpsOn; fpsT=[]; }
-function frame(){
+// El bucle de dibujo nunca muere: una excepción dentro de un fotograma se registra (y se avisa una vez) y el siguiente fotograma sigue.
+// Si muriera, el lienzo dejaría de pintarse (se vería el fondo gris) y la partida parecería colgada.
+function frame(){ try{ frameBody(); }catch(e){ frameErr(e); } requestAnimationFrame(frame); }
+function frameErr(e){ const m=String(e&&e.stack||e).slice(0,300); frameErr.n=(frameErr.n||0)+1; if(frameErr.last!==m){ frameErr.last=m; console.error('Error al dibujar:',e); try{ localStorage.setItem('pt_err',new Date().toISOString()+' '+m); }catch(x){} if(frameErr.n<=1&&typeof toast==='function') toast('Error al dibujar; si la pantalla se queda gris, recarga (F5)'); } }
+function frameBody(){
  if(fpsOn){ const n=performance.now(); fpsT.push(n); while(fpsT.length&&n-fpsT[0]>1000) fpsT.shift(); if(!frame.fpsU||n-frame.fpsU>500){ frame.fpsU=n; let worst=0; for(let i=1;i<fpsT.length;i++) worst=Math.max(worst,fpsT[i]-fpsT[i-1]); const inf=window.B3&&B3.info; $('fpsTag').textContent=fpsT.length+' FPS · peor '+worst.toFixed(0)+' ms'+(window.B3?' · calidad '+B3.quality+(inf?' · '+inf.calls+' dibujos':''):''); } }
  const fnow=performance.now(), fdt=Math.min(.1,(fnow-(frame.t||fnow))/1000); frame.t=fnow; stepTac(fdt);
  if(G&&G.phase==='combat'){ const k=fdt*Math.min(G.speed||1,2); ageFx(G.combat,k); if(G.view&&G.view.cb&&G.view.cb!==G.combat) ageFx(G.view.cb,k); }
@@ -2672,7 +2676,6 @@ function frame(){
    if(vc&&performance.now()-lastDmgT>400){ lastDmgT=performance.now(); renderDmg(); }
    if(selCombat&&performance.now()-lastCardT>250){ lastCardT=performance.now(); renderCard(); } }
  Music.play(wantedSong());
- requestAnimationFrame(frame);
 }
 
 /* ---------- paneles ---------- */

@@ -521,7 +521,9 @@ function buildArena(kind){
 /* ---------- escenario por capas (el de siempre; ?arena=3d vuelve al decorado 3D «glade») ----------
    Detrás del lienzo (transparente) va el escenario pintado, deformado en perspectiva (matrix3d) para que su campo coincida con el
    tablero. Las casillas, el banquillo, los Pokémon y los efectos siguen en 3D. */
-const FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')!=='3d'; }catch(e){ return true; } })();
+let FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')!=='3d'; }catch(e){ return true; } })();
+// Si el escenario por capas falla en algún fotograma, se apaga y se vuelve al decorado 3D: la partida sigue
+function flatFail(e){ console.error('Escenario por capas desactivado por un error:',e); FLAT=false; if(flatEl){ flatPlay(false); flatEl.hidden=true; } flatH=null; curArena=''; }
 // Capas de public/arena (del paquete arena_tft_capas_1080, coordenadas en píxeles de 1428×1080): fondo a 2× sin el gris (base.webp),
 // vídeos en bucle del agua (opacos: se recortan con mask-image, la alfa del fondo en su rectángulo) y tiras de sprites del fuego (capas.json).
 // Se sirven por jsDelivr fijadas al commit (como los modelos: ANIM_BASE) y, si falla, desde nuestro servidor.
@@ -547,7 +549,7 @@ function buildFlat(cvs){
  // en pantallas pequeñas (menos de 1400 px reales de ancho de lienzo) basta el fondo a 1×: un tercio del peso y de la memoria
  const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?'base1x.webp':'base.webp';
  const base=document.createElement('img'); base.src=D+bn; base.alt=''; base.style.cssText='position:absolute;inset:0;width:100%;height:100%'; base.onerror=()=>{ if(base.src.indexOf(L)!==0) base.src=L+bn; }; el.appendChild(base);
- for(const c of flatCfg.capas){ const box=`position:absolute;left:${c.x}px;top:${c.y}px;width:${c.ancho}px;height:${c.alto}px`;
+ for(const c of (flatCfg.capas||[])){ const box=`position:absolute;left:${c.x}px;top:${c.y}px;width:${c.ancho}px;height:${c.alto}px`;
    if(c.tipo==='video'){ const v=document.createElement('video'); v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true; v.setAttribute('playsinline',''); v.setAttribute('muted','');
      const m=`url(${D}mask_${c.nombre}.png)`; v.style.cssText=box+`;object-fit:fill;mask-image:${m};-webkit-mask-image:${m};mask-size:100% 100%;-webkit-mask-size:100% 100%`;
      const srcs=(dir)=>{ v.innerHTML=''; for(const ext of ['webm','mp4']){ const so=document.createElement('source'); so.src=dir+c.nombre+'.'+ext; so.type='video/'+ext; if(ext==='mp4'&&dir!==L) so.onerror=()=>{ srcs(L); v.load(); v.play().catch(()=>{}); }; v.appendChild(so); } }; // si el CDN falla, los mismos vídeos desde nuestro servidor
@@ -1385,7 +1387,7 @@ function stepCount(c,now){
 function render(F){
  if(!ready) return;
  const now=performance.now()/1000, raw=lastT?now-lastT:0, dt=Math.min(.1,raw); lastT=now;
- watchPerf(raw); if(F.car) M.car=F.car; setArena(F.arena); stepFlat();
+ watchPerf(raw); if(F.car) M.car=F.car; setArena(F.arena); try{ stepFlat(); }catch(e){ flatFail(e); }
  if(arenas[curArena]) for(const a of arenas[curArena].userData.anim) a(now);
  // casillas resaltadas al arrastrar
  for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,ccol(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
@@ -1408,7 +1410,7 @@ function render(F){
  for(const f of F.fx){ if(f.t<0){ continue; } let v=fxVis.get(f); if(v===undefined){ v=makeFx(f,F); fxVis.set(f,v); born.push(f.type+(f.el?':'+f.el:'')); } if(v){ fseen.add(f); if(!v.done) updFx(f,v,F,dt); } }
  stepTrans(dt); stepProj(dt);
  for(const [f,v] of fxVis) if(!fseen.has(f)){ if(v) killFx(v); fxVis.delete(f); }
- stepOrbs(F.orbs,now); stepProps(F,now); stepBubbles(F.bubbles,now); stepPads(F.pads); stepLinks(F.links,now);
+ stepOrbs(F.orbs,now); try{ stepProps(F,now); }catch(e){ if(FLAT) flatFail(e); else console.error(e); } stepBubbles(F.bubbles,now); stepPads(F.pads); stepLinks(F.links,now);
  stepParticles(PA,dt); stepParticles(PN,dt); stepParticles(PB,dt);
  const pt2=performance.now(); // temblor de cámara en los impactos fuertes
  const base=camera.position.clone(); if(shake>0&&shakeOn){ camera.position.x+=rnd(shake); camera.position.y+=rnd(shake); } shake=Math.max(0,shake-dt*.6);
