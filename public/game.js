@@ -2896,10 +2896,14 @@ function renderShop(){
  const sk=$('streak'); sk.hidden=Math.abs(me.streak)<1; sk.className='streak '+(me.streak>0?'win':'loss'); sk.querySelector('b').textContent=Math.abs(me.streak); sk.title=me.streak>0?`Racha de ${me.streak} victorias`:`Racha de ${-me.streak} derrotas`;
  $('streakInfo').textContent='';
 }
+// Iconos blancos y sin fondo del tipo de ataque: diana (a distancia, alcance de más de 2 hexágonos) y puño (cuerpo a cuerpo). Dibujados aquí en SVG, sin imágenes externas
+const ICON_RANGED='<svg viewBox="0 0 64 64" width="36" height="36" aria-hidden="true"><defs><mask id="rgM"><rect width="64" height="64" fill="#fff"/><path d="M33 31 L58 6" stroke="#000" stroke-width="9" stroke-linecap="round"/></mask></defs><g mask="url(#rgM)" fill="none" stroke="#fff" stroke-width="5"><circle cx="32" cy="32" r="27"/><circle cx="32" cy="32" r="16"/></g><circle cx="32" cy="32" r="5.5" fill="#fff"/><path d="M34 30 L58 6 M58 6 L49 6 M58 6 L58 15 M52 12 L45 12 M52 12 L52 19" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"/></svg>';
+const ICON_MELEE='<svg viewBox="0 0 64 64" width="36" height="36" aria-hidden="true"><defs><mask id="fiM"><rect width="64" height="64" fill="#fff"/><path d="M21 14 V36 M33 12 V36 M45 14 V36" stroke="#000" stroke-width="2.6" stroke-linecap="round"/><rect x="4" y="33" width="36" height="15" rx="7.5" fill="#fff" stroke="#000" stroke-width="3"/></mask></defs><g mask="url(#fiM)" fill="#fff"><rect x="9" y="15" width="12.5" height="26" rx="6"/><rect x="21" y="11" width="12.5" height="30" rx="6"/><rect x="33" y="12" width="12.5" height="29" rx="6"/><rect x="45" y="15" width="11.5" height="26" rx="5.75"/><rect x="9" y="28" width="47.5" height="26" rx="11"/></g></svg>';
+const rangeIcon=r=>r>2?`<span class="stRange" title="A distancia (${r} hex.)">${ICON_RANGED}</span>`:`<span class="stRange" title="Cuerpo a cuerpo">${ICON_MELEE}</span>`;
 // Ficha de habilidad que se ve al pasar por una carta de la tienda (antes de comprarla)
 function shopTip(key){
  const d=DEF[key]; if(!d) return ''; const u=baseCombatUnit(d,0,1), ab=abOf(d,1), el=elemOf(d), ic=elIcon(ab[2].el||el)||TRAITS[el].icon;
- return `<div class="stHead" style="--tc:${TRAITS[el].color}"><span class="stIco">${ic}</span><div><div class="stName">${esc(ab[1])}</div><div class="stMana">💧 ${R0(u.mana)}/${u.maxMana>=9999?'—':u.maxMana} de maná · ${KIND_NAME[ab[0]]}</div></div></div>
+ return `<div class="stHead" style="--tc:${TRAITS[el].color}"><span class="stIco">${ic}</span><div><div class="stName">${esc(ab[1])}</div><div class="stMana">💧 ${R0(u.mana)}/${u.maxMana>=9999?'—':u.maxMana} de maná · ${KIND_NAME[ab[0]]}</div></div>${rangeIcon(u.range)}</div>
   <div class="stBody">${abHTML(ab,u,1)}<div class="stMeta">${esc(d.name)} · ${ROLE_NAME[d.role]} · ❤️ ${R0(u.maxHp)} · ⚔️ ${R0(u.ad)} · 🎯 ${u.range}</div></div>`;
 }
 // Nivel de una sinergia: 1 bronce, 2 plata, 3 oro y el máximo prismático (si tiene 3 niveles o más)

@@ -286,3 +286,10 @@ test('en la partida el clic derecho no abre el menú del navegador en ninguna zo
   await page.evaluate(() => { openModal('<h1>prueba</h1><button id="mx">x</button>', { closable: true }); });
   expect(await page.evaluate(() => { const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); document.getElementById('mx').dispatchEvent(ev); return ev.defaultPrevented; })).toBe(true);
 });
+
+test('ficha de la tienda: puño en cuerpo a cuerpo y diana en los de más de 2 hexágonos', async ({ page }) => {
+  const r = await page.evaluate(() => Object.fromEntries(Object.keys(DEF).map(k => { const h = shopTip(k), m = /class="stRange" title="([^"]+)"/.exec(h); return [k, [baseCombatUnit(DEF[k], 0, 1).range, m && m[1]]]; })));
+  const bad = Object.entries(r).filter(([k, [rg, t]]) => !t || (rg > 2) !== /^A distancia/.test(t));
+  expect(bad).toEqual([]);
+  expect(r.sableye[1]).toBe('Cuerpo a cuerpo'); expect(r.abra[1]).toMatch(/^A distancia/);
+});
