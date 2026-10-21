@@ -1776,7 +1776,10 @@ function doAct(a,optimistic){
 }
 // Mover una ficha cambia el estado al instante y el 3D la dibuja ya en su sitio en el siguiente fotograma; el resto de paneles (ocho listas con imágenes y filtros) se reescribe justo después de pintarlo, para que soltar no espere ~10 ms de DOM
 let uiSoon=false;
-function renderSoon(a){ if(!a||a.t!=='move'||typeof requestAnimationFrame!=='function'){ renderUI(); return; } if(uiSoon) return; uiSoon=true; requestAnimationFrame(()=>setTimeout(()=>{ uiSoon=false; renderUI(); },0)); }
+function renderSoon(a){ if(!a||a.t!=='move'||typeof requestAnimationFrame!=='function'){ renderUI(); return; }
+ // El 3D ya dibuja el tablero nuevo en el siguiente fotograma: se invalidan las cachés de sinergias y estadísticas (se indexan por G.uiV) para que ese fotograma use el tablero nuevo; si no, la sinergia que se activa con esta ficha (p. ej. el 2.º Guardián) se calculaba con el tablero viejo y el efecto de colocación no salía
+ G.uiV=(G.uiV||0)+1;
+ if(uiSoon) return; uiSoon=true; requestAnimationFrame(()=>setTimeout(()=>{ uiSoon=false; renderUI(); },0)); }
 
 /* ============================== [MUSIC] ============================== */
 // Sintetizador con canales tipo Game Boy: 2 pulsos (12.5% y 25%), onda y ruido, vibrato e intros.

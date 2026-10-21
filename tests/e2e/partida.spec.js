@@ -441,3 +441,15 @@ test('retratos pequeños: salen del sprite de la Pokédex al instante (sin desca
     const im = [...host.querySelectorAll('img')]; await new Promise(r => setTimeout(r, 600)); const o = { have, n: im.length, sprites: im.filter(i => /dex\/\d+\.png$/.test(i.src) && i.complete && i.naturalWidth > 0).length, ms: Math.round(performance.now() - t) }; host.remove(); return o; });
   expect(r.have).toEqual(files); expect(r.n).toBe(6); expect(r.sprites).toBe(6); await page.waitForTimeout(500); expect(glb.filter(u => /\/(4|25|129|130|150|446)\.glb/.test(u))).toEqual([]);
 });
+
+test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (arrastrando de verdad)', async ({ page }) => {
+  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['squirtle', 'onix', 'shellder']) addUnitToBench(me, makeInst(k)); renderUI(); });
+  await page.waitForTimeout(4000);
+  const pico = async () => page.evaluate(async () => { const a = B3.debugInfo().sprites; let mx = a; const t0 = performance.now(); while (performance.now() - t0 < 1000) { await new Promise(r => requestAnimationFrame(r)); mx = Math.max(mx, B3.debugInfo().sprites); } return mx - a; });
+  const r = [];
+  for (let i = 0; i < 3; i++) { const p = pico(); await drag(page, await benchPoint(page, i), await cellPoint(page, i * 2 + 1, 5)); r.push(await p); await page.waitForTimeout(1800); }
+  expect(await page.evaluate(() => [Object.keys(G.me.board).length, traitTiers(G.me)['Guardián'] || 0])).toEqual([3, 1]);
+  expect(r[0]).toBe(0);               // con 1 Guardián no hay sinergia
+  expect(r[1]).toBeGreaterThanOrEqual(2); // al poner el 2.º se activa y los dos sueltan su escudo
+  expect(r[2]).toBeGreaterThanOrEqual(3); // y con el 3.º, los tres
+});
