@@ -1039,11 +1039,13 @@ const ray=new THREE.Raycaster(), plane=new THREE.Plane(new THREE.Vector3(0,1,0),
 function unproject(sx,sy){ ray.setFromCamera(new THREE.Vector2(sx/M.W*2-1,1-sy/M.H*2),camera); const p=new THREE.Vector3(); if(!ray.ray.intersectPlane(plane,p)) return [-1e4,-1e4]; return [p.x*M.R+M.cx,p.z*M.R+M.cz]; }
 let lastT=0;
 // Pokémon en el tablero / máximo escrito en el suelo, en perspectiva como las casillas (un plano con textura sobre el tablero rival)
+// El contador va en su propia escena que se dibuja ANTES que el tablero y sin comprobar la profundidad: queda siempre debajo de los Pokémon y nunca tapa nada
+const cntScene=new THREE.Scene();
 let cntMesh=null, cntCv=null, cntTex=null, cntKey='';
 function stepCount(c,now){
  if(!c){ if(cntMesh) cntMesh.visible=false; return; }
  if(!cntMesh){ cntCv=document.createElement('canvas'); cntCv.width=1024; cntCv.height=384; cntTex=new THREE.CanvasTexture(cntCv); cntTex.colorSpace=THREE.SRGBColorSpace; cntTex.anisotropy=8;
-   cntMesh=new THREE.Mesh(new THREE.PlaneGeometry(11,4.125),new THREE.MeshBasicMaterial({map:cntTex,transparent:true,depthWrite:false})); cntMesh.rotation.x=-Math.PI/2; cntMesh.renderOrder=3; scene.add(cntMesh); }
+   cntMesh=new THREE.Mesh(new THREE.PlaneGeometry(11,4.125),new THREE.MeshBasicMaterial({map:cntTex,transparent:true,depthWrite:false,depthTest:false})); cntMesh.rotation.x=-Math.PI/2; cntScene.add(cntMesh); }
  const key=c.txt+(c.full?'f':'');
  if(key!==cntKey){ cntKey=key; const g=cntCv.getContext('2d'), W=1024, H=384; g.clearRect(0,0,W,H); g.textAlign='center'; g.textBaseline='alphabetic'; g.lineJoin='round';
    // Poké Ball y número forman un solo grupo centrado en el lienzo: la bola pegada al número (hueco fijo) y ambos con el mismo centro vertical (el de los dígitos, no el de la línea de texto)
@@ -1087,7 +1089,7 @@ function render(F){
  stepParticles(PA,dt); stepParticles(PN,dt); stepParticles(PB,dt);
  const pt2=performance.now(); // temblor de cámara en los impactos fuertes
  // Sin temblor de pantalla: ni cámara ni imagen ni piezas se mueven nunca, tampoco en los golpes fuertes
- renderer.render(scene,camera);
+ if(cntMesh&&cntMesh.visible){ renderer.autoClear=false; renderer.clear(); renderer.render(cntScene,camera); renderer.render(scene,camera); renderer.autoClear=true; } else renderer.render(scene,camera);
  const pt3=performance.now(); const prg0=PT.progs; PT.progs=renderer.info.programs?renderer.info.programs.length:0; PT.a+=pt1-pt0; PT.f+=pt2-pt1; PT.g+=pt3-pt2; PT.n++;
  // Telemetría: fotogramas lentos (más de 40 ms) con su desglose y los efectos que nacieron en ellos
  if(pt3-pt0>40){ SLOW.push({ms:+(pt3-pt0).toFixed(1),actores:+(pt1-pt0).toFixed(1),efectos:+(pt2-pt1).toFixed(1),gpu:+(pt3-pt2).toFixed(1),nuevos:born.slice(0,12),progs:renderer.info.programs?renderer.info.programs.length:0,progsAntes:prg0}); if(SLOW.length>20) SLOW.shift(); }

@@ -1106,7 +1106,7 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 .sbBtn .sbCost .coin.hp{background:none;border:0;border-radius:0;width:auto;height:auto;font-style:normal;font-size:14px;line-height:1}
 .sbBtn .sbCost .coin.hp::before{content:"\2665";color:#ff6b6b;text-shadow:0 1px 0 #000}
 .sbBtn .sbCost em{font-style:normal;font-family:var(--display);font-size:18px;line-height:1;color:#fff;text-shadow:0 1px 0 #000}
-.sbBtn .sbIco{width:42px;height:42px;flex:none;justify-self:end;filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
+.sbBtn .sbIco{width:auto;height:44px;max-width:52px;object-fit:contain;flex:none;justify-self:end;filter:drop-shadow(0 2px 2px rgba(0,0,0,.55));pointer-events:none}
 .sbBtn.rr{background:linear-gradient(180deg,#6b5220,#3f2f10);box-shadow:inset 0 0 0 2px #1a1206,inset 0 0 0 4px #e0b24a,0 3px 0 #1a1206}
 .sbBtn.xp{background:linear-gradient(180deg,#14305f,#0b1a38);box-shadow:inset 0 0 0 2px #060d1f,inset 0 0 0 4px #3f8fff,0 3px 0 #060d1f}
 .sbBtn.rr:hover{box-shadow:inset 0 0 0 2px #1a1206,inset 0 0 0 4px #ffd978,0 0 14px rgba(255,200,80,.35),0 3px 0 #1a1206}
@@ -1114,7 +1114,7 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 .sbtns .btn.sbBtn span{opacity:1;font-size:inherit}
 .sbBtn:active{transform:translateY(2px)}
 .sbBtn:disabled{filter:grayscale(.85) brightness(.65)}
-@media (max-width:640px){.sbtns .btn.sbBtn{grid-template-columns:1fr;justify-items:center;padding:3px}.sbBtn .sbTxt b{display:none}.sbBtn .sbIco{width:26px;height:26px;justify-self:center}.sbBtn .sbCost em{font-size:13px}}
+@media (max-width:640px){.sbtns .btn.sbBtn{grid-template-columns:1fr;justify-items:center;padding:3px}.sbBtn .sbTxt b{display:none}.sbBtn .sbIco{width:auto;height:26px;justify-self:center}.sbBtn .sbCost em{font-size:13px}}
 /* Aviso de subida de estrellas (recuadro que sale del círculo de la minileyenda) */
 #upLayer{position:fixed;inset:0;pointer-events:none;z-index:7}
 #upLayer[hidden]{display:none}
@@ -1186,14 +1186,9 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
     <div class="sellMsg" id="sellMsg">Suelta para vender</div>
     <div class="sbtns">
       <button class="btn sbBtn xp" id="xpBtn" title="Comprar 4 de EXP (tecla F)"><span class="sbTxt"><b>Comprar XP</b><span class="sbCost"><i class="coin" id="xpCoin"></i><em id="xpCostTxt">4</em></span></span>
-        <svg class="sbIco" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="gXp" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="60"><stop offset="0" stop-color="#bfe3ff"/><stop offset=".45" stop-color="#3f9bff"/><stop offset="1" stop-color="#1457c9"/></linearGradient></defs>
-          <g stroke="#0a2a66" stroke-width="3.2" stroke-linejoin="round" fill="url(#gXp)"><path d="M32 4 L60 30 L60 44 L32 18 L4 44 L4 30 Z"/><path d="M32 36 L50 52 L50 62 L32 46 L14 62 L14 52 Z"/></g>
-          <path d="M32 8 L55 29" stroke="#e6f4ff" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".7"/></svg></button>
+        <img class="sbIco" src="img/ui/xp.png" alt="" width="47" height="42" draggable="false"></button>
       <button class="btn sbBtn rr" id="rerollBtn" title="Rerrolear la tienda (tecla D)"><span class="sbTxt"><b>Rerrolear</b><span class="sbCost"><i class="coin" id="rrCoin"></i><em id="rrCostTxt">2</em></span></span>
-        <svg class="sbIco" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="gRr" gradientUnits="userSpaceOnUse" x1="0" y1="8" x2="0" y2="58"><stop offset="0" stop-color="#fff0b8"/><stop offset=".5" stop-color="#f0bd4a"/><stop offset="1" stop-color="#b8821f"/></linearGradient>
-          <g id="rrArrow"><path d="M46.55 19.79A19 19 0 0 0 13.65 36.92" fill="none" stroke-linecap="round"/><path d="M17.5 45 L21.6 36 L9.5 39.3Z" stroke-linejoin="round"/></g></defs>
-          <g stroke="#4a3208" fill="#4a3208" stroke-width="13"><use href="#rrArrow"/><use href="#rrArrow" transform="rotate(180 32 32)"/></g>
-          <g stroke="url(#gRr)" fill="url(#gRr)" stroke-width="9"><use href="#rrArrow"/><use href="#rrArrow" transform="rotate(180 32 32)"/></g></svg></button>
+        <img class="sbIco" src="img/ui/roll.png" alt="" width="47" height="42" draggable="false"></button>
     </div>
     <div class="cardsWrap"><button class="btn icon lockCorner" id="lockBtn" title="Bloquear tienda para la siguiente ronda">🔓</button><div class="cards" id="cards"></div></div>
   </div>
