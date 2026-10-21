@@ -184,7 +184,7 @@ const _rv=new THREE.Vector3(), _rd=new THREE.Vector3();
 function flatWorld(pt,y=0){ if(!flatH) return null; const cvs=renderer.domElement, [sx,sy]=hApply(flatH,pt); _rv.set(sx/cvs.clientWidth*2-1,1-sy/cvs.clientHeight*2,.5).unproject(camera);
  _rd.copy(_rv).sub(camera.position).normalize(); const t=(y-camera.position.y)/_rd.y; return new THREE.Vector3().copy(camera.position).addScaledVector(_rd,t); }
 function buildFlat(cvs){
- const L=FLAT_IMG.dir, D=ANIM_BASE?ANIM_BASE+L:L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
+ const L=FLAT_IMG.dir, D=L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
  const st=document.createElement('style'); st.textContent='@keyframes ptFire{to{background-position:var(--fw) 0}}'; el.appendChild(st);
  // en pantallas pequeñas (menos de 1400 px reales de ancho de lienzo) basta el fondo a 1×: un tercio del peso y de la memoria
  const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?'base1x.webp':'base.webp';
@@ -198,7 +198,7 @@ function buildFlat(cvs){
      const use=u=>{ d.style.background=`url(${u}) 0 0/${c.ancho*c.frames}px ${c.alto}px no-repeat`; }; im.onload=()=>use(im.src); im.onerror=()=>{ if(im.src.indexOf(L)!==0){ im.src=L+c.nombre+'.webp'; } }; im.src=D+c.nombre+'.webp'; el.appendChild(d); } }
  cvs.parentElement.insertBefore(el,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; return el; }
 function buildPlaza(cvs){
- const L=FLAT_IMG.dir, D=ANIM_BASE?ANIM_BASE+L:L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${PLAZA_IMG.w}px;height:${PLAZA_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
+ const L=FLAT_IMG.dir, D=L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${PLAZA_IMG.w}px;height:${PLAZA_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
  const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?'carrusel1x.webp':'carrusel.webp';
  const im=document.createElement('img'); im.src=D+bn; im.alt=''; im.style.cssText='position:absolute;inset:0;width:100%;height:100%'; im.onerror=()=>{ if(im.src.indexOf(L)!==0) im.src=L+bn; }; el.appendChild(im);
  cvs.parentElement.insertBefore(el,cvs); return el; }
@@ -250,7 +250,11 @@ const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43
 // sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
 let ANIM_BASE='';
 const animReady=fetch('/api/build').then(r=>r.ok?r.json():{}).catch(()=>({})).then(b=>{ if(b&&/^[0-9a-f]{7,40}$/.test(b.commit||'')&&/^[\w.-]+\/[\w.-]+$/.test(b.repo||'')) ANIM_BASE=`https://cdn.jsdelivr.net/gh/${b.repo}@${b.commit}/public/`; });
-const animFetch=p=>animReady.then(()=>ANIM_BASE?fetch(ANIM_BASE+p).then(r=>r.ok?r:Promise.reject(r)).catch(()=>fetch(p)):fetch(p));
+// Petición con respaldo "en carrera": se pide a la CDN y, si no ha respondido en `ms` (o falla), se pide también a nuestro servidor y gana la primera que conteste bien. jsDelivr tarda de 2 a 40 s en la primera petición de cada archivo de un commit nuevo, y antes solo se pasaba al servidor propio cuando la CDN fallaba, no cuando iba lenta
+function hedged(a,b,ms=1500){ return new Promise((res,rej)=>{ const c=[new AbortController(),new AbortController()], st=[false,false]; let done=false, fails=0, t;
+  const run=i=>{ if(st[i]) return; st[i]=true; fetch(i?b:a,{signal:c[i].signal}).then(r=>{ if(!r.ok) throw 0; if(done) return; done=true; clearTimeout(t); c[1-i].abort(); res(r); }).catch(()=>{ if(done) return; fails++; if(i===0) run(1); if(fails>=2){ done=true; clearTimeout(t); rej(new Error('sin respuesta')); } }); };
+  run(0); t=setTimeout(()=>run(1),ms); }); }
+const animFetch=p=>animReady.then(()=>ANIM_BASE?hedged(ANIM_BASE+p,p):fetch(p));
 const SM_CLIPS=['idle','run','attack','special','hit','faint','victory'];
 function wantModel(dex){
  let m=models[dex]; if(m) return m;
@@ -260,8 +264,11 @@ function wantModel(dex){
 }
 function pump(){
  while(loading<4&&queue.length){
-   const dex=queue.shift(), m=models[dex]; loading++; m.status='loading';
-   loader.load(m.retry?(m.local||MODEL_RAW(dex)):(m.url||MODEL_URL(dex)),gl=>{ loading--; try{ prepModel(m,gl,dex); m.status='ok'; warmModel(m); }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); },undefined,()=>{ loading--; if(!m.retry){ m.retry=1; m.status='queued'; queue.push(dex); pump(); return; } m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); });
+   const dex=queue.shift(), m=models[dex]; loading++; m.status='loading'; let fin=false;
+   const ok=gl=>{ if(fin) return; fin=true; loading--; try{ prepModel(m,gl,dex); m.status='ok'; warmModel(m); }catch(e){ m.status='fail'; } if(pWait[dex]) makePortrait(dex); pump(); };
+   const ko=()=>{ if(fin) return; fin=true; loading--; m.status='fail'; portraits[dex]=''; if(pWait[dex]){ for(const f of pWait[dex]) f(''); delete pWait[dex]; } pump(); };
+   // CDN y servidor propio en carrera (hedged): un modelo ya no espera decenas de segundos a una CDN fría
+   hedged(m.url||MODEL_URL(dex),m.local||MODEL_RAW(dex)).then(r=>r.arrayBuffer()).then(buf=>loader.parse(buf,'',ok,ko)).catch(ko);
  }
 }
 const RX={
@@ -1191,5 +1198,5 @@ function debugInfo(){ const c={mallas:0,piel:0,actores:0,efectos:0,escenario:0,s
  const act=new Set(); for(const a of actors.values()) a.root.traverse(m=>act.add(m));
  scene.traverseVisible(o=>{ if(o.isMesh||o.isSprite||o.isPoints){ c.mallas++; if(o.isSkinnedMesh) c.piel++; if(o.isSprite) c.sprites++; if(o.isPoints) c.puntos++; if(inFx.has(o)) c.efectos++; else if(act.has(o)) c.actores++; else c.escenario++; for(const m of [].concat(o.material)) c.materiales.add(m); } });
  c.materiales=c.materiales.size; c.programas=renderer.info.programs?renderer.info.programs.length:0; c.sombras=sun.castShadow; return c; }
-window.B3={init,prefetch,get flatInfo(){ return {t:flatEl?flatEl.style.transform:null,totem:totem?[+totem.position.x.toFixed(3),+totem.position.z.toFixed(3)]:null,crys:crystals.filter(c=>c.visible).map(c=>[+c.position.x.toFixed(3),+c.position.z.toFixed(3)])}; },debugInfo,debugView,fireball,get made(){ return madeN; },get evos(){ return evoN; },dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+window.B3={hedged,init,prefetch,get flatInfo(){ return {t:flatEl?flatEl.style.transform:null,totem:totem?[+totem.position.x.toFixed(3),+totem.position.z.toFixed(3)]:null,crys:crystals.filter(c=>c.visible).map(c=>[+c.position.x.toFixed(3),+c.position.z.toFixed(3)])}; },debugInfo,debugView,fireball,get made(){ return madeN; },get evos(){ return evoN; },dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));

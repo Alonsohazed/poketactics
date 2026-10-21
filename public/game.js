@@ -3496,17 +3496,12 @@ function resetSocket(){ if(NET.sock){ NET.sock.removeAllListeners(); NET.sock.di
 
 // Ahorro de transferencia de Render: los retratos (art/) y las insignias (img/rank) se piden a jsDelivr fijados al commit
 // desplegado, como los modelos animados. Solo se cambia si jsDelivr responde; si una imagen falla, vuelve a nuestro servidor.
+// Las imágenes pequeñas (retratos, objetos, Pokédex, insignias, trofeo) se piden a nuestro servidor: jsDelivr tardaba hasta 30 s en servir por primera vez cada archivo de un commit nuevo y no había forma de saber cuáles estaban listos. Solo los modelos 3D van por CDN (con respaldo en carrera, ver hedged en board3d.js). Aquí queda la cadena de respaldo de imágenes y la precarga de los retratos
 function cdnAssets(){
- fetch('/api/build').then(r=>r.ok?r.json():{}).catch(()=>({})).then(b=>{
-  if(!b||!/^[0-9a-f]{7,40}$/.test(b.commit||'')||!/^[\w.-]+\/[\w.-]+$/.test(b.repo||'')) return;
-  const base=`https://cdn.jsdelivr.net/gh/${b.repo}@${b.commit}/public/`;
-  return fetch(base+'art/abra.webp',{method:'HEAD'}).then(r=>{ if(!r.ok) return;
-   window.ASSET_BASE=base; for(const k in CARD_ART) CARD_ART[k]=base+`art/${k}.webp`; });
- }).catch(()=>{}).then(()=>preloadArt(TAC_KEYS));
- addEventListener('error',e=>{ const el=e.target, b=window.ASSET_BASE; if(!el||el.tagName!=='IMG') return;
-   if(b&&el.src.startsWith(b)){ el.dataset.hop=1; el.src=el.src.slice(b.length); }
-   else if(el.dataset&&el.dataset.sp&&!el.dataset.fb3){ el.dataset.fb3=1; el.src=SPRITE(el.dataset.sp); }
+ addEventListener('error',e=>{ const el=e.target; if(!el||el.tagName!=='IMG') return;
+   if(el.dataset&&el.dataset.sp&&!el.dataset.fb3){ el.dataset.fb3=1; el.src=SPRITE(el.dataset.sp); }
    else if(el.dataset&&el.dataset.dex&&!el.dataset.fb2){ el.dataset.fb2=1; el.src='dex/'+String(el.dataset.dex).split('/').pop()+'.png'; el.classList.add('artFb'); } },true);
+ preloadArt(TAC_KEYS);
 }
 async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');

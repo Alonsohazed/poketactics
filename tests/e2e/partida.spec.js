@@ -386,3 +386,16 @@ test('objetos: marco dorado en la banca, aura del color de cada objeto con sprit
   expect(r.n).toBe(7); expect(r.fx).toEqual([true, true, true, true, true, true, true]); expect(r.bw).toBe('4px'); expect(r.grad).toBe(true); expect(r.anim).toBe('fxPulse'); expect(r.after).toBe('none'); expect(r.fullAfter).toBe('none'); // sin destello en los completos
   expect(r.names).toEqual(['Paracontacto', 'Guante de Boxeo', 'protective-pads', 'punching-glove']);
 });
+
+test('carga: la CDN lenta o caída no retrasa los modelos (petición en carrera con nuestro servidor) y las imágenes salen de nuestro servidor', async ({ page }) => {
+  // A tarda 6 s y B responde ya: gana B en ~1,5 s (el margen de la carrera)
+  const H = { 'access-control-allow-origin': '*' }; // dominio falso: así el vigilante de peticiones fallidas (solo mira al propio servidor) no se queja
+  await page.route('http://cdn-falsa.test/lenta', r => setTimeout(() => r.fulfill({ status: 200, headers: H, body: 'lenta' }).catch(() => {}), 6000)); await page.route('http://cdn-falsa.test/rapida', r => r.fulfill({ status: 200, headers: H, body: 'rapida' })); await page.route('http://cdn-falsa.test/caida', r => r.fulfill({ status: 404, headers: H, body: '' }));
+  const r = await page.evaluate(async () => { const U = 'http://cdn-falsa.test/', t0 = performance.now(), res = {};
+    let x = await B3.hedged(U + 'lenta', U + 'rapida'); res.lenta = [await x.text(), Math.round(performance.now() - t0)];
+    const t1 = performance.now(); x = await B3.hedged(U + 'caida', U + 'rapida'); res.caida = [await x.text(), Math.round(performance.now() - t1)];
+    const t2 = performance.now(); try { await B3.hedged(U + 'caida', U + 'caida'); res.ambas = 'resolvió'; } catch (e) { res.ambas = 'rechazó'; } res.ambasMs = Math.round(performance.now() - t2); return res; });
+  expect(r.lenta[0]).toBe('rapida'); expect(r.lenta[1]).toBeGreaterThan(1300); expect(r.lenta[1]).toBeLessThan(3000);
+  expect(r.caida[0]).toBe('rapida'); expect(r.caida[1]).toBeLessThan(800); expect(r.ambas).toBe('rechazó');
+  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.webp', 'items/water.webp', 'dex/4.png']);
+});
