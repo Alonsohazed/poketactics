@@ -44,6 +44,7 @@ function augFire(p,evt,d){
 }
 const augOwned=(p,id)=>p.augments.includes(id);
 const ownedSpecies=p=>new Set(allUnits(p).map(u=>u.baseId));
+const boardSpecies=p=>new Set(boardUnits(p).map(u=>u.baseId)); // solo las fichas colocadas (Coleccionista)
 const elemTraitsOf=p=>{ const c=traitCounts(p); return ELEM_TRAITS.filter(t=>c[t]).sort((a,b)=>c[b]-c[a]); };
 const boardKeyOf=(p,uid)=>{ for(const k in p.board) if(p.board[k].uid===uid) return k; return null; };
 function unitOptions(p,filter,n=3){ // Pokémon (claves) para elegir: distintos, del pool y de costes del filtro
@@ -285,8 +286,8 @@ AG({id:'cadena_evo',tier:'G',cat:'evo',tags:['evo'],name:'Herencia Elemental',ic
  snap:c=>c.st.n?{ad:c.st.ad||0,mana:c.st.mana||0,hp:c.st.hp||0,as:c.st.as||0,ap:c.st.ap||0,df:c.st.df||0}:null,ui:c=>{ const s=c.st, t=[['ad',2,'% de daño'],['mana',3,' de maná'],['hp',2,'% de vida'],['as',2,'% de vel. de ataque'],['ap',3,' de poder'],['df',2,' de defensa y resistencia']].filter(([k])=>s[k]).map(([k,m,x])=>`+${m*s[k]}${x}`); return `Tu equipo: ${t.length?t.join(', '):'aún nada'} (${s.n||0}/15)`; }});
 AG({id:'entreno_diario',tier:'S',cat:'hybrid',tags:['win'],name:'Entrenamiento Diario',icon:'🏋️',desc:'Cada victoria da a tu equipo +1% de vida, +1% de ataque y +1 de poder permanentes (máx. 15).',
  on:{win:c=>{ c.st.n=Math.min(15,(c.st.n||0)+1); }},combat:(us,n)=>{ for(const u of us) boost(u,{hp:.01*n,ad:.01*n,ap:n}); },snap:c=>c.st.n||null,ui:c=>`Tu equipo: +${c.st.n||0}% de vida y de ataque y +${c.st.n||0} de poder (${c.st.n||0}/15)`});
-AG({id:'coleccionista',tier:'S',cat:'econ',tags:['reroll'],name:'Coleccionista',icon:'📒',desc:'Al empezar cada ronda: +1 de oro si tienes 6 especies distintas o más, +2 si tienes 9 o más.',
- on:{roundStart:c=>{ const n=ownedSpecies(c.p).size; const g=n>=9?2:n>=6?1:0; if(g) c.p.gold+=g; }},ui:c=>`Especies: ${ownedSpecies(c.p).size}`});
+AG({id:'coleccionista',tier:'S',cat:'econ',tags:['reroll'],name:'Coleccionista',icon:'📒',desc:'Al empezar cada ronda: +1 de oro si tienes 6 especies distintas o más en el tablero, +2 si tienes 9 o más. El banquillo no cuenta.',
+ on:{roundStart:c=>{ const n=boardSpecies(c.p).size; const g=n>=9?2:n>=6?1:0; if(g) c.p.gold+=g; }},ui:c=>`Especies en el tablero: ${boardSpecies(c.p).size}`});
 AG({id:'dominio',tier:'G',cat:'trait',tags:['trait'],name:'Dominio Elemental',icon:'🌀',desc:'La primera vez que un tipo llega a su 2.º nivel al empezar un combate, eliges: su emblema, 8 de oro o un objeto completo (2 veces).',
  on:{combatStart:c=>{ const st=c.st; if((st.n||0)>=2) return; const tt=traitTiers(c.p); for(const t of ELEM_TRAITS) if((tt[t]||0)>=2&&c.once('t'+t)){ st.n=(st.n||0)+1; c.offer('Dominio Elemental',`${t} en su 2.º nivel`,[{t:'Emblema '+t,i:TRAITS[t].icon,d:'',v:'em:'+t},{t:'8 de oro',i:'💰',d:'',v:'g:8'},{t:'Objeto completo',i:'⚒️',d:'',v:'f'}]); break; } }},ui:c=>`Usos: ${c.st.n||0}/2`});
 

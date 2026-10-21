@@ -352,8 +352,7 @@ function buildIce(g,cx,cz,rad,r,anim){
    for(let k=0;k<6;k++){ const pt=new THREE.Mesh(new THREE.SphereGeometry(.17,8,6),new THREE.MeshStandardMaterial({color:'#7fb4ff',emissive:'#2a5ab8',emissiveIntensity:.35,roughness:.6})); pt.scale.set(1,.35,1.4); const a2=k/6*TAU; pt.position.set(Math.cos(a2)*.2,0,Math.sin(a2)*.2); pt.rotation.y=-a2; fl.add(pt); }
    const ce=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),new THREE.MeshStandardMaterial({color:'#ffd94a',emissive:'#a07a00',emissiveIntensity:.5})); ce.position.y=.05; fl.add(ce); fl.position.set(fx,-.4,fz); fl.rotation.x=rnd(.2); g.add(fl); }
  anim.push(t=>{ for(let i=0;i<crys.length;i++) crys[i].material.emissiveIntensity=.45+.25*Math.sin(t*1.6+i*1.3);
-   if(Math.random()<.35) emit({p:new THREE.Vector3(cx+rnd(rad),5.5,cz+rnd(rad)),v:[rnd(.3),-.9,rnd(.3)],col:'#ffffff',size:.12,size1:.12,life:6,add:false,drag:0});
-   if(Math.random()<.4){ const an=Math.random()*TAU, d=Math.random()*rad*.9; emit({p:new THREE.Vector3(cx+Math.cos(an)*d,.15,cz+Math.sin(an)*d),v:[0,.35,0],col:Math.random()<.5?'#ffffff':'#c8b8ff',size:.18,size1:0,life:1.2}); } });
+   });
 }
 /* ---------- arena «glade»: claro de bosque sobre una meseta flotante (procedural, ≤15 llamadas de dibujo) ----------
    Todo lo estático (muro, pilares, hornacinas, proa, acantilado, pinos, arbustos, rocas) se junta por material en pocas mallas con color por
@@ -523,12 +522,12 @@ function buildArena(kind){
    Sin decorado 3D en la arena «glade»: detrás del lienzo (transparente) va una imagen o GIF del escenario, deformada en perspectiva
    (matrix3d) para que su campo coincida con el tablero. Las casillas, el banquillo, los Pokémon y los efectos siguen en 3D. */
 const FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')==='gif'; }catch(e){ return false; } })();
-// Dos capas a 2× (1904×1440): base fija y, encima, solo lo que se mueve (agua, fuego, árboles) con transparencia. Coordenadas en píxeles del original (952×720).
-// q: puntos de la imagen que se encajan con el tablero: las dos esquinas del fondo del campo y los dos extremos del banquillo (sus 9 losas = nuestras 9 casillas)
-// back: esquinas del fondo del campo; bench: extremos del banquillo (sus 9 losas, de 243 a 689, son nuestras 9 casillas); holes: huecos de la izquierda; totem: esquina superior izquierda del campo, entre el pilar y las hornacinas (fuera de la cabecera)
-const FLAT_IMG={base:'test-arena/base.webp',anim:'test-arena/anim.webp',w:952,h:720,back:[[287,181],[636,182]],bench:[243,689,390],
- holes:[[266,209],[260,229],[252,249],[246,269],[240,292]], totem:[282,224]};
-let flatEl=null, flatKey='', flatH=null;
+// Capas de public/test-arena (de arena_tft_capas_1080.zip, coordenadas en píxeles de 1428×1080): fondo a 2× sin el gris (base.webp),
+// vídeos en bucle del agua (opacos: se recortan con mask-image, la alfa del fondo en su rectángulo) y tiras de sprites del fuego (capas.json).
+// back: esquinas del fondo del campo; bench: extremos del banquillo (sus 9 losas = nuestras 9 casillas); holes: huecos de la izquierda; totem: esquina superior izquierda
+const FLAT_IMG={dir:'test-arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:[423,336]};
+let flatEl=null, flatKey='', flatH=null, flatCfg=null;
+if(FLAT) fetch(FLAT_IMG.dir+'capas.json').then(r=>r.json()).then(j=>{ flatCfg=j; }).catch(()=>{ flatCfg={capas:[]}; });
 // Homografía (s → d) por mínimos cuadrados con N≥4 puntos: [a,b,c,d,e,f,g,h] con u=(ax+by+c)/(gx+hy+1), v=(dx+ey+f)/(gx+hy+1)
 function homography(s,d){ const M=Array.from({length:8},()=>new Float64Array(9));
  for(let i=0;i<s.length;i++){ const [x,y]=s[i],[u,v]=d[i]; for(const [row,t] of [[[x,y,1,0,0,0,-u*x,-u*y],u],[[0,0,0,x,y,1,-v*x,-v*y],v]]) for(let a=0;a<8;a++){ for(let c=0;c<8;c++) M[a][c]+=row[a]*row[c]; M[a][8]+=row[a]*t; } }
@@ -540,12 +539,24 @@ const hApply=(h,[x,y])=>{ const w=h[6]*x+h[7]*y+1; return [(h[0]*x+h[1]*y+h[2])/
 const _rv=new THREE.Vector3(), _rd=new THREE.Vector3();
 function flatWorld(pt,y=0){ if(!flatH) return null; const cvs=renderer.domElement, [sx,sy]=hApply(flatH,pt); _rv.set(sx/cvs.clientWidth*2-1,1-sy/cvs.clientHeight*2,.5).unproject(camera);
  _rd.copy(_rv).sub(camera.position).normalize(); const t=(y-camera.position.y)/_rd.y; return new THREE.Vector3().copy(camera.position).addScaledVector(_rd,t); }
+function buildFlat(cvs){
+ const D=FLAT_IMG.dir, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
+ const st=document.createElement('style'); st.textContent='@keyframes ptFire{to{background-position:var(--fw) 0}}'; el.appendChild(st);
+ const base=document.createElement('img'); base.src=D+'base.webp'; base.alt=''; base.style.cssText='position:absolute;inset:0;width:100%;height:100%'; el.appendChild(base);
+ for(const c of flatCfg.capas){ const box=`position:absolute;left:${c.x}px;top:${c.y}px;width:${c.ancho}px;height:${c.alto}px`;
+   if(c.tipo==='video'){ const v=document.createElement('video'); v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true; v.setAttribute('playsinline',''); v.setAttribute('muted','');
+     const m=`url(${D}mask_${c.nombre}.png)`; v.style.cssText=box+`;object-fit:fill;mask-image:${m};-webkit-mask-image:${m};mask-size:100% 100%;-webkit-mask-size:100% 100%`;
+     for(const ext of ['webm','mp4']){ const so=document.createElement('source'); so.src=D+c.nombre+'.'+ext; so.type='video/'+ext; v.appendChild(so); }
+     el.appendChild(v); v.play().catch(()=>{}); }
+   else { const d=document.createElement('div'); d.style.cssText=box+`;background:url(${D}${c.nombre}.webp) 0 0/${c.ancho*c.frames}px ${c.alto}px no-repeat;--fw:-${c.ancho*c.frames}px;animation:ptFire ${(c.frames/c.fps).toFixed(3)}s steps(${c.frames}) infinite`; el.appendChild(d); } }
+ cvs.parentElement.insertBefore(el,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; return el; }
+let flatOn=null;
+function flatPlay(on){ if(on===flatOn||!flatEl) return; flatOn=on; for(const v of flatEl.querySelectorAll('video')){ if(on) v.play().catch(()=>{}); else v.pause(); } for(const d of flatEl.querySelectorAll('div[style*="ptFire"]')) d.style.animationPlayState=on?'running':'paused'; }
+if(FLAT) document.addEventListener('visibilitychange',()=>{ if(document.hidden) flatPlay(false); else if(flatEl&&!flatEl.hidden) flatPlay(true); });
 function stepFlat(){
- const on=FLAT&&curArena==='glade'&&board.G; if(!on){ if(flatEl) flatEl.hidden=true; flatH=null; return; }
- const cvs=renderer.domElement, G=board.G; if(!flatEl){ flatEl=document.createElement('div'); flatEl.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
-   for(const src of [FLAT_IMG.base,FLAT_IMG.anim]){ const im=document.createElement('img'); im.src=src; im.alt=''; im.style.cssText='position:absolute;inset:0;width:100%;height:100%'; flatEl.appendChild(im); }
-   cvs.parentElement.insertBefore(flatEl,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; }
- flatEl.hidden=false; flatEl.style.left=cvs.offsetLeft+'px'; flatEl.style.top=cvs.offsetTop+'px';
+ const on=FLAT&&curArena==='glade'&&board.G&&flatCfg; if(!on){ if(flatEl){ flatEl.hidden=true; flatPlay(false); } flatH=null; return; }
+ const cvs=renderer.domElement, G=board.G; if(!flatEl) flatEl=buildFlat(cvs);
+ flatEl.hidden=false; if(!document.hidden) flatPlay(true); flatEl.style.left=cvs.offsetLeft+'px'; flatEl.style.top=cvs.offsetTop+'px';
  const rc=boardRects(), W=cvs.clientWidth, H=cvs.clientHeight, [bx0,bx1,by]=FLAT_IMG.bench, bw=(bx1-bx0)/9;
  const scr=v=>{ v3.copy(v).project(camera); return [(v3.x+1)/2*W,(1-v3.y)/2*H]; };
  // se encajan las dos esquinas del fondo y el centro de las 9 losas del banquillo (mínimos cuadrados): las fichas de la banca caen justo en su losa
@@ -575,7 +586,7 @@ function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[d
 // Cada uno tiene public/anims/<n.º>.json (fotograma de impacto y, opcional, "glb": true para usar anims/<n.º>.glb con los clips ya
 // renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
 // Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
-const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,230,249,250,570,571]);
+const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,230,250,570,571]);
 // En producción los modelos animados salen de jsDelivr fijados al commit desplegado (mismos archivos, caché de un año y
 // sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
 let ANIM_BASE='';
@@ -872,7 +883,7 @@ class Actor{
    const ev=this.evoFx?this.evoT:9, evL=this.evoBig?1.6:1, evoGlow=ev<evL?Math.sin(ev/evL*Math.PI):0;
    this.body.scale.setScalar(sc*1.35*(1+(ev<.8*evL?(this.evoBig?.35:.22)*Math.sin(ev/(.8*evL)*Math.PI):0))); this.h=1.35*sc;
    if(this.evoBig&&ev<evL) this.face+=dt*14*Math.sin(ev/evL*Math.PI);
-   const full=!spec.dead&&spec.charge>=.85; this.ring.material.color.set(full?spec.glowCol:ccol(spec.ring||'#ffffff')); this.ring.visible=!spec.hideRing; this.ring.scale.setScalar(spec.sel?1.25+.06*Math.sin(t*8):full?1.08+.07*Math.sin(t*9):1);
+   const full=!spec.dead&&spec.charge>=.85; this.ring.material.color.set(full?spec.glowCol:ccol(spec.ring||'#ffffff')); this.ring.visible=!spec.hideRing&&!!(spec.drag||spec.sel); // el aro solo al agarrar o seleccionar una ficha this.ring.scale.setScalar(spec.sel?1.25+.06*Math.sin(t*8):full?1.08+.07*Math.sin(t*9):1);
    // ataque y habilidad (contadores que suben en la simulación)
    if(this.sm){ this.lastAtk=spec.atk||0; this.lastCast=spec.cast||0; } else if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
    if((spec.cast||0)>this.lastCast){ this.lastCast=spec.cast; this.castT=0; this.play('cast',false); }
@@ -1225,12 +1236,18 @@ function stepProps(F,now){
  if(!totem) buildProps();
  const T=F.totem; totem.visible=!!T; if(T){ const p=flatH?flatWorld(FLAT_IMG.totem,0):W3(T.x,T.y,0); totem.position.set(p.x,flatH?0:TOP-.05,p.z); } // la ball se queda quieta
  const I=F.interest, flat=!!flatH, inNiche=flat||(curArena==='glade'&&gladeNiches.length===10);
- crystals.forEach((c,j)=>{ c.visible=!!I&&(flat?j<5:inNiche||j<5); if(!c.visible) return;
+ // Solo se ven los cristales ganados: cada uno brota de su hueco (sube, crece y se enciende en 0,7 s) al alcanzar ese interés y se hunde si se pierde
+ crystals.forEach((c,j)=>{ const slot=!!I&&(flat?j<5:inNiche||j<5); const U=c.userData; if(U.v==null){ U.v=0; U.want=false; }
    // en las hornacinas, los dos lados muestran lo mismo y se encienden desde el banquillo hacia el fondo
-   const i=flat?4-j%5:inNiche?gladeNiches[j][2]:j, bob=i<I.n?Math.sin(now*2.5+i)*.05:0;
-   if(flat){ const w=flatWorld(FLAT_IMG.holes[j],0); c.position.set(w.x,.52+bob,w.z); } // la punta de abajo (0,5 por debajo del centro) queda en el hueco pintado
-   else if(inNiche) c.position.set(gladeNiches[j][0],1.2+bob,gladeNiches[j][1]); else { const p=W3(I.x,I.y+i*I.dy,0); c.position.set(p.x,TOP+.25+bob,p.z); }
-   const on=i<I.n, m=c.userData.m; m.material.color.set(on?'#9fe8ff':'#3a4a66'); m.material.emissive.set(on?'#2aa8ff':'#000000'); m.material.emissiveIntensity=on?1:.0; m.material.opacity=on?.95:.55; m.rotation.y=now*(on?1.4:.3); c.userData.h.visible=on; });
+   const i=flat?4-j%5:inNiche?gladeNiches[j][2]:j, want=slot&&i<I.n;
+   if(want!==U.want){ U.want=want; U.t0=now; U.from=U.v; }
+   const k=Math.min(1,(now-(U.t0||0))/(want?.7:.35)); U.v=U.from==null?(want?1:0):U.from+((want?1:0)-U.from)*k;
+   c.visible=U.v>0; if(!c.visible) return;
+   const e=want?1-Math.pow(1-U.v,3):U.v*U.v, bob=Math.sin(now*2.5+i)*.05*e, rise=(1-e)*.5; // ease-out al salir, ease-in al hundirse
+   if(flat){ const w=flatWorld(FLAT_IMG.holes[j],0); c.position.set(w.x,.52+bob-rise,w.z); } // la punta de abajo (0,5 por debajo del centro) queda en el hueco pintado
+   else if(inNiche) c.position.set(gladeNiches[j][0],1.2+bob-rise,gladeNiches[j][1]); else { const p=W3(I.x,I.y+i*I.dy,0); c.position.set(p.x,TOP+.25+bob-rise,p.z); }
+   const m=c.userData.m, flash=want&&U.v<1?1+Math.sin(U.v*Math.PI)*.9:1; c.scale.setScalar(.2+.8*e);
+   m.material.color.set('#9fe8ff'); m.material.emissive.set('#2aa8ff'); m.material.emissiveIntensity=1*flash; m.material.opacity=.95*e; m.rotation.y=now*1.4+(1-e)*4; c.userData.h.visible=true; c.userData.h.scale.setScalar(1.3*(.6+.4*e)*flash); });
 }
 const totemTop=()=>totem&&totem.visible?projectV(totem.position.clone().setY(TOP+2.2)):null;
 
