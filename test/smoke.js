@@ -81,7 +81,7 @@ ready.then(() => server.listen(0, async () => {
     }
   }
 
-  // ---- desconexión: el asiento se guarda, pero NADIE juega por el ausente (ni bot ni automatismos) ----
+  // ---- desconexión: el asiento se guarda y el ausente es como un jugador presente que no toca nada (cobra su economía, su tablero pelea), sin que lo juegue un bot ----
   {
     const vm = require('vm');
     let T = Date.now(); // reloj simulado: el motor espera tiempo real para resolver combates y fases con plazo
@@ -94,16 +94,17 @@ ready.then(() => server.listen(0, async () => {
     E.serverTick(.05);
     E.serverLeave('b');
     assert.strictEqual(dos.isBot, false, 'el ausente NO se convierte en bot'); assert.strictEqual(dos.away, true); assert.strictEqual(dos.remote, false);
-    const bench0 = dos.bench.map(u => u && u.uid).join(), board0 = Object.keys(dos.board).join(), gold0 = dos.gold;
+    dos.gold = 45; // con oro, para comprobar también el interés
+    const unidades = () => Object.keys(dos.board).length + dos.bench.filter(Boolean).length, unidades0 = unidades(), gold0 = dos.gold, vida0 = dos.hp;
     const r0 = G.roundIdx; let ticks = 0;
     for (; ticks < 6000 && G.roundIdx < r0 + 4 && !G.over; ticks++) { if (G.phase === 'planning') uno.ready = true; T += 50; E.serverTick(.05); if (G.resolving || G.phase === 'results') await sleep(25); } // resolveRound usa temporizadores reales
     assert(G.roundIdx >= r0 + 4, 'la partida avanza sin esperar al ausente (rondas: ' + (G.roundIdx - r0) + ')');
     assert.strictEqual(dos.isBot, false, 'sigue sin ser bot tras varias rondas');
-    assert.strictEqual(dos.bench.map(u => u && u.uid).join(), bench0, 'no se compra, vende ni mueve nada de su banquillo');
-    assert.strictEqual(Object.keys(dos.board).join(), board0, 'no se coloca nada en su tablero');
-    assert(dos.gold >= gold0, 'solo gana oro (' + gold0 + ' → ' + dos.gold + ')');
-    assert(!dos.augPicked || !dos.augments.length, 'no se le elige ningún aumento');
-    // vuelve con otra conexión
+    assert(unidades() >= unidades0, 'no vende nada; lo único que gana es el botín de las rondas salvajes que se abre solo (' + unidades0 + ' → ' + unidades() + ')');
+    assert(Object.keys(dos.board).length > 0, 'su tablero sigue peleando: se le coloca lo que tenga, como a cualquier jugador que no actúa');
+    assert(dos.gold >= gold0 + 20, 'la economía sigue: oro base + interés + racha (' + gold0 + ' → ' + dos.gold + ')');
+    assert(dos.hp < vida0 || dos.streak > 0, 'su tablero ha peleado las rondas (vida ' + vida0 + ' → ' + dos.hp + ')');
+        // vuelve con otra conexión
     assert.strictEqual(E.serverRejoin('x-no-existe', 'z'), false, 'un id desconocido no recupera ningún asiento');
     assert.strictEqual(E.serverRejoin('b', 'b2'), true, 'recupera su asiento'); assert.strictEqual(dos.away, false); assert.strictEqual(dos.remote, true); assert.strictEqual(dos.peer, 'b2'); assert.strictEqual(dos.isBot, false);
     assert.strictEqual(E.serverRejoin('b', 'b3'), false, 'el asiento ya no está libre');

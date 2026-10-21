@@ -1272,14 +1272,15 @@ function nextRound(){
  }
  startPlanning();
 }
-function checkAugDone(){ if(G.phase==='augment'&&alivePlayers().every(p=>p.isBot||p.away||p.augPicked)){ if(NET.modal==='aug') closeModal(); startPlanning(); } }
+function checkAugDone(){ if(G.phase==='augment'){ for(const p of alivePlayers()) if(p.away&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } } // el ausente no hace esperar a los demás: se le aplica al azar lo que se aplicaría al acabar el plazo
+ if(G.phase==='augment'&&alivePlayers().every(p=>p.isBot||p.augPicked)){ if(NET.modal==='aug') closeModal(); startPlanning(); } }
 function botAugPick(p,choices,stage){
  if(!botSkill(p).smart||!choices.length) return pick(choices);
  const top=topTrait(p), score=id=>{ const a=AUG_BY[id]; let s=Math.random()*.5; if(stage===0&&['econ','fast','slow','streak'].includes(a.cat)) s+=2; if(top&&(a.tags||[]).includes(top)) s+=3;
    if(stage>0&&['trait','emblem','carry'].includes(a.cat)) s+=1.5; if(a.hero&&allUnits(p).some(u=>u.baseId===a.hero)) s+=2.5; if(a.req&&!a.req(p)) s-=9; return s; };
  return choices.slice().sort((x,y)=>score(y)-score(x))[0];
 }
-function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.away&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
+function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
 function startPlanning(){
  const R=G.round; G.phase='planning'; G.timer=S.timer||Infinity; if(G.mp&&!isFinite(G.timer)) G.timer=60;
  G.preview=R.type==='pve'?pveWave(R.s,R.n):null;
@@ -1302,7 +1303,7 @@ function startCombat(){
  if(G.phase!=='planning') return;
  const R=G.round, me=G.me;
  for(const p of alivePlayers()) for(const o of p.orbs.slice()) openPlayerOrb(p,o.id,true);
- for(const p of alivePlayers()) if(isHuman(p)&&!p.away){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
+ for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
  G.phase='combat'; G.acc=0; G.resolving=false;
  const alive=alivePlayers(); G.fights=[];
  if(R.type==='pve') for(const p of alive) G.fights.push({a:p,b:null,pve:true});
@@ -2234,7 +2235,6 @@ function updateCarousel(dt){
    if(a.x===null){ a.x=cx+Math.cos(a.ang)*rr*1.12; a.y=cy+Math.sin(a.ang)*rr*1.12; }
    if(a.done){ toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
-   if(p.away){ a.rel=true; a.done=true; return; } // desconectado: no se lleva nada y nadie elige por él
    if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Fuera el campo de fuerza! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
    if(a.target!=null&&C.opts[a.target].taken) a.target=null;
@@ -3469,7 +3469,8 @@ function serverTick(dt){
  hostNetTick();
 }
 function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
-// Un jugador desconectado queda «ausente» (p.away): conserva su asiento y su tablero tal como estaban, pero NADIE juega por él (ni bot ni automatismos) y la partida no se espera a que esté listo
+// Un jugador desconectado queda «ausente» (p.away): conserva su asiento y se comporta como un jugador presente que no toca nada (cobra su economía, su tablero pelea,
+// se aplican los mismos automatismos que a cualquiera que no actúa), pero NO lo juega ningún bot y la partida no se espera a que esté listo
 function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.away=true; p.tp=null; note(null,`🔌 ${p.name} se desconectó (su asiento queda reservado)`); } }
 // Reconexión: el asiento de un jugador que se fue (un bot juega por él) vuelve a ser suyo con otro id de conexión
 function serverRejoin(oldPeer,newPeer){

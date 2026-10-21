@@ -116,19 +116,20 @@ function startGame(room, opts) {
   room.timer = setInterval(() => {
     const now = Date.now();
     const dt = Math.min(0.25, (now - last) / 1000); last = now;
-    // Sin ningún humano vivo conectado la partida se PAUSA (nadie juega por los ausentes): espera a que vuelvan hasta REJOIN_MS y, si no, quedan eliminados
-    const activos = room.seats.filter(s => !s.recorded), pausada = activos.length > 0 && !activos.some(s => s.connected);
-    if (!pausada) {
-      try { room.game.serverTick(dt); }
-      catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
-    }
+    // La partida NUNCA se pausa: el ausente sigue cobrando su economía y su tablero pelea (sin que nadie lo juegue). Si no queda ninguna persona conectada, la sala
+    // espera REJOIN_MS por si vuelven; pasado el plazo los ausentes quedan eliminados (último puesto entre los vivos) y se apunta su resultado
+    try { room.game.serverTick(dt); }
+    catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
     const info = room.game.serverInfo();
     recordPlaces(room, info);
     if (info.over) { if (!room.endAt) room.endAt = now + 30000; else if (now > room.endAt) closeRoom(room, 'fin'); }
-    else if (pausada) {
-      room.emptySince = room.emptySince || now;
-      if (now - room.emptySince > REJOIN_MS) { try { room.game.serverForfeit(); recordPlaces(room, room.game.serverInfo()); } catch (e) { console.error(e); } closeRoom(room, 'abandono'); }
-    } else { room.emptySince = 0; if (!room.seats.some(s => s.connected)) closeRoom(room, 'vacía'); } // todos eliminados y fuera
+    else if (!room.seats.some(s => s.connected)) {
+      if (!room.seats.some(s => !s.recorded)) closeRoom(room, 'vacía'); // todos eliminados y fuera
+      else {
+        room.emptySince = room.emptySince || now;
+        if (now - room.emptySince > REJOIN_MS) { try { room.game.serverForfeit(); recordPlaces(room, room.game.serverInfo()); } catch (e) { console.error(e); } closeRoom(room, 'abandono'); }
+      }
+    } else room.emptySince = 0;
   }, TICK_MS);
   broadcastRooms();
 }

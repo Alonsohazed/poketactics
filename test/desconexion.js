@@ -1,5 +1,5 @@
 'use strict';
-// Desconexión y reconexión con el servidor real: la partida se pausa mientras no hay ningún humano conectado, el asiento se recupera con «rejoin»
+// Desconexión y reconexión con el servidor real: la partida NO se pausa (el ausente sigue cobrando y su tablero pelea), el asiento se recupera con «rejoin»
 // y, si no se vuelve a tiempo, el ausente queda eliminado en el último puesto y su resultado se apunta (desconectarse no evita perder puntos).
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'poke-tactics-desc-'));
@@ -20,13 +20,16 @@ ready.then(() => server.listen(0, async () => {
   for (let i = 0; i < 400 && S.st.ri < 1; i++) { if (S.st.ph === 'planning') S.emit('act', { t: 'ready' }); await sleep(100); }
   assert(S.st.ri >= 1, 'la partida avanza'); assert.strictEqual(rooms.size, 1);
 
-  // 1) Se va: la partida se PAUSA (nadie juega por él) y puede volver a su asiento
-  const antes = S.st.ri; S.disconnect(); await sleep(2500);
+  // 1) Se va: la partida sigue (no se pausa), nadie lo juega y puede volver a su asiento
+  const G = () => [...rooms.values()][0].game.G, yo = () => G().players.find(p => p.name.startsWith('Solo'));
+  const antes = S.st.ri, oro0 = yo().gold; S.disconnect(); await sleep(1500);
+  assert.strictEqual(yo().isBot, false, 'no se convierte en bot'); assert.strictEqual(yo().away, true, 'queda ausente');
+  assert(G().phase && !G().over, 'la partida sigue en marcha');
   S = conn(); await sleep(500);
   assert(S.st.resume && S.st.resume.round, 'el servidor avisa de la partida a medias: ' + JSON.stringify(S.st.resume));
   S.emit('rejoin'); await sleep(800);
   assert.strictEqual(S.st.fail, null, 'vuelve sin error'); assert.strictEqual(S.st.start, 1, 'recibe start');
-  assert(S.st.ri === antes || S.st.ri === antes + 1, `la partida estuvo pausada mientras no había nadie (ronda ${antes} → ${S.st.ri})`);
+  assert(S.st.ri >= antes, 'la partida no retrocede (ronda ' + antes + ' → ' + S.st.ri + ')'); assert.strictEqual(yo().away, false, 'vuelve a estar presente'); assert(yo().remote);
   assert.strictEqual(rooms.size, 1, 'la sala sigue viva');
 
   // 2) Se va y no vuelve: pasado el plazo queda eliminado en el último puesto y se apunta el resultado
