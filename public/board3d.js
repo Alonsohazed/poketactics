@@ -938,14 +938,20 @@ function makeOrb(o){
  return {g,core,band,halo,tier:o.tier,ph:Math.random()*TAU};
 }
 function updOrb(v,now){
- const t=now+v.ph; v.g.position.set(v.pos.x,TOP+.62+Math.sin(t*2.2)*.1,v.pos.z); v.core.rotation.y=t*.8; v.band.rotation.z=t*1.6; v.band.rotation.y=Math.sin(t)*.4;
+ const t=now+v.ph; let px=v.pos.x, pz=v.pos.z, py=TOP+.62+Math.sin(t*2.2)*.1;
+ // Vuelo del orbe que suelta un salvaje al caer: sale de su cuerpo, sube en arco y aterriza con un golpe de polvo y chispas
+ if(v.fl<1&&v.pos0){ const k=v.fl, e=1-(1-k)*(1-k), arc=Math.sin(Math.PI*k); px=v.pos0.x+(v.pos.x-v.pos0.x)*e; pz=v.pos0.z+(v.pos.z-v.pos0.z)*e; py=TOP+(.95+(.62-.95)*e)+arc*3.4;
+   if(!v.popped){ v.popped=true; const C=ORB_COL[v.tier]||ORB_COL.gray; burst(new THREE.Vector3(v.pos0.x,TOP+.9,v.pos0.z),C,v.tier==='gray'?10:18,2.4,{up:2.2,size:.22}); shock(new THREE.Vector3(v.pos0.x,TOP+.05,v.pos0.z),C[1],.2,1.1,.4); }
+   for(let i=0;i<2;i++) emit({p:new THREE.Vector3(px+rnd(.25),py+rnd(.25),pz+rnd(.25)),v:[rnd(.4),.2,rnd(.4)],col:(ORB_COL[v.tier]||ORB_COL.gray)[i?2:1],size:.22,size1:.02,life:.5}); }
+ else if(v.pos0&&!v.landed){ v.landed=true; const C=ORB_COL[v.tier]||ORB_COL.gray; burst(new THREE.Vector3(v.pos.x,TOP+.2,v.pos.z),C,v.tier==='gray'?14:26,2.6,{up:1.8,size:.24}); shock(new THREE.Vector3(v.pos.x,TOP+.06,v.pos.z),C[2],.25,1.5,.5); }
+ v.g.position.set(px,py,pz); v.core.rotation.y=t*.8; v.band.rotation.z=t*1.6; v.band.rotation.y=Math.sin(t)*.4;
  v.halo.scale.setScalar((v.tier==='prism'?2:v.tier==='gold'?1.7:1.3)*(1+.08*Math.sin(t*4)));
  if(v.tier==='prism'){ const h=(t*.15)%1; v.core.material.color.setHSL(h,.8,.75); v.core.material.emissive.setHSL((h+.1)%1,.9,.45); v.band.material.emissive.setHSL((h+.5)%1,.9,.55); v.halo.material.color.setHSL((h+.2)%1,.9,.75); }
  if(Math.random()<(v.tier==='gray'?.08:.2)) emit({p:v.g.position.clone().add(new THREE.Vector3(rnd(.35),rnd(.3),rnd(.35))),v:[0,.6,0],col:(ORB_COL[v.tier]||ORB_COL.gray)[2],size:.14,size1:.02,life:.7});
 }
 function stepOrbs(list,now){
  const seen=new Set();
- for(const o of list||[]){ let v=orbVis.get(o.id); if(!v){ v=makeOrb(o); orbVis.set(o.id,v); } v.pos=W3(o.x,o.y,0); updOrb(v,now); seen.add(o.id); }
+ for(const o of list||[]){ let v=orbVis.get(o.id); if(!v){ v=makeOrb(o); orbVis.set(o.id,v); } v.pos=W3(o.x,o.y,0); v.pos0=o.x0!=null&&o.f!=null&&o.f<1?W3(o.x0,o.y0,0):(v.pos0||null); v.fl=o.f!=null?o.f:1; if(!v.pos0&&!v.popped){ v.popped=true; v.landed=true; } updOrb(v,now); seen.add(o.id); }
  for(const [id,v] of orbVis) if(!seen.has(id)){
    const C=ORB_COL[v.tier]||ORB_COL.gray; burst(v.g.position.clone(),C,v.tier==='gray'?18:34,3.2,{up:2.6,size:.3}); 
    scene.remove(v.g); v.core.material.dispose(); v.band.material.dispose(); v.halo.material.dispose(); orbVis.delete(id); }
@@ -1039,13 +1045,14 @@ function stepCount(c,now){
  if(!cntMesh){ cntCv=document.createElement('canvas'); cntCv.width=1024; cntCv.height=384; cntTex=new THREE.CanvasTexture(cntCv); cntTex.colorSpace=THREE.SRGBColorSpace; cntTex.anisotropy=8;
    cntMesh=new THREE.Mesh(new THREE.PlaneGeometry(11,4.125),new THREE.MeshBasicMaterial({map:cntTex,transparent:true,depthWrite:false})); cntMesh.rotation.x=-Math.PI/2; cntMesh.renderOrder=3; scene.add(cntMesh); }
  const key=c.txt+(c.full?'f':'');
- if(key!==cntKey){ cntKey=key; const g=cntCv.getContext('2d'), W=1024, H=384; g.clearRect(0,0,W,H); g.textAlign='center'; g.textBaseline='middle'; g.lineJoin='round';
-   const fs=250, tx=W*.58, ty=H*.52; g.font='900 '+fs+'px Nunito, system-ui, sans-serif';
+ if(key!==cntKey){ cntKey=key; const g=cntCv.getContext('2d'), W=1024, H=384; g.clearRect(0,0,W,H); g.textAlign='center'; g.textBaseline='alphabetic'; g.lineJoin='round';
+   // Poké Ball y número forman un solo grupo centrado en el lienzo: la bola pegada al número (hueco fijo) y ambos con el mismo centro vertical (el de los dígitos, no el de la línea de texto)
+   const fs=250; g.font='900 '+fs+'px Nunito, system-ui, sans-serif'; const r=112, gap=34, tw=g.measureText(c.txt).width, gw=2*r+gap+tw, x0=(W-gw)/2, m=g.measureText('0123456789'), ty=H/2+(m.actualBoundingBoxAscent-m.actualBoundingBoxDescent)/2, tx=x0+2*r+gap+tw/2, cy=H/2;
    if(c.full){ g.fillStyle='rgba(120,130,150,.55)'; g.strokeStyle='rgba(10,14,24,.5)'; }
-   else { const gr=g.createLinearGradient(0,ty-fs/2,0,ty+fs/2); gr.addColorStop(0,'#e4fbff'); gr.addColorStop(.5,'#58d8ff'); gr.addColorStop(1,'#2a7bff'); g.fillStyle=gr; g.strokeStyle='#0a3a66'; g.shadowColor='rgba(80,220,255,.9)'; g.shadowBlur=34; }
+   else { const gr=g.createLinearGradient(0,cy-fs*.36,0,cy+fs*.36); gr.addColorStop(0,'#e4fbff'); gr.addColorStop(.5,'#58d8ff'); gr.addColorStop(1,'#2a7bff'); g.fillStyle=gr; g.strokeStyle='#0a3a66'; g.shadowColor='rgba(80,220,255,.9)'; g.shadowBlur=34; }
    g.lineWidth=26; g.strokeText(c.txt,tx,ty); g.shadowBlur=c.full?0:24; g.fillText(c.txt,tx,ty); g.shadowBlur=0;
    // Poké Ball a la izquierda del número
-   const bx=W*.13, by=ty, r=112; g.lineWidth=18; g.strokeStyle=c.full?'rgba(20,24,36,.7)':'#0a2a4a';
+   const bx=x0+r, by=cy; g.lineWidth=18; g.strokeStyle=c.full?'rgba(20,24,36,.7)':'#0a2a4a';
    g.beginPath(); g.arc(bx,by,r,Math.PI,0); g.fillStyle=c.full?'rgba(70,76,92,.7)':'#ff5a4a'; g.fill(); g.beginPath(); g.arc(bx,by,r,0,Math.PI); g.fillStyle=c.full?'rgba(110,118,136,.7)':'#f6f6f6'; g.fill();
    g.beginPath(); g.arc(bx,by,r,0,Math.PI*2); g.moveTo(bx-r,by); g.lineTo(bx+r,by); g.stroke(); g.beginPath(); g.arc(bx,by,r*.3,0,Math.PI*2); g.fillStyle=c.full?'rgba(110,118,136,.7)':'#f6f6f6'; g.fill(); g.stroke();
    cntTex.needsUpdate=true; }

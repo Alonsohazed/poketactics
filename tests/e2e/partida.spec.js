@@ -304,3 +304,31 @@ test('habilidades: el daño se ve siempre con los 3 niveles de estrellas, aunque
     return out; });
   expect(bad).toEqual([]);
 });
+
+test('orbes de botín: salen volando desde la casilla del salvaje, aterrizan y solo entonces se pueden recoger', async ({ page }) => {
+  await page.evaluate(() => { G.phase = 'planning'; dropOrb(G.me, 'gray12', { c: 3, r: 1 }); renderUI(); });
+  const a = await page.evaluate(() => orbList().map(o => ({ f: o.f, ready: o.ready, moved: Math.hypot(o.x - o.x0, o.y - o.y0) > 5 })));
+  expect(a.length).toBe(1); expect(a[0].f).toBeLessThan(1); expect(a[0].ready).toBe(false); expect(a[0].moved).toBe(true); // aterriza lejos de donde salió
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => orbList().map(o => [o.f, o.ready]))).toEqual([[1, true]]);
+  // la minileyenda va 2,4 veces más rápido cuando se dirige a un orbe
+  const sp = await page.evaluate(() => { const o = orbList()[0], A = tacArea(), run = (tx, ty) => { TAC.picked.clear(); TAC.x = A.x0 + geo.R * 2; TAC.y = o.y; TAC.tx = tx; TAC.ty = ty; const x0 = TAC.x, y0 = TAC.y; stepTac(0.1); return Math.hypot(TAC.x - x0, TAC.y - y0); };
+    return { orbe: run(o.x, o.y), libre: run(A.x0 + geo.R * 2, o.y + geo.R * 6) }; });
+  expect(sp.orbe / sp.libre).toBeGreaterThan(2.3);
+});
+
+test('lista de jugadores: filas repartidas con la misma separación hasta el minimapa, nombre sobre la vida y sin nivel', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 }); await page.waitForTimeout(800);
+  const r = await page.evaluate(() => { const rows = [...document.querySelectorAll('#players .pl')].map(e => e.getBoundingClientRect()), isl = document.getElementById('islands').getBoundingClientRect();
+    const gaps = rows.slice(1).map((b, i) => Math.round(b.top - rows[i].bottom)), nm = document.querySelector('#players .pl .nm').getBoundingClientRect(), hp = document.querySelector('#players .pl .hp').getBoundingClientRect();
+    return { n: rows.length, gaps, last: rows[rows.length - 1].bottom, islTop: isl.top, nameAbove: nm.bottom <= hp.top + 2, lv: document.querySelectorAll('#players .lv').length > 0 && getComputedStyle(document.querySelector('#players .lv')).display !== 'none', big: rows[0].height }; });
+  expect(r.n).toBe(8); expect(r.lv).toBe(false); expect(r.nameAbove).toBe(true); expect(r.last).toBeLessThanOrEqual(r.islTop + 1); expect(r.big).toBeGreaterThan(55);
+  expect(Math.max(...r.gaps) - Math.min(...r.gaps)).toBeLessThanOrEqual(2);
+});
+
+test('retratos: miniaturas ligeras y, si fallan, el sprite de la Pokédex en vez de una imagen rota', async ({ page }) => {
+  const r = await page.evaluate(() => { const im = [...document.querySelectorAll('#players img.artPic')]; return { n: im.length, thumbs: im.every(i => /art\/t\/[a-z]+\.webp$/.test(i.src)) }; });
+  expect(r.n).toBeGreaterThan(5); expect(r.thumbs).toBe(true);
+  const fb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/webp;base64,AAAA'; /* imagen inválida: falla sin pedir nada a la red */ document.body.appendChild(im); await new Promise(r => setTimeout(r, 800)); const o = { src: im.src, ok: im.naturalWidth > 0 }; im.remove(); return o; });
+  expect(fb.src).toMatch(/dex\/4\.png$/); expect(fb.ok).toBe(true);
+});

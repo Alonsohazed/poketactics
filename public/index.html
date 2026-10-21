@@ -1080,6 +1080,23 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .isleCell .vis img{width:100%;height:100%;object-fit:cover;object-position:50% 45%}
 .isleCenter{display:grid;place-items:center;opacity:.55;pointer-events:none}
 @media (max-width:820px){.islands{display:none}}
+/* Lista de entrenadores (escritorio): ocupa toda la altura hasta el minimapa y reparte las 8 filas con la misma separación; círculos grandes, nombre sobre la barra de vida y el aviso de subida de estrellas a su izquierda */
+.pl{--rs:clamp(50px,calc((100vh - 360px)/8.8),78px);margin:0}
+.pl .plInfo{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0}
+.pl .nm{max-width:170px;padding:0 4px 0 0;font-size:calc(var(--rs)*.25 + 1px)}
+.pl .hp{height:calc(var(--rs)*.46);min-width:calc(var(--rs)*.95);font-size:calc(var(--rs)*.3);margin-right:calc(var(--rs)*-.2);padding:0 calc(var(--rs)*.2) 0 calc(var(--rs)*.3)}
+.pl .ring,.pl.me .ring{width:var(--rs);height:var(--rs);padding:4px}
+.pl.me .ring{width:calc(var(--rs) + 8px);height:calc(var(--rs) + 8px)}
+.pl .ring .head,.pl.me .ring .head{--hs:calc(var(--rs) - 8px)}
+.pl.me .ring .head{--hs:calc(var(--rs))}
+.pl .lv{display:none}
+.pl .upb{flex-direction:column;gap:0;padding:3px 7px 2px;border-radius:14px;margin-right:6px;background:radial-gradient(circle at 50% 30%,#2b3a70,#0c1228);border:2px solid var(--gold);box-shadow:0 0 12px rgba(255,215,94,.35)}
+.pl .upb img{width:calc(var(--rs)*.95);height:calc(var(--rs)*.95);image-rendering:auto}
+.pl .upb b{font-size:calc(var(--rs)*.22);letter-spacing:-1px;line-height:1}
+body.fullField .right{align-self:stretch;min-height:0}
+body.fullField .right>.side{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fullField #tabPl:not([hidden]){flex:1;min-height:0;display:flex}
+body.fullField #players{flex:1;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;padding:2px 0 6px}
 </style>
 </head>
 <body>

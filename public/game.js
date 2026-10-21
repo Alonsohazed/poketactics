@@ -2532,13 +2532,12 @@ function tacArea(){ const R=geo.R; return {x0:geo.pad,x1:geo.W-geo.pad,y0:cellXY
 function stepTac(dt){
  if(!G||!G.players.length||!geo.W) return;
  if(TAC.g!==G){ const sp=trainerSpots().me; Object.assign(TAC,{g:G,x:sp[0],y:sp[1],tx:null,ty:null,mark:null}); TAC.picked.clear(); tacSent=''; tacVis.clear(); }
- if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), toOrb=orbList().some(o=>!TAC.picked.has(o.id)&&Math.hypot(TAC.tx-o.x,TAC.ty-o.y)<geo.R*1.2), st=geo.R*3.6*(toOrb?2:1)*dt;
+ if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), toOrb=orbList().some(o=>!TAC.picked.has(o.id)&&Math.hypot(TAC.tx-o.x,TAC.ty-o.y)<geo.R*2.2), st=geo.R*3.6*(toOrb?2.4:1)*dt;
    if(d<=st){ TAC.x=TAC.tx; TAC.y=TAC.ty; TAC.tx=null; } else { TAC.x+=dx/d*st; TAC.y+=dy/d*st; } }
  tacSync();
  if(!G.me.alive||G.phase==='carousel'||G.view) return;
- for(const o of orbList()) if(!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){ TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } }
+ for(const o of orbList()) if(o.ready&&!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){ TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } }
 }
-// Orbes en tu mitad del tablero, en casillas fijas según su número
 // Envía al servidor el tablero que miras y adónde va tu minileyenda (solo cuando cambia: al hacer clic derecho o cambiar de tablero)
 // Al arrastrar con el clic derecho el destino cambia en cada movimiento: como mucho un mensaje cada 150 ms (el último siempre llega)
 let tacSent='', tacSentT=0;
@@ -2574,9 +2573,15 @@ function stepOthers(inCombat){
  if(opp&&opp!==me&&(!opp.tp||opp.tp[0]===opp.id)) at(opp,sp.opp[0],sp.opp[1],-Math.PI*.15,'#ef4b3a');
  tacOthers=out; for(const o of out) otherTaunt(o,now); for(const [id,f] of tauntFx) if(f.fire&&!out.some(o=>o.p.id===id)) f.fire=false; return out;
 }
+// Orbes de botín. Los que suelta un salvaje al caer salen volando desde su casilla (f = progreso del vuelo, 0 a 1) y aterrizan algo más cerca de ti; se ven al instante, pero solo se recogen al acabar el combate y cuando han aterrizado (ready)
+const ORB_FLY_MS=1100;
 function orbList(){
- const cbm=G.phase==='combat'&&G.combat; if(!G.me.orbs||!G.me.orbs.length||(cbm&&!cbm.done)||G.phase==='carousel'||(G.view&&G.view.board)) return [];
- return G.me.orbs.map((o,i)=>{ const j=((o.id*37)%7)/7-.5, [x,y]=o.c!=null?cellXY(o.c,o.r):cellXY([1,5,3,0,6,2,4][i%7],4+(i*3)%4); return {id:o.id,tier:o.tier,x:x+j*geo.R*.8,y:y+((o.id*53)%5/5-.5)*geo.R*.6}; });
+ const cbm=G.phase==='combat'&&G.combat; if(!G.me.orbs||!G.me.orbs.length||G.phase==='carousel'||(G.view&&G.view.board)) return [];
+ const born=G.orbBorn||(G.orbBorn=new Map()), now=performance.now(), idle=!(cbm&&!cbm.done), A=tacArea(), yMax=cellXY(0,7)[1];
+ return G.me.orbs.map((o,i)=>{ const j=((o.id*37)%7)/7-.5, [x,y]=o.c!=null?cellXY(o.c,o.r):cellXY([1,5,3,0,6,2,4][i%7],4+(i*3)%4), px=x+j*geo.R*.8, py=y+((o.id*53)%5/5-.5)*geo.R*.6, fall=o.c!=null;
+   let lx=px, ly=py; if(fall){ lx=clamp(px+(((o.id*97)%9)/9-.5)*geo.R*2.6,A.x0+geo.R*.5,A.x1-geo.R*.5); ly=clamp(py+geo.R*(.9+((o.id*61)%5)/5*1.1),A.y0,yMax); }
+   if(!born.has(o.id)) born.set(o.id,now); const fl=fall?clamp((now-born.get(o.id))/ORB_FLY_MS,0,1):1;
+   return {id:o.id,tier:o.tier,x:lx,y:ly,x0:px,y0:py,f:fl,ready:idle&&fl>=1}; });
 }
 let synCache={v:-1,who:null,t:{}};
 function activeTraits(who){ if(synCache.v!==G.uiV||synCache.who!==who){ const t=traitTiers(who); synCache={v:G.uiV,who,t}; } return synCache.t; }
@@ -2851,7 +2856,12 @@ const ART_FOCUS={
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
 const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
-const artImg=k=>CARD_ART[k]?`<img src="${CARD_ART[k]}" alt="" class="artPic">`:portraitImg(TACS[k]?TACS[k].dex[0]:dexOf(DEF[k],1));
+// Cabezas, minimapa y menú usan la miniatura (224 px, ~5 KB; la ilustración completa de la tienda pesa hasta 43 KB). Si falla (CDN y luego nuestro servidor), se muestra el sprite de la Pokédex en vez de una imagen rota o de cargar un modelo 3D
+const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.webp';
+const ART_PRE=new Set();
+function preloadArt(keys){ for(const k of keys){ if(ART_PRE.has(k)||!CARD_ART[k]) continue; ART_PRE.add(k); const im=new Image(); im.decoding='async'; im.src=artThumb(k); } } // las 7 minileyendas ya están en caché cuando salen en la lista de jugadores
+const dexUrl=dex=>(window.ASSET_BASE||'')+'dex/'+String(dex).split('/').pop()+'.png';
+const artImg=k=>CARD_ART[k]?`<img src="${artThumb(k)}" alt="" class="artPic" decoding="async" data-dex="${TACS[k]?TACS[k].dex[0]:dexOf(DEF[k],1)}">`:portraitImg(TACS[k]?TACS[k].dex[0]:dexOf(DEF[k],1));
 // Tipo elemental de un Pokémon: pinta el fondo de su carta
 const ELEMS=['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dragón','Fantasma','Hada','Normal','Acero','Siniestro','Lucha'];
 const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
@@ -2941,7 +2951,7 @@ function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.last
 function upBadge(p){
  const u=p.lastUp; if(!u||p===G.me) return ''; const [dex,star,seq]=u, now=performance.now();
  let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderPlayers(); },UP_MS+50); }
- return now-r.t<UP_MS?`<span class="upb s${star}" title="Subió un Pokémon a ${star} estrellas">${portraitImg(dex)}<b>${'★'.repeat(star)}</b></span>`:'';
+ return now-r.t<UP_MS?`<span class="upb s${star}" title="Subió un Pokémon a ${star} estrellas"><img src="${dexUrl(dex)}" alt="" data-sp="${String(dex).split('/').pop()}" decoding="async"><b>${'★'.repeat(star)}</b></span>`:'';
 }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
 // Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
@@ -2964,8 +2974,8 @@ function renderPlayers(){
  const po=!combat&&G.me.alive?new Set(G.mirror?(G.me.po||[]):possibleOpps(G.me).map(p=>p.id)):new Set();
  const watching=G.view?G.view.pid:-1;
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
-   ${upBadge(p)}<span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
-   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}<span class="lv">${p.level}</span></span></div>`).join('');
+   ${upBadge(p)}<div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
+   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
@@ -3464,8 +3474,11 @@ function cdnAssets(){
   const base=`https://cdn.jsdelivr.net/gh/${b.repo}@${b.commit}/public/`;
   return fetch(base+'art/abra.webp',{method:'HEAD'}).then(r=>{ if(!r.ok) return;
    window.ASSET_BASE=base; for(const k in CARD_ART) CARD_ART[k]=base+`art/${k}.webp`; });
- }).catch(()=>{});
- addEventListener('error',e=>{ const el=e.target, b=window.ASSET_BASE; if(el&&el.tagName==='IMG'&&b&&el.src.startsWith(b)) el.src=el.src.slice(b.length); },true);
+ }).catch(()=>{}).then(()=>preloadArt(TAC_KEYS));
+ addEventListener('error',e=>{ const el=e.target, b=window.ASSET_BASE; if(!el||el.tagName!=='IMG') return;
+   if(b&&el.src.startsWith(b)) el.src=el.src.slice(b.length);
+   else if(el.dataset&&el.dataset.sp&&!el.dataset.fb3){ el.dataset.fb3=1; el.src=SPRITE(el.dataset.sp); }
+   else if(el.dataset&&el.dataset.dex&&!el.dataset.fb2){ el.dataset.fb2=1; el.src='dex/'+String(el.dataset.dex).split('/').pop()+'.png'; el.classList.add('artFb'); } },true);
 }
 async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');
