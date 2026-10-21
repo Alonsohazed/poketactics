@@ -7,7 +7,7 @@ vm.createContext(ctx); vm.runInContext(src, ctx);
 const E = ctx.module.exports;
 let fails = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { fails++; console.log('FALLO:', msg); } };
-const fresh = () => { E.newGame({ auto: true, diff: 'normal' }); const G = E.G; G.auto = false; const p = G.players[0]; p.isBot = false; p.gold = 50; p.items = []; p.picks = []; return { G, p }; };
+const fresh = () => { E.newGame({ auto: true, diff: 'normal' }); const G = E.G; G.auto = false; G.roundIdx = 1;  const p = G.players[0]; p.isBot = false; p.gold = 50; p.items = []; p.picks = []; return { G, p }; };
 const TRAITS = Object.keys(E.TRAITS).filter(t => t !== 'Legendario');
 const keyWith = (t, not) => E.UNIT_LIST.find(u => u.traits.includes(t) && (!not || !u.traits.includes(not))).key;
 const keyWithout = t => E.UNIT_LIST.find(u => !u.traits.includes(t) && u.cost <= 3).key;

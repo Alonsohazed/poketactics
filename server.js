@@ -49,7 +49,8 @@ app.use(express.static(path.join(__dirname, 'public'), { setHeaders(res, file) {
 
 const server = http.createServer(app);
 // Mensajes de 1 KB o más comprimidos (estado de la partida en JSON: ocupa una fracción); los pequeños van tal cual para no gastar CPU
-const io = new Server(server, { maxHttpBufferSize: 16 * 1024, perMessageDeflate: { threshold: 256 } });
+// pingInterval/pingTimeout más generosos que los de serie (25 s + 20 s): una pestaña en segundo plano o una red lenta no se toma por desconexión
+const io = new Server(server, { maxHttpBufferSize: 16 * 1024, perMessageDeflate: { threshold: 256 }, pingInterval: 15000, pingTimeout: 40000 });
 io.use(auth.socketGuard);
 
 /** @type {Map<string, any>} */
@@ -87,7 +88,8 @@ function makeGame(room) {
 }
 // Reparte los mensajes que genera el motor
 function route(room, topic, data) {
-  if (topic === 'pub' || topic === 'car' || topic === 'cmbs' || topic === 'cmbev') io.to(room.code).emit(topic, data);
+  if (topic === 'cmbs' && data && data.to) io.to(data.to).emit(topic, data);
+  else if (topic === 'pub' || topic === 'car' || topic === 'cmbs' || topic === 'cmbev') io.to(room.code).emit(topic, data);
   else if ((topic === 'priv' || topic === 'cmb') && data && data.to) io.to(data.to).emit(topic, data);
 }
 
@@ -114,12 +116,20 @@ function startGame(room, opts) {
   room.timer = setInterval(() => {
     const now = Date.now();
     const dt = Math.min(0.25, (now - last) / 1000); last = now;
+    // La partida NUNCA se pausa: el ausente sigue cobrando su economía y su tablero pelea (sin que nadie lo juegue). Si no queda ninguna persona conectada, la sala
+    // espera REJOIN_MS por si vuelven; pasado el plazo los ausentes quedan eliminados (último puesto entre los vivos) y se apunta su resultado
     try { room.game.serverTick(dt); }
     catch (e) { console.error(`[${room.code}] error en la partida`, e); closeRoom(room, 'error'); return; }
     const info = room.game.serverInfo();
     recordPlaces(room, info);
     if (info.over) { if (!room.endAt) room.endAt = now + 30000; else if (now > room.endAt) closeRoom(room, 'fin'); }
-    else if (info.humans === 0 && !room.seats.some(s => s.connected)) closeRoom(room, 'vacía');
+    else if (!room.seats.some(s => s.connected)) {
+      if (!room.seats.some(s => !s.recorded)) closeRoom(room, 'vacía'); // todos eliminados y fuera
+      else {
+        room.emptySince = room.emptySince || now;
+        if (now - room.emptySince > REJOIN_MS) { try { room.game.serverForfeit(); recordPlaces(room, room.game.serverInfo()); } catch (e) { console.error(e); } closeRoom(room, 'abandono'); }
+      }
+    } else room.emptySince = 0;
   }, TICK_MS);
   broadcastRooms();
 }
@@ -155,7 +165,11 @@ async function seatFor(socket) {
 // ---------- colas Normal y Clasificatoria ----------
 const queues = { normal: [], ranked: [] };
 const inQueue = uid => MODES.some(m => queues[m].some(e => e.uid === uid));
-const inGame = uid => [...rooms.values()].some(r => r.seats.some(s => s.uid === uid && (r.state === 'lobby' || (s.connected && !s.recorded))));
+const REJOIN_MS = +process.env.REJOIN_MS || 4 * 60 * 1000; // una sala sin nadie conectado espera tanto antes de cerrarse (para poder volver)
+const inGame = uid => [...rooms.values()].some(r => r.seats.some(s => s.uid === uid && (r.state === 'lobby' || (r.state === 'game' && !s.recorded))));
+// La partida que puede retomar un usuario: sala en juego, su asiento sin cerrar (no eliminado) y sin conexión
+function resumable(uid) { for (const r of rooms.values()) { if (r.state !== 'game' || !r.game) continue; const s = r.seats.find(x => x.uid === uid && !x.recorded); if (s) return { room: r, seat: s }; } return null; }
+const resumeInfo = (uid) => { const x = resumable(uid); return x ? { mode: x.room.mode || 'custom', round: (x.room.game.serverInfo() || {}).round || '', connected: !!x.seat.connected } : null; };
 function unqueue(socket) { for (const m of MODES) { const i = queues[m].findIndex(e => e.sid === socket.id); if (i >= 0) { queues[m].splice(i, 1); socket.emit('queue', { mode: m, state: 'off' }); } } }
 // Cada segundo: el más antiguo de cada cola busca compañeros con MMR parecido (margen que crece con la espera);
 // con 8 personas, o al cumplirse el tiempo de espera, empieza la partida y los asientos libres son bots
@@ -195,7 +209,7 @@ function leave(socket) {
     emitLobby(room); broadcastRooms();
   } else {
     const seat = room.seats.find(s => s.peer === socket.id);
-    if (seat) seat.connected = false;
+    if (seat) { seat.connected = false; seat.lostAt = Date.now(); }
     try { room.game.serverLeave(socket.id); } catch (e) { /* noop */ }
   }
 }
@@ -211,6 +225,28 @@ io.on('connection', socket => {
   };
 
   socket.on('list', () => socket.emit('rooms', roomList()));
+  // ¿tengo una partida a medias? (al conectar, y cada vez que el menú lo pregunta)
+  socket.emit('resume', resumeInfo(socket.data.user.id));
+  socket.on('resumable', () => { if (!limited()) socket.emit('resume', resumeInfo(socket.data.user.id)); });
+  // Volver a tu asiento: el servidor cambia el id de conexión del asiento y del jugador, y reenvía el estado completo
+  socket.on('rejoin', () => {
+    if (limited()) return;
+    const uid = socket.data.user.id;
+    if (socket.data.room) leave(socket);
+    if (inQueue(uid)) return socket.emit('rejoinfail', { why: 'Sal de la cola antes de volver a tu partida' });
+    const x = resumable(uid);
+    if (!x) return socket.emit('rejoinfail', { why: 'No tienes ninguna partida en curso (ya terminó o te eliminaron)' });
+    const { room, seat } = x, old = seat.peer;
+    if (seat.connected && old !== socket.id) { // otra ventana tuya sigue conectada: se cede el asiento a esta
+      const prev = io.sockets.sockets.get(old); if (prev) { prev.data.room = null; prev.leave(room.code); prev.emit('bye', { reason: 'otra ventana' }); }
+    }
+    seat.peer = socket.id; seat.connected = true; seat.lostAt = 0; room.emptySince = 0;
+    socket.join(room.code); socket.data.room = room.code;
+    let ok = false; try { ok = room.game.serverRejoin(old, socket.id); } catch (e) { console.error(e); }
+    if (!ok) { seat.connected = false; socket.leave(room.code); socket.data.room = null; return socket.emit('rejoinfail', { why: 'No se pudo recuperar tu asiento' }); }
+    socket.emit('start', { seats: publicSeats(room.seats) });
+    room.game.serverResend(socket.id);
+  });
 
   // Entrar en la cola de un modo (un usuario solo puede estar en una cola o partida a la vez)
   socket.on('queue', async d => {

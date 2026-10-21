@@ -44,6 +44,7 @@ function augFire(p,evt,d){
 }
 const augOwned=(p,id)=>p.augments.includes(id);
 const ownedSpecies=p=>new Set(allUnits(p).map(u=>u.baseId));
+const boardSpecies=p=>new Set(boardUnits(p).map(u=>u.baseId)); // solo las fichas colocadas (Coleccionista)
 const elemTraitsOf=p=>{ const c=traitCounts(p); return ELEM_TRAITS.filter(t=>c[t]).sort((a,b)=>c[b]-c[a]); };
 const boardKeyOf=(p,uid)=>{ for(const k in p.board) if(p.board[k].uid===uid) return k; return null; };
 function unitOptions(p,filter,n=3){ // Pokémon (claves) para elegir: distintos, del pool y de costes del filtro

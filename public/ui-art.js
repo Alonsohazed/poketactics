@@ -109,8 +109,9 @@
   /* =====================================================================
      Escenario del menú: arena-tablero al atardecer (pixel art a baja resolución, sin suavizado)
      ===================================================================== */
-  const SPR = d => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${d}.gif`;
-  const SPR_B = d => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/${d}.gif`;
+  // Los 6 sprites animados del menú están en nuestro servidor (public/menu, 312 KB en total): antes se pedían a raw.githubusercontent, que no deja cachear más de 5 minutos y competía con la carga del juego
+  const SPR = d => `menu/${d}.gif`;
+  const SPR_B = d => `menu/back-${d}.gif`;
   // Equipo rival (de frente, al fondo) y el tuyo (de espaldas, delante), en las columnas laterales del tablero 7×8
   const TEAM_FOE = [[94, 0, 2], [149, 6, 0], [130, 6, 3]], TEAM_ME = [[6, 0, 5], [25, 1, 6], [448, 6, 5]];
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];

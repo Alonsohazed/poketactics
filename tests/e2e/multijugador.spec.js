@@ -53,3 +53,43 @@ test('dos jugadores crean sala, se unen con código y juegan', async ({ browser 
   expect(errors).toEqual([]);
   await ctxA.close(); await ctxB.close();
 });
+
+// Corte de conexión a mitad de partida: aviso con el motivo, vuelta automática al asiento, botón en el menú y Atrás bloqueado
+test('un corte de red no te saca de la partida: vuelve solo, o con el botón del menú', async ({ browser }) => {
+  test.setTimeout(240_000);
+  const ctxA = await browser.newContext(), ctxB = await browser.newContext(), A = await ctxA.newPage(), B = await ctxB.newPage();
+  const errors = []; for (const p of [A, B]) p.on('pageerror', e => errors.push(e.message));
+  await register(A, undefined, 'charmander'); await register(B, undefined, 'squirtle');
+  await A.locator('#playBtn').click(); await A.locator('#rmCreate').click();
+  const code = (await A.locator('#mbox .code').textContent()).trim();
+  await B.locator('#playBtn').click(); await B.locator('#rmCode').fill(code); await B.locator('#rmJoin').click();
+  await expect(A.locator('#seats .seat:not(.wait)')).toHaveCount(2);
+  await A.locator('#rmStart').click();
+  for (const p of [A, B]) { await expect(p.locator('#menu')).toBeHidden(); await expect.poll(() => p.evaluate(() => NET.mode)).toBe('client'); await expect(p.locator('#cards .card')).toHaveCount(5); }
+  const idB = await B.evaluate(() => G.me.id);
+
+  // 1) El botón Atrás del navegador no saca de la partida
+  await B.evaluate(() => history.back()); await B.waitForTimeout(600);
+  expect(await B.evaluate(() => ({ vivo: liveGame(), modo: NET.mode, menu: document.getElementById('menu').classList.contains('hidden') }))).toEqual({ vivo: true, modo: 'client', menu: true });
+
+  // 2) Corte de transporte: sale el aviso con el motivo y, al volver la red, B recupera su asiento sin hacer nada
+  await B.evaluate(() => { window.__cut = []; NET.sock.on('disconnect', r => window.__cut.push(r)); NET.sock.io.engine.close(); });
+  await expect(B.locator('#lostBar')).toBeVisible(); await expect(B.locator('#lostBar')).toContainText('Conexión perdida');
+  await expect(B.locator('#lostBar')).toBeHidden({ timeout: 30_000 });
+  const tras = await B.evaluate(() => ({ modo: NET.mode, mismoJugador: G.me.id, cartas: document.querySelectorAll('#cards .card').length, motivo: window.__cut[0] }));
+  expect(tras.modo).toBe('client'); expect(tras.mismoJugador).toBe(idB); expect(tras.cartas).toBe(5); expect(tras.motivo).toBeTruthy();
+  await expect.poll(() => B.evaluate(() => G.players.length)).toBe(8);
+
+  // 3) «Salir al menú» tras otro corte y volver con el botón «Volver a tu partida»
+  await B.evaluate(() => NET.sock.io.engine.close());
+  await expect(B.locator('#lostBar')).toBeVisible();
+  await B.locator('#lostBar button[data-a="menu"]').click();
+  await expect(B.locator('#menu')).toBeVisible();
+  await expect(B.locator('#resumeBtn')).toBeVisible({ timeout: 15_000 });
+  await B.locator('#resumeBtn').click();
+  await expect(B.locator('#menu')).toBeHidden({ timeout: 20_000 });
+  await expect.poll(() => B.evaluate(() => NET.mode + ':' + G.me.id)).toBe('client:' + idB);
+  await expect.poll(() => B.evaluate(() => G.players.length)).toBe(8);
+  expect(errors).toEqual([]);
+  await ctxA.close(); await ctxB.close();
+});

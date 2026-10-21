@@ -13,10 +13,11 @@
     "test:names": "node test/nombres.js",
     "test:comp": "node test/competitivo.js",
     "test:e2e": "playwright test",
-    "test:all": "node test/smoke.js && node test/augments.js && node test/sinergias.js && node test/competitivo.js && node test/nombres.js && playwright test --grep @rapido",
+    "test:all": "node test/smoke.js && node test/augments.js && node test/sinergias.js && node test/competitivo.js && node test/desconexion.js && node test/nombres.js && playwright test --grep @rapido",
     "check": "node -e \"for(const f of ['public/augments.js','public/game.js','public/ui-art.js'])require('vm').createScript(require('fs').readFileSync(f,'utf8'),{filename:f})\" && node --no-warnings --experimental-vm-modules -e \"new (require('vm').SourceTextModule)(require('fs').readFileSync('public/board3d.js','utf8'),{identifier:'board3d.js'})\" && echo sintaxis-ok",
     "test:e2e:rapido": "playwright test --grep @rapido",
-    "test:completo": "node test/smoke.js && node test/augments.js && node test/sinergias.js && node test/competitivo.js && node test/nombres.js && playwright test"
+    "test:completo": "node test/smoke.js && node test/augments.js && node test/sinergias.js && node test/competitivo.js && node test/desconexion.js && node test/nombres.js && playwright test",
+    "test:desc": "node test/desconexion.js"
   },
   "engines": {
     "node": ">=18"

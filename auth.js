@@ -70,7 +70,7 @@ function cleanSettings(s) {
 }
 
 function createAuth(db, { trainers }) {
-  const ipLimit = limiter(30, 15 * 60 * 1000);      // 30 intentos de login/registro cada 15 min por IP
+  const ipLimit = limiter(+process.env.AUTH_IP_LIMIT || 30, 15 * 60 * 1000);      // 30 intentos de login/registro cada 15 min por IP
   const accountLimit = limiter(10, 15 * 60 * 1000); // 10 contraseñas fallidas cada 15 min por cuenta
   const validTrainer = t => typeof t === 'string' && trainers.includes(t);
 
