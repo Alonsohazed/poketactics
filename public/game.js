@@ -426,8 +426,10 @@ const xpByHp=p=>!!(p.mods.xpHp&&p.hp>20);
 function buyXp(p){ if(p.level<10&&xpByHp(p)){ p.hp-=p.mods.xpHp; addXp(p,4+p.mods.xpBuy); return true; } if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
 function reroll(p){ const free=p.freeRerolls>0; if(free) p.freeRerolls--; else { if(p.gold<2) return false; p.gold-=2; } refreshShop(p); augFire(p,'reroll',{free}); return true; }
 function countSame(p,base,star){ return allUnits(p).filter(u=>u.baseId===base&&u.star===star).length; }
+// Ronda 1-1: se juega con el Pokémon que te tocó (no se compra ni se vende)
+const firstRound=()=>!!G&&G.roundIdx===0;
 function canBuy(p,i){
- const k=p.shop[i]; if(!k||!DEF[k]) return false; const d=DEF[k]; if(p.gold<d.cost) return false;
+ if(firstRound()) return false; const k=p.shop[i]; if(!k||!DEF[k]) return false; const d=DEF[k]; if(p.gold<d.cost) return false;
  if(p.bench.some(x=>!x)) return true;
  return p.bench.filter(u=>u&&u.baseId===k&&u.star===1).length+(G.phase!=='combat'?boardUnits(p).filter(u=>u.baseId===k&&u.star===1).length:0)>=2;
 }
@@ -550,7 +552,7 @@ function combine(p){
 }
 function sellValue(u){ const c=DEF[u.defId].cost; return u.star===1?c:c*Math.pow(3,u.star-1)-(c>1?1:0); }
 function sellAt(p,loc){
- const u=getAt(p,loc); if(!u) return false;
+ const u=getAt(p,loc); if(!u||firstRound()) return false;
  if(loc.b!==undefined&&G.phase==='combat') return false;
  p.gold+=sellValue(u); returnToPool(u.baseId,Math.pow(3,u.star-1)); augFire(p,'sell',{key:u.baseId,star:u.star,cost:DEF[u.defId].cost});
  for(const it of u.items) giveItem(p,it);
@@ -1468,11 +1470,11 @@ function applyAct(p,a){
  if(!p||!a||typeof a!=='object'||!G||G.over||!p.alive||!G.players.length) return {ok:false};
  const ph=G.phase, idx=x=>Number.isInteger(x)?x:-1;
  switch(a.t){
-  case 'buy': { const i=idx(a.i); if(i<0||i>4) return {ok:false}; const k=p.shop[i]; if(!k) return {ok:false}; if(!buy(p,i)) return {ok:false,why:p.gold<DEF[k].cost?'No tienes oro suficiente':'Banquillo lleno'}; return {ok:true}; }
+  case 'buy': { const i=idx(a.i); if(i<0||i>4) return {ok:false}; const k=p.shop[i]; if(!k) return {ok:false}; if(!buy(p,i)) return {ok:false,why:firstRound()?'En la primera ronda juegas con el Pokémon que te tocó':p.gold<DEF[k].cost?'No tienes oro suficiente':'Banquillo lleno'}; return {ok:true}; }
   case 'reroll': return {ok:reroll(p),why:'No tienes oro suficiente'};
   case 'xp': return {ok:buyXp(p),why:'No tienes oro suficiente'};
   case 'lock': p.locked=!p.locked; return {ok:true};
-  case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:'No puedes vender eso ahora'}; }
+  case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:firstRound()?'En la primera ronda no se puede vender':'No puedes vender eso ahora'}; }
   case 'move': { const f=normLoc(a.from), to=normLoc(a.to); if(!f||!to) return {ok:false}; if((ph==='combat'||ph==='carousel')&&(f.b!==undefined||to.b!==undefined)) return {ok:false}; return {ok:moveTo(p,f,to)}; }
   case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
   case 'pick': return resolvePick(p,a.id|0,idx(a.i));
@@ -2184,7 +2186,8 @@ function bindEvents(){
  // La ficha de un Pokémon se cierra al tocar cualquier otra cosa (si se toca otro Pokémon, se abre la suya)
  document.addEventListener('pointerdown',e=>{ if((selected||selCombat)&&!e.target.closest('#ucard')){ selected=null; selCombat=null; renderCard(); } },true);
  cv.addEventListener('pointerdown',e=>{
-   if(!G||!G.players||!G.players.length) return; const [x,y]=canvasPos(e);
+   // Solo el botón izquierdo (o un toque) selecciona y arrastra: el derecho mueve la minileyenda y no abre la ficha
+   if(e.button!==0||!G||!G.players||!G.players.length) return; const [x,y]=canvasPos(e);
    if(hitMyTrainer(x,y)){ trEmote={t0:performance.now(),txt:pick(EMOTES)}; return; }
    if(G.phase==='combat'&&hitBench(x,y)<0){ const cu=combatUnitAt(x,y); if(cu){ selCombat=cu; selected=null; renderCard(); return; } }
    if(!inGame()) return;
@@ -2197,15 +2200,21 @@ function bindEvents(){
    if(!drag&&!itemDrag){ const hi=hudItems.find(h=>Math.abs(ptr[0]-h.x)<=h.s/2&&Math.abs(ptr[1]-h.y)<=h.s/2), ha=!hi&&hudAugs.find(h=>Math.abs(ptr[0]-h.x)<=h.s/2&&Math.abs(ptr[1]-h.y)<=h.s/2), key=hi?'item:'+hi.k:ha?'aug:'+ha.id:null; if(key){ if(tipCanvas!==key){ showTip(key,e); tipCanvas=key; } else moveTip(e); } else if(tipCanvas){ tipCanvas=null; hideTip(); } }
    if(!inGame()) return; hover=unitAt(x,y);
    if(drag){ drag.x=x; drag.y=y; if(Math.hypot(x-drag.sx,y-drag.sy)>6) drag.moved=true;
-     const sell=drag.moved&&overShop(e); $('shopPanel').classList.toggle('sell',sell); if(sell) $('sellMsg').textContent=`Vender ${nameOf(DEF[drag.u.defId],drag.u.star)} por ${sellValue(drag.u)} de oro`; }
+     const sell=drag.moved&&overShop(e); $('shopPanel').classList.toggle('sell',sell); if(sell) $('sellMsg').textContent=firstRound()?'En la primera ronda no se puede vender':`Vender ${nameOf(DEF[drag.u.defId],drag.u.star)} por ${sellValue(drag.u)} de oro`; }
  });
  cv.addEventListener('pointerleave',()=>{ hover=null; });
+ // Clic derecho: mueve la minileyenda. Manteniéndolo pulsado, sigue al puntero (como en TFT); en el tótem abre la lista de aumentos
+ const onTotem=()=>{ const tt=B3.totemTop&&B3.totemTop(); return tt&&Math.abs(ptr[0]-tt[0])<geo.R*1.6&&ptr[1]>tt[1]-geo.R*1.2&&ptr[1]<tt[1]+geo.R*2.6?tt:null; };
+ let tacHold=false, carSent=0;
+ const tacGoto=(e,mark)=>{ if(!G||!G.players.length||!G.me.alive) return; const [x,y]=canvasPos(e), now=performance.now();
+   // En el carrusel cada destino es un mensaje al servidor: como mucho uno cada 120 ms mientras se arrastra
+   if(G.phase==='carousel'){ if(!mark&&now-carSent<120) return; carSent=now; const {cx,cy,rr}=carGeo(); TAC.mark={x,y,t0:now}; doAct({t:'carmove',x:(x-cx)/rr,y:(y-cy)/rr}); return; }
+   const A=tacArea(); TAC.tx=clamp(x,A.x0,A.x1); TAC.ty=clamp(y,A.y0,A.y1); if(mark||!TAC.mark) TAC.mark={x:TAC.tx,y:TAC.ty,t0:now}; };
+ cv.addEventListener('pointerdown',e=>{ if(e.button!==2||!G||!G.players.length) return; canvasPos(e); if(onTotem()) return; tacHold=true; tacGoto(e,true); });
+ cv.addEventListener('pointermove',e=>{ if(!tacHold) return; if(!(e.buttons&2)){ tacHold=false; return; } tacGoto(e,false); });
+ window.addEventListener('pointerup',e=>{ if(e.button===2) tacHold=false; });
  cv.addEventListener('contextmenu',e=>{ e.preventDefault(); if(!G||!G.players.length) return; canvasPos(e);
-   // Clic derecho en el tótem: lista de aumentos
-   const tt=B3.totemTop&&B3.totemTop(); if(tt&&Math.abs(ptr[0]-tt[0])<geo.R*1.6&&ptr[1]>tt[1]-geo.R*1.2&&ptr[1]<tt[1]+geo.R*2.6){ const b=$('augList'); b.hidden=!b.hidden; if(!b.hidden){ const r=cv.getBoundingClientRect(); b.style.left=(r.left+tt[0]+geo.R)+'px'; b.style.top=Math.max(60,r.top+tt[1]-40)+'px'; } return; }
-   if(!G.me.alive) return;
-   if(G.phase==='carousel'){ const [x,y]=canvasPos(e), {cx,cy,rr}=carGeo(); TAC.mark={x,y,t0:performance.now()}; doAct({t:'carmove',x:(x-cx)/rr,y:(y-cy)/rr}); return; }
-   const [x,y]=canvasPos(e), A=tacArea(); TAC.tx=clamp(x,A.x0,A.x1); TAC.ty=clamp(y,A.y0,A.y1); TAC.mark={x:TAC.tx,y:TAC.ty,t0:performance.now()}; });
+   const tt=onTotem(); if(tt){ const b=$('augList'); b.hidden=!b.hidden; if(!b.hidden){ const r=cv.getBoundingClientRect(); b.style.left=(r.left+tt[0]+geo.R)+'px'; b.style.top=Math.max(60,r.top+tt[1]-40)+'px'; } } });
  cv.addEventListener('pointerup',e=>{
    if(!drag) return; const me=G.me; const [x,y]=canvasPos(e); const d=drag; drag=null;
    $('shopPanel').classList.remove('sell'); cv.style.cursor='grab';
@@ -2446,11 +2455,12 @@ function stepTac(dt){
 }
 // Orbes en tu mitad del tablero, en casillas fijas según su número
 // Envía al servidor el tablero que miras y adónde va tu minileyenda (solo cuando cambia: al hacer clic derecho o cambiar de tablero)
-let tacSent='';
+// Al arrastrar con el clic derecho el destino cambia en cada movimiento: como mucho un mensaje cada 150 ms (el último siempre llega)
+let tacSent='', tacSentT=0;
 function tacSync(){
  if(NET.mode!=='client'||!NET.sock||!G.me.alive||G.phase==='carousel') return;
- const go=TAC.tx!=null, a={t:'tpos',b:G.view?G.view.pid:G.me.id,x:+(((go?TAC.tx:TAC.x)-geo.ox)/geo.R).toFixed(2),y:+(((go?TAC.ty:TAC.y)-geo.pad)/geo.R).toFixed(2)}, k=a.b+','+a.x+','+a.y;
- if(k!==tacSent){ tacSent=k; NET.sock.emit('act',a); }
+ const go=TAC.tx!=null, a={t:'tpos',b:G.view?G.view.pid:G.me.id,x:+(((go?TAC.tx:TAC.x)-geo.ox)/geo.R).toFixed(2),y:+(((go?TAC.ty:TAC.y)-geo.pad)/geo.R).toFixed(2)}, k=a.b+','+a.x+','+a.y, now=performance.now();
+ if(k!==tacSent&&(now-tacSentT>150||a.b!==+tacSent.split(',')[0])){ tacSent=k; tacSentT=now; NET.sock.emit('act',a); }
 }
 // Minileyendas de los demás en el tablero que miras: las que están en él (llegan por la red) caminan hasta su destino;
 // el dueño del tablero y su rival, si no están en él, en su sitio de siempre
@@ -2759,7 +2769,7 @@ function portraitImg(dex){
  return url?`<img src="${url}" alt="">`:`<img src="${BALL_IMG}" alt="" class="loadingBall" data-pdex="${dex}">`;
 }
 function renderShop(){
- const me=G.me;
+ const me=G.me; $('shopPanel').classList.toggle('first',firstRound());
  $('lvl').textContent=me.level;
  $('xpTxt').textContent=me.level>=10?'Máx.':`${me.xp}/${XP_NEED[me.level]}`;
  $('xpbar').style.width=me.level>=10?'100%':(me.xp/XP_NEED[me.level]*100)+'%';

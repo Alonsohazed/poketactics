@@ -7,3 +7,6 @@ data/
 .claude/settings.local.json
 test-results/
 playwright-report/
+
+# Imagen de prueba del escenario plano (?arena=gif): no es nuestra, no se publica
+public/test-arena/

@@ -9,6 +9,14 @@ test.beforeEach(async ({ page }) => {
 const me = page => page.evaluate(() => ({ gold: G.me.gold, level: G.me.level, xp: G.me.xp, bench: G.me.bench.filter(Boolean).length, board: Object.keys(G.me.board).length, shop: G.me.shop.slice(), items: G.me.items.slice(), augs: G.me.augments.slice() }));
 
 test('tienda: comprar resta oro, refrescar cuesta 2 y la EXP sube de nivel @rapido', async ({ page }) => {
+  // Ronda 1-1: aunque haya oro, no se compra ni se vende (se juega con el Pokémon que te tocó)
+  await page.evaluate(() => { G.me.gold = 50; renderUI(); });
+  await expect(page.locator('#shopPanel')).toHaveClass(/\bfirst\b/);
+  const r11 = await page.evaluate(() => { const b = G.me.bench.filter(Boolean).length, loc = { i: G.me.bench.findIndex(Boolean) };
+    const buyR = applyAct(G.me, { t: 'buy', i: 0 }), sellR = applyAct(G.me, { t: 'sell', loc }); return { buy: buyR.ok, sell: sellR.ok, why: buyR.why, gold: G.me.gold, bench: G.me.bench.filter(Boolean).length - b }; });
+  expect(r11).toEqual({ buy: false, sell: false, why: 'En la primera ronda juegas con el Pokémon que te tocó', gold: 50, bench: 0 });
+  await jumpToRound(page, 1); // 1-2: la tienda ya funciona
+  await expect(page.locator('#shopPanel')).not.toHaveClass(/\bfirst\b/);
   await page.evaluate(() => { G.me.gold = 50; renderUI(); });
   await expect(page.locator('#gold')).toHaveText('50');
   const before = await me(page);

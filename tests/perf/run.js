@@ -6,13 +6,13 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const path = require('path'), os = require('os'), fs = require('fs');
-const PORT = 3200, BASE = `http://localhost:${PORT}`, label = process.argv[2] || 'actual', secs = +(process.argv[3] || 8);
+const PORT = 3200, BASE = `http://localhost:${PORT}`, Q = process.env.PERF_Q || '', label = process.argv[2] || 'actual', secs = +(process.argv[3] || 8);
 const ARGS = ['--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--ignore-gpu-blocklist'];
 
 async function waitHealth() { for (let i = 0; i < 60; i++) { try { const r = await fetch(BASE + '/health'); if (r.ok) return; } catch (e) {} await new Promise(r => setTimeout(r, 250)); } throw new Error('el servidor no arranca'); }
 async function login(page) {
   const user = ('perf_' + Date.now().toString(36)).slice(0, 16), pass = 'clave-prueba-123';
-  await page.goto(BASE + '/'); await page.locator('#tabReg').click();
+  await page.goto(BASE + '/' + Q); await page.locator('#tabReg').click(); // PERF_Q='?arena=gif' mide el escenario plano de prueba
   await page.locator('#auUser').fill(user); await page.locator('#auPass').fill(pass); await page.locator('#auPass2').fill(pass); await page.locator('#auGo').click();
   await page.locator('.tacOpt[data-k="bulbasaur"]').click(); await page.locator('#tacOk').click(); await page.locator('#menu').waitFor({ state: 'visible' });
 }

@@ -358,7 +358,8 @@ function buildIce(g,cx,cz,rad,r,anim){
 /* ---------- arena «glade»: claro de bosque sobre una meseta flotante (procedural, ≤15 llamadas de dibujo) ----------
    Todo lo estático (muro, pilares, hornacinas, proa, acantilado, pinos, arbustos, rocas) se junta por material en pocas mallas con color por
    vértice. Lo animado (agua, llamas, brasas, hierba y copas que se mecen) va aparte con userData.dyn y un uniform de tiempo. */
-const GL={grass:'#6f9a45',grass2:'#8fae52',dirt:'#a07a52',stone:'#8a8296',stoneD:'#5e576c',water:'#2f6f78',fog:'#e8b9b0',pine:['#2f6b3f','#3b7d49','#4a8f55'],bush:'#3f7a3a',flower:'#9a5fc9'};
+// Paleta inspirada en la arena por defecto de TFT: centro dorado, arenisca clara, agua turquesa y acantilado de tierra
+const GL={grass:'#6f9a45',grass2:'#8fae52',dirt:'#a07a52',gold:'#d4a640',stone:'#c9b48c',stone2:'#b8a27a',stoneD:'#97835f',water:'#3a9da2',fog:'#e8b9b0',cliff:'#5c4332',rock:['#7a5a46','#8c6a52','#6a4c3a'],pine:['#2f6b3f','#3b7d49','#4a8f55'],bush:'#3f7a3a',flower:'#9a5fc9'};
 // Ruido suave repetible (valor) para los sombreadores y las texturas
 const GLSL_NOISE=`float gh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float gn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f); return mix(mix(gh(i),gh(i+vec2(1,0)),f.x),mix(gh(i+vec2(0,1)),gh(i+vec2(1,1)),f.x),f.y); }
@@ -369,11 +370,13 @@ function gladeFloorTex(){
    g.fillStyle=GL.grass; g.fillRect(0,0,w,h);
    const blot=(x,y,r0,c,al)=>{ const gr=g.createRadialGradient(x,y,0,x,y,r0); gr.addColorStop(0,c+al); gr.addColorStop(1,c+'00'); g.fillStyle=gr; g.fillRect(x-r0,y-r0,r0*2,r0*2); };
    for(let i=0;i<380;i++) blot(rr()*w,rr()*h,40+rr()*120,[GL.grass2,'#5e8a3c','#7aa04a','#557d36'][i%4],'66');
-   for(let i=0;i<30;i++){ const a=rr()*Math.PI*2, d=rr()*w*.3; blot(w/2+Math.cos(a)*d*1.3,h/2+Math.sin(a)*d*1.15,90+rr()*170,[GL.dirt,'#b08a5e','#946f48'][i%3],'c4'); }
+   // centro dorado (como el tablero de TFT) que se funde con la hierba de los bordes
+   { const gc=g.createRadialGradient(w/2,h/2,w*.05,w/2,h/2,w*.62); gc.addColorStop(0,'#e4bd55'); gc.addColorStop(.45,GL.gold+'ee'); gc.addColorStop(.75,'#a8a04acc'); gc.addColorStop(1,'#a8a04a00'); g.fillStyle=gc; g.fillRect(0,0,w,h); }
+   for(let i=0;i<30;i++){ const a=rr()*Math.PI*2, d=rr()*w*.3; blot(w/2+Math.cos(a)*d*1.3,h/2+Math.sin(a)*d*1.15,90+rr()*170,['#c99a3c','#d8b04e','#b88a3a'][i%3],'88'); }
    for(const [x,y] of [[.12,.2],[.88,.78],[.16,.84],[.86,.18]]) for(let i=0;i<3;i++) blot(w*x+rnd(60),h*y+rnd(60),70+rr()*70,GL.dirt,'88');
    // losas de piedra gastada en el centro
-   g.lineJoin='round'; for(let i=0;i<80;i++){ const cx=w*.5+(rr()-.5)*w*.5, cy=h*.5+(rr()-.5)*h*.34, r0=30+rr()*40, n=9+(rr()*4|0); g.beginPath(); for(let k=0;k<n;k++){ const an=k/n*Math.PI*2+rr()*.25, rad=r0*(.9+rr()*.18); const px=cx+Math.cos(an)*rad, py=cy+Math.sin(an)*rad*.8; k?g.lineTo(px,py):g.moveTo(px,py); } g.closePath();
-     g.fillStyle='rgba('+(132+(rr()*26|0))+','+(126+(rr()*22|0))+','+(136+(rr()*20|0))+',.5)'; g.fill(); g.strokeStyle='rgba(40,34,46,.35)'; g.lineWidth=3; g.stroke(); }
+   g.lineJoin='round'; for(let i=0;i<46;i++){ const cx=w*.5+(rr()-.5)*w*.62, cy=h*.5+(rr()-.5)*h*.5, r0=45+rr()*60, n=9+(rr()*4|0); g.beginPath(); for(let k=0;k<n;k++){ const an=k/n*Math.PI*2+rr()*.25, rad=r0*(.9+rr()*.18); const px=cx+Math.cos(an)*rad, py=cy+Math.sin(an)*rad*.8; k?g.lineTo(px,py):g.moveTo(px,py); } g.closePath();
+     g.fillStyle='rgba('+(236+(rr()*16|0))+','+(214+(rr()*20|0))+','+(150+(rr()*30|0))+',.3)'; g.fill(); g.strokeStyle='rgba(120,90,40,.22)'; g.lineWidth=3; g.stroke(); }
    for(let i=0;i<1400;i++){ const x=rr()*w, y=rr()*h; g.fillStyle=rr()<.5?'rgba(170,200,100,.45)':'rgba(40,70,30,.4)'; g.fillRect(x,y,2,4+rr()*5); }
    for(let i=0;i<60;i++){ g.fillStyle=[GL.flower,'#f4ee9a','#f6f1ea'][i%3]; g.fillRect(rr()*w,rr()*h,4,4); }
    for(let i=0;i<2400;i++){ g.fillStyle=rr()<.5?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)'; g.fillRect(rr()*w,rr()*h,2,2); }
@@ -397,10 +400,11 @@ function buildGlade(g,rc,r,anim){
  // --- muro bajo de losas y pilares (una malla de piedra) ---
  const box=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
  const sw=(X1-X0)/Math.ceil((X1-X0)/2.3);
- for(let x=X0;x<X1-.1;x+=sw){ S.push([box(sw-.06,.5,1.05),M4(x+sw/2,.2,Z0-.55),r()<.5?GL.stone:'#948ca0']); S.push([box(sw-.06,.46,1.05),M4(x+sw/2,.18,Z1+.6),r()<.5?GL.stone:'#948ca0']); }
+ for(let x=X0;x<X1-.1;x+=sw){ S.push([box(sw-.06,.5,1.05),M4(x+sw/2,.2,Z0-.55),r()<.5?GL.stone:GL.stone2]); S.push([box(sw-.06,.2,1.05),M4(x+sw/2,0,Z1+.6),r()<.5?GL.stone:GL.stone2]); } // delante solo un bordillo por debajo de las casillas: un muro ahí tapaba a los Pokémon que lo cruzan
  for(let z=Z0+.4;z<Z1-.3;z+=1.3){ S.push([box(.5,.34,1.2),M4(X0-.45,.12,z+.6),GL.stoneD]); S.push([box(.5,.34,1.2),M4(X1+.45,.12,z+.6),GL.stoneD]); }
- // hornacinas: 5 por lateral (nicho de piedra con hueco oscuro)
- for(const sx of [-1,1]) for(let i=0;i<5;i++){ const z=Z0+1.6+i*((Z1-Z0-3.2)/4), x=sx<0?X0-1.05:X1+1.05; S.push([new THREE.CylinderGeometry(.6,.46,.72,6),M4(x,.31,z,Math.PI/6),GL.stone]); S.push([new THREE.CylinderGeometry(.42,.34,.08,6),M4(x,.7,z,Math.PI/6),'#2a2530']); }
+ // hornacinas: 5 por lateral, redondas (nicho de piedra con hueco oscuro); en cada una flota un cristal de intereses (stepProps)
+ gladeNiches.length=0;
+ for(const sx of [-1,1]) for(let i=0;i<5;i++){ const z=Z0+1.6+i*((Z1-Z0-3.2)/4), x=sx<0?X0-1.05:X1+1.05; S.push([new THREE.CylinderGeometry(.6,.46,.72,24),M4(x,.31,z),GL.stone]); S.push([new THREE.CylinderGeometry(.42,.34,.08,24),M4(x,.7,z),'#2a2530']); gladeNiches.push([x,z,4-i]); }
  // pilares de las esquinas con brasero
  const corners=[[X0-1.25,Z0-1.25],[X1+1.25,Z0-1.25],[X0-1.25,Z1+1.45],[X1+1.25,Z1+1.45]];
  for(const [x,z] of corners){ S.push([box(1.9,.7,1.9),M4(x,.3,z),GL.stoneD]); S.push([new THREE.CylinderGeometry(.7,.92,1.5,4),M4(x,1.3,z,Math.PI/4),GL.stone]); S.push([box(1.35,.24,1.35),M4(x,2.15,z),GL.stoneD]); S.push([new THREE.CylinderGeometry(.46,.26,.32,10,1,true),M4(x,2.42,z),'#2f261e']); }
@@ -410,7 +414,7 @@ function buildGlade(g,rc,r,anim){
    S.push([box(2.6,.3,.6),M4(px,.2,pz+.9),GL.stoneD]); S.push([box(1.4,.3,.6),M4(px,.2,pz+1.9),GL.stoneD]); }
  // --- meseta de hierba con acantilado ---
  const MX0=X0-5.4, MX1=X1+5.4, MZ0=Z0-5.2, MZ1=ZB+4.2;
- const gt=grassTex(); gt.wrapS=gt.wrapT=THREE.RepeatWrapping; gt.repeat.set(6,6); const plateau=slab(roundRectShape(MX0,MZ0,MX1,MZ1,2.8),3.4,-.22,'#4a4452',gt,'#9fc46a'); g.add(plateau);
+ const gt=grassTex(); gt.wrapS=gt.wrapT=THREE.RepeatWrapping; gt.repeat.set(6,6); const plateau=slab(roundRectShape(MX0,MZ0,MX1,MZ1,2.8),3.4,-.22,GL.cliff,gt,'#9fc46a'); g.add(plateau);
  // --- pinos, arbustos, rocas y flores (se mecen las copas) ---
  const P=[], B=[], F=[];
  const pine=(x,z,sz)=>{ S.push([new THREE.CylinderGeometry(.12*sz,.18*sz,.8*sz,5),M4(x,.4*sz-.2,z),'#5e3d22']); for(let i=0;i<4;i++) P.push([new THREE.ConeGeometry((.95-i*.2)*sz,(1.1-i*.08)*sz,7),M4(x,(.85+i*.62)*sz-.2,z,r()*TAU),GL.pine[Math.min(2,i)],.5+i*.25]); };
@@ -418,7 +422,11 @@ function buildGlade(g,rc,r,anim){
  for(const [x,z,sz] of spots) pine(x+rnd(.3),z+rnd(.3),sz*(.9+r()*.3));
  for(let i=0;i<40;i++){ const side=r()<.5?-1:1, x=side<0?X0-2-r()*3:X1+2+r()*3, z=Z0-3.4+r()*(ZB-Z0+6); if(Math.abs(z-cz)<2&&r()<.5) continue; B.push([blob(.4+r()*.4,i*1.7,.2,8,6),M4(x,.05,z,0,1,.75,1),GL.bush]); if(i%3===0) F.push([new THREE.SphereGeometry(.09,5,4),M4(x+rnd(.3),.35,z+rnd(.3)),GL.flower]); }
  for(let i=0;i<70;i++){ const x=MX0+1+r()*(MX1-MX0-2), z=MZ0+1+r()*(MZ1-MZ0-2); if(x>X0-.8&&x<X1+.8&&z>Z0-.9&&z<ZB+.6) continue; F.push([new THREE.SphereGeometry(.08,5,4),M4(x,.0,z),[GL.flower,'#f4ee9a','#f6f1ea','#c9a5e8'][i%4]]); }
- for(let i=0;i<22;i++){ const side=r()<.5?-1:1, x=side<0?X0-2.2-r()*3:X1+2.2+r()*3, z=Z0-3+r()*(ZB-Z0+5.5); S.push([blob(.3+r()*.5,i*3.1,.26,8,6),M4(x,-.05,z,r()*TAU,1,.68,1),[GL.stone,'#7a7288','#9a92a6'][i%3]]); }
+ for(let i=0;i<22;i++){ const side=r()<.5?-1:1, x=side<0?X0-2.2-r()*3:X1+2.2+r()*3, z=Z0-3+r()*(ZB-Z0+5.5); S.push([blob(.3+r()*.5,i*3.1,.26,8,6),M4(x,-.05,z,r()*TAU,1,.68,1),['#9a8a78','#8a7868','#a89888'][i%3]]); }
+ // rocas en capas (losas apiladas y giradas) en las dos esquinas del fondo
+ for(const [x0,z0,n] of [[X1+4.1,Z0-3.9,8],[X0-4.2,Z0-4,5]]) for(let i=0;i<n;i++){ const w0=2.3-i*.17+r()*.3; S.push([box(w0,.62,w0*(.75+r()*.3)),M4(x0+rnd(.35),.1+i*.58,z0+rnd(.35),r()*TAU),GL.rock[i%3]]); }
+ // columnas de roca delante de la cascada (bajo el estanque)
+ for(let i=0;i<9;i++){ const a=(i/8-.5)*2.6, rad=.6+r()*.35, hh=2+r()*1.1; S.push([new THREE.CylinderGeometry(rad*.8,rad,hh,7),M4(cx+Math.sin(a)*3.4,-3.6+hh/2,MZ1+1.6-Math.abs(Math.sin(a))*.6,r()*TAU),GL.rock[i%3]]); }
  // hierba alta: matas (conos finos) que se mecen
  const GR=[]; for(let i=0;i<260;i++){ const x=MX0+.8+r()*(MX1-MX0-1.6), z=MZ0+.8+r()*(MZ1-MZ0-1.6); if(x>X0-1.3&&x<X1+1.3&&z>Z0-1.4&&z<ZB+.8) continue; P.push([new THREE.ConeGeometry(.07,.42+r()*.3,3),M4(x,.1,z,r()*TAU),r()<.5?GL.grass2:'#5f8a3a',2.4]); }
  g.add(mergeColored(S)); g.add(mergeColored(B.concat(F)));
@@ -434,7 +442,9 @@ function buildGlade(g,rc,r,anim){
  const fallMat=new THREE.MeshBasicMaterial({color:'#dff3f4',transparent:true,opacity:.75,depthWrite:false,side:THREE.DoubleSide}); fallMat.userData.u={uTime:{value:0}};
  fallMat.onBeforeCompile=sh=>{ sh.uniforms.uTime=fallMat.userData.u.uTime; sh.vertexShader='varying vec2 vFuv;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vFuv=uv;'); sh.fragmentShader='uniform float uTime; varying vec2 vFuv;\n'+GLSL_NOISE+'\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n { float w=gfbm(vec2(vFuv.x*6.,vFuv.y*3.+uTime*1.6)); float a=smoothstep(.35,.7,w)*.9+.25; diffuseColor.a*=a*smoothstep(0.,.15,vFuv.y)*smoothstep(1.,.85,vFuv.y); }'); };
  const fall=new THREE.Mesh(new THREE.PlaneGeometry(2.2,3.4),fallMat); fall.position.set(MX0-.02,-1.9,Z0+1.5); fall.rotation.y=-Math.PI/2; fall.userData.dyn=true; g.add(fall);
- const pond=new THREE.Mesh(new THREE.CircleGeometry(4.2,24),waterMat); pond.rotation.x=-Math.PI/2; pond.position.set(cx,-.1,rc.cz1+4.6); pond.userData.dyn=true; g.add(pond);
+ // estanque: medio círculo contra el borde delantero de la meseta; de su borde cae la cascada grande (como en la arena de TFT)
+ const pond=new THREE.Mesh(new THREE.CircleGeometry(3.6,24,0,Math.PI),waterMat); pond.rotation.x=-Math.PI/2; pond.position.set(cx,-.1,MZ1+.25); pond.userData.dyn=true; g.add(pond);
+ const front=new THREE.Mesh(new THREE.PlaneGeometry(7.2,3.3),fallMat); front.position.set(cx,-1.75,MZ1+.27); front.userData.dyn=true; g.add(front);
  anim.push(t=>{ waterMat.userData.u.uTime.value=t; fallMat.userData.u.uTime.value=t; });
  // --- braseros: llamas (planos aditivos con ruido) y una luz puntual por brasero solo en calidad Alta ---
  const flameMat=new THREE.MeshBasicMaterial({color:'#ffb347',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}); flameMat.userData.u={uTime:{value:0}};
@@ -509,12 +519,46 @@ function buildArena(kind){
  g.traverse(o=>{ if(o.isMesh&&o!==ground) o.receiveShadow=true; });
  return g;
 }
+/* ---------- prueba: escenario plano (?arena=gif) ----------
+   Sin decorado 3D en la arena «glade»: detrás del lienzo (transparente) va una imagen o GIF del escenario, deformada en perspectiva
+   (matrix3d) para que su campo coincida con el tablero. Las casillas, el banquillo, los Pokémon y los efectos siguen en 3D. */
+const FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')==='gif'; }catch(e){ return false; } })();
+// Dos capas a 2× (1904×1440): base fija y, encima, solo lo que se mueve (agua, fuego, árboles) con transparencia. Coordenadas en píxeles del original (952×720).
+// q: puntos de la imagen que se encajan con el tablero: las dos esquinas del fondo del campo y los dos extremos del banquillo (sus 9 losas = nuestras 9 casillas)
+// back: esquinas del fondo del campo; bench: extremos del banquillo (sus 9 losas, de 243 a 689, son nuestras 9 casillas); holes: huecos de la izquierda; totem: esquina superior izquierda del campo, entre el pilar y las hornacinas (fuera de la cabecera)
+const FLAT_IMG={base:'test-arena/base.webp',anim:'test-arena/anim.webp',w:952,h:720,back:[[287,181],[636,182]],bench:[243,689,390],
+ holes:[[266,209],[260,229],[252,249],[246,269],[240,292]], totem:[282,224]};
+let flatEl=null, flatKey='', flatH=null;
+// Homografía (s → d) por mínimos cuadrados con N≥4 puntos: [a,b,c,d,e,f,g,h] con u=(ax+by+c)/(gx+hy+1), v=(dx+ey+f)/(gx+hy+1)
+function homography(s,d){ const M=Array.from({length:8},()=>new Float64Array(9));
+ for(let i=0;i<s.length;i++){ const [x,y]=s[i],[u,v]=d[i]; for(const [row,t] of [[[x,y,1,0,0,0,-u*x,-u*y],u],[[0,0,0,x,y,1,-v*x,-v*y],v]]) for(let a=0;a<8;a++){ for(let c=0;c<8;c++) M[a][c]+=row[a]*row[c]; M[a][8]+=row[a]*t; } }
+ for(let c=0;c<8;c++){ let p=c; for(let r=c+1;r<8;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c])) p=r; [M[c],M[p]]=[M[p],M[c]];
+   for(let r=0;r<8;r++){ if(r===c) continue; const k=M[r][c]/M[c][c]; for(let j=c;j<9;j++) M[r][j]-=k*M[c][j]; } }
+ return M.map((r,i)=>r[8]/r[i]); }
+const hApply=(h,[x,y])=>{ const w=h[6]*x+h[7]*y+1; return [(h[0]*x+h[1]*y+h[2])/w,(h[3]*x+h[4]*y+h[5])/w]; };
+// Punto de la imagen → mundo, sobre el plano de altura y (para poner cosas 3D justo encima de algo pintado en la imagen)
+const _rv=new THREE.Vector3(), _rd=new THREE.Vector3();
+function flatWorld(pt,y=0){ if(!flatH) return null; const cvs=renderer.domElement, [sx,sy]=hApply(flatH,pt); _rv.set(sx/cvs.clientWidth*2-1,1-sy/cvs.clientHeight*2,.5).unproject(camera);
+ _rd.copy(_rv).sub(camera.position).normalize(); const t=(y-camera.position.y)/_rd.y; return new THREE.Vector3().copy(camera.position).addScaledVector(_rd,t); }
+function stepFlat(){
+ const on=FLAT&&curArena==='glade'&&board.G; if(!on){ if(flatEl) flatEl.hidden=true; flatH=null; return; }
+ const cvs=renderer.domElement, G=board.G; if(!flatEl){ flatEl=document.createElement('div'); flatEl.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
+   for(const src of [FLAT_IMG.base,FLAT_IMG.anim]){ const im=document.createElement('img'); im.src=src; im.alt=''; im.style.cssText='position:absolute;inset:0;width:100%;height:100%'; flatEl.appendChild(im); }
+   cvs.parentElement.insertBefore(flatEl,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; }
+ flatEl.hidden=false; flatEl.style.left=cvs.offsetLeft+'px'; flatEl.style.top=cvs.offsetTop+'px';
+ const rc=boardRects(), W=cvs.clientWidth, H=cvs.clientHeight, [bx0,bx1,by]=FLAT_IMG.bench, bw=(bx1-bx0)/9;
+ const scr=v=>{ v3.copy(v).project(camera); return [(v3.x+1)/2*W,(1-v3.y)/2*H]; };
+ // se encajan las dos esquinas del fondo y el centro de las 9 losas del banquillo (mínimos cuadrados): las fichas de la banca caen justo en su losa
+ const src=[...FLAT_IMG.back,...G.bench.map((_,i)=>[bx0+bw*(i+.5),by])], d=[scr(new THREE.Vector3(rc.bx0,0,rc.bz0)),scr(new THREE.Vector3(rc.bx1,0,rc.bz0)),...G.bench.map(([x,y])=>scr(W3(x,y,TOP)))];
+ const k=d.map(p=>p.map(Math.round).join(',')).join(';'); if(k===flatKey) return; flatKey=k; const h=homography(src,d); flatH=h;
+ flatEl.style.transform='matrix3d('+[h[0],h[3],0,h[6], h[1],h[4],0,h[7], 0,0,1,0, h[2],h[5],0,1].join(',')+')'; }
 const SKY={glade:['#f2b7ad','#ffe6dc'],river:['#f4b0bc','#ffe9dc'],route:['#8fd3ff','#e8f7ff'],stadium:['#141a3a','#3a4a8a'],plaza:['#7f93e6','#dfe8ff'],'temple-fire':TEMPLE.fire.sky,'temple-grass':TEMPLE.grass.sky,'temple-water':TEMPLE.water.sky};
 function setArena(kind){
  if(kind===curArena) return; const prev=curArena; curArena=kind; if(renderer) renderer.shadowMap.needsUpdate=true;
  if(benchPads) benchPads.visible=kind!=='plaza';
  // La cámara encuadra la plaza entera en el carrusel y el tablero en el resto
  if(board.G&&(kind==='plaza')!==(prev==='plaza')) fitCamera(board.G);
+ if(FLAT&&kind==='glade'){ for(const k in arenas) arenas[k].visible=false; scene.background=null; scene.fog=null; return; }
  if(!arenas[kind]){ arenas[kind]=bakeStatic(buildArena(kind)); scene.add(arenas[kind]); }
  for(const k in arenas) arenas[k].visible=k===kind;
  const [a,b]=SKY[kind]; scene.background=canvasTex(2,64,(g)=>{ const gr=g.createLinearGradient(0,0,0,64); gr.addColorStop(0,a); gr.addColorStop(1,b); g.fillStyle=gr; g.fillRect(0,0,2,64); },false);
@@ -1151,13 +1195,19 @@ function stepBubbles(list,now){
 /* ---------- tótem de aumentos y cristales de intereses ---------- */
 // El tótem (a la izquierda del tablero) sostiene los aumentos; game.js dibuja encima sus iconos.
 // Los 5 cristales (junto al banquillo) se encienden con el oro de intereses de la ronda.
-let totem=null; const crystals=[];
+// En la arena «glade» van dentro de las 10 hornacinas (gladeNiches: [x, z, orden desde el banquillo]); en las demás, en fila junto al banquillo
+let totem=null; const crystals=[], gladeNiches=[];
 function buildProps(){
  const g=new THREE.Group(), gold=new THREE.MeshStandardMaterial({color:'#e8b84a',metalness:.75,roughness:.3,emissive:'#4a3000',emissiveIntensity:.3});
  const stone=new THREE.MeshStandardMaterial({color:'#3a3f5c',roughness:.7}), gem=new THREE.MeshStandardMaterial({color:'#b9a6ff',emissive:'#6a4bff',emissiveIntensity:.8,roughness:.2,metalness:.2});
- const base=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.22,8),gold); base.position.y=.11;
- const col=new THREE.Mesh(new THREE.CylinderGeometry(.16,.24,1.25,8),stone); col.position.y=.85;
- const ring=new THREE.Mesh(new THREE.TorusGeometry(.24,.05,8,24),gold); ring.rotation.x=Math.PI/2; ring.position.y=1.2;
+ // pedestal: zócalo de piedra en dos escalones con filos dorados, columna con dos anillos y una copa que sostiene la ball
+ const stoneL=new THREE.MeshStandardMaterial({color:'#4a5070',roughness:.65});
+ const base=new THREE.Group(), add=(geo,mat,y,rx=0)=>{ const m=new THREE.Mesh(geo,mat); m.position.y=y; m.rotation.x=rx; base.add(m); return m; };
+ add(new THREE.CylinderGeometry(.56,.62,.16,32),stone,.08); add(new THREE.TorusGeometry(.56,.03,8,40),gold,.16,Math.PI/2);
+ add(new THREE.CylinderGeometry(.42,.48,.14,32),stoneL,.23); add(new THREE.TorusGeometry(.42,.025,8,40),gold,.3,Math.PI/2);
+ const col=new THREE.Mesh(new THREE.CylinderGeometry(.15,.2,1.05,16),stone); col.position.y=.82;
+ add(new THREE.TorusGeometry(.2,.03,8,28),gold,.42,Math.PI/2); add(new THREE.TorusGeometry(.16,.025,8,28),gold,1.0,Math.PI/2);
+ const ring=new THREE.Mesh(new THREE.CylinderGeometry(.3,.16,.16,24,1,true),gold); ring.position.y=1.38; ring.material.side=THREE.DoubleSide;
  // Master Ball: mitad morada con dos bultos rosas y la "M", mitad blanca, franja negra y botón
  const top=new THREE.Group(), mb=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.3,metalness:.1});
  const up=new THREE.Mesh(new THREE.SphereGeometry(.34,28,14,0,TAU,0,Math.PI/2),mb('#6a2fb8')), dn=new THREE.Mesh(new THREE.SphereGeometry(.34,28,14,0,TAU,Math.PI/2,Math.PI/2),mb('#f4f4f4'));
@@ -1165,16 +1215,21 @@ function buildProps(){
  for(const sx of [-1,1]){ const bump=new THREE.Mesh(new THREE.SphereGeometry(.09,14,10),mb('#ff6fb0')); bump.position.set(sx*.17,.21,.21); bump.scale.set(1,.7,.7); top.add(bump); }
  const mTex=canvasTex(64,64,(g2)=>{ g2.fillStyle='#fff'; g2.font='900 46px system-ui'; g2.textAlign='center'; g2.textBaseline='middle'; g2.fillText('M',32,36); },false);
  const mLogo=new THREE.Mesh(new THREE.PlaneGeometry(.2,.2),new THREE.MeshBasicMaterial({map:mTex,transparent:true,depthWrite:false})); mLogo.position.set(0,.2,.29); mLogo.rotation.x=-.6;
- top.add(up,dn,band,btn,mLogo); top.position.y=1.72;
+ top.add(up,dn,band,btn,mLogo); top.position.y=1.72; top.rotation.y=-.35; top.rotation.x=.12; // quieta, girada un poco hacia la cámara
  const halo=glowSprite('#c9a2ff',1.6); halo.position.y=1.72;
  g.add(base,col,ring,top,halo); g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.userData.top=top; scene.add(g); totem=g;
  const cg=new THREE.OctahedronGeometry(.26,0);
- for(let i=0;i<5;i++){ const m=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:'#4a6c9a',emissive:'#000000',roughness:.25,metalness:.2,transparent:true,opacity:.65})); m.scale.y=1.9; const h=glowSprite('#7fe0ff',1.3); h.visible=false; const c=new THREE.Group(); c.add(m,h); c.userData={m,h}; scene.add(c); crystals.push(c); }
+ for(let i=0;i<10;i++){ const m=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:'#4a6c9a',emissive:'#000000',roughness:.25,metalness:.2,transparent:true,opacity:.65})); m.scale.y=1.9; const h=glowSprite('#7fe0ff',1.3); h.visible=false; const c=new THREE.Group(); c.add(m,h); c.userData={m,h}; scene.add(c); crystals.push(c); }
 }
 function stepProps(F,now){
  if(!totem) buildProps();
- const T=F.totem; totem.visible=!!T; if(T){ const p=W3(T.x,T.y,0); totem.position.set(p.x,TOP-.05,p.z); totem.userData.top.rotation.y=Math.sin(now*.8)*.6; totem.userData.top.position.y=1.72+Math.sin(now*2)*.05; }
- const I=F.interest; crystals.forEach((c,i)=>{ c.visible=!!I; if(!I) return; const p=W3(I.x,I.y+i*I.dy,0); c.position.set(p.x,TOP+.25+(i<I.n?Math.sin(now*2.5+i)*.05:0),p.z);
+ const T=F.totem; totem.visible=!!T; if(T){ const p=flatH?flatWorld(FLAT_IMG.totem,0):W3(T.x,T.y,0); totem.position.set(p.x,flatH?0:TOP-.05,p.z); } // la ball se queda quieta
+ const I=F.interest, flat=!!flatH, inNiche=flat||(curArena==='glade'&&gladeNiches.length===10);
+ crystals.forEach((c,j)=>{ c.visible=!!I&&(flat?j<5:inNiche||j<5); if(!c.visible) return;
+   // en las hornacinas, los dos lados muestran lo mismo y se encienden desde el banquillo hacia el fondo
+   const i=flat?4-j%5:inNiche?gladeNiches[j][2]:j, bob=i<I.n?Math.sin(now*2.5+i)*.05:0;
+   if(flat){ const w=flatWorld(FLAT_IMG.holes[j],0); c.position.set(w.x,.52+bob,w.z); } // la punta de abajo (0,5 por debajo del centro) queda en el hueco pintado
+   else if(inNiche) c.position.set(gladeNiches[j][0],1.2+bob,gladeNiches[j][1]); else { const p=W3(I.x,I.y+i*I.dy,0); c.position.set(p.x,TOP+.25+bob,p.z); }
    const on=i<I.n, m=c.userData.m; m.material.color.set(on?'#9fe8ff':'#3a4a66'); m.material.emissive.set(on?'#2aa8ff':'#000000'); m.material.emissiveIntensity=on?1:.0; m.material.opacity=on?.95:.55; m.rotation.y=now*(on?1.4:.3); c.userData.h.visible=on; });
 }
 const totemTop=()=>totem&&totem.visible?projectV(totem.position.clone().setY(TOP+2.2)):null;
@@ -1208,7 +1263,7 @@ function stepOrbs(list,now){
 /* ---------- escena, cámara y API ---------- */
 let hemi, sun;
 function init(canvas){
- renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
+ renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:FLAT,powerPreference:'high-performance'}); if(FLAT) renderer.setClearColor(0x000000,0);
  renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=true;
  scene=new THREE.Scene();
@@ -1304,12 +1359,14 @@ function stepCount(c,now){
 function render(F){
  if(!ready) return;
  const now=performance.now()/1000, raw=lastT?now-lastT:0, dt=Math.min(.1,raw); lastT=now;
- watchPerf(raw); if(F.car) M.car=F.car; setArena(F.arena);
+ watchPerf(raw); if(F.car) M.car=F.car; setArena(F.arena); stepFlat();
  if(arenas[curArena]) for(const a of arenas[curArena].userData.anim) a(now);
  // casillas resaltadas al arrastrar
  for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,ccol(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
  hexMesh.instanceColor.needsUpdate=true; hexMesh.material.opacity=F.cells&&F.cells.drop?.7:.38;
- for(let i=0;i<9;i++) benchPads.setColorAt(i,ccol(F.benchHover===i?'#c8d8ff':curArena==='stadium'?'#262638':(curArena.startsWith('temple')||curArena==='river'||curArena==='glade')?'#6a6478':'#583018')); benchPads.instanceColor.needsUpdate=true;
+ for(let i=0;i<9;i++) benchPads.setColorAt(i,ccol(F.benchHover===i?'#c8d8ff':FLAT&&curArena==='glade'?'#dfe8ff':curArena==='stadium'?'#262638':(curArena.startsWith('temple')||curArena==='river'||curArena==='glade')?'#6a6478':'#583018')); benchPads.instanceColor.needsUpdate=true;
+ // escenario plano: las casillas del banquillo son las losas de la imagen; las 3D solo se intuyen al arrastrar una ficha
+ if(FLAT&&curArena==='glade'){ benchPads.visible=!!(F.cells&&F.cells.drop); benchPads.material.transparent=true; benchPads.material.opacity=.3; benchPads.material.depthWrite=false; }
  hexMesh.visible=hexRing.visible=F.arena!=='plaza'&&!!(F.cells&&F.cells.drop);
  stepCount(F.floorCount,now);
  // actores
