@@ -73,7 +73,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
   - 94 objetos: 9 componentes (Medalla incluida), 37 completos, 24 insignias forjables, emblemas y el Imán Removedor;
   - 93 aumentos, en 15 categorías (Llamada al Caos incluida), con 11 aumentos de héroe.
 - **Aros bajo las fichas**: solo se ven en la ficha que se arrastra o la seleccionada con clic (`spec.drag`/`spec.sel` en `board3d.js`); ni en el tablero, ni en la banca, ni en la minileyenda.
-- **Cristales de intereses**: solo se ven los ganados; cada uno brota de su hueco (sube, crece y destella en 0,7 s) al alcanzar ese interés y se hunde si se pierde (`stepProps`).
+- **Cristales de intereses**: solo se ven los ganados; cada uno brota de su hueco (sube, crece, gira y destella en 0,7 s) al alcanzar ese interés y se hunde si se pierde; una vez aparecidos están completamente quietos, igual que la torre de aumentos (`stepProps`). El temblor de los golpes fuertes, con el escenario por capas, desplaza el bloque entero (`#boardStack`: imagen, 3D y capa 2D) en vez de la cámara, para que la torre y los cristales no bailen sobre su base pintada.
 - **Carrusel**: la primera pareja sale a los 5 s y las demás cada 3,5 s (`releaseAt`); la plaza ya no suelta nieve ni chispas (ahorro de partículas).
 - **Coleccionista** cuenta solo las especies del tablero (`boardSpecies`), no las del banquillo.
 - **Movimiento de la minileyenda**: clic derecho para ir a un punto; manteniéndolo pulsado, sigue al puntero (`tacHold`/`tacGoto`; en multijugador, un mensaje cada 150 ms como mucho). El clic derecho nunca abre la ficha de un Pokémon (solo el izquierdo).

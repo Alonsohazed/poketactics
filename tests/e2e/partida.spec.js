@@ -171,6 +171,26 @@ test('con intereses, el carrusel no rompe el dibujo y el escenario por capas sig
   expect(errs).toEqual([]);
 });
 
+// Regresión: con el escenario por capas el temblor de los golpes fuertes movía solo la cámara 3D; la torre, los cristales y los Pokémon bailaban
+// sobre su base pintada. Ahora tiembla el bloque entero: imagen, lienzo 3D y capa 2D se desplazan juntos y al acabar vuelve todo a su sitio.
+test('el temblor mueve imagen, 3D y capa 2D a la vez (la torre no baila sobre su base)', async ({ page }) => {
+  await page.evaluate(() => { G.me.gold = 60; renderUI(); });
+  await page.waitForTimeout(2500);
+  const r = await page.evaluate(async () => {
+    const st = document.getElementById('boardStack'), img = [...st.children].find(e => e.querySelector && e.querySelector('video')), gl = document.getElementById('gl'), cv = document.getElementById('cv');
+    const rel = () => { const a = img.getBoundingClientRect(), g = gl.getBoundingClientRect(), c = cv.getBoundingClientRect(); return { gx: g.left - a.left, gy: g.top - a.top, cx: c.left - a.left, cy: c.top - a.top, bx: st.getBoundingClientRect().left, by: st.getBoundingClientRect().top }; };
+    const sin = rel(); const m = []; let movio = 0;
+    for (let i = 0; i < 30; i++) { B3.debugShake(.16); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); const x = rel(); m.push(x); movio = Math.max(movio, Math.abs(x.bx - sin.bx), Math.abs(x.by - sin.by)); }
+    const dif = Math.max(...m.map(x => Math.max(Math.abs(x.gx - sin.gx), Math.abs(x.gy - sin.gy), Math.abs(x.cx - sin.cx), Math.abs(x.cy - sin.cy))));
+    await new Promise(r => setTimeout(r, 2500)); const fin = rel();
+    return { movio: +movio.toFixed(1), difRelativa: +dif.toFixed(2), vuelve: Math.abs(fin.bx - sin.bx) < .6 && Math.abs(fin.by - sin.by) < .6, transform: st.style.transform };
+  });
+  expect(r.movio, 'el bloque sí tiembla').toBeGreaterThan(.5);
+  expect(r.difRelativa, 'imagen, 3D y 2D se mueven juntos (sin diferencia entre ellos)').toBeLessThan(.6);
+  expect(r.vuelve, 'al acabar el temblor vuelve a su sitio').toBe(true);
+  expect(r.transform).toBe('');
+});
+
 test('Llamada al Caos: se elige y aparece una ventana con el resultado', async ({ page }) => {
   await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
   await expect(page.locator('#mbox h1')).toHaveText('Llamada al Caos');
