@@ -78,7 +78,7 @@ function augGrant(p,v){
 // p.picks: cola de elecciones; cada una con opciones {t:título,i:icono,d:descripción,v:valor}. La resuelve el servidor (acción 'pick').
 function augOffer(p,src,title,desc,opts){
  if(!opts||!opts.length) return null;
- G.pickSeq=(G.pickSeq||0)+1; const pk={id:G.pickSeq,src,title,desc,opts:opts.slice(0,4)};
+ G.pickSeq=(G.pickSeq||0)+1; const pk={id:G.pickSeq,src,title,desc,opts:opts.slice(0,6)};
  (p.picks=p.picks||[]).push(pk); if(p.isBot||G.auto) resolvePick(p,pk.id,botPickIndex(pk));
  return pk;
 }
@@ -307,9 +307,9 @@ const traitList=p=>{ const c=traitCounts(p); return Object.keys(c).filter(t=>t!=
 
 // ===== Nuevos (inspirados en TFT, al estilo Pokémon) =====
 // Unidos Venceremos: emblema de una sinergia al azar, un objeto completo a elegir y +30% de vel. de ataque a los de esa sinergia
-AG({id:'unidos',tier:'G',cat:'emblem',tags:['emblem','trait'],name:'Unidos Venceremos',icon:'🤝',desc:'Recibes el emblema de una sinergia al azar y eliges un objeto completo entre 3. Tus Pokémon de esa sinergia ganan +30% de velocidad de ataque.',
+AG({id:'unidos',tier:'G',cat:'emblem',tags:['emblem','trait'],name:'Unidos Venceremos',icon:'🤝',desc:'Recibes el emblema de una sinergia al azar y un Yunque de objetos (véndelo y eliges 1 de 6 objetos completos). Tus Pokémon de esa sinergia ganan +30% de velocidad de ataque.',
  on:{select:c=>{ const t=pick([...ELEM_TRAITS,...CLASS_TRAITS].filter(x=>ITEMS['emb_'+x])); c.st.t=t; c.item('emb_'+t); c.say(`emblema ${t}`);
-   c.offer('Unidos Venceremos','Elige un objeto completo',shuffle(FULL_KEYS.slice()).slice(0,3).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k}))); }},
+   c.say(giveAnvil(c.p,'f')); }},
  combat:(us,t)=>{ for(const u of us) if(hasT(u,t)) boost(u,{as:.3}); },snap:c=>c.st.t||null,ui:c=>c.st.t?`${c.st.t}: +30% de vel. de ataque`:''});
 // Dados Cargados: el dado siempre sale 6 y la moneda, cara; y tus Pokémon que generan oro dan 1 más cada vez
 AG({id:'dados',tier:'S',cat:'econ',tags:['Cazatesoros'],name:'Dados Cargados',icon:'🎲',desc:'Tiras un dado trucado (siempre sale 6) y una moneda (siempre cara): 7 de oro. Además, los Pokémon que generan oro con su habilidad (Persian, Gholdengo…) dan 1 más cada vez y el botín de Cazatesoros da 2 de oro más.',
@@ -351,12 +351,12 @@ AG({id:'ultraball',tier:'G',cat:'classic',w:.5,name:'Ultra Ball',icon:'🟡',des
 // Escalera de Sinergias (como la Trait Ladder de TFT): tras cada combate PvP, si tienes activas al menos N sinergias que no son
 // únicas, recibes el premio de ese escalón y N sube en 1. Cuantas más sinergias activas metas, mejores premios.
 const LADDER_COMPS=()=>shuffle(BASIC.filter(k=>k!=='medal')).slice(0,3).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k}));
-const LADDER={2:'Imán Removedor',3:'3 de oro',4:'5 de oro',5:'un componente',6:'7 de oro o 2 Pokémon de coste 3',7:'2 de oro y un componente a elegir',8:'2 componentes o un objeto completo',
+const LADDER={2:'Imán Removedor',3:'3 de oro',4:'5 de oro',5:'un componente',6:'7 de oro o 2 Pokémon de coste 3',7:'2 de oro y un Yunque de componentes',8:'2 componentes o un Yunque de objetos',
  9:'2 de oro y 2 Pokémon de coste 5',10:'18 de oro',11:'una Medalla Maestra (+1 espacio)',12:'3 Pokémon de coste 4 y 6 de oro',13:'8 de oro y 4 componentes',14:'10 de oro y un emblema a elegir'};
 function ladderReward(c,n){ const g=v=>augGrant(c.p,v);
  switch(n){ case 2: g('it:magnet'); break; case 3: g('g:3'); break; case 4: g('g:5'); break; case 5: g('c'); break;
-  case 6: if(Math.random()<.5) g('g:7'); else { g('uc:3'); g('uc:3'); } break; case 7: g('g:2'); c.offer('Escalera de Sinergias','Elige un componente',LADDER_COMPS()); break;
-  case 8: if(Math.random()<.57){ g('c'); g('c'); } else g('f'); break; case 9: g('g:2'); g('uc:5'); g('uc:5'); break; case 10: g('g:18'); break;
+  case 6: if(Math.random()<.5) g('g:7'); else { g('uc:3'); g('uc:3'); } break; case 7: g('g:2'); giveAnvil(c.p,'c'); break;
+  case 8: if(Math.random()<.57){ g('c'); g('c'); } else giveAnvil(c.p,'f'); break; case 9: g('g:2'); g('uc:5'); g('uc:5'); break; case 10: g('g:18'); break;
   case 11: g('it:master'); break; case 12: g('uc:4'); g('uc:4'); g('uc:4'); g('g:6'); break; case 13: g('g:8'); for(let i=0;i<4;i++) g('c'); break;
   default: g('g:10'); c.offer('Escalera de Sinergias','Elige un emblema',emblemOpts(Object.keys(TRAITS).filter(t=>t!=='Legendario'),c.p)); }
  c.say(`${n} sinergias activas: ${LADDER[n]||LADDER[14]}`); }
@@ -623,6 +623,73 @@ AG({id:'verticalidad3',tier:'P',cat:'trait',tags:['trait'],ex:'vertical',req:ST(
 AG({id:'vale_la_pena',tier:'P',cat:'reroll',tags:['reroll'],req:ST(2),name:'Vale la Pena Esperar',icon:'⏳',desc:'Recibes 2 copias de un Pokémon de coste 2 al azar, y otra copia al empezar cada ronda el resto de la partida.',
  on:{select:c=>{ const k=randKey(2); c.st.k=k; giveCopy(c.p,k); giveCopy(c.p,k); },roundStart:c=>{ if(c.st.k) giveCopy(c.p,c.st.k); }},ui:c=>c.st.k?`Pokémon: ${DEF[c.st.k].name}`:''});
 
+
+// ===== Yunques, duplicadores, radiantes y mecánicas especiales (TFT Set 18) =====
+AG({id:'activos_hierro',tier:'S',cat:'classic',req:ST(2),name:'Activos de Hierro',icon:'⚒️',desc:'Recibes un Yunque de componentes (véndelo y eliges 1 de 6 componentes) y 3 de oro.',on:{select:c=>{ c.say(giveAnvil(c.p,'c')); c.p.gold+=3; }}});
+AG({id:'bufe_componentes',tier:'S',cat:'classic',req:ST(2),name:'Bufé de Componentes',icon:'🍱',desc:'Cada vez que fueras a recibir un componente, recibes en su lugar un Yunque de componentes (eliges 1 de 6). Recibes un componente al azar ahora.',
+ on:{select:c=>{ c.comp(); c.p.mods.anvilBuffet=1; }}});
+AG({id:'favor_cuidador',tier:'G',cat:'fast',tags:['fast'],req:ST(2),name:'Favor del Cuidador',icon:'🧓',desc:'Recibes un Yunque de componentes al llegar a nivel 5, 6, 7 y 8.',
+ on:{levelUp:c=>{ for(const l of [5,6,7,8]) if(c.d.level>=l&&c.once('l'+l)) c.say(giveAnvil(c.p,'c')); }}});
+const grabBag=(id,st,gold)=>AG({id,tier:'G',cat:'reroll',tags:['reroll'],ex:'bolsa_heroica',req:ST(st),name:gold>8?'Bolsa Heroica++':gold>6?'Bolsa Heroica+':'Bolsa Heroica',icon:'🧬',desc:`Recibes 2 Duplicadores menores (copian un Pokémon de coste 1 a 3) y ${gold} de oro.`,
+ on:{select:c=>{ c.item('dup_menor'); c.item('dup_menor'); c.p.gold+=gold; }}});
+grabBag('bolsa_heroica',2,6); grabBag('bolsa_heroica2',3,8); grabBag('bolsa_heroica3',4,14);
+AG({id:'formar_equipo',tier:'S',cat:'reroll',tags:['reroll'],req:ST(2,3),name:'Formar Equipo',icon:'👥',desc:'Recibes un Duplicador menor. Tras 5 combates PvP, otro.',
+ on:{select:c=>c.item('dup_menor'),roundEnd:c=>{ if(c.d.pve) return; c.st.n=(c.st.n||0)+1; if(c.st.n===5){ c.item('dup_menor'); c.say('otro Duplicador menor'); } }},ui:c=>(c.st.n||0)>=5?'Entregado':`Combates PvP: ${c.st.n||0}/5`});
+AG({id:'construccion_maxima',tier:'G',cat:'reroll',tags:['reroll','fast'],req:ST(4),name:'Construcción Máxima',icon:'🏗️',desc:'Recibes 10 tiendas gratis. Al llegar a nivel 9, otras 3 y un Duplicador (copia cualquier Pokémon).',
+ on:{select:c=>{ c.p.freeRerolls+=10; },levelUp:c=>{ if(c.d.level>=9&&c.once('9')){ c.p.freeRerolls+=3; c.item('dup_mayor'); c.say('3 tiendas y un Duplicador'); } }}});
+AG({id:'reliquias_radiantes',tier:'P',cat:'carry',tags:['carry'],name:'Reliquias Radiantes',icon:'🌟',desc:'Eliges 1 de 5 objetos radiantes (el doble de fuerza que su objeto; no se craftean) y recibes un Imán Removedor.',
+ on:{select:c=>{ c.item('magnet'); c.offer('Reliquias Radiantes','Elige un objeto radiante',pickOpts(RADIANT_KEYS.filter(k=>k!=='rad_zoom'),5)); }}});
+AG({id:'picaro_radiante',tier:'P',cat:'carry',tags:['carry'],req:ST(3,4),name:'Pícaro Radiante',icon:'🦹',desc:'Recibes un Guante de Boxeo radiante: cada ronda equipa 2 objetos radiantes al azar a quien lo lleve.',on:{select:c=>c.item('rad_zoom')}});
+// Banco de Pandora: los Pokémon de los 3 últimos huecos del banquillo se transforman en otros del mismo coste (conservan estrellas y objetos)
+AG({id:'banco_pandora',tier:'S',cat:'risk',req:ST(2,3),name:'Banco de Pandora',icon:'📦',desc:'Al empezar cada ronda, los Pokémon de los 3 huecos de la derecha de tu banquillo se transforman en otros al azar del mismo coste (conservan estrellas y objetos). Recibes 1 de oro.',
+ on:{select:c=>{ c.p.gold+=1; c.p.mods.pandoraBench=1; },roundStart:c=>{ const b=c.p.bench; let n=0; for(let i=Math.max(0,b.length-3);i<b.length;i++){ const u=b[i]; if(!u||DEF[u.defId].anvil) continue; const d=DEF[u.baseId];
+   const l=UNIT_LIST.filter(x=>x.cost===d.cost&&x.key!==u.baseId&&(!G.pool||G.pool[x.key]>=Math.pow(3,u.star-1))); if(!l.length) continue; const nk=pick(l).key, cp=Math.pow(3,u.star-1);
+   returnToPool(u.baseId,cp); if(G.pool) G.pool[nk]-=cp; u.baseId=nk; u.defId=nk; n++; } if(n){ c.say(`${n} Pokémon transformados`); combine(c.p); } }}});
+// NO SCOUT NO PIVOT: tus Pokémon que pelean en PvP se quedan para siempre; a cambio, tu equipo crece cada ronda
+AG({id:'no_scout',tier:'G',cat:'hybrid',tags:['reroll'],req:ST(2),name:'NO SCOUT NO PIVOT',icon:'🔒',desc:'Los Pokémon que pelean en un combate PvP ya no se pueden vender ni devolver al banquillo. A cambio, tras cada combate PvP tu equipo gana +3% de vida, +3% de ataque y +3 de poder para siempre.',
+ on:{select:c=>{ c.p.mods.noPivot=1; },roundEnd:c=>{ if(c.d.pve) return; c.st.n=(c.st.n||0)+1; for(const u of boardUnits(c.p)) u.locked=true; }},
+ snap:c=>c.st.n||null,combat:(us,n)=>{ for(const u of us) boost(u,{hp:.03*n,ad:.03*n,ap:3*n}); },ui:c=>`Tu equipo: +${3*(c.st.n||0)}% de vida y ataque y +${3*(c.st.n||0)} de poder`});
+// Solo Leveling: el resto de la fase pelea un único Pokémon, muy reforzado; cada baja da 1 de EXP; en la ronda PvE vuelve todo y 2 componentes
+AG({id:'solo_leveling',tier:'S',cat:'carry',tags:['carry'],req:ST(2),name:'Solo Leveling',icon:'🗡️',desc:'Hasta la ronda PvE de esta fase solo pelea tu Pokémon más fuerte del tablero, con el doble de vida y +60% de ataque, +60 de poder y +40% de velocidad de ataque. Cada baja que consiga te da 1 de EXP. En la ronda PvE recuperas todos tus huecos y recibes 2 componentes.',
+ on:{select:c=>{ c.p.mods.soloLevel=1; c.st.on=1; },kills:c=>{ if(c.st.on&&c.d.n>0) c.xp(c.d.n); },roundStart:c=>{ if(c.st.on&&G.round&&G.round.type==='pve'){ c.st.on=0; c.p.mods.soloLevel=0; c.comp(); c.comp(); c.say('¡vuelven tus huecos! 2 componentes'); } }},
+ snap:c=>c.st.on?1:null,combat:us=>{ for(const u of us){ boost(u,{hp:1,ad:.6,ap:60,as:.4,df:20}); } },ui:c=>c.st.on?'Activo: pelea un solo Pokémon':'Terminado'});
+// Saqueo (Pilfer): copia del primer Pokémon que derrotas cada combate; con 21 de oro en copias, un Guante de Boxeo
+AG({id:'saqueo',tier:'G',cat:'reroll',tags:['reroll'],req:ST(3),name:'Saqueo',icon:'🫳',desc:'Tras cada combate recibes una copia (1★) del primer Pokémon rival que derrotaste. La primera vez que acumules 21 de oro en copias así, recibes un Guante de Boxeo.',
+ on:{roundEnd:c=>{ const k=c.d.firstKill; if(!k||!DEF[k]||DEF[k].anvil) return; const base=DEF[k].evoOf||k; giveCopy(c.p,base); c.st.v=(c.st.v||0)+DEF[base].cost; c.say('copia de '+DEF[base].name);
+   if(c.st.v>=21&&c.once('g')){ c.item('zoom'); c.say('¡Guante de Boxeo!'); } }},ui:c=>`Copias: ${c.st.v||0}/21 de oro`});
+// Préstamo Avanzado / Poder Aumentado: cambian la rareza de tu siguiente aumento
+AG({id:'prestamo',tier:'G',cat:'econ',ex:'prestamo',req:ST(2),name:'Préstamo Avanzado',icon:'🏦',desc:'Recibes 20 de oro. Tu siguiente aumento será de una rareza menor.',on:{select:c=>{ c.p.gold+=20; c.p.augShift=(c.p.augShift||0)-1; }}});
+AG({id:'prestamo2',tier:'G',cat:'econ',ex:'prestamo',req:ST(3),name:'Préstamo Avanzado+',icon:'🏦',desc:'Recibes 33 de oro. Tu siguiente aumento será de una rareza menor.',on:{select:c=>{ c.p.gold+=33; c.p.augShift=(c.p.augShift||0)-1; }}});
+AG({id:'poder_aumentado',tier:'S',cat:'classic',req:ST(3),name:'Poder Aumentado',icon:'⏫',desc:'Tu siguiente aumento será de una rareza mayor.',on:{select:c=>{ c.p.augShift=(c.p.augShift||0)+1; }}});
+// Contadores visibles: objetos extra tras cierta cantidad de ataques, daño, daño recibido o maná gastado por tu equipo
+const counter=(id,comp,name,need,key,txt)=>AG({id,tier:'S',cat:'classic',req:ST(2),name,icon:'📈',desc:`Recibes ${ITEM_NAME[comp]}. Cuando tu equipo ${txt} ${need.toLocaleString('es')}, recibes 2 más.`,
+ on:{select:c=>c.item(comp),roundEnd:c=>{ if(c.st.done||!c.d.cs) return; c.st.v=(c.st.v||0)+Math.round(c.d.cs[key]||0); if(c.st.v>=need){ c.st.done=1; c.item(comp); c.item(comp); c.say(`¡2 × ${ITEM_NAME[comp]}!`); } }},
+ ui:c=>c.st.done?'Completado':`${Math.min(need,c.st.v||0).toLocaleString('es')} / ${need.toLocaleString('es')}`});
+const ITEM_NAME={wing:'una Pluma Veloz',claw:'una Garra Afilada',club:'un Hueso Grueso',water:'un Agua Mística'};
+counter('arcos_reserva','wing','Plumas de Reserva',1000,'atk','haya atacado');
+counter('abrir_camino','claw','Abrir Camino',65000,'phys','haya hecho de daño físico');
+counter('hebillas_extra','club','Huesos de Más',75000,'taken','haya recibido de daño');
+counter('lagrimas','water','Lágrimas que Fluyen',7000,'mana','haya gastado de maná');
+// Tiradas de dados (con ventana animada). Con Dados Cargados, siempre el mejor resultado
+// Tabla de Slightly Magic Roll (TFT 18.5): 1 → 6 tiendas · 2 → 10 de oro · 3 → coste 2 a 2★ y 3 de oro · 4 → objeto completo e Imán · 5 → +160 de vida a todo el equipo · 6 → emblema
+const DICE_SMALL=[null,{t:'6 tiendas gratis',g:p=>{ p.freeRerolls+=6; }},{t:'10 de oro',g:p=>{ p.gold+=10; }},{t:'Un Pokémon de coste 2 a 2★ y 3 de oro',g:p=>{ const k=randKey(2); if(k) giveStar(p,k,2); p.gold+=3; }},
+ {t:'Un objeto completo y un Imán Removedor',g:p=>{ augGrant(p,'f'); giveItem(p,'magnet'); }},{t:'+160 de vida para todo tu equipo (para siempre)',g:(p,st)=>{ st.hp160=1; }},{t:'Un emblema al azar',g:p=>{ giveItem(p,'emb_'+pick([...ELEM_TRAITS,...CLASS_TRAITS])); }}];
+const rollDie=p=>p.mods.lucky?6:1+Math.floor(Math.random()*6);
+function diceReveal(p,title,dice,name,text){ revealTo(p,'🎲',title,name,text,'bueno',dice); }
+AG({id:'tirada_magica',tier:'S',cat:'chaos',tags:['chaos'],req:ST(2),name:'Tirada Ligeramente Mágica',icon:'🎲',desc:'Tiras un dado y ganas según el número: 1 → 6 tiendas gratis · 2 → 10 de oro · 3 → Pokémon de coste 2 a 2★ y 3 de oro · 4 → objeto completo e Imán Removedor · 5 → +160 de vida para todo tu equipo · 6 → emblema al azar.',
+ on:{select:c=>{ const d=rollDie(c.p), r=DICE_SMALL[d]; r.g(c.p,c.st); c.st.last=r.t; diceReveal(c.p,'Tirada Ligeramente Mágica',[d],`¡Sale un ${d}!`,r.t); }},
+ snap:c=>c.st.hp160?1:null,combat:us=>{ for(const u of us) boost(u,{hpf:160}); },ui:c=>c.st.last?`Resultado: ${c.st.last}`:''});
+// 3 dados: premio según la suma
+const DICE3=[[6,'10 de oro',p=>{ p.gold+=10; }],[9,'2 componentes y 3 de oro',p=>{ augGrant(p,'c'); augGrant(p,'c'); p.gold+=3; }],[11,'Un objeto completo y 4 de oro',p=>{ augGrant(p,'f'); p.gold+=4; }],
+ [14,'Un Pokémon de coste 3 a 2★ y un objeto completo',p=>{ const k=randKey(3); if(k) giveStar(p,k,2); augGrant(p,'f'); }],[17,'2 objetos completos y un emblema',p=>{ augGrant(p,'f'); augGrant(p,'f'); giveItem(p,'emb_'+pick([...ELEM_TRAITS,...CLASS_TRAITS])); }],
+ [18,'¡Un Legendario a 2★!',p=>{ const k=randKey(5); if(k) giveStar(p,k,2); }]];
+function roll3(c,title,min){ const lucky=c.p.mods.lucky; let d=[rollDie(c.p),rollDie(c.p),rollDie(c.p)]; while(min&&lucky&&d[0]+d[1]+d[2]<min) d=[rollDie(c.p),rollDie(c.p),rollDie(c.p)];
+ const sum=d[0]+d[1]+d[2], row=DICE3.find(r=>sum<=r[0])||DICE3[DICE3.length-1]; row[2](c.p); c.st.last=`${sum}: ${row[1]}`; diceReveal(c.p,title,d,`Suma ${sum}`,row[1]); }
+AG({id:'tirada_magica3',tier:'G',cat:'chaos',tags:['chaos'],req:ST(3),name:'Tirada Mágica',icon:'🎲',desc:'Tiras 3 dados y ganas según la suma: hasta 6 → 10 de oro · 7-9 → 2 componentes y 3 de oro · 10-11 → objeto completo y 4 de oro · 12-14 → coste 3 a 2★ y objeto · 15-17 → 2 objetos y emblema · 18 → Legendario a 2★. Con Dados Cargados, siempre 14 o más.',
+ on:{select:c=>roll3(c,'Tirada Mágica',14)},ui:c=>c.st.last?`Última tirada: ${c.st.last}`:''});
+AG({id:'inesperado',tier:'P',cat:'chaos',tags:['chaos'],req:ST(2),name:'Lo Esperado de lo Inesperado',icon:'🎲',desc:'Ahora y al empezar las 2 fases siguientes, tiras 3 dados y ganas según la suma (de 10 de oro con poca suerte a un Legendario a 2★ con un 18).',
+ on:{select:c=>roll3(c,'Lo Esperado de lo Inesperado'),roundStart:c=>{ if(stageStart()&&(c.st.n||0)<2){ c.st.n=(c.st.n||0)+1; roll3(c,'Lo Esperado de lo Inesperado'); } }},ui:c=>c.st.last?`Última tirada: ${c.st.last} · quedan ${2-(c.st.n||0)}`:''});
+
 /* ---------- Llamada al Caos ---------- */
 // Solo en el 3.er aumento (4-2): un premio enorme y al azar, sin maldiciones. 9 resultados con la misma probabilidad.
 // La versión de oro (Eco del Caos) tiene los mismos resultados, más pequeños.
@@ -641,8 +708,8 @@ const CHAOS=[
 ];
 const chaosItems=(p,n)=>{ for(let i=0;i<n;i++) augOffer(p,'__chaos','Llamada al Caos','Elige un objeto completo',shuffle(FULL_KEYS.slice()).slice(0,4).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k}))); };
 // Resultados que el jugador debe ver aunque no esté mirando: se muestran en una ventana (también en multijugador, vía priv.rv)
-function revealTo(p,icon,title,name,text,kind){
- p.rvSeq=(p.rvSeq||0)+1; (p.reveals=p.reveals||[]).push([p.rvSeq,icon,title,name,text,kind||'']); if(p.reveals.length>3) p.reveals=p.reveals.slice(-3);
+function revealTo(p,icon,title,name,text,kind,dice){
+ p.rvSeq=(p.rvSeq||0)+1; (p.reveals=p.reveals||[]).push([p.rvSeq,icon,title,name,text,kind||'',dice||0]); if(p.reveals.length>3) p.reveals=p.reveals.slice(-3);
 }
 function chaosRoll(c,big){
  const o=pick(CHAOS), txt=o.run(c.p,big,c.st); const title=big?'Llamada al Caos':'Eco del Caos';
@@ -650,6 +717,7 @@ function chaosRoll(c,big){
  c.say(`${o.name}: ${txt}`); revealTo(c.p,'🌪️',title,o.name,`${big?o.P:o.G}.`,'bueno');
 }
 const AUG_EVENTS={
+ __anvil:{id:'__anvil',name:'Yunque',icon:'⚒️',on:{pick:c=>{ const k=String(c.d.v).slice(3); if(ITEMS[k]){ giveItem(c.p,k,true); c.say(ITEMS[k].name); } }}},
  __chaos:{id:'__chaos',name:'Llamada al Caos',icon:'🌪️',on:{pick:c=>c.say(augGrant(c.p,c.d.v))}},
 };
 // Huevo de Oro del Caos: eclosiona a las 3 rondas
