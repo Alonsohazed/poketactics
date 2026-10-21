@@ -2261,6 +2261,8 @@ function updateCarousel(dt){
 
 /* ---------- eventos ---------- */
 function bindEvents(){
+ // En la partida no hay menú del navegador con el clic derecho (aumentos, tienda, objetos, sinergias, barra superior, lateral...): se usa para mover la minileyenda y el menú de «Atrás/Guardar/Imprimir» solo estorba. Fuera de la partida (menú, acceso) y en los campos de texto sigue disponible
+ document.addEventListener('contextmenu',e=>{ if(!G||!G.players||!G.players.length||!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')) return; const t=e.target; if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]')) return; e.preventDefault(); },true);
  // Los paneles se reescriben en cada acción aunque no cambien: repintar el lateral con sus recortes y sombras costaba ~30 ms de trama (el tirón al soltar una ficha). Si el HTML es idéntico, no se toca el DOM
  for(const id of ['cards','traits','players','augBar','augList','log','odds','rerollBtn','incomeInfo','dmgList']){ const el=$(id); if(!el) continue; const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML'); Object.defineProperty(el,'innerHTML',{configurable:true,get(){ return d.get.call(this); },set(v){ v=String(v); if(this._h===v) return; this._h=v; d.set.call(this,v); }}); }
  document.addEventListener('pointerdown',()=>Music.init());

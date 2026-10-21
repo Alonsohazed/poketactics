@@ -277,3 +277,12 @@ test('pokédex: usa sprites 2D ligeros y no carga ningún modelo 3D', async ({ p
   expect(await page.evaluate(() => { const c = [...document.querySelectorAll('.dexCard')].find(x => x.dataset.tip === 'unit:hatenna'); return [...c.querySelectorAll('img')].map(i => i.src.match(/(\d+)\.png/)[1]).join(); })).toBe('856,857,858');
   await page.waitForTimeout(1500); expect(glb).toEqual([]);
 });
+
+test('en la partida el clic derecho no abre el menú del navegador en ninguna zona', async ({ page }) => {
+  const r = await page.evaluate(() => { const sel = ['#shopPanel', '#cards', '#odds', '#items', '#traits', '.top', '#players', '#log', '#ucard', '#islands', '#boardWrap', '#cv', '.center', 'body'];
+    const out = {}; for (const s of sel) { const el = document.querySelector(s); if (!el) { out[s] = 'no existe'; continue; } const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); el.dispatchEvent(ev); out[s] = ev.defaultPrevented; } return out; });
+  for (const [s, v] of Object.entries(r)) expect(v === true || v === 'no existe', s + ' → ' + v).toBe(true);
+  // la ventana de selección de aumentos (y cualquier ventana) tampoco
+  await page.evaluate(() => { openModal('<h1>prueba</h1><button id="mx">x</button>', { closable: true }); });
+  expect(await page.evaluate(() => { const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); document.getElementById('mx').dispatchEvent(ev); return ev.defaultPrevented; })).toBe(true);
+});
