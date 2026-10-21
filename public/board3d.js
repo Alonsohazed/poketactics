@@ -518,16 +518,18 @@ function buildArena(kind){
  g.traverse(o=>{ if(o.isMesh&&o!==ground) o.receiveShadow=true; });
  return g;
 }
-/* ---------- prueba: escenario plano (?arena=gif) ----------
-   Sin decorado 3D en la arena «glade»: detrás del lienzo (transparente) va una imagen o GIF del escenario, deformada en perspectiva
-   (matrix3d) para que su campo coincida con el tablero. Las casillas, el banquillo, los Pokémon y los efectos siguen en 3D. */
-const FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')==='gif'; }catch(e){ return false; } })();
-// Capas de public/test-arena (de arena_tft_capas_1080.zip, coordenadas en píxeles de 1428×1080): fondo a 2× sin el gris (base.webp),
+/* ---------- escenario por capas (el de siempre; ?arena=3d vuelve al decorado 3D «glade») ----------
+   Detrás del lienzo (transparente) va el escenario pintado, deformado en perspectiva (matrix3d) para que su campo coincida con el
+   tablero. Las casillas, el banquillo, los Pokémon y los efectos siguen en 3D. */
+const FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')!=='3d'; }catch(e){ return true; } })();
+// Capas de public/arena (del paquete arena_tft_capas_1080, coordenadas en píxeles de 1428×1080): fondo a 2× sin el gris (base.webp),
 // vídeos en bucle del agua (opacos: se recortan con mask-image, la alfa del fondo en su rectángulo) y tiras de sprites del fuego (capas.json).
+// Se sirven por jsDelivr fijadas al commit (como los modelos: ANIM_BASE) y, si falla, desde nuestro servidor.
 // back: esquinas del fondo del campo; bench: extremos del banquillo (sus 9 losas = nuestras 9 casillas); holes: huecos de la izquierda; totem: esquina superior izquierda
-const FLAT_IMG={dir:'test-arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:[423,336]};
+const FLAT_IMG={dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:[423,336]};
 let flatEl=null, flatKey='', flatH=null, flatCfg=null;
-if(FLAT) fetch(FLAT_IMG.dir+'capas.json').then(r=>r.json()).then(j=>{ flatCfg=j; }).catch(()=>{ flatCfg={capas:[]}; });
+// capas.json se pide la primera vez que hace falta (animFetch se define más abajo: no puede usarse al cargar el módulo)
+let flatReq=false; function flatLoad(){ if(flatReq) return; flatReq=true; animFetch(FLAT_IMG.dir+'capas.json').then(r=>r.json()).then(j=>{ flatCfg=j; }).catch(()=>{ flatCfg={capas:[]}; }); }
 // Homografía (s → d) por mínimos cuadrados con N≥4 puntos: [a,b,c,d,e,f,g,h] con u=(ax+by+c)/(gx+hy+1), v=(dx+ey+f)/(gx+hy+1)
 function homography(s,d){ const M=Array.from({length:8},()=>new Float64Array(9));
  for(let i=0;i<s.length;i++){ const [x,y]=s[i],[u,v]=d[i]; for(const [row,t] of [[[x,y,1,0,0,0,-u*x,-u*y],u],[[0,0,0,x,y,1,-v*x,-v*y],v]]) for(let a=0;a<8;a++){ for(let c=0;c<8;c++) M[a][c]+=row[a]*row[c]; M[a][8]+=row[a]*t; } }
@@ -540,20 +542,27 @@ const _rv=new THREE.Vector3(), _rd=new THREE.Vector3();
 function flatWorld(pt,y=0){ if(!flatH) return null; const cvs=renderer.domElement, [sx,sy]=hApply(flatH,pt); _rv.set(sx/cvs.clientWidth*2-1,1-sy/cvs.clientHeight*2,.5).unproject(camera);
  _rd.copy(_rv).sub(camera.position).normalize(); const t=(y-camera.position.y)/_rd.y; return new THREE.Vector3().copy(camera.position).addScaledVector(_rd,t); }
 function buildFlat(cvs){
- const D=FLAT_IMG.dir, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
+ const L=FLAT_IMG.dir, D=ANIM_BASE?ANIM_BASE+L:L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
  const st=document.createElement('style'); st.textContent='@keyframes ptFire{to{background-position:var(--fw) 0}}'; el.appendChild(st);
- const base=document.createElement('img'); base.src=D+'base.webp'; base.alt=''; base.style.cssText='position:absolute;inset:0;width:100%;height:100%'; el.appendChild(base);
+ // en pantallas pequeñas (menos de 1400 px reales de ancho de lienzo) basta el fondo a 1×: un tercio del peso y de la memoria
+ const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?'base1x.webp':'base.webp';
+ const base=document.createElement('img'); base.src=D+bn; base.alt=''; base.style.cssText='position:absolute;inset:0;width:100%;height:100%'; base.onerror=()=>{ if(base.src.indexOf(L)!==0) base.src=L+bn; }; el.appendChild(base);
  for(const c of flatCfg.capas){ const box=`position:absolute;left:${c.x}px;top:${c.y}px;width:${c.ancho}px;height:${c.alto}px`;
    if(c.tipo==='video'){ const v=document.createElement('video'); v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true; v.setAttribute('playsinline',''); v.setAttribute('muted','');
      const m=`url(${D}mask_${c.nombre}.png)`; v.style.cssText=box+`;object-fit:fill;mask-image:${m};-webkit-mask-image:${m};mask-size:100% 100%;-webkit-mask-size:100% 100%`;
-     for(const ext of ['webm','mp4']){ const so=document.createElement('source'); so.src=D+c.nombre+'.'+ext; so.type='video/'+ext; v.appendChild(so); }
-     el.appendChild(v); v.play().catch(()=>{}); }
-   else { const d=document.createElement('div'); d.style.cssText=box+`;background:url(${D}${c.nombre}.webp) 0 0/${c.ancho*c.frames}px ${c.alto}px no-repeat;--fw:-${c.ancho*c.frames}px;animation:ptFire ${(c.frames/c.fps).toFixed(3)}s steps(${c.frames}) infinite`; el.appendChild(d); } }
+     const srcs=(dir)=>{ v.innerHTML=''; for(const ext of ['webm','mp4']){ const so=document.createElement('source'); so.src=dir+c.nombre+'.'+ext; so.type='video/'+ext; if(ext==='mp4'&&dir!==L) so.onerror=()=>{ srcs(L); v.load(); v.play().catch(()=>{}); }; v.appendChild(so); } }; // si el CDN falla, los mismos vídeos desde nuestro servidor
+     srcs(D); el.appendChild(v); v.play().catch(()=>{}); }
+   else { const d=document.createElement('div'), im=new Image(); d.style.cssText=box+`;--fw:-${c.ancho*c.frames}px;animation:ptFire ${(c.frames/c.fps).toFixed(3)}s steps(${c.frames}) infinite`;
+     const use=u=>{ d.style.background=`url(${u}) 0 0/${c.ancho*c.frames}px ${c.alto}px no-repeat`; }; im.onload=()=>use(im.src); im.onerror=()=>{ if(im.src.indexOf(L)!==0){ im.src=L+c.nombre+'.webp'; } }; im.src=D+c.nombre+'.webp'; el.appendChild(d); } }
  cvs.parentElement.insertBefore(el,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; return el; }
+// Precarga desde el menú: construye el escenario (oculto y en pausa) para que sus archivos ya estén cuando empiece la partida
+function prefetchArena(){ if(!FLAT||!renderer) return; flatLoad(); const t=setInterval(()=>{ if(!flatCfg) return; clearInterval(t); if(!flatEl){ flatEl=buildFlat(renderer.domElement); flatEl.hidden=true; flatPlay(false); } },150); }
+function prefetch(dexes){ prefetchArena(); for(const d of dexes||[]) wantModel(d); }
 let flatOn=null;
 function flatPlay(on){ if(on===flatOn||!flatEl) return; flatOn=on; for(const v of flatEl.querySelectorAll('video')){ if(on) v.play().catch(()=>{}); else v.pause(); } for(const d of flatEl.querySelectorAll('div[style*="ptFire"]')) d.style.animationPlayState=on?'running':'paused'; }
 if(FLAT) document.addEventListener('visibilitychange',()=>{ if(document.hidden) flatPlay(false); else if(flatEl&&!flatEl.hidden) flatPlay(true); });
 function stepFlat(){
+ if(FLAT&&!flatReq) flatLoad();
  const on=FLAT&&curArena==='glade'&&board.G&&flatCfg; if(!on){ if(flatEl){ flatEl.hidden=true; flatPlay(false); } flatH=null; return; }
  const cvs=renderer.domElement, G=board.G; if(!flatEl) flatEl=buildFlat(cvs);
  flatEl.hidden=false; if(!document.hidden) flatPlay(true); flatEl.style.left=cvs.offsetLeft+'px'; flatEl.style.top=cvs.offsetTop+'px';
@@ -1520,5 +1529,5 @@ function debugInfo(){ const c={mallas:0,piel:0,actores:0,efectos:0,escenario:0,s
  const act=new Set(); for(const a of actors.values()) a.root.traverse(m=>act.add(m));
  scene.traverseVisible(o=>{ if(o.isMesh||o.isSprite||o.isPoints){ c.mallas++; if(o.isSkinnedMesh) c.piel++; if(o.isSprite) c.sprites++; if(o.isPoints) c.puntos++; if(inFx.has(o)) c.efectos++; else if(act.has(o)) c.actores++; else c.escenario++; for(const m of [].concat(o.material)) c.materiales.add(m); } });
  c.materiales=c.materiales.size; c.programas=renderer.info.programs?renderer.info.programs.length:0; c.sombras=sun.castShadow; return c; }
-window.B3={init,debugInfo,debugView,fireball,get made(){ return madeN; },get evos(){ return evoN; },dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },setShake:b=>{ shakeOn=!!b; },get shakeOn(){ return shakeOn; },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+window.B3={init,prefetch,debugInfo,debugView,fireball,get made(){ return madeN; },get evos(){ return evoN; },dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },setShake:b=>{ shakeOn=!!b; },get shakeOn(){ return shakeOn; },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));
