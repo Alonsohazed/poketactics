@@ -364,7 +364,7 @@ const FULL=[
  ['goggles','lens','whiteherb','Hierba Blanca','🌼','Inmune a aturdimientos. +10% de prob. crítica.',{crit:.1},{noStun:1}],
  ['club','club','leftovers','Restos','🍎','+300 de vida adicional y regenera 2% de vida por segundo.',{hp:300,regen:.02}],
  ['club','lens','hook','Garra Garfio','🪝','Remata a los enemigos que bajen del 12% de vida.',{},{execute:.12}],
- ['lens','lens','zoom','Guante de Boxeo','🥊','+40% de prob. crítica y +30% de daño crítico adicionales.',{crit:.4,critM:.3}],
+ ['lens','lens','zoom','Guante de Boxeo','🥊','Guante ladrón: cada ronda recibe 2 objetos completos al azar (cambian al empezar la ronda). Ocupa los 3 huecos: quien lo lleva no puede llevar otros objetos. +20% de prob. crítica.',{crit:.2}],
 ];
 const EMBLEM_OF={claw:'Coloso',wing:'Tirador',spoon:'Hechicero',water:'Agua',coat:'Guardián',goggles:'Hada',club:'Dragón',lens:'Asesino'};
 // Sinergias afines de cada componente (la primera es la de siempre): al forjar Medalla + componente se elige entre ellas
@@ -462,9 +462,20 @@ function giveUnitTo(p,key){
  p.gold+=DEF[key].cost; returnToPool(key,1); note(p,`Banquillo lleno: ${DEF[key].name} se convirtió en oro`); return false;
 }
 function giveItem(p,it){ it=it||pick(BASIC); if(p.items.length<MAX_ITEMS_BENCH) p.items.push(it); else { p.gold+=2; note(p,'Inventario lleno: objeto convertido en 2 de oro'); } return it; }
+// Guante de Boxeo: objetos que da esta ronda (u.tg). Con Guantes de la Suerte (mods.luckyGloves), los ideales para su rol
+const GLOVE_BIS={r:['band','rage','sharp','expert','razorfang','twin'],a:['band','blood','sharp','hook','justice','expert'],b:['blood','titan','sturdy','band','quick','justice'],
+ m:['moon','specs','wise','soothe','energy','expert'],h:['moon','soothe','energy','cure','holy','specs'],t:['vest','leftovers','helmet','scale','royal','sturdy']};
+const glovePool=()=>FULL_KEYS.filter(k=>ITEMS[k]&&!ITEMS[k].emblem&&!ITEMS[k].forge&&!ITEMS[k].tool&&!['zoom','master','magnet'].includes(k));
+function rollGloves(p,u,force){ if(!u.items.includes('zoom')){ if(u.tg) delete u.tg; return; } if(u.tg&&!force) return;
+ const pool=p&&p.mods&&p.mods.luckyGloves?(GLOVE_BIS[DEF[u.defId].role]||[]).filter(k=>ITEMS[k]):glovePool(); const a=shuffle(pool.slice()); u.tg=a.slice(0,2); }
+const ensureGloves=(p,force)=>{ for(const u of allUnits(p)) rollGloves(p,u,force); };
 function addItemToUnit(u,k){
  const I=ITEMS[k]; if(!I) return {ok:false,why:'Objeto no válido'};
  if(I.tool) return {ok:false,why:'Eso no se equipa'};
+ // Guante de Boxeo (guante ladrón): ocupa los 3 huecos
+ if(u.items.includes('zoom')) return {ok:false,why:'El Guante de Boxeo ocupa todos los huecos'};
+ if(k==='zoom'&&u.items.length) return {ok:false,why:'Quítale antes sus otros objetos'};
+ if(I.comp&&k==='lens'&&u.items.length>1&&u.items.includes('lens')) return {ok:false,why:'El Guante de Boxeo ocupa todos los huecos: quítale antes sus otros objetos'};
  if(I.comp){ const j=u.items.findIndex(x=>ITEMS[x].comp); if(j>=0){ const res=combineKey(u.items[j],k); const em=ITEMS[res].emblem; if(em&&DEF[u.defId].traits.includes(em)) return {ok:false,why:`Ya es ${em}`}; u.items[j]=res; return {ok:true,made:res}; } }
  if(u.items.length>=3) return {ok:false,why:'Ya lleva 3 objetos'};
  if(I.emblem&&unitTraits(u).includes(I.emblem)) return {ok:false,why:`Ya es ${I.emblem}`};
@@ -661,7 +672,7 @@ function makeCombatUnit(inst,p,Tt,side,rand){
  if(inst.stk){ u.maxHp+=inst.stk.hp; u.ad+=inst.stk.ad; u.ap+=inst.stk.ap||0; }
  applyTraits(u,unitTraits(inst),Tt,p.mods);
  const m=p.mods; u.maxHp*=1+m.hpPct; u.ad*=1+m.adPct; u.ap+=m.ap; u.as*=1+m.asPct; u.df+=m.def; u.mr+=m.mr; if(m.allFocus) u.focus=true;
- for(const it of inst.items){ const I=ITEMS[it]; if(!I) continue; applyStats(u,I.s); for(const k in I.sp) u.sp[k]=(u.sp[k]||0)+I.sp[k]; }
+ for(const it of [...inst.items,...(inst.tg||[])]){ const I=ITEMS[it]; if(!I) continue; applyStats(u,I.s); for(const k in I.sp) u.sp[k]=(u.sp[k]||0)+I.sp[k]; }
  if(u.sp.focus) u.focus=true; if(u.sp.berry) u.berry=true;
  if(u.sp.blood&&u.range===1) u.omni+=.1;
  u.items=inst.items.slice(); u.traits=unitTraits(inst); u.hp=u.maxHp; u.as=Math.min(u.as,3);
@@ -682,7 +693,7 @@ function abilPower(u){
 }
 
 // Instantánea compacta de un equipo: es lo que se envía por red y lo que usa la simulación
-function teamSnap(p){ const m=p.mods; return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items.slice(),R0(u.stk.hp),R0(u.stk.ad),R0(u.stk.ap||0)])}; }
+function teamSnap(p){ ensureGloves(p); const m=p.mods; return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items.concat(u.tg||[]),R0(u.stk.hp),R0(u.stk.ad),R0(u.stk.ap||0)])}; }
 function snapPlayer(snap){
  const m=snap&&snap.m||{}; const mods=Object.assign(defaultMods(),{hpPct:+m.hp||0,adPct:+m.ad||0,ap:+m.ap||0,asPct:+m.as||0,def:+m.df||0,mr:+m.mr||0,allFocus:!!m.f,legend:+m.lg||0,extraTrait:(m.x&&typeof m.x==='object')?m.x:{}});
  const board={};
@@ -1265,8 +1276,9 @@ function nextRound(){
  for(const p of alivePlayers()){
    if(R.type==='carousel') continue;
    addXp(p,(idx<PASSIVE_XP.length?PASSIVE_XP[idx]:2)+(idx>0?p.mods.xpRound:0));
-   p.freeRerolls=p.mods.freeRerolls;
+   p.freeRerolls=(p.freeRerolls||0)+p.mods.freeRerolls; // las tiendas gratis que no gastas se guardan (como en TFT)
    augFire(p,'roundStart',{idx});
+   ensureGloves(p,true); // el Guante de Boxeo cambia sus objetos cada ronda
    if(!p.locked) refreshShop(p); p.locked=false;
    // Primero cambia la tienda y después llega el oro (el pendiente de los resultados y el ingreso de la ronda)
    if(p.pendGold){ p.gold+=p.pendGold; p.pendGold=0; }
@@ -1540,15 +1552,15 @@ const NET={mode:'sp',sock:null,rooms:[],owner:'',named:null,code:'',isHost:false
 const TOPICS=['act','pub','priv','cmb','car','start','lobby','bye'];
 function randomCode(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let s=''; for(let i=0;i<5;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
 function myPeerOf(room){ const me=room.peers().find(p=>p.sameTab); return me?me.peer:''; }
-function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0]; }
-function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0)}; }
+function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0]; }
+function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined}; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
    pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
-function makePriv(p){
+function makePriv(p){ ensureGloves(p);
  const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
    po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],ef:p.eeveeForm||'',lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r]),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
@@ -2776,7 +2788,7 @@ function frameBody(){
 // Vida y maná de cada Pokémon del tablero tal y como empezarían el combate (se recalcula al cambiar algo)
 // Pokémon de un tablero tal y como empezarían el combate: igual que addTeamSnap, aumentos incluidos
 // (así la ficha y las barras muestran, por ejemplo, la vida acumulada de «Pokémon favorito»)
-function prepTeam(p){
+function prepTeam(p){ ensureGloves(p);
  const Tt=traitTiers(p), units=[], byUid=new Map();
  for(const k in p.board){ const [c,r]=k.split(',').map(Number); const u=makeCombatUnit(p.board[k],p,Tt,0); [u.c,u.r]=toGrid(0,c,r); u.pc=u.c; u.pr=u.r; u.bk=k; units.push(u); byUid.set(p.board[k].uid,u); }
  const cb={t:0,units,fx:[],feed:[],feedV:0,pend:[],kh:[[],[]],done:false,started:false,visual:false,gold:[0,0],rng:mulberry32(1)};
@@ -3078,6 +3090,7 @@ function renderCard(){
  const legLine=cu.legMul?`<p class="small">👑 Resonancia: <b>${cu.legMul>=1?'+':'−'}${R0(Math.abs(cu.legMul-1)*100)}%</b> de vida, ataque y habilidad (${cu.legRes||0} niveles activos de sus otras sinergias)</p>`:'';
  const stacks=live?[cu.sp.rage?`😤 Cinta Furia: <b>${cu.rageN||0}</b> cargas (vel. de ataque ${cu.as.toFixed(2)})`:'',cu.sp.rampAp?`🌙 Piedra Lunar: <b>+${R0(cu.apGain||0)}</b> de poder`:'',cu.sp.titan?`🦾 Coraza Titán: <b>${cu.titanN||0}</b>/25 cargas`:''].filter(Boolean).map(t=>`<p class="small">${t}</p>`).join(''):'';
  const extra=inst&&inst.defId==='mewtwo'?`<p class="small">Inestable: <b>${Math.min(MEW_NEED,(inst.kills||0)+(inst.mwR||0))}/${MEW_NEED}</b> de energía (bajas y rondas en tu tablero) para volverse Mega Mewtwo Y</p>`:inst&&inst.defId==='eevee'?`<p class="small">🌀 Evoluciona al derrotar ${me.mods.eeveeKills} enemigos: <b>${Math.min(inst.kills,me.mods.eeveeKills)}/${me.mods.eeveeKills}</b></p>`:'';
+ const gloveLine=inst&&inst.tg&&inst.tg.length?`<p class="small">🥊 Guante de Boxeo esta ronda: <b>${inst.tg.map(k=>ITEMS[k]?ITEMS[k].name:k).join(", ")}</b></p>`:"";
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad||inst.stk.ap)?`<p class="small">Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque · +${R0(inst.stk.ap||0)} poder</p>`:'';
  el.innerHTML=`<div class="uc-head">${spriteHTML(d,64,star)}<div><div class="uc-name">${esc(cu.name)} <span style="color:${star===3?'#d9a400':star===2?'#8e9bb0':'#b07a45'}">${'★'.repeat(star)}</span></div><div class="uc-sub">${who}</div></div><button class="uc-x" aria-label="Cerrar ficha">✕</button></div>
   <div class="uc-bar hp"><i style="width:${clamp(hp/cu.maxHp*100,0,100)}%"></i><span>❤️ ${R0(hp)} / ${R0(cu.maxHp)}</span></div>
@@ -3086,7 +3099,7 @@ function renderCard(){
   <div>${traits.map(t=>TRAITS[t]?`<span class="chip" data-tip="trait:${t}">${TRAITS[t].icon} ${t}</span>`:'').join('')}</div>
   <div class="uc-ab"><div class="t"><span class="abIco">${elIcon(ab[2]&&ab[2].el||elemOf(d))||'✨'}</span>${esc(ab[1])}<span class="abMana">💧 ${cu.maxMana>=9999?'—':cu.maxMana}</span></div><div class="m">${KIND_NAME[ab[0]]} · escala con ${SCALE_TXT[scaleOf(cu)]} · pasa el ratón por un número para ver su ratio</div>${abHTML(ab,cu,star)}</div>
   <div class="uc-stats">${stats.map(([i,a,b])=>`<div title="${a}"><span>${i} ${a}</span><b>${b}</b></div>`).join('')}</div>
-  ${goldLine}${legLine}${evo}${items}${stacks}${extra}${stk}
+  ${goldLine}${legLine}${evo}${items}${gloveLine}${stacks}${extra}${stk}
   ${inst?`<button class="btn sm" id="ucSell">Vender por ${sellValue(inst)} de oro</button>`:''}`;
  hydrate(el);
 }
@@ -3575,4 +3588,4 @@ if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js
-  TRAITS,PRISM,FORGE_OF,tierOf,mewtwoUnstable,MEW_NEED,packInst,unpackInst,emblemCountsOf,useItem,combineBench,makeCombatUnit,lootTrack,growPotential,boardUnits}; } else boot();
+  TRAITS,PRISM,FORGE_OF,tierOf,mewtwoUnstable,MEW_NEED,packInst,unpackInst,emblemCountsOf,useItem,combineBench,ensureGloves,makeCombatUnit,lootTrack,growPotential,boardUnits}; } else boot();

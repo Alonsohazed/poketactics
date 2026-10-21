@@ -216,6 +216,27 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   ok(conLeg.legRes === 0, 'Giratina y Zapdos no activan la resonancia de Rayquaza');
   ok(conApoyo.legRes >= 2 && conApoyo.legMul > 1 && conApoyo.ad > solo.ad, `con Dragón y Tirador se fortalece (×${conApoyo.legMul})`); }
 
+
+// 15. Guante de Boxeo (guante ladrón) y aumentos inspirados en TFT
+{ const { p } = fresh(); const u = E.makeInst('pichu'); p.board = { '3,3': u };
+  ok(E.addItemToUnit(u, 'zoom').ok, 'Guante de Boxeo: se equipa en un Pokémon sin objetos'); ok(!E.addItemToUnit(u, 'claw').ok, 'Guante de Boxeo: ocupa todos los huecos');
+  const row = E.teamSnap(p).u[0]; ok(row[3].length === 3 && row[3][0] === 'zoom', 'Guante de Boxeo: en combate lleva 2 objetos completos más');
+  const v = E.makeInst('abra'); v.items = ['claw']; ok(!E.addItemToUnit(v, 'zoom').ok, 'Guante de Boxeo: no se pone a quien ya lleva objetos');
+  const t0 = u.tg.join(); let changed = false; for (let i = 0; i < 20 && !changed; i++) { E.ensureGloves(p, true); changed = u.tg.join() !== t0; } ok(changed, 'Guante de Boxeo: sus objetos cambian cada ronda'); }
+{ const { G, p } = fresh(); G.round = { s: 2, n: 1, type: 'pvp' }; E.applyAugment(p, E.AUG_BY.guantes_suerte); const u = E.makeInst('pichu'); u.items = ['zoom']; p.board = { '3,3': u }; E.teamSnap(p);
+  ok(u.tg.every(k => ['band', 'rage', 'sharp', 'expert', 'razorfang', 'twin'].includes(k)), 'Guantes de la Suerte: objetos ideales para un tirador'); }
+const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(p), { ag: [], m: {}, u: foeBoard || [['3,0', 'onix', 1, [], 0, 0]] }, { s: 3, n: 2, type: 'pvp' }, { seed: 5 }); return cb; };
+{ const { p } = fresh(); p.board = { '2,0': E.makeInst('onix'), '4,0': E.makeInst('squirtle'), '3,3': E.makeInst('pichu') }; const base = combatUnits(p).units.filter(u => u.side === 0).map(u => u.maxHp);
+  E.applyAugment(p, E.AUG_BY.guardianes_gemelos); const got = combatUnits(p).units.filter(u => u.side === 0);
+  ok(got[0].maxHp - base[0] === 100 && got.find(u => u.bk === '3,3').maxHp === base[2], 'Guardianes Gemelos: solo los 2 de la primera fila ganan +100 de vida'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.buscavidas); ok(p.mods.maxInterest === 0, 'Buscavidas: sin intereses'); }
+{ const { G, p } = fresh(); G.round = { s: 2, n: 1 }; const u0 = p.bench.filter(Boolean).length; E.applyAugment(p, E.AUG_BY.reparto); ok(p.bench.filter(Boolean).length === u0 + 3, 'Reparto Pokémon: 3 Pokémon de coste 2');
+  for (let i = 0; i < 6; i++) event(p, 'roundStart', {}); ok(p.bench.filter(Boolean).length === u0 + 6, 'Reparto Pokémon: 3 más a las 6 rondas'); }
+{ const { G, p } = fresh(); E.applyAugment(p, E.AUG_BY.vale_la_pena); const k = p.augSt.vale_la_pena.k; const n = () => p.bench.filter(u => u && u.baseId === k).reduce((s, u) => s + Math.pow(3, u.star - 1), 0) + Object.values(p.board).filter(u => u.baseId === k).reduce((s, u) => s + Math.pow(3, u.star - 1), 0);
+  const a = n(); event(p, 'roundStart', {}); event(p, 'roundStart', {}); ok(n() === a + 2, 'Vale la Pena Esperar: una copia cada ronda'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.companero); const k = 'pichu'; E.addUnitToBench(p, E.makeInst(k)); event(p, 'buy', { key: k, cost: 1 }); ok(p.bench.some(u => u && u.baseId === k && u.star === 3), 'Construye un Compañero: el siguiente coste 1 llega a 3★'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.huevo_oro); for (let i = 0; i < 5; i++) event(p, 'win', { pve: false }); ok(p.augSt.huevo_oro.t === 6, 'Huevo de Oro: ganar PvP lo adelanta'); }
+
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');
