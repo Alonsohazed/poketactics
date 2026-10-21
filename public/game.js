@@ -50,7 +50,7 @@ const TRAITS={
  'Coloso':T('🦍','#c0392b',[2,4,6,8],'Afecta a TODO tu equipo (doble para Colosos)','Más vida para todo tu equipo; los Colosos reciben el doble.',['Equipo +100 de vida · Colosos +200','Equipo +200 · Colosos +400','Equipo +350 · Colosos +700','Equipo +550 · Colosos +1100']),
  'Tirador':T('🎯','#d35400',[2,4,6],'Afecta a tus Tiradores','Hacen más daño cuanto más lejos está su objetivo (ataques y habilidades).',['+6% de daño por casilla de distancia','+10% por casilla','+15% por casilla']),
  'Hechicero':T('✨','#8e44ad',[2,4,6,8],'Afecta a TODO tu equipo (doble para Hechiceros)','Poder de habilidad para todos y, cada vez que un aliado lanza su habilidad, los Hechiceros aprenden y ganan más poder.',['Equipo +8 · Hechiceros +16 y +2 por cada habilidad aliada','Equipo +15 · Hechiceros +30 y +4 por habilidad','Equipo +25 · Hechiceros +50 y +7 por habilidad','Equipo +40 · Hechiceros +80 y +12 por habilidad']),
- 'Asesino':T('🗡️','#34495e',[2,4,6],'Afecta a tus Asesinos','Saltan a la retaguardia al empezar; ganan críticos y sus habilidades pueden ser críticas.',['+15% de prob. crítica y +10% de daño crítico','+30% y +20%','+45% y +35%']),
+ 'Asesino':T('🗡️','#34495e',[2,4,6],'Afecta a tus Asesinos','Ganan críticos y sus habilidades pueden ser críticas. Al bajar del 50% de vida se esfuman: los enemigos dejan de apuntarles unos segundos.',['+15% de prob. crítica y +10% de daño crítico · se esfuman 1,5 s','+30% y +20% · 2 s','+45% y +35% · 2,5 s']),
  'Sanador':T('💖','#16a085',[2,4,6],'Afecta a TODO tu equipo','Las curaciones y escudos de las habilidades de tu equipo son más fuertes, y todos ganan resistencia.',['+20% de curación y escudos · +10 de resistencia','+40% · +20 de resistencia','+70% · +35 de resistencia']),
  'Cazatesoros':T('💎','#e0a800',[2,3],'Afecta a tu economía','Consiguen botín al ganar combates, más con rachas de victorias. Toca la sinergia para ver todo lo que te han dado.',['Al ganar: 2 de oro (+1 por cada victoria seguida, máx. +3) · al perder: 1 de oro','Al ganar: un orbe de botín y oro de racha · al perder: 2 de oro']),
  'Legendario':T('👑','#c79400',[1],'Afecta a cada Legendario','Resonancia: cada Legendario se hace más fuerte con los niveles activos de sus OTRAS sinergias, contando solo a tus Pokémon no legendarios (vida, ataque y habilidad). Sin apoyo, se debilita.',['Sin sinergias activas −8% · 1 nivel +0% · 2 niveles +12% · 3 niveles +25% · 4 niveles +40% · 5 o más +50%']),
@@ -88,7 +88,7 @@ for(const t in PRISM) TRAITS[t].pr=PRISM[t];
 const ROLE={
  t:{hp:720,ad:45,as:.6,range:1,df:45,mr:40,mana:50,maxMana:100},
  b:{hp:700,ad:61,as:.7,range:1,df:35,mr:30,mana:20,maxMana:80},
- a:{hp:560,ad:60,as:.8,range:1,df:25,mr:20,mana:0,maxMana:60},
+ a:{hp:650,ad:65,as:.8,range:1,df:30,mr:25,mana:0,maxMana:60},
  r:{hp:500,ad:56,as:.75,range:4,df:20,mr:20,mana:0,maxMana:70},
  m:{hp:500,ad:40,as:.7,range:4,df:20,mr:25,mana:20,maxMana:75},
  h:{hp:560,ad:36,as:.65,range:3,df:25,mr:25,mana:30,maxMana:90},
@@ -128,12 +128,12 @@ const UNIT_LIST=[
  U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
  U('drowzee',['Drowzee','Hypno'],[96,97],2,'t',['Psíquico','Guardián','Team Rocket'],[['sing','Hipnosis',{r:0,s:2,m:.6}],['sing','Come Sueños',{r:1,s:1.5,m:.8,drain:.5}]]),
  U('igglybuff',['Igglybuff','Jigglypuff','Wigglytuff'],[174,39,40],2,'t',['Hada','Normal','Sanador'],[['heal','Encanto',{n:2,m:.8}],['sing','Canto',{r:1,s:2,m:.35,healTeam:.25}],['sing','Voz Cautivadora',{r:2,s:2,m:.6,healTeam:.3}]]),
- U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:1.5,th:.2}]]),
+ U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:1.8,th:.25}]]),
  U('poliwag',['Poliwag','Poliwhirl','Poliwrath'],[60,61,62],2,'b',['Agua','Lucha','Coloso'],[['bolt','Burbuja',{m:1.2}],['sing','Hipnosis',{r:1,s:1.2,m:.6}],['combo','Puño Dinámico',{n:3,m:.7,stun:1.2}]]),
- U('sableye',['Sableye'],[302],2,'a',['Siniestro','Cazatesoros','Team Rocket'],[['dash','Ladrón',{m:1.2,to:'low',g:1}]]),
+ U('sableye',['Sableye'],[302],2,'a',['Siniestro','Cazatesoros','Team Rocket'],[['dash','Ladrón',{m:1.6,to:'low',g:1,stealth:1}]]),
  U('houndour',['Houndour','Houndoom'],[228,229],2,'m',['Fuego','Siniestro','Hechicero'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:1,len:4,burn:.04}]]),
  U('riolu',['Riolu','Lucario'],[447,448],2,'r',['Lucha','Acero','Tirador'],[['bolt','Palmeo',{selfAs:0.12,m:1.3,stun:.6}],['multi','Esfera Aural',{selfAs:0.2,n:3,m:.75}]]),
- U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:1.2,to:'far',burn:.03,selfAs:.15}],['dash','Envite Ígneo',{m:1.7,to:'low',r:1,burn:.04}]]),
+ U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:1.2,to:'far',burn:.03,selfAs:.15}],['dash','Envite Ígneo',{m:1.45,to:'low',r:1,burn:.04}]]),
  U('shellder',['Shellder','Cloyster'],[90,91],3,'t',['Agua','Guardián'],[['harden','Refugio',{df:35,heal:.6}],['multi','Carámbano',{n:4,m:.38,chill:3,el:'Hielo'}]]),
  U('oddish',['Oddish','Gloom','Vileplume'],[43,44,45],3,'m',['Planta','Hechicero'],[['zone','Somnífero',{r:1,m:.5,dur:2,sleep:1.2}],['poison','Polvo Veneno',{m:1.1,dur:5,r:1,el:'Veneno'}],['zone','Danza Pétalo',{r:2,m:1.2,dur:3}]]),
  U('elekid',['Elekid','Electabuzz','Electivire'],[239,125,466],3,'b',['Eléctrico','Coloso'],[['empower','Puño Trueno',{n:3,m:.55,stun:.3}],['chain','Puño Trueno',{n:3,m:.9}],['slam','Voltio Cruel',{r:1,m:1.4,stun:1}]]),
@@ -149,7 +149,7 @@ const UNIT_LIST=[
  U('ditto',['Ditto'],[132],3,'b',['Normal','Coloso'],[['copy','Transformación',{}]]),
  U('larvitar',['Larvitar','Pupitar','Tyranitar'],[246,247,248],4,'t',['Roca','Guardián','Potencial Evolutivo'],[['harden','Endurecimiento',{df:40,heal:.6}],['shield','Fortaleza',{m:1.6}],['zone','Tormenta Arena',{r:2,m:1.8,dur:4,self:1,root:1,chill:1,v:'sand'}]]),
  U('ralts',['Ralts','Kirlia','Gardevoir'],[280,281,282],4,'h',['Psíquico','Hada','Sanador'],[['heal','Encanto',{n:2,m:1.1}],['teamShield','Paz Mental',{m:.55,ap:10}],['meteor','Fuerza Lunar',{m:.55,healAll:.4}]]),
- U('gible',['Gible','Gabite','Garchomp'],[443,444,445],4,'a',['Dragón','Asesino','Depredadores'],[['dash','Garra Dragón',{m:1.3,to:'far'}],['execute','Carga Dragón',{m:1.5,th:.25}],['slam','Terremoto',{r:2,m:1.15,stun:.5}]]),
+ U('gible',['Gible','Gabite','Garchomp'],[443,444,445],4,'a',['Dragón','Asesino','Depredadores'],[['dash','Garra Dragón',{m:1.3,to:'far'}],['execute','Carga Dragón',{m:1.5,th:.25}],['slam','Terremoto',{r:2,m:.95,stun:.5}]]),
  U('duskull',['Duskull','Dusclops','Dusknoir'],[355,356,477],4,'t',['Fantasma','Guardián'],[['sing','Mal de Ojo',{r:0,s:1.5,m:.6}],['taunt','Anulación',{m:1.2}],['pull','Mundo Sombrío',{r:2,m:.9,stun:1.2,self:1}]]),
  U('shinx',['Shinx','Luxio','Luxray'],[403,404,405],4,'a',['Eléctrico','Asesino','Depredadores'],[['dash','Placaje',{m:1.3,to:'far'}],['chain','Chispa',{n:3,m:1}],['execute','Colmillo Rayo',{m:1.8,th:.25,stun:1,reset:.4}]]),
  U('turtwig',['Turtwig','Grotle','Torterra'],[387,388,389],4,'t',['Planta','Guardián','Potencial Evolutivo'],[['harden','Refugio',{df:35,heal:.7}],['drain','Gigadrenado',{m:1.2,h:1.2}],['nova','Terremoto',{r:2,m:1,stun:1}]]),
@@ -262,7 +262,7 @@ function abDesc(ab,P,star){
   case 'chain': t=`Rebota entre ${p.n} enemigos: ${d(p.m)} de daño a cada uno${p.amp?`, y cada salto pega un ${R0(p.amp*100)}% más`:''}${e}.`; break;
   case 'multi': t=`Lanza ${p.n} proyectiles a enemigos al azar: ${d(p.m)} de daño cada uno${e}.`; break;
   case 'combo': t=`Golpea ${p.n} veces seguidas al objetivo: ${d(p.m)} por golpe${p.stun?`; el último aturde ${p.stun}s`:''}.`; break;
-  case 'dash': t=`Salta junto al enemigo ${p.to==='far'?'más lejano':p.to==='low'?'con menos vida':'objetivo'} y le inflige ${d(p.m)}${p.r?` (y ${d(p.m*.6)} a los cercanos)`:''}${e}.${p.stealth?` Se vuelve invisible ${p.stealth}s.`:''}${p.selfAs?` Gana +${R0(p.selfAs*100)}% de vel. de ataque.`:''}`; break;
+  case 'dash': t=`Salta junto al enemigo ${p.to==='far'?'más alejado a 3 casillas o menos':p.to==='low'?'con menos vida a 3 casillas o menos':'objetivo'} y le inflige ${d(p.m)}${p.r?` (y ${d(p.m*.6)} a los cercanos)`:''}${e}.${p.stealth?` Se vuelve invisible ${p.stealth}s.`:''}${p.selfAs?` Gana +${R0(p.selfAs*100)}% de vel. de ataque.`:''}`; break;
   case 'execute': t=`Inflige ${d(p.m)} al objetivo${e}. Si queda por debajo del ${R0((p.th+.05*(star-1))*100)}% de vida, lo remata.${p.reset?` Si lo derrota, recupera el ${R0(p.reset*100)}% de su maná.`:''}`; break;
   case 'meteor': t=`Golpea a TODOS los enemigos por ${d(p.m)}${e}.${p.healAll?` Cura ${d(p.healAll)} a todos sus aliados.`:''}${p.manaTeam?` Da ${p.manaTeam} de maná a sus aliados.`:''}`; break;
   case 'shield': t=`Se cubre con un escudo de ${d(p.m)} durante 4s.`; break;
@@ -627,7 +627,7 @@ function applyTraits(u,traits,Tt,mods){
  u.maxHp+=tv('Coloso',[0,100,200,350,550,900])*(has('Coloso')?2:1);
  if(has('Tirador')){ u.hexAmp=tv('Tirador',[0,.06,.1,.15,.25]); u.range+=tv('Tirador',[0,0,0,0,1]); }
  u.ap+=tv('Hechicero',[0,8,15,25,40,60])*(has('Hechicero')?2:1); if(has('Hechicero')){ u.scholar=tv('Hechicero',[0,2,4,7,12,18]); u.echo=(Tt['Hechicero']||0)>TRAITS['Hechicero'].bp.length; }
- if(has('Asesino')){ u.critC+=tv('Asesino',[0,.15,.3,.45,.7]); u.critM+=tv('Asesino',[0,.1,.2,.35,.6]); if(Tt['Asesino']) u.critAbil=true; }
+ if(has('Asesino')){ u.critC+=tv('Asesino',[0,.15,.3,.45,.7]); u.critM+=tv('Asesino',[0,.1,.2,.35,.6]); if(Tt['Asesino']){ u.critAbil=true; u.vanish=tv('Asesino',[0,1.5,2,2.5,3]); } }
  u.healAmp=(u.healAmp||0)+tv('Sanador',[0,.2,.4,.7,1.2]); u.mr+=tv('Sanador',[0,10,20,35,60]);
  if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.15,.3,.5,.8]); u.rival=[tv('Depredadores',[0,.4,.6,.9,1.3]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.3,.5,1,1])]; }
  if(has('Team Rocket')&&Tt['Team Rocket']) u.rocket=Tt['Team Rocket'];
@@ -791,6 +791,7 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
  if(src&&src.execTh&&kind!=='true'&&t.hp>0&&t.hp<t.maxHp*src.execTh){ t.hp=0; fxText(cb,t,'¡Ejecutado!','#b07cff'); cb.darkN=cb.darkN||[0,0]; if(cb.darkN[src.side]<5){ cb.darkN[src.side]++; for(const a of cb.units) if(!a.dead&&a.side===src.side) a.dmgBonus+=src.execBuff; } }
  // Team Rocket: la primera vez que bajan del 60% se ponen serios 4 s
  if(t.rocket&&!t.rocketUsed&&t.hp>0&&t.hp<t.maxHp*.6){ t.rocketUsed=true; const R=[null,{dr:.25,as:.5,rg:.03},{dr:.45,as:.8,rg:.05},{dr:.6,as:1.2,rg:.08}][t.rocket]||{dr:.25,as:.5,rg:.03}; t.tdr=Math.max(t.tdr,R.dr); t.tdrT=Math.max(t.tdrT,4); t.rushMul=1+R.as; t.rushT=4; t.rocketT=4; t.rocketRg=R.rg; fxText(cb,t,'¡Team Rocket!','#ff4d6d'); fx(cb,{type:'aura',u:t,life:4,color:'#ff4d6d'}); }
+ if(t.vanish&&!t.vanished&&t.hp>0&&t.hp<t.maxHp*.5){ t.vanished=true; t.stealth=Math.max(t.stealth||0,t.vanish); for(const e of cb.units) if(e.target===t) e.target=null; fxText(cb,t,'¡Se esfuma!','#c9a7ff'); }
  if(t.lowRage&&!t.lowRaged&&t.hp>0&&t.hp<t.maxHp*.5){ t.lowRaged=true; t.as=Math.min(5,t.as*(1+t.lowRage)); fxText(cb,t,'¡Furia!','#ff5a3a'); }
  if(t.berry&&t.hp>0&&t.hp<t.maxHp*.5){ t.berry=false; heal(t,t.maxHp*.35); fxText(cb,t,'Baya Zidra','#4caf50'); }
  if(t.sp.blood&&!t.bloodUsed&&t.hp>0&&t.hp<t.maxHp*.4){ t.bloodUsed=true; t.shield+=t.maxHp*.25; t.shieldT=Math.max(t.shieldT,5); fxText(cb,t,'¡Sed de sangre!','#ff5a5a'); }
@@ -899,7 +900,7 @@ function castAbility(cb,u,ab,depth=0){
   case 'chain': { let cur=t, prev=u; const hit=new Set(); for(let i=0;i<p.n&&cur;i++){ FX({type:'zap',fc:prev.c,fr:prev.r,tc:cur.c,tr:cur.r,life:.4}); hitFx(cb,u,cur,P*p.m*(1+(p.amp||0)*i),p); hit.add(cur); prev=cur; cur=foes.filter(e=>!e.dead&&!hit.has(e)&&dU(prev,e)<=3).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; } break; }
   case 'multi': for(let i=0;i<p.n;i++){ const live=foes.filter(e=>!e.dead); if(!live.length) break; const e=pickR(cb,live); FX({type:'proj',fc:u.c,fr:u.r,tc:e.c,tr:e.r,life:.25+i*.04}); hitFx(cb,u,e,P*p.m,p); } if(p.chill) cb.cExtra=' · ralentiza'; break;
   case 'combo': if(t){ for(let i=0;i<p.n&&!t.dead;i++) hitFx(cb,u,t,P*p.m,i===p.n-1?p:{...p,stun:0}); FX({type:'hits',c:t.c,r:t.r,n:p.n,life:.6}); } break;
-  case 'dash': { const tg=p.to==='far'?foes.filter(e=>!(e.stealth>0)).sort((a,b)=>dU(u,b)-dU(u,a))[0]:p.to==='low'?foes.filter(e=>!(e.stealth>0)).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0]:t;
+  case 'dash': { const nearF=foes.filter(e=>!(e.stealth>0)&&dU(u,e)<=3); const tg=p.to==='far'?nearF.sort((a,b)=>dU(u,b)-dU(u,a))[0]||t:p.to==='low'?nearF.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0]||t:t;
     if(tg){ teleportNear(cb,u,tg); u.target=tg; hitFx(cb,u,tg,P*p.m,p); FX({type:'hits',c:tg.c,r:tg.r,n:2,life:.5}); if(p.r){ for(const e of foes) if(e!==tg&&dU(tg,e)<=p.r) hitFx(cb,u,e,P*p.m*.6,p); FX({type:'area',c:tg.c,r:tg.r,rad:p.r+.5,life:.6}); } if(p.stealth){ u.stealth=p.stealth; for(const e of foes) if(e.target===u) e.target=null; cb.cExtra=' · invisible'; } if(p.selfAs) u.as=Math.min(3,u.as*(1+p.selfAs)); } break; }
   case 'execute': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:3,color:'#ff5a5a',life:.6}); if(!t.dead&&t.hp<t.maxHp*(p.th+.05*(u.star-1))){ dealDamage(cb,u,t,t.hp+t.shield+1,'true',true); fxText(cb,t,'¡Rematado!','#ff6b6b'); }
     if(t.dead&&p.reset&&u.maxMana<9999){ u.mana+=u.maxMana*p.reset; cb.cExtra+=' · ¡recupera maná!'; } } break;
@@ -984,11 +985,7 @@ function stepCombat(cb){
    for(const u of cb.units){ if(u.startShield){ u.shield+=u.startShield; u.shieldT=8; } if(u.sp.startShieldPct){ u.shield+=u.maxHp*u.sp.startShieldPct; u.shieldT=8; } }
    for(const u of cb.units) if(u.sp.veil) for(const a of cb.units) if(a!==u&&a.side===u.side&&dU(u,a)<=1){ a.shield+=u.sp.veil; a.shieldT=Math.max(a.shieldT,8); }
    for(const u of cb.units){
-     if(u.role==='a'&&!u.creep){
-       const foes=cb.units.filter(e=>e.side!==u.side); if(!foes.length) continue;
-       const far=foes.sort((a,b)=>dU(u,b)-dU(u,a))[0];
-       if(teleportNear(cb,u,far)){ u.target=far; fxText(cb,u,'¡Salto!','#ffffff'); }
-     }
+     // Los asesinos ya no saltan a la retaguardia al empezar: entran por delante y la sinergia Asesino los hace esfumarse al 50 %
    }
  }
  cb.t+=DT;
@@ -1023,6 +1020,8 @@ function stepCombat(cb){
  const a0=cb.units.some(u=>!u.dead&&u.side===0), a1=cb.units.some(u=>!u.dead&&u.side===1);
  if(!a0||!a1){ cb.done=true; cb.winner=a0?0:a1?1:null; }
  else if(cb.t>40){ cb.done=true; cb.winner=null; }
+ // Oro ganado en combate (Día de Pago, Gholdengo, Team Rocket, aumentos…): se apunta con su segundo para cobrarlo en ese momento
+ if(cb.gold){ const gl=cb.gl||(cb.gl=[0,0]); for(let sd=0;sd<2;sd++) if(cb.gold[sd]>gl[sd]){ (cb.goldEv=cb.goldEv||[]).push([cb.t,sd,cb.gold[sd]-gl[sd]]); gl[sd]=cb.gold[sd]; } }
 }
 function simulate(cb){ let g=0; while(!cb.done&&g++<2000) stepCombat(cb); cb.done=true; }
 const survivors=(cb,side)=>cb.units.filter(u=>!u.dead&&u.side===side).reduce((s,u)=>s+(u.star>=3?2:1),0);
@@ -1168,6 +1167,13 @@ function pveLootKeys(p,R){
  return [...(s>1||n===3?['mag']:[]),...Array(comps).fill('c'),...extra,...orbs];
 }
 // Suelta los orbes de los salvajes ya derrotados (en solitario, según el combate en vivo; en el servidor, según el tiempo)
+function payCombatGold(final){
+ if(G.phase!=='combat'&&!final) return;
+ for(const f of G.fights||[]){ const c=f.c; if(!c||!c.gold) continue; const el=final?Infinity:(Date.now()-(f.t0||0))/1000*G.speed; f.paid=f.paid||[0,0];
+   for(const [p,sd] of [[f.a,0],[f.pve||f.ghost?null:f.b,1]]){ if(!p) continue;
+     const due=final?c.gold[sd]:(c.goldEv||[]).reduce((a,e)=>a+(e[1]===sd&&e[0]<=el?e[2]:0),0), pay=Math.min(c.gold[sd],due)-f.paid[sd];
+     if(pay>0){ p.gold+=pay; f.paid[sd]+=pay; p.combatGold=(p.combatGold||0)+pay; } } }
+}
 function dropKillOrbs(){
  for(const f of G.fights||[]){ if(!f.pve||!f.lootKeys||!f.c) continue;
    const el=G.mp?(Date.now()-f.t0)/1000*G.speed:Infinity, deaths=(f.c.deaths||[]).filter(d=>d[0]<=el), total=f.c.units.filter(u=>u.creep).length||1;
@@ -1387,10 +1393,13 @@ function resolveRound(){
  const R=G.round, base=STAGE_DMG[R.s]||22, me=G.me; const msgs=new Map(), extraGold={}, gold0=new Map(G.players.map(p=>[p,p.gold]));
  G.anvils=[]; const won=new Map();
  const say=(p,m)=>msgs.set(p,m);
+ for(const f of G.fights) if(f.c&&!f.c.done) simulate(f.c);
+ payCombatGold(true);
+ for(const p of G.players) if(p.combatGold){ extraGold[p.id]=p.combatGold; p.combatGold=0; }
  for(const f of G.fights){
    const c=f.c; if(!c.done) simulate(c);
    for(const u of c.units) if(u.ref&&u.kills) u.ref.kills+=u.kills;
-   const addG=(p,g)=>{ if(g>0){ p.gold+=g; extraGold[p.id]=(extraGold[p.id]||0)+g; } };
+   const addG=()=>{};
    if(f.pve){
      const p=f.a, w=c.winner===0; won.set(p,w); addG(p,c.gold[0]);
      if(!w){ const d=base+survivors(c,1); p.hp-=d; p.lastDmg=d; }
@@ -1414,7 +1423,7 @@ function resolveRound(){
      augFire(p,w?'win':'lose',{pve:!!f.pve,opp:o?o.id:null,streak:p.streak}); augFire(p,'survive',{n}); augFire(p,'kills',{n:k}); if(!w) augFire(p,'damaged',{d:p.lastDmg||0}); augFire(p,'roundEnd',{won:w,pve:!!f.pve}); } }
  // Cazatesoros: botín tras cada combate (apuntado para la ficha de la sinergia)
  for(const p of alivePlayers()){ const tier=traitTiers(p)['Cazatesoros']||0; if(!tier) continue; const w=won.get(p);
-   lootTrack(p,()=>{ if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),true); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
+   lootTrack(p,()=>{ if(p.mods.lucky) p.gold+=2; if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),true); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
  for(const [p,m] of msgs) if(isHuman(p)) note(p,m,true);
  for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,true);
  const dead=G.players.filter(p=>p.alive&&p.hp<=0).sort((a,b)=>a.hp-b.hp);
@@ -1426,9 +1435,7 @@ function resolveRound(){
    p.board={}; p.bench=Array(BENCH).fill(null); p.shop=[null,null,null,null,null];
    note(null,`💀 ${p.name} queda eliminado (puesto ${p.place})`);
  }
- // Lo ganado en los resultados se guarda y se cobra en la ronda siguiente, cuando ya ha cambiado la tienda:
- // así no se puede gastar en la tienda de la ronda que acaba
- for(const p of G.players){ const d=p.gold-(gold0.get(p)||0); if(d>0){ p.gold-=d; p.pendGold=(p.pendGold||0)+d; } }
+ // El oro de los resultados (victoria, Cazatesoros, aumentos) entra al momento: cuenta para el interés de la ronda siguiente
  G.phase='results'; G.combat=null; G.view=null;
  growPotential();
  for(const p of alivePlayers()) combine(p);
@@ -2640,7 +2647,7 @@ function stepVisual(dt,isHost){
  if(cb&&!cb.done){ if(isHost&&document.hidden) simulate(cb); else { G.acc+=dt*G.speed; let n=0; while(G.acc>=DT&&n++<200){ stepWithEv(cb); G.acc-=DT; if(cb.done) break; } } }
  if(cb&&document.hidden) ageFx(cb,dt*Math.min(G.speed,2));
 
- if(isHost) dropKillOrbs();
+ if(isHost){ dropKillOrbs(); payCombatGold(false); }
  // El combate que estás mirando avanza al mismo ritmo que el tuyo
  const v=G.view&&G.view.cb?G.view:null;
  if(v){ if(!v.cb.done){ v.acc+=dt*G.speed; let n=0; while(v.acc>=DT&&n++<200){ stepWithEv(v.cb); v.acc-=DT; if(v.cb.done) break; } }
@@ -3405,7 +3412,7 @@ function serverTick(dt){
  if(G.phase==='planning'){ G.timer-=dt; if(G.timer<=0||humansReady()) startCombat(); }
  if(G.phase==='augment'&&Date.now()>G.augDeadline) autoAugs();
  if(G.phase==='carousel') updateCarousel(dt);
- if(G.phase==='combat') dropKillOrbs();
+ if(G.phase==='combat'){ dropKillOrbs(); payCombatGold(false); }
  if(G.phase==='combat'&&!G.resolving&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,300); }
  hostNetTick();
 }

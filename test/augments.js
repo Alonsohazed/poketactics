@@ -36,7 +36,7 @@ for (let k = 0; k < 300; k++) {
 { const { G, p } = fresh(); G.augSeed = 1234; G.augRng = null; const a = E.augmentChoices(p, 'G').join(); G.augRng = null; const b = E.augmentChoices(p, 'G').join(); ok(a === b, 'ofertas reproducibles con semilla'); }
 
 // 3. Selección única
-{ const { p } = fresh(); const a = E.AUG_BY.paga_extra; ok(E.applyAugment(p, a) === true, 'se elige'); ok(E.applyAugment(p, a) === false, 'no se elige dos veces'); ok(p.augments.filter(x => x === 'paga_extra').length === 1, 'registrado una vez'); }
+{ const { p } = fresh(); const a = E.AUG_BY.fondo_emergencia; ok(E.applyAugment(p, a) === true, 'se elige'); ok(E.applyAugment(p, a) === false, 'no se elige dos veces'); ok(p.augments.filter(x => x === 'fondo_emergencia').length === 1, 'registrado una vez'); }
 
 // 4. Aplicación y caducidad de efectos temporales
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.poder_prohibido); const seq = [];
@@ -64,12 +64,18 @@ for (let k = 0; k < 300; k++) {
 { const { p } = fresh(); p.board = {}; p.board['0,0'] = E.makeInst('charmander'); p.board['1,0'] = E.makeInst('growlithe');
   ok((E.traitTiers(p).Fuego || 0) === 1, 'Fuego activa su primer nivel con 2'); p.board['2,0'] = E.makeInst('charmander'); ok(E.traitCounts(p).Fuego === 2, 'la misma especie no cuenta dos veces'); }
 
-// 8. Llamada al Caos: resultados variados, sin errores ni recursos desbocados
-{ const seen = new Set(); let maxGold = 0;
-  for (let i = 0; i < 400; i++) { const { p } = fresh(); E.addUnitToBench(p, E.makeInst('pichu')); E.applyAugment(p, E.AUG_BY.llamada_caos); const pk = p.picks.find(x => x.src === 'llamada_caos');
-    ok(pk && pk.opts.length === 2, 'oferta de aceptar o rechazar'); E.resolvePick(p, pk.id, 0); const st = p.augSt.llamada_caos; seen.add(st.last); for (const q of p.picks.slice()) E.resolvePick(p, q.id, 0); maxGold = Math.max(maxGold, p.gold); }
-  ok(seen.size >= 6, `el Caos da resultados distintos (${seen.size})`); ok(maxGold < 200, 'el Caos no da oro desorbitado'); }
-{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.llamada_caos); const g0 = p.gold, pk = p.picks[0]; E.resolvePick(p, pk.id, 1); ok(p.gold === g0 + 4, 'rechazar el Caos da 4 de oro'); }
+// 8. Llamada al Caos (prismática) y Eco del Caos (oro): solo en 4-2, premio grande al azar, sin maldiciones
+for (const [id, big] of [['llamada_caos', true], ['eco_caos', false]]) {
+  const seen = new Set(); let minValue = 1e9;
+  for (let i = 0; i < 300; i++) { const { G, p } = fresh(); G.round = { s: 4, n: 2 }; const g0 = p.gold, l0 = p.level, x0 = p.xp, r0 = p.freeRerolls, i0 = p.items.length, u0 = p.bench.filter(Boolean).length, hp0 = p.hp;
+    E.applyAugment(p, E.AUG_BY[id]); const pk0 = p.picks.length; for (const q of p.picks.slice()) E.resolvePick(p, q.id, 0); const st = p.augSt[id]; seen.add(st.last);
+    ok(p.hp === hp0, 'el Caos ya no quita vida'); ok(p.reveals && p.reveals.length > 0, 'el resultado se muestra en una ventana');
+    const v = (p.gold - g0) + (p.level - l0) * 8 + (p.xp !== x0 || p.level !== l0 ? 10 : 0) + (p.freeRerolls - r0) + (p.items.length - i0) * 10 + (p.bench.filter(Boolean).length - u0) * 10 + (st.egg ? 30 : 0); minValue = Math.min(minValue, v); }
+  ok(seen.size === 9, `${id}: salen los 9 resultados (${seen.size})`); ok(minValue >= (big ? 20 : 10), `${id}: ningún resultado es pequeño (${minValue})`);
+  const { G, p } = fresh(); G.round = { s: 3, n: 2 }; let offered = 0; for (let i = 0; i < 300; i++) offered += E.augmentChoices(p, E.AUG_BY[id].tier).includes(id) ? 1 : 0; ok(offered === 0, `${id}: no sale antes de 4-2`); }
+{ let hatched = false; for (let k = 0; k < 300 && !hatched; k++) { const r = fresh(); r.G.round = { s: 4, n: 2 }; E.applyAugment(r.p, E.AUG_BY.llamada_caos); for (const q of r.p.picks.slice()) E.resolvePick(r.p, q.id, 0);
+    if (r.p.augSt.llamada_caos.egg) { const u0 = r.p.bench.filter(Boolean).length, g0 = r.p.gold; for (let i = 0; i < 3; i++) E.augFire(r.p, 'roundStart', {}); hatched = r.p.bench.filter(Boolean).length === u0 + 2 && r.p.gold - g0 === 15; } }
+  ok(hatched, 'Huevo de Oro: a las 3 rondas, 2 Legendarios y 15 de oro'); }
 
 // 9. Combinaciones extremas: sin bucles, sin oro infinito y sin duplicar unidades
 { const { G, p } = fresh(); for (const a of AUGS) E.applyAugment(p, a); for (const q of p.picks.slice()) E.resolvePick(p, q.id, 0);
@@ -78,11 +84,12 @@ for (let k = 0; k < 300; k++) {
   try { for (let i = 0; i < 3000; i++) { const e = evts[i % evts.length]; p.gold = Math.min(p.gold, 400); event(p, e, { key: 'charmander', star: 2, cost: 1, pve: false, n: 3, level: 9, dup: true }); for (const q of p.picks.slice()) E.resolvePick(p, q.id, 0); } } catch (e) { err = e; }
   ok(!err, 'todos los aumentos juntos no lanzan errores ' + (err ? err.stack : ''));
   ok(Date.now() - t0 < 20000, 'sin bucles infinitos');
-  const st = p.augSt; ok((st.comerciante_trigal.goldMade || 0) <= 16, 'Comerciante con tope'); ok((st.paga_extra.goldMade || 0) <= 20, 'Paga Extra con tope');
-  ok((st.crianza.n || 0) <= 8, 'Crianza con tope de copias'); ok((st.cadena_evo.n || 0) <= 15, 'Cadena de Evolución con tope'); }
-{ const { G, p } = fresh(); E.applyAugment(p, E.AUG_BY.equipo_cria); const g0 = p.gold; for (let i = 0; i < 20; i++) event(p, 'gain', { key: 'pichu', dup: true }); ok(p.gold - g0 === 1, 'Equipo de Cría: máximo 1 de oro por ronda'); }
+  const st = p.augSt; ok((st.cadena_evo.n || 0) <= 15, 'Cadena de Evolución con tope'); }
+{ const { G, p } = fresh(); E.addUnitToBench(p, E.makeInst('pichu')); E.addUnitToBench(p, E.makeInst('pichu')); E.addUnitToBench(p, E.makeInst('abra')); E.applyAugment(p, E.AUG_BY.crianza);
+  const pool0 = G.pool.pichu; event(p, 'roundStart', {}); ok(G.pool.pichu === pool0 - 1, 'Crianza: copia del Pokémon barato con más copias, sacada del pool');
+  for (let i = 0; i < 6; i++) event(p, 'roundStart', {}); ok(p.augSt.crianza.n === 7, 'Crianza: una copia cada ronda, sin tope'); }
 { // Reroll + economía + efectos al comprar: la reserva de unidades del juego no crece de la nada
-  const { G, p } = fresh(); ['crianza', 'equipo_cria', 'comerciante_trigal', 'investigacion_campo'].forEach(id => E.applyAugment(p, E.AUG_BY[id]));
+  const { G, p } = fresh(); ['crianza', 'llamada_clan', 'investigacion_campo'].forEach(id => E.applyAugment(p, E.AUG_BY[id]));
   const total = () => Object.values(G.pool).reduce((a, b) => a + b, 0) + G.players.reduce((a, q) => a + [...Object.values(q.board), ...q.bench.filter(Boolean)].reduce((s, u) => s + Math.pow(3, u.star - 1), 0) + q.shop.filter(Boolean).length, 0);
   const t0 = total(); p.gold = 300;
   for (let i = 0; i < 80; i++) { E.reroll(p); for (let j = 0; j < 5; j++) if (p.shop[j]) E.buy(p, j); const loc = p.bench.findIndex(Boolean); if (loc >= 0 && i % 3 === 0) E.sellAt(p, { i: loc }); for (const q of p.picks.slice()) E.resolvePick(p, q.id, 0); }
