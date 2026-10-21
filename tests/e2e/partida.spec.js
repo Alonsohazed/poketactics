@@ -150,6 +150,27 @@ test('planificador de fases: título, rondas, reloj y jugadores vivos @rapido', 
   await expect(page.locator('#pills .pill')).toHaveCount(7);
 });
 
+// Regresión: con intereses ganados (cristales visibles) al empezar el carrusel el juego dejaba de enviar los intereses y el dibujo lanzaba
+// un error en cada fotograma (pantalla gris). El escenario por capas debe seguir activo y el decorado 3D antiguo no debe construirse.
+test('con intereses, el carrusel no rompe el dibujo y el escenario por capas sigue activo', async ({ page }) => {
+  const errs = []; page.on('console', m => { if (m.type() === 'error' && !/401|createImageData/.test(m.text())) errs.push(m.text().slice(0, 160)); });
+  await page.evaluate(() => { G.me.gold = 60; renderUI(); });
+  await page.waitForTimeout(1500); // los cristales ganados brotan
+  await jumpToRound(page, 6); // 2-4: carrusel (con 50+ de oro: 5 de interés)
+  await page.evaluate(() => { G.me.gold = 60; renderUI(); });
+  await expect(page.locator('#stage')).toContainText('Carrusel');
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => { G.carousel.t = 40; });
+  await expect.poll(() => page.evaluate(() => G.phase), { timeout: 30_000 }).not.toBe('carousel');
+  await page.waitForTimeout(2500);
+  const r = await page.evaluate(() => { const d = [...document.querySelectorAll('#boardStack > div')].find(e => e.querySelector('video')); return { capas: !!d && !d.hidden, encaje: !!d && !!d.style.transform, mallas3D: B3.debugInfo().escenario, errores: frameErr.n || 0 }; });
+  expect(r.capas, 'escenario por capas visible tras el carrusel').toBe(true);
+  expect(r.encaje).toBe(true);
+  expect(r.mallas3D, 'solo la plaza del carrusel (≈30 mallas); con el decorado 3D antiguo serían más de 55').toBeLessThan(45);
+  expect(r.errores).toBe(0);
+  expect(errs).toEqual([]);
+});
+
 test('Llamada al Caos: se elige y aparece una ventana con el resultado', async ({ page }) => {
   await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
   await expect(page.locator('#mbox h1')).toHaveText('Llamada al Caos');

@@ -521,9 +521,9 @@ function buildArena(kind){
 /* ---------- escenario por capas (el de siempre; ?arena=3d vuelve al decorado 3D «glade») ----------
    Detrás del lienzo (transparente) va el escenario pintado, deformado en perspectiva (matrix3d) para que su campo coincida con el
    tablero. Las casillas, el banquillo, los Pokémon y los efectos siguen en 3D. */
-let FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')!=='3d'; }catch(e){ return true; } })();
-// Si el escenario por capas falla en algún fotograma, se apaga y se vuelve al decorado 3D: la partida sigue
-function flatFail(e){ console.error('Escenario por capas desactivado por un error:',e); FLAT=false; if(flatEl){ flatPlay(false); flatEl.hidden=true; } flatH=null; curArena=''; }
+const FLAT=(()=>{ try{ return new URLSearchParams(location.search).get('arena')!=='3d'; }catch(e){ return true; } })();
+// Un error en el escenario por capas se avisa una sola vez por tipo y NO lo apaga: el decorado 3D antiguo no se vuelve a usar (salvo con ?arena=3d)
+const flatSeen=new Set(); function flatFail(e){ const k=String(e&&e.message||e); if(flatSeen.has(k)) return; flatSeen.add(k); console.error('Error en el escenario por capas (la partida sigue):',e); }
 // Capas de public/arena (del paquete arena_tft_capas_1080, coordenadas en píxeles de 1428×1080): fondo a 2× sin el gris (base.webp),
 // vídeos en bucle del agua (opacos: se recortan con mask-image, la alfa del fondo en su rectángulo) y tiras de sprites del fuego (capas.json).
 // Se sirven por jsDelivr fijadas al commit (como los modelos: ANIM_BASE) y, si falla, desde nuestro servidor.
@@ -561,11 +561,11 @@ function buildFlat(cvs){
 function prefetchArena(){ if(!FLAT||!renderer) return; flatLoad(); const t=setInterval(()=>{ if(!flatCfg) return; clearInterval(t); if(!flatEl){ flatEl=buildFlat(renderer.domElement); flatEl.hidden=true; flatPlay(false); } },150); }
 function prefetch(dexes){ prefetchArena(); for(const d of dexes||[]) wantModel(d); }
 let flatOn=null;
-function flatPlay(on){ if(on===flatOn||!flatEl) return; flatOn=on; for(const v of flatEl.querySelectorAll('video')){ if(on) v.play().catch(()=>{}); else v.pause(); } for(const d of flatEl.querySelectorAll('div[style*="ptFire"]')) d.style.animationPlayState=on?'running':'paused'; }
+function flatPlay(on){ if(on===flatOn||!flatEl) return; flatOn=on; for(const v of flatEl.querySelectorAll('video')){ if(on&&!flatLite) v.play().catch(()=>{}); else v.pause(); } for(const d of flatEl.querySelectorAll('div[style*="ptFire"]')) d.style.animationPlayState=on?'running':'paused'; }
 if(FLAT) document.addEventListener('visibilitychange',()=>{ if(document.hidden) flatPlay(false); else if(flatEl&&!flatEl.hidden) flatPlay(true); });
 function stepFlat(){
  if(FLAT&&!flatReq) flatLoad();
- const on=FLAT&&curArena==='glade'&&board.G&&flatCfg; if(!on){ if(flatEl){ flatEl.hidden=true; flatPlay(false); } flatH=null; return; }
+ const on=FLAT&&curArena==='glade'&&board.G&&flatCfg; if(!on){ if(flatEl){ flatEl.hidden=true; flatPlay(false); } flatH=null; flatKey=''; return; } // flatKey a '' para recalcular el encaje al volver (tras el carrusel flatH se quedaba en null)
  const cvs=renderer.domElement, G=board.G; if(!flatEl) flatEl=buildFlat(cvs);
  flatEl.hidden=false; if(!document.hidden) flatPlay(true); flatEl.style.left=cvs.offsetLeft+'px'; flatEl.style.top=cvs.offsetTop+'px';
  const rc=boardRects(), W=cvs.clientWidth, H=cvs.clientHeight, [bx0,bx1,by]=FLAT_IMG.bench, bw=(bx1-bx0)/9;
@@ -1247,6 +1247,7 @@ function stepProps(F,now){
  if(!totem) buildProps();
  const T=F.totem; totem.visible=!!T; if(T){ const p=flatH?flatWorld(FLAT_IMG.totem,0):W3(T.x,T.y,0); totem.position.set(p.x,flatH?0:TOP-.05,p.z); } // la ball se queda quieta
  const I=F.interest, flat=!!flatH, inNiche=flat||(curArena==='glade'&&gladeNiches.length===10);
+ if(!I){ for(const c of crystals){ c.visible=false; if(c.userData.v!=null){ c.userData.v=0; c.userData.want=false; c.userData.from=null; } } return; } // carrusel y menú: sin intereses
  // Solo se ven los cristales ganados: cada uno brota de su hueco (sube, crece y se enciende en 0,7 s) al alcanzar ese interés y se hunde si se pierde
  crystals.forEach((c,j)=>{ const slot=!!I&&(flat?j<5:inNiche||j<5); const U=c.userData; if(U.v==null){ U.v=0; U.want=false; }
    // en las hornacinas, los dos lados muestran lo mismo y se encienden desde el banquillo hacia el fondo
@@ -1321,13 +1322,17 @@ function setQuality(l){
  renderer.setPixelRatio(Math.min(dpr0,Q.pr)); if(board.G){ renderer.setSize(M.W,M.H,false); partScale(); }
 }
 // Vigila los FPS reales en tramos de 2 s; dos tramos seguidos por debajo de 32 bajan un nivel de calidad
-const perf={acc:0,n:0,bad:0,fps:0}; let autoQ=true;
+const perf={acc:0,n:0,bad:0,fps:0,slow:0}; let autoQ=true;
 function watchPerf(dt){
  if(!autoQ||document.hidden||dt<=0||dt>.25) return; // pestaña oculta o tirón suelto (al cargar un modelo): no cuenta
  perf.acc+=dt; perf.n++; if(perf.acc<2) return;
  perf.fps=perf.n/perf.acc; perf.acc=0; perf.n=0;
  if(perf.fps<45&&qLevel>0){ if(++perf.bad>=2){ perf.bad=0; setQuality(qLevel-1); } } else perf.bad=0;
+ // Con la calidad ya al mínimo y menos de 30 FPS sostenidos, el escenario por capas se simplifica solo: sin vídeos de agua (queda el fondo y el fuego)
+ if(FLAT&&flatEl&&!flatEl.hidden&&!flatLite&&qLevel===0&&perf.fps<30){ if(++perf.slow>=3){ perf.slow=0; flatLiteOn(); } } else perf.slow=0;
 }
+let flatLite=false;
+function flatLiteOn(){ flatLite=true; for(const v of flatEl.querySelectorAll('video')){ v.pause(); v.style.display='none'; } console.warn('Escenario simplificado: sin vídeos de agua por FPS bajos'); }
 // Ajusta la cámara para que el tablero, el banquillo y los laterales entren en el rectángulo de juego (M.rect).
 // El lienzo puede ocupar toda la pantalla: el campo se ve detrás de los paneles y el tablero queda en el hueco central.
 function fitCamera(G){
@@ -1410,7 +1415,7 @@ function render(F){
  for(const f of F.fx){ if(f.t<0){ continue; } let v=fxVis.get(f); if(v===undefined){ v=makeFx(f,F); fxVis.set(f,v); born.push(f.type+(f.el?':'+f.el:'')); } if(v){ fseen.add(f); if(!v.done) updFx(f,v,F,dt); } }
  stepTrans(dt); stepProj(dt);
  for(const [f,v] of fxVis) if(!fseen.has(f)){ if(v) killFx(v); fxVis.delete(f); }
- stepOrbs(F.orbs,now); try{ stepProps(F,now); }catch(e){ if(FLAT) flatFail(e); else console.error(e); } stepBubbles(F.bubbles,now); stepPads(F.pads); stepLinks(F.links,now);
+ stepOrbs(F.orbs,now); try{ stepProps(F,now); }catch(e){ flatFail(e); } stepBubbles(F.bubbles,now); stepPads(F.pads); stepLinks(F.links,now);
  stepParticles(PA,dt); stepParticles(PN,dt); stepParticles(PB,dt);
  const pt2=performance.now(); // temblor de cámara en los impactos fuertes
  const base=camera.position.clone(); if(shake>0&&shakeOn){ camera.position.x+=rnd(shake); camera.position.y+=rnd(shake); } shake=Math.max(0,shake-dt*.6);
