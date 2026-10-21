@@ -269,7 +269,11 @@ test('pokédex: usa sprites 2D ligeros y no carga ningún modelo 3D', async ({ p
   const glb = []; page.on('request', r => { if (/\.glb|\/anims\//.test(r.url())) glb.push(r.url()); });
   await page.evaluate(() => { performance.clearResourceTimings(); showDex(0); });
   await expect(page.locator('.dexGrid .dexCard')).toHaveCount(await page.evaluate(() => UNIT_LIST.length));
-  const info = await page.evaluate(() => { const im = [...document.querySelectorAll('.dexGrid img')]; return { n: im.length, bad: im.filter(i => !/sprites\/pokemon\/\d+\.png$/.test(i.src)).length }; });
+  const info = await page.evaluate(() => { const im = [...document.querySelectorAll('.dexGrid img')]; return { n: im.length, bad: im.filter(i => !/\/dex\/\d+\.png$/.test(i.src)).length }; });
   expect(info.n).toBeGreaterThan(100); expect(info.bad).toBe(0);
+  await page.evaluate(() => document.querySelector('#mbox').scrollTo(0, 1e6)); await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => [...document.querySelectorAll('.dexGrid img')].filter(i => i.complete && i.naturalWidth === 0).length)).toBe(0); // ningún sprite roto
+  // cada forma con su propio número (en los costes 4 de 3 formas dexOf desplaza una)
+  expect(await page.evaluate(() => { const c = [...document.querySelectorAll('.dexCard')].find(x => x.dataset.tip === 'unit:hatenna'); return [...c.querySelectorAll('img')].map(i => i.src.match(/(\d+)\.png/)[1]).join(); })).toBe('856,857,858');
   await page.waitForTimeout(1500); expect(glb).toEqual([]);
 });

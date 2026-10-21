@@ -3062,13 +3062,13 @@ function showHow(){
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda · <span class="kbd">H</span> bola de fuego (Charmander)</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true});
 }
-// Pokédex: sprites 2D de PokeAPI (unos 3 KB cada uno) en vez de retratos renderizados desde los modelos 3D (~190 KB por modelo): abrirla pasa de decenas de MB a unos cientos de KB
-const dexSprite=(d,size,star)=>`<span class="spr2" style="--s:${size}px"><img src="${SPRITE(dexOf(d,star))}" alt="${esc(nameOf(d,star))}" loading="lazy" decoding="async" width="${size}" height="${size}"></span>`;
+// Pokédex: sprites 2D de Pokémon Bank (pokemondb.net; HOME en los de 8.ª y 9.ª gen), copiados a public/dex/<n.º>.png (128 px, ~3 KB). Antes eran retratos renderizados desde los modelos 3D (~190 KB por modelo: abrirla pedía ~35 MB). Cada forma usa SU número (d.dex[i]); dexOf desplaza una forma en los costes 4 de 3 formas
+const dexSprite=(d,size,i)=>`<span class="spr2" style="--s:${size}px"><img src="${(window.ASSET_BASE||'')}dex/${Array.isArray(d.dex)?d.dex[i]:d.dex}.png" alt="${esc(d.names[i])}" loading="lazy" decoding="async" width="${size}" height="${size}"></span>`;
 function showDex(cost){
  const list=UNIT_LIST.filter(u=>!cost||u.cost===cost);
  openModal(`<h1>Pokédex</h1><p>${UNIT_LIST.length} líneas evolutivas. Pasa el cursor por una carta para ver sus 3 habilidades (una por estrella).</p>
  <div class="dexFilters">${[0,1,2,3,4,5].map(c=>`<button class="btn sm" data-c="${c}" aria-pressed="${c===cost}">${c?'Coste '+c:'Todos'}</button>`).join('')}</div>
- <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${dexSprite(d,d.names.length>2?52:64,i+1)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true});
+ <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${dexSprite(d,d.names.length>2?52:64,i)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true});
  $('mbox').querySelectorAll('.dexFilters button').forEach(b=>b.onclick=()=>showDex(+b.dataset.c));
 }
 function showRecipes(){
