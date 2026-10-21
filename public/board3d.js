@@ -630,11 +630,6 @@ class Actor{
    if(cls){ if(!this.synRing){ this.synRing=new THREE.Mesh(new THREE.RingGeometry(.6,.86,48),addMat('#ffffff')); this.synRing.rotation.x=-Math.PI/2; this.synRing.position.y=TOP+.03; this.root.add(this.synRing); }
      const k=.5+.5*Math.sin(ph); this.synRing.visible=true; this.synRing.material.color.set(SYN_CL[cls]); this.synRing.material.opacity=.16+.2*k; this.synRing.scale.setScalar(1+.05*k); }
    else if(this.synRing) this.synRing.visible=false;
-   if(L.includes('Guardián')){
-     if(!this.synShield){ const g=new THREE.Group(), face=new THREE.Mesh(new THREE.CircleGeometry(.5,6),addMat('#7fd0ff')), edge=new THREE.Mesh(new THREE.RingGeometry(.46,.55,6),addMat('#d8f4ff'));
-       face.material.opacity=.16; edge.material.opacity=.7; face.rotation.z=edge.rotation.z=Math.PI/6; g.add(face,edge); this.root.add(g); this.synShield=g; }
-     const g=this.synShield, k=.5+.5*Math.sin(ph*.8); g.visible=true; g.position.set(.28,TOP+.72+.04*Math.sin(ph),.55); g.quaternion.copy(camera.quaternion); g.children[0].material.opacity=.1+.1*k; g.children[1].material.opacity=.45+.35*k; g.scale.setScalar(.95+.05*k); }
-   else if(this.synShield) this.synShield.visible=false;
    const el=L.find(x=>SYN_EL[x]); if(!el) return; const E=SYN_EL[el], P=this.root.position;
    this.synAcc=(this.synAcc||0)+dt*E.rate;
    while(this.synAcc>=1){ this.synAcc--; const a=Math.random()*TAU, c=E.c[Math.random()<.6?0:1], rr=(rad)=>[P.x+Math.cos(a)*rad,P.z+Math.sin(a)*rad];
@@ -653,6 +648,7 @@ class Actor{
  // Se coloca una ficha que comparte sinergia: estallido de una vez (la ficha nueva, fuerte; las que comparten con ella, más suave) y destellos entre ellas
  joinFx(spec){ if(!spec.joinN||spec.joinN===this.lastJoin) return; this.lastJoin=spec.joinN; if(performance.now()-spec.joinT>600) return;
    const tr=spec.joinTraits||[], el=tr.find(x=>SYN_EL[x])||tr[0]; if(!el) return; const P=this.root.position, strong=!spec.joinFrom;
+   if(tr.includes('Guardián')) guardShield(P,strong);
    joinBurst(P,el,strong); const cl=tr.find(x=>SYN_CL[x]&&x!==el); if(cl) shock(new THREE.Vector3(P.x,TOP+.06,P.z),SYN_CL[cl],.3,strong?1.9:1.3,.6);
    if(spec.joinTo) for(const q of spec.joinTo){ const w=W3(q[0],q[1],0); joinTrail(P,w,el); } }
  dispose(){ scene.remove(this.root); if(this.model){ this.body.remove(this.model); poolPut(this); } else if(this.mats) for(const m of this.mats) m.dispose(); this.model=null; if(this.shieldM) this.shieldM.material.dispose(); this.ring.material.dispose(); }
@@ -685,6 +681,18 @@ function stepProj(dt){
    if(Math.random()<.5) emit({p:p.clone(),v:[rnd(.6),.4,rnd(.6)],col:'#ffe08a',size:.1,size1:.02,life:.6,g:2});
    if(k>=1){ const e=o.b.clone().setY(TOP+.25); impactFx(EL.Fuego,'Fuego',e,true); shock(e.clone().setY(TOP+.06),'#ff8a2a',.3,2.4,.5); shock(e.clone().setY(TOP+.06),'#ffe08a',.15,1.4,.35); burst(e.clone().setY(TOP+.5),['#ff5a1a','#ffb02e','#fff0a0'],26,3.6,{up:4,size:.4,size1:.03,life:.8,g:-1}); PROJ.splice(i,1); } }
 }
+// Escudo de los Guardianes: una insignia azul con una Poké Ball que aparece sobre la ficha al colocarla (igual que las llamas o las burbujas de otros tipos), flota un instante y se desvanece. Dibujada aquí, sin imagen externa
+const shieldTex=canvasTex(192,224,g=>{ const P=(i)=>{ g.beginPath(); g.moveTo(12+i,30+i); g.quadraticCurveTo(54,28+i,96,10+i); g.quadraticCurveTo(138,28+i,180-i,30+i); g.lineTo(180-i,104); g.quadraticCurveTo(176-i,172,96,216-i); g.quadraticCurveTo(16+i,172,12+i,104); g.closePath(); };
+ g.shadowColor='rgba(0,20,60,.55)'; g.shadowBlur=10; const rim=g.createLinearGradient(0,0,192,224); rim.addColorStop(0,'#ffffff'); rim.addColorStop(.5,'#cfe3ff'); rim.addColorStop(1,'#8fb2e8'); P(0); g.fillStyle=rim; g.fill(); g.shadowBlur=0;
+ P(8); g.fillStyle='#14388a'; g.fill(); const bl=g.createLinearGradient(0,10,0,216); bl.addColorStop(0,'#7cc4ff'); bl.addColorStop(.5,'#3a85e6'); bl.addColorStop(1,'#1c4fb4'); P(15); g.fillStyle=bl; g.fill();
+ g.save(); P(15); g.clip(); g.fillStyle='rgba(255,255,255,.22)'; g.beginPath(); g.moveTo(0,20); g.lineTo(110,0); g.lineTo(40,230); g.lineTo(0,230); g.fill(); g.restore();
+ const cx=96, cy=112, r=36; g.lineWidth=5; g.strokeStyle='#0b1b3c'; g.fillStyle='#e8344a'; g.beginPath(); g.arc(cx,cy,r,Math.PI,0); g.fill(); g.fillStyle='#f6f8ff'; g.beginPath(); g.arc(cx,cy,r,0,Math.PI); g.fill();
+ g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.stroke(); g.beginPath(); g.moveTo(cx-r,cy); g.lineTo(cx+r,cy); g.stroke(); g.fillStyle='#f6f8ff'; g.beginPath(); g.arc(cx,cy,12,0,Math.PI*2); g.fill(); g.stroke(); g.fillStyle='rgba(255,255,255,.7)'; g.beginPath(); g.arc(cx-14,cy-16,6,0,Math.PI*2); g.fill(); },false);
+const SHIELDS=[];
+function guardShield(P,strong){ const mt=new THREE.SpriteMaterial({map:shieldTex,transparent:true,depthWrite:false,depthTest:false}), sp=new THREE.Sprite(mt); sp.renderOrder=13; sp.position.set(P.x,TOP+.75,P.z); sp.scale.set(.01,.01,1); scene.add(sp); SHIELDS.push({sp,t:0,life:1.7,k:strong?1:.8,y0:TOP+.75}); }
+function stepShields(dt){ for(let i=SHIELDS.length-1;i>=0;i--){ const o=SHIELDS[i]; o.t+=dt; const f=o.t/o.life; if(f>=1){ scene.remove(o.sp); o.sp.material.dispose(); SHIELDS.splice(i,1); continue; }
+  const pop=f<.14?(f/.14)*(2-f/.14):1, sc=(f<.14?.35+.9*pop:1.25-.25*Math.min(1,(f-.14)/.2))*o.k*1.4; o.sp.scale.set(sc*.86,sc,1); o.sp.position.y=o.y0+.45*Math.min(1,f*1.4);
+  o.sp.material.opacity=f<.45?1:1-(f-.45)/.55; } }
 function stepTrans(dt){ for(let i=TRANS.length-1;i>=0;i--){ const o=TRANS[i]; o.t+=dt; const k=o.t/o.life; if(k>=1){ scene.remove(o.m); o.m.material.dispose(); TRANS.splice(i,1); continue; } o.m.scale.setScalar(lerp(o.r0,o.r1,1-(1-k)*(1-k))); o.m.material.opacity=1-k; } }
 // Impacto con identidad por tipo: chispas, salpicaduras, polvo, ondas…
 function impactFx(el,f,p,big){ const C=el.c, n=big?18:9;
@@ -1066,7 +1074,7 @@ function render(F){
  const pt1=performance.now(); // efectos
  const fseen=new Set(), born=[];
  for(const f of F.fx){ if(f.t<0){ continue; } let v=fxVis.get(f); if(v===undefined){ v=makeFx(f,F); fxVis.set(f,v); born.push(f.type+(f.el?':'+f.el:'')); } if(v){ fseen.add(f); if(!v.done) updFx(f,v,F,dt); } }
- stepTrans(dt); stepProj(dt);
+ stepTrans(dt); stepShields(dt); stepProj(dt);
  for(const [f,v] of fxVis) if(!fseen.has(f)){ if(v) killFx(v); fxVis.delete(f); }
  stepOrbs(F.orbs,now); try{ stepProps(F,now); }catch(e){ flatFail(e); } stepBubbles(F.bubbles,now); stepPads(F.pads); stepLinks(F.links,now);
  stepParticles(PA,dt); stepParticles(PN,dt); stepParticles(PB,dt);
