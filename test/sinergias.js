@@ -90,9 +90,10 @@ for (const [id, k] of Object.entries(HEROES)) { const { G, p } = fresh(); const 
   const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'abra', 2, [], 0, 0], ['4,0', 'gastly', 2, [], 0, 0]].filter(r => E.DEF[r[1]]) };
   const cb = E.createCombatSnap(snap, foe, { s: 4, n: 2 }, { seed: 4242 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k);
   if (id === 'h_lucario') ok(h.echo, 'Aura Implacable: doble lanzamiento');
-  if (id === 'h_machamp') ok(h.sp.rage === .05, 'Furia Creciente: cargas de velocidad');
+  if (id === 'h_machamp') ok(h.sp.rage === .07, 'Furia Creciente: cargas de velocidad');
   if (id === 'h_clefable') ok(h.critAbil, 'Precisión Lunar: habilidades críticas');
-  if (id === 'h_charizard') ok(h.dragonRamp === .03, 'Calor Acumulado: daño creciente');
+  if (id === 'h_clefable') ok(h.ab[0] === 'lunar' && h.ab[2].grow > 0, 'Precisión Lunar: cambia su habilidad por Rayo Lunar, que crece al lanzar');
+  if (id === 'h_charizard') ok(h.dragonRamp === .05, 'Calor Acumulado: daño creciente');
   E.simulate(cb); ok(cb.done && cb.units.every(u => Number.isFinite(u.hp)), `${id}: el combate termina sin valores rotos`);
   if (id === 'h_ditto') ok(h.copied && h.copied[0] !== 'copy', 'Adaptación Perfecta: Ditto copia una habilidad enemiga'); }
 // Sustitutos de los clásicos planos
@@ -130,7 +131,7 @@ const combatOf = (p, k) => { const cb = E.createCombatSnap(E.teamSnap(p), null, 
   E.applyAugment(p, E.AUG_BY.entreno_combate); E.resolvePick(p, p.picks[0].id, 0); for (let i = 0; i < 2; i++) event(p, 'roundEnd', {});
   ok(u.stk.ad === 6 && u.stk.hp === 40 && u.stk.ap === 9, 'Entrenamiento de Combate: +6 de ataque, +9 de poder y +40 de vida permanentes'); ok(/\+6 de ataque, \+9 de poder y \+40 de vida/.test(E.augProgress(p, 'entreno_combate')), 'Entrenamiento de Combate: contador'); }
 { const { p } = fresh(); p.board = { '3,0': E.makeInst('abra') }; const base = combatOf(p, '3,0'); E.applyAugment(p, E.AUG_BY.h_alakazam); for (let i = 0; i < 3; i++) event(p, 'roundStart', {});
-  ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 12, 'Fuerza Creciente: +12 de poder tras 3 rondas'); }
+  ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 15, 'Fuerza Creciente: +15 de poder tras 3 rondas'); }
 ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite');
 
 // 11. Cada aumento de héroe mejora de verdad a su Pokémon (mismo combate y semilla, con y sin el aumento; media de 12 semillas)
@@ -141,7 +142,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   const cmp = (id, k, f, label) => { const a = stat(k, null, f), b = stat(k, id, f); ok(b > a * 1.05, `${E.AUG_BY[id].name}: ${label} (${Math.round(a)} → ${Math.round(b)})`); };
   const dmg = (h, cb, pre) => pre ? null : (h.sDmg || 0), heal = (h, cb, pre) => pre ? null : (h.sHeal || 0);
   cmp('h_gengar', 'gastly', dmg, 'más daño de Gengar'); cmp('h_gyarados', 'magikarp', (h, cb, pre) => pre ? h.maxHp : null, 'más vida de Gyarados');
-  cmp('h_clefable', 'cleffa', heal, 'más curación y escudos de Clefable (críticos)'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
+  cmp('h_clefable', 'cleffa', dmg, 'Clefable hace daño (Rayo Lunar)'); cmp('h_clefable', 'cleffa', heal, 'y cura más a la vez'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
   cmp('h_raichu', 'pichu', dmg, 'más daño de Raichu'); cmp('h_machamp', 'machop', dmg, 'más daño de Machamp (velocidad creciente)');
   cmp('h_lucario', 'riolu', dmg, 'Lucario lanza dos veces: más daño'); cmp('h_charizard', 'charmander', dmg, 'más daño de Charizard');
   cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor'); }
@@ -191,6 +192,14 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     const run = vis => { const cb = E.createCombatSnap(a, b, { s: 4, n: 2, type: 'pvp' }, { seed: s * 7919, visual: vis }); E.simulate(cb); if (vis) fxN += cb.fx.length; return JSON.stringify([cb.winner, +cb.t.toFixed(3), cb.units.map(u => Math.round(u.hp))]); };
     if (run(false) === run(true)) same++; }
   ok(same === N, `mismo resultado con y sin efectos visuales (${same}/${N})`); ok(fxN > 0, 'los combates visuales generan efectos'); }
+
+// 14. Resonancia legendaria: un Legendario depende de sus otras sinergias, y otros legendarios no se las activan
+{ const ray = b => { const { p } = fresh(); p.board = b; return combatOf(p, '3,3'); }, I = E.makeInst;
+  const solo = ray({ '3,3': I('rayquaza'), '3,0': I('onix') }), conLeg = ray({ '3,3': I('rayquaza'), '3,0': I('giratina'), '2,0': I('zapdos') });
+  const conApoyo = ray({ '3,3': I('rayquaza'), '3,0': I('dratini'), '2,0': I('horsea'), '4,3': I('pichu') });
+  ok(solo.legMul < 1 && solo.legRes === 0, `Rayquaza sin apoyo se debilita (×${solo.legMul})`);
+  ok(conLeg.legRes === 0, 'Giratina y Zapdos no activan la resonancia de Rayquaza');
+  ok(conApoyo.legRes >= 2 && conApoyo.legMul > 1 && conApoyo.ad > solo.ad, `con Dragón y Tirador se fortalece (×${conApoyo.legMul})`); }
 
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }

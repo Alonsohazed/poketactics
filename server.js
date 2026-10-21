@@ -49,7 +49,7 @@ app.use(express.static(path.join(__dirname, 'public'), { setHeaders(res, file) {
 
 const server = http.createServer(app);
 // Mensajes de 1 KB o más comprimidos (estado de la partida en JSON: ocupa una fracción); los pequeños van tal cual para no gastar CPU
-const io = new Server(server, { maxHttpBufferSize: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
+const io = new Server(server, { maxHttpBufferSize: 16 * 1024, perMessageDeflate: { threshold: 256 } });
 io.use(auth.socketGuard);
 
 /** @type {Map<string, any>} */
