@@ -2952,15 +2952,18 @@ function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.last
 // Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
 let DEX_NAME=null;
 const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
-const UP_CARDS=new Map();
+const UP_CARDS=new Map(); let UP_NAT=0; // altura natural del recuadro (con escala 1)
 function renderUps(){
  if(HEADLESS||!G||!G.players) return; let L=$('upLayer'); if(!L){ L=document.createElement('div'); L.id='upLayer'; document.body.appendChild(L); }
  const now=performance.now(), live=new Set(); L.hidden=!liveGame();
+ // Si suben varios a la vez, todos los recuadros se reducen lo justo (--cs) para que quepan en la separación entre filas sin tocarse
+ const rc=[...document.querySelectorAll('#players .pl')].map(e=>{ const b=e.getBoundingClientRect(); return b.top+b.height/2; }).sort((a,b)=>a-b), pitch=rc.length>1?Math.min(...rc.slice(1).map((y,i)=>y-rc[i])):90;
  if(!L.hidden) for(const p of G.players){ const u=p.lastUp; if(!u||p===G.me||!p.alive) continue; const [dex,star,seq]=u;
    let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderUps(); },UP_MS+50); }
    if(now-r.t>=UP_MS) continue; const row=document.querySelector('#players .pl[data-pid="'+p.id+'"]'); if(!row) continue;
    let c=UP_CARDS.get(p.id); if(!c||c.dataset.seq!==String(seq)){ if(c) c.remove(); c=document.createElement('div'); c.className='upCard s'+star; c.dataset.seq=seq; c.style.setProperty('--life',UP_MS+'ms');
      c.innerHTML=`<span class="un">${esc(p.name)}</span><span class="face"><img src="${dexUrl(dex)}" alt="" data-sp="${String(dex).split('/').pop()}" decoding="async"></span><span class="pi"><b class="pn">${esc(dexName(dex)||'Pokémon')}</b><i class="st" title="Subió a ${star} estrellas">${'★'.repeat(star)}</i></span>`; c.style.visibility='hidden'; L.appendChild(c); UP_CARDS.set(p.id,c); c._new=true; }
+   if(!UP_NAT){ c.style.setProperty('--cs',1); UP_NAT=c.offsetHeight||76; } c.style.setProperty('--cs',clamp((pitch-6)/UP_NAT,.45,1).toFixed(3));
    const info=row.querySelector('.plInfo').getBoundingClientRect(), ring=row.querySelector('.ring').getBoundingClientRect(), h=c.offsetHeight;
    c.style.right=(innerWidth-info.left+10)+'px'; c.style.top=(ring.top+ring.height/2-h/2)+'px';
    if(c._new){ c._new=false; const l=c.getBoundingClientRect().left; c.style.setProperty('--ox',(ring.left+ring.width/2-l)+'px'); c.style.visibility=''; }

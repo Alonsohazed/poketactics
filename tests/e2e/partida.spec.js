@@ -357,3 +357,14 @@ test('trofeo de aumentos: es una imagen (no decenas de mallas) y sin aumentos no
   const r = await page.evaluate(() => ({ esc: B3.debugInfo().escenario, hud: (() => { G.me.augments = []; hudAugs = []; ctx.save(); const spy = []; const fr = ctx.fillText; ctx.fillText = function (t) { spy.push(t); return fr.apply(this, arguments); }; drawTotemIcons(); ctx.fillText = fr; ctx.restore(); return { qs: spy.includes('?'), icons: hudAugs.length }; })(), tex: !!(B3.flatInfo && B3.flatInfo.totem) }));
   expect(r.esc).toBeLessThan(10); expect(r.hud).toEqual({ qs: false, icons: 0 }); expect(r.tex).toBe(true);
 });
+
+test('subida de estrellas de todos a la vez: los 7 recuadros caben sin solaparse en cualquier altura', async ({ page }) => {
+  for (const [w, h] of [[1400, 900], [1280, 720], [1920, 1080], [1366, 640]]) {
+    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(600);
+    await page.evaluate(() => { const n = Date.now(); G.players.filter(p => p !== G.me).forEach((p, i) => { p.lastUp = [[94, 3, 8][i % 3], 2 + (i % 2), n + i + Math.random()]; }); renderUI(); });
+    await page.waitForTimeout(800);
+    const r = await page.evaluate(() => { const b = [...document.querySelectorAll('#upLayer .upCard')].map(c => c.getBoundingClientRect()).sort((a, c) => a.top - c.top); const gaps = b.slice(1).map((x, i) => Math.round(x.top - b[i].bottom)); return { n: b.length, minGap: Math.min(...gaps), left: Math.min(...b.map(x => x.left)), top: Math.min(...b.map(x => x.top)), bottom: Math.max(...b.map(x => x.bottom)), vh: innerHeight }; });
+    expect(r.n, w + 'x' + h).toBe(7); expect(r.minGap, 'solapan en ' + w + 'x' + h).toBeGreaterThanOrEqual(0); expect(r.left).toBeGreaterThan(0); expect(r.top).toBeGreaterThanOrEqual(0); expect(r.bottom).toBeLessThanOrEqual(r.vh);
+    await page.evaluate(() => { G.players.forEach(p => { p.lastUp = null; }); UP_CARDS.forEach(c => c.remove()); UP_CARDS.clear(); });
+  }
+});

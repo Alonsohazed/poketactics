@@ -1118,13 +1118,13 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 /* Aviso de subida de estrellas (recuadro que sale del círculo de la minileyenda) */
 #upLayer{position:fixed;inset:0;pointer-events:none;z-index:7}
 #upLayer[hidden]{display:none}
-.upCard{position:fixed;display:grid;grid-template-columns:auto auto;column-gap:10px;row-gap:1px;align-items:center;padding:5px 16px 7px 8px;border-radius:10px;background:rgba(9,15,36,.8);border:1.5px solid rgba(220,206,168,.85);box-shadow:0 4px 18px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.05);backdrop-filter:blur(2px);transform-origin:var(--ox,100%) 50%;animation:upOut .5s cubic-bezier(.2,1.1,.3,1) both,upFade .45s ease-in calc(var(--life) - .45s) forwards}
-.upCard .un{grid-column:1/-1;font-size:11px;font-weight:800;color:#aab3c8;line-height:1.1;margin-bottom:2px}
-.upCard .face{width:46px;height:46px;border-radius:7px;overflow:hidden;background:radial-gradient(circle at 50% 30%,#4a3f7a,#141a30);border:1px solid rgba(255,255,255,.2)}
+.upCard{position:fixed;display:grid;grid-template-columns:auto auto;column-gap:calc(10px*var(--cs,1));row-gap:1px;align-items:center;padding:calc(5px*var(--cs,1)) calc(16px*var(--cs,1)) calc(7px*var(--cs,1)) calc(8px*var(--cs,1));border-radius:calc(10px*var(--cs,1));background:rgba(9,15,36,.8);border:1.5px solid rgba(220,206,168,.85);box-shadow:0 4px 18px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.05);backdrop-filter:blur(2px);transform-origin:var(--ox,100%) 50%;animation:upOut .5s cubic-bezier(.2,1.1,.3,1) both,upFade .45s ease-in calc(var(--life) - .45s) forwards}
+.upCard .un{grid-column:1/-1;font-size:calc(11px*var(--cs,1));font-weight:800;color:#aab3c8;line-height:1.1;margin-bottom:calc(2px*var(--cs,1))}
+.upCard .face{width:calc(46px*var(--cs,1));height:calc(46px*var(--cs,1));border-radius:calc(7px*var(--cs,1));overflow:hidden;background:radial-gradient(circle at 50% 30%,#4a3f7a,#141a30);border:1px solid rgba(255,255,255,.2)}
 .upCard .face img{width:100%;height:100%;object-fit:cover;object-position:50% 10%;transform:scale(1.75);transform-origin:50% 20%}
-.upCard .pi{display:flex;flex-direction:column;gap:3px;min-width:0}
-.upCard .pn{font-family:var(--display);font-weight:400;font-size:21px;line-height:1;color:#fff;text-shadow:0 1px 0 #000;white-space:nowrap}
-.upCard .st{font-style:normal;font-size:15px;letter-spacing:3px;line-height:1}
+.upCard .pi{display:flex;flex-direction:column;gap:calc(3px*var(--cs,1));min-width:0}
+.upCard .pn{font-family:var(--display);font-weight:400;font-size:calc(21px*var(--cs,1));line-height:1;color:#fff;text-shadow:0 1px 0 #000;white-space:nowrap}
+.upCard .st{font-style:normal;font-size:calc(15px*var(--cs,1));letter-spacing:calc(3px*var(--cs,1));line-height:1}
 .upCard.s2 .st{color:#dfe6f1;text-shadow:0 0 6px rgba(190,205,235,.7),0 1px 0 #000}
 .upCard.s3 .st{color:#ffcf33;text-shadow:0 0 9px #ffb400,0 1px 0 #000}
 @keyframes upOut{from{transform:scale(.04,.5);opacity:0}to{transform:none;opacity:1}}
