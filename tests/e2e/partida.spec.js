@@ -311,6 +311,8 @@ test('orbes de botín: salen volando desde la casilla del salvaje, aterrizan y s
   expect(a.length).toBe(1); expect(a[0].f).toBeLessThan(1); expect(a[0].ready).toBe(false); expect(a[0].moved).toBe(true); // aterriza lejos de donde salió
   await page.waitForTimeout(1500);
   expect(await page.evaluate(() => orbList().map(o => [o.f, o.ready]))).toEqual([[1, true]]);
+  // en pleno combate (sin haber derrotado a todos) también se recogen en cuanto aterrizan
+  expect(await page.evaluate(() => { G.phase = 'combat'; G.combat = { done: false }; const r = orbList().map(o => o.ready); G.phase = 'planning'; G.combat = null; return r; })).toEqual([true]);
   // la minileyenda va 2,4 veces más rápido cuando se dirige a un orbe
   const sp = await page.evaluate(() => { const o = orbList()[0], A = tacArea(), run = (tx, ty) => { TAC.picked.clear(); TAC.x = A.x0 + geo.R * 2; TAC.y = o.y; TAC.tx = tx; TAC.ty = ty; const x0 = TAC.x, y0 = TAC.y; stepTac(0.1); return Math.hypot(TAC.x - x0, TAC.y - y0); };
     return { orbe: run(o.x, o.y), libre: run(A.x0 + geo.R * 2, o.y + geo.R * 6) }; });
@@ -408,4 +410,20 @@ test('objetos: el marco dorado es solo de la banca; sobre un Pokémon (lienzo y 
     const tmp = document.createElement('div'); tmp.className = 'uc-items'; tmp.innerHTML = '<div class="slot full">' + itemHTML('zoom', 34) + '</div>'; document.body.appendChild(tmp);
     const eq = getComputedStyle(tmp.querySelector('.ii')); const out = { strokes, bench: /linear-gradient/.test(bench), eqBorder: eq.borderTopColor, eqBg: /linear-gradient/.test(eq.backgroundImage) }; tmp.remove(); return out; });
   expect(r.strokes.every(s => s === '#000000')).toBe(true); expect(r.strokes.length).toBe(3); expect(r.bench).toBe(true); expect(r.eqBorder).toBe('rgb(0, 0, 0)'); expect(r.eqBg).toBe(false);
+});
+
+test('objetos: el aura va siempre, en el DOM (banca, ficha, historial) y en el lienzo (sobre el Pokémon, carrusel), con insignias y emblemas incluidos', async ({ page }) => {
+  const r = await page.evaluate(() => { const keys = Object.keys(ITEMS), host = document.createElement('div'); host.innerHTML = keys.map(k => itemHTML(k, 30)).join(''); document.body.appendChild(host);
+    const els = [...host.querySelectorAll('.ii')], sin = els.filter(e => !/ fx-/.test(' ' + e.className) || !e.style.getPropertyValue('--fx')).length, anim = els.filter(e => getComputedStyle(e, '::before').animationName === 'fxPulse').length; host.remove();
+    const stops = [], og = ctx.createRadialGradient; ctx.createRadialGradient = function () { const g = og.apply(this, arguments), oa = g.addColorStop.bind(g); g.addColorStop = (o, c) => { stops.push(c); return oa(o, c); }; return g; }; drawItemBadge('claw', 100, 100, 30, 0); ctx.createRadialGradient = og;
+    return { n: keys.length, sin, anim, canvas: stops.some(s => s.startsWith('rgba(210,222,245,')) }; });
+  expect(r.sin).toBe(0); expect(r.anim).toBe(r.n); expect(r.canvas).toBe(true);
+});
+
+test('orbes de botín en combate PvE: se pueden tomar con la minileyenda en cuanto aterrizan, sin esperar a que mueran todos', async ({ page }) => {
+  await page.evaluate(() => { G.speed = 1; G.timer = 1; });
+  await page.waitForFunction(() => G.phase === 'combat' && G.combat && !G.combat.done && orbList().some(o => o.ready), null, { timeout: 60000 });
+  const r = await page.evaluate(() => { const before = G.me.orbs.length, o = orbList().find(x => x.ready); TAC.picked.clear(); TAC.x = o.x; TAC.y = o.y; TAC.tx = null; stepTac(0.05); return { before, combatVivo: G.phase === 'combat' && !G.combat.done, id: o.id }; });
+  expect(r.combatVivo).toBe(true);
+  await expect.poll(() => page.evaluate(id => G.me.orbs.some(o => o.id === id), r.id), { timeout: 5000 }).toBe(false); // el orbe se consumió y dio su recompensa
 });

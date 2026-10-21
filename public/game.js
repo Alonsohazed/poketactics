@@ -1939,18 +1939,21 @@ const ITEM_ART={claw:'razor-claw',wing:'swift-wing',spoon:'twisted-spoon',water:
 const BADGE_SPRITE=n=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${n}.png`;
 // Objetos: sprites de Wikidex (Escarlata/Púrpura) reducidos a 80 px en WebP (2 KB cada uno), en public/items/<clave>.webp y por CDN como los retratos; si fallan, cae al sprite pequeño de PokeAPI (data-alt). Las insignias siguen con sus sprites pixelados de PokeAPI
 // Aura de fondo del color de cada sprite (la tabla es el tono dominante de cada imagen; los 8 componentes básicos lo llevan en el CSS). Las insignias y los emblemas no tienen sprite propio y no llevan aura
-const ITEM_FX=new Set(Object.keys(ITEM_ART));
-const ITEM_FXC={band:'243,110,104',blood:'243,193,104',bright:'104,243,112',charcoal:'205,215,245',cure:'169,240,70',energy:'243,197,104',expert:'205,215,245',flame:'243,114,104',helmet:'240,195,71',holy:'190,205,235',hook:'205,215,245',justice:'240,67,167',leftovers:'243,107,104',light:'239,230,57',magnet:'242,90,97',master:'243,104,180',medal:'239,216,62',mental:'190,205,235',moon:'205,215,245',quick:'104,171,243',rage:'240,209,70',razorfang:'190,205,235',royal:'240,218,73',sash:'242,98,104',scale:'104,209,243',scarf:'104,187,243',sharp:'243,228,104',shellbell:'190,205,235',sitrus:'243,229,104',soothe:'243,104,109',specs:'242,139,89',sturdy:'192,104,243',titan:'241,134,85',twin:'243,198,104',veil:'188,243,104',vest:'240,75,87',whiteherb:'190,205,235',wise:'205,215,245',zoom:'240,64,68'};
+const ITEM_FX={has:()=>true}; // TODOS los objetos llevan aura, en la banca, sobre un Pokémon, en el carrusel y donde sea
+const BASIC_FXC={claw:'210,222,245',wing:'170,235,255',spoon:'190,110,255',water:'70,170,255',coat:'150,195,225',goggles:'255,110,90',club:'255,228,160',lens:'120,150,255'};
+const ITEM_FXC={...BASIC_FXC,band:'243,110,104',blood:'243,193,104',bright:'104,243,112',charcoal:'205,215,245',cure:'169,240,70',energy:'243,197,104',expert:'205,215,245',flame:'243,114,104',helmet:'240,195,71',holy:'190,205,235',hook:'205,215,245',justice:'240,67,167',leftovers:'243,107,104',light:'239,230,57',magnet:'242,90,97',master:'243,104,180',medal:'239,216,62',mental:'190,205,235',moon:'205,215,245',quick:'104,171,243',rage:'240,209,70',razorfang:'190,205,235',royal:'240,218,73',sash:'242,98,104',scale:'104,209,243',scarf:'104,187,243',sharp:'243,228,104',shellbell:'190,205,235',sitrus:'243,229,104',soothe:'243,104,109',specs:'242,139,89',sturdy:'192,104,243',titan:'241,134,85',twin:'243,198,104',veil:'188,243,104',vest:'240,75,87',whiteherb:'190,205,235',wise:'205,215,245',zoom:'240,64,68'};
 const itemHQ=k=>!!(ITEM_ART[k]&&!(ITEMS[k]&&ITEMS[k].badge));
 const itemAlt=k=>ITEM_ART[k]?ITEM_SPRITE(ITEM_ART[k]):'';
 const itemSrc=k=>ITEMS[k]&&ITEMS[k].badge?BADGE_SPRITE(ITEMS[k].badge):ITEM_ART[k]?(window.ASSET_BASE||'')+'items/'+k+'.webp':'';
 const getItemImg=k=>itemSrc(k)?loadImg('it:'+k,itemSrc(k)):{status:'fail'};
 const itemTier=I=>I.comp||I.tool?'comp':I.emblem?'emb':'full';
+const hexRGB=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(',');
+const itemFxRGB=k=>ITEM_FXC[k]||(ITEMS[k]?hexRGB(itemColor(ITEMS[k])):'200,215,245');
 const itemColor=I=>I.tool?'#ff6a5f':I.emblem&&TRAITS[I.emblem]?TRAITS[I.emblem].color:I.comp?'#aab4c8':'#f4c04e';
 function itemHTML(k,size){
  const I=ITEMS[k]; if(!I) return '';
  const art=itemSrc(k)&&getItemImg(k).status!=='fail';
- return `<span class="ii ${itemTier(I)}${ITEM_FX.has(k)?' fx-'+k:''}" style="--ic:${itemColor(I)}${size?`;--is:${size}px`:''}${ITEM_FXC[k]?`;--fx:${ITEM_FXC[k]}`:''}">${art?`<img src="${itemSrc(k)}" alt="${esc(I.name)}" data-fb="${esc(I.icon)}"${itemHQ(k)?` class="hq" data-alt="${itemAlt(k)}" decoding="async"`:''}>`:I.emblem&&TRAIT_SVG[I.emblem]?`<i class="isvg">${traitIcon(I.emblem)}</i>`:`<i>${I.icon}</i>`}</span>`;
+ return `<span class="ii ${itemTier(I)}${ITEM_FX.has(k)?' fx-'+k:''}" style="--ic:${itemColor(I)}${size?`;--is:${size}px`:''}${`;--fx:${itemFxRGB(k)}`}">${art?`<img src="${itemSrc(k)}" alt="${esc(I.name)}" data-fb="${esc(I.icon)}"${itemHQ(k)?` class="hq" data-alt="${itemAlt(k)}" decoding="async"`:''}>`:I.emblem&&TRAIT_SVG[I.emblem]?`<i class="isvg">${traitIcon(I.emblem)}</i>`:`<i>${I.icon}</i>`}</span>`;
 }
 const trainerOf=p=>p&&TRAINER_BY[p.tr]?p.tr:'';
 function headHTML(p,size){ const t=typeof p==='string'?p:trainerOf(p); return t?`<span class="head em" style="--src:url('${TRAINER_SPRITE(t)}')${size?`;--hs:${size}px`:''}"></span>`:`<span class="head em">${esc(p&&p.emoji||'🧢')}</span>`; }
@@ -2493,7 +2496,7 @@ function pickActor(test){
 function drawItemBadge(k,x,y,sz,n){
  const I=ITEMS[k]; if(!I) return;
  ctx.save(); const col=itemColor(I);
- const g=ctx.createRadialGradient(x,y-sz*.1,0,x,y,sz*.7); g.addColorStop(0,'#2a3150'); g.addColorStop(1,'#0a0f22'); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.globalAlpha=.85; ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
+ const fxc=itemFxRGB(k), pu=.5+.5*Math.sin(performance.now()/1000*2.4+k.length*1.7), g=ctx.createRadialGradient(x,y+sz*.06,0,x,y,sz*.72); g.addColorStop(0,`rgba(${fxc},${(.55+.35*pu).toFixed(2)})`); g.addColorStop(.5,`rgba(${fxc},${(.18+.12*pu).toFixed(2)})`); g.addColorStop(1,'#0a0f22'); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#0a0e1c'; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
  const e=getItemImg(k);
  if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
@@ -2583,15 +2586,15 @@ function stepOthers(inCombat){
  if(opp&&opp!==me&&(!opp.tp||opp.tp[0]===opp.id)) at(opp,sp.opp[0],sp.opp[1],-Math.PI*.15,'#ef4b3a');
  tacOthers=out; for(const o of out) otherTaunt(o,now); for(const [id,f] of tauntFx) if(f.fire&&!out.some(o=>o.p.id===id)) f.fire=false; return out;
 }
-// Orbes de botín. Los que suelta un salvaje al caer salen volando desde su casilla (f = progreso del vuelo, 0 a 1) y aterrizan algo más cerca de ti; se ven al instante, pero solo se recogen al acabar el combate y cuando han aterrizado (ready)
+// Orbes de botín. Los que suelta un salvaje al caer salen volando desde su casilla (f = progreso del vuelo, 0 a 1) y aterrizan algo más cerca de ti; se ven al instante y se recogen en cuanto han aterrizado (ready), aunque el combate siga en marcha
 const ORB_FLY_MS=1100;
 function orbList(){
  const cbm=G.phase==='combat'&&G.combat; if(!G.me.orbs||!G.me.orbs.length||G.phase==='carousel'||(G.view&&G.view.board)) return [];
- const born=G.orbBorn||(G.orbBorn=new Map()), now=performance.now(), idle=!(cbm&&!cbm.done), A=tacArea(), yMax=cellXY(0,7)[1];
+ const born=G.orbBorn||(G.orbBorn=new Map()), now=performance.now(), A=tacArea(), yMax=cellXY(0,7)[1];
  return G.me.orbs.map((o,i)=>{ const j=((o.id*37)%7)/7-.5, [x,y]=o.c!=null?cellXY(o.c,o.r):cellXY([1,5,3,0,6,2,4][i%7],4+(i*3)%4), px=x+j*geo.R*.8, py=y+((o.id*53)%5/5-.5)*geo.R*.6, fall=o.c!=null;
    let lx=px, ly=py; if(fall){ lx=clamp(px+(((o.id*97)%9)/9-.5)*geo.R*2.6,A.x0+geo.R*.5,A.x1-geo.R*.5); ly=clamp(py+geo.R*(.9+((o.id*61)%5)/5*1.1),A.y0,yMax); }
    if(!born.has(o.id)) born.set(o.id,now); const fl=fall?clamp((now-born.get(o.id))/ORB_FLY_MS,0,1):1;
-   return {id:o.id,tier:o.tier,x:lx,y:ly,x0:px,y0:py,f:fl,ready:idle&&fl>=1}; });
+   return {id:o.id,tier:o.tier,x:lx,y:ly,x0:px,y0:py,f:fl,ready:fl>=1}; });
 }
 let synCache={v:-1,who:null,t:{}};
 function activeTraits(who){ if(synCache.v!==G.uiV||synCache.who!==who){ const t=traitTiers(who); synCache={v:G.uiV,who,t}; } return synCache.t; }
