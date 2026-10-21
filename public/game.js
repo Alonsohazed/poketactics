@@ -1536,7 +1536,7 @@ function makePub(){
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
 function makePriv(p){
- const d={to:p.peer,id:p.id,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
+ const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
    po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],ef:p.eeveeForm||'',lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r]),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
  if(JSON.stringify(d).length>3900){ d.lg=d.lg.slice(0,2); d.ts=d.ts.slice(-1); }
@@ -1700,6 +1700,7 @@ function unpackBoard(p,[bo,be]){
  p.bench=Array(BENCH).fill(null).map((_,i)=>{ const r=Array.isArray(be)&&be[i]; return Array.isArray(r)?keep(mk(r[0],r[1],r[2])):null; });
 }
 function applyPriv(d){
+ const aq=d.aq|0; if(aq<(NET.q|0)&&Date.now()-(NET.qT||0)<1500) return; if(aq>(NET.q|0)) NET.q=aq; // aún no ha procesado tu última acción: este estado es anterior
  const me=G.me;
  Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,MAX_ITEMS_BENCH)});
  me.mods=Object.assign(defaultMods(),d.md||{}); me.po=Array.isArray(d.po)?d.po.slice(0,8):null;
@@ -1757,14 +1758,19 @@ function doAct(a,optimistic){
  if(!G||!G.players.length) return;
  if(NET.mode==='client'){
    if(!G.me.alive) return;
+   // Las acciones con efecto inmediato llevan un número: el servidor lo devuelve en su estado (aq) y así se descartan los mensajes viejos que aún viajaban y harían rebotar la ficha a su sitio anterior
+   if(optimistic){ a={...a,q:NET.q=(NET.q|0)+1}; NET.qT=Date.now(); }
    if(NET.sock) NET.sock.emit('act',a);
    if(optimistic) optimistic();
-   renderUI(); return;
+   renderSoon(a); return;
  }
  const r=applyAct(G.me,a);
  if(r&&!r.ok&&r.why) note(G.me,r.why,true);
- renderUI(); return r;
+ renderSoon(a); return r;
 }
+// Mover una ficha cambia el estado al instante y el 3D la dibuja ya en su sitio en el siguiente fotograma; el resto de paneles (ocho listas con imágenes y filtros) se reescribe justo después de pintarlo, para que soltar no espere ~10 ms de DOM
+let uiSoon=false;
+function renderSoon(a){ if(!a||a.t!=='move'||typeof requestAnimationFrame!=='function'){ renderUI(); return; } if(uiSoon) return; uiSoon=true; requestAnimationFrame(()=>setTimeout(()=>{ uiSoon=false; renderUI(); },0)); }
 
 /* ============================== [MUSIC] ============================== */
 // Sintetizador con canales tipo Game Boy: 2 pulsos (12.5% y 25%), onda y ruido, vibrato e intros.
@@ -2005,7 +2011,10 @@ const ISLE_THEME={charmander:'fire',bulbasaur:'grass',squirtle:'water'};
 const ISLE_SLOT=[0,1,2,5,8,7,6,3];
 function renderIslands(){
  let box=$('islands'); if(!box){ box=document.createElement('div'); box.id='islands'; box.className='islands'; box.setAttribute('aria-label','Mapa de campos'); $('boardWrap').appendChild(box);
-   box.addEventListener('click',e=>{ const b=e.target.closest('[data-pid]'); if(b){ e.stopPropagation(); spectate(+b.dataset.pid); } }); }
+   box.addEventListener('click',e=>{ const b=e.target.closest('[data-pid]'); if(b){ e.stopPropagation(); spectate(+b.dataset.pid); } });
+   // El minimapa solo se pulsa: nada de arrastrar (ni la imagen, ni el clic derecho) ni de mover la minileyenda desde aquí
+   for(const t of ['dragstart','contextmenu','selectstart']) box.addEventListener(t,e=>e.preventDefault());
+   for(const t of ['pointerdown','pointermove','mousedown']) box.addEventListener(t,e=>{ e.stopPropagation(); if(e.button>0||e.buttons>1) e.preventDefault(); }); }
  // Solo durante la partida: al terminar o al volver al menú desaparece
  box.hidden=!!G.over||!$('menu').classList.contains('hidden'); if(box.hidden) return;
  const ps=G.players, cur=viewOwner(), combat=G.phase==='combat', fl=combat?fightsList():[], guest={};
@@ -2252,6 +2261,8 @@ function updateCarousel(dt){
 
 /* ---------- eventos ---------- */
 function bindEvents(){
+ // Los paneles se reescriben en cada acción aunque no cambien: repintar el lateral con sus recortes y sombras costaba ~30 ms de trama (el tirón al soltar una ficha). Si el HTML es idéntico, no se toca el DOM
+ for(const id of ['cards','traits','players','augBar','augList','log','odds','rerollBtn','incomeInfo','dmgList']){ const el=$(id); if(!el) continue; const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML'); Object.defineProperty(el,'innerHTML',{configurable:true,get(){ return d.get.call(this); },set(v){ v=String(v); if(this._h===v) return; this._h=v; d.set.call(this,v); }}); }
  document.addEventListener('pointerdown',()=>Music.init());
  // La ficha de un Pokémon se cierra al tocar cualquier otra cosa (si se toca otro Pokémon, se abre la suya)
  document.addEventListener('pointerdown',e=>{ if((selected||selCombat)&&!e.target.closest('#ucard')){ selected=null; selCombat=null; renderCard(); } },true);
@@ -2283,6 +2294,8 @@ function bindEvents(){
  cv.addEventListener('pointerdown',e=>{ if(e.button!==2||!G||!G.players.length) return; canvasPos(e); if(onTotem()) return; tacHold=true; tacGoto(e,true); });
  cv.addEventListener('pointermove',e=>{ if(!tacHold) return; if(!(e.buttons&2)){ tacHold=false; return; } tacGoto(e,false); });
  window.addEventListener('pointerup',e=>{ if(e.button===2) tacHold=false; });
+ // Si se sostiene el clic derecho y el puntero pasa por el minimapa, la minileyenda deja de seguirlo
+ document.addEventListener('pointermove',e=>{ if(tacHold&&e.target.closest&&e.target.closest('#islands')) tacHold=false; },true);
  cv.addEventListener('contextmenu',e=>{ e.preventDefault(); if(!G||!G.players.length) return; canvasPos(e);
    const tt=onTotem(); if(tt){ const b=$('augList'); b.hidden=!b.hidden; if(!b.hidden){ const r=cv.getBoundingClientRect(); b.style.left=(r.left+tt[0]+geo.R)+'px'; b.style.top=Math.max(60,r.top+tt[1]-40)+'px'; } } });
  cv.addEventListener('pointerup',e=>{
@@ -3049,11 +3062,13 @@ function showHow(){
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda · <span class="kbd">H</span> bola de fuego (Charmander)</p>
  <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true});
 }
+// Pokédex: sprites 2D de PokeAPI (unos 3 KB cada uno) en vez de retratos renderizados desde los modelos 3D (~190 KB por modelo): abrirla pasa de decenas de MB a unos cientos de KB
+const dexSprite=(d,size,star)=>`<span class="spr2" style="--s:${size}px"><img src="${SPRITE(dexOf(d,star))}" alt="${esc(nameOf(d,star))}" loading="lazy" decoding="async" width="${size}" height="${size}"></span>`;
 function showDex(cost){
  const list=UNIT_LIST.filter(u=>!cost||u.cost===cost);
  openModal(`<h1>Pokédex</h1><p>${UNIT_LIST.length} líneas evolutivas. Pasa el cursor por una carta para ver sus 3 habilidades (una por estrella).</p>
  <div class="dexFilters">${[0,1,2,3,4,5].map(c=>`<button class="btn sm" data-c="${c}" aria-pressed="${c===cost}">${c?'Coste '+c:'Todos'}</button>`).join('')}</div>
- <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${spriteHTML(d,d.names.length>2?44:54,i+1)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true});
+ <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${dexSprite(d,d.names.length>2?52:64,i+1)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true});
  $('mbox').querySelectorAll('.dexFilters button').forEach(b=>b.onclick=()=>showDex(+b.dataset.c));
 }
 function showRecipes(){
@@ -3472,7 +3487,7 @@ function serverTick(dt){
  if(G.phase==='combat'&&!G.resolving&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,300); }
  hostNetTick();
 }
-function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
+function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(!p) return; if(Number.isInteger(a.q)&&a.q>=0&&a.q<1e9) p.aq=a.q; const r=applyAct(p,a); if(r&&!r.ok&&r.why) note(p,r.why,true); }
 // Un jugador desconectado queda «ausente» (p.away): conserva su asiento y se comporta como un jugador presente que no toca nada (cobra su economía, su tablero pelea,
 // se aplican los mismos automatismos que a cualquiera que no actúa), pero NO lo juega ningún bot y la partida no se espera a que esté listo
 function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.away=true; p.tp=null; note(null,`🔌 ${p.name} se desconectó (su asiento queda reservado)`); } }

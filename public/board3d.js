@@ -277,6 +277,12 @@ function warmModel(m){ if(!renderer||!m.scene) return; try{ m.scene.traverse(o=>
  // También la variante transparente (al morir o volverse sigiloso se desvanece y three.js cambia de shader)
  const ms=[]; m.scene.traverse(o=>{ if(o.isMesh) for(const mt of [].concat(o.material)) ms.push([mt,mt.transparent,mt.depthWrite]); });
  for(const [mt] of ms){ mt.transparent=true; mt.depthWrite=false; } renderer.compileAsync(m.scene,camera,scene).catch(()=>{}); for(const [mt,t,d] of ms){ mt.transparent=t; mt.depthWrite=d; } }catch(e){} }
+// (compile síncrono: compileAsync consulta el programa de cada material con un temporizador y falla si el actor se descarta antes de que acabe)
+// Al agarrar una ficha se ve translúcida (alpha .9) y con su aro: son shaders distintos de los del reposo y compilarlos en pleno gesto congelaba el fotograma. Se compilan al aparecer la especie, con el actor ya en la escena (niebla, luces y sombras reales)
+const warmedA=new Set();
+function warmActor(a){ try{ if(!renderer||!a.mats||warmedA.has(a.dex)) return; warmedA.add(a.dex);
+  const ms=a.mats.map(mt=>[mt,mt.transparent,mt.opacity,mt.depthWrite]), rv=a.ring.visible; for(const [mt] of ms){ mt.transparent=true; mt.opacity=.9; mt.depthWrite=false; } a.ring.visible=true;
+  renderer.compile(scene,camera); a.ring.visible=rv; for(const [mt,t,o,d] of ms){ mt.transparent=t; mt.opacity=o; mt.depthWrite=d; } }catch(e){} }
 function prepModel(m,gl,dex){
  const root=gl.scene;
  // pose "tail" (en su .json): los alargados se ponen de pie sobre la cola, como Dratini, para ocupar su casilla igual que los demás
@@ -486,6 +492,7 @@ class Actor{
      for(const k in m.clips) if(m.clips[k]) this.acts[k]=this.mixer.clipAction(m.clips[k]);
      if(m.sm){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.smActs={}; for(const n in m.sm.clips){ this.smActs[n]=this.mixer.clipAction(m.sm.clips[n]); if(m.sm.alt[n]) this.smActs[n+"~"]=this.mixer.clipAction(m.sm.alt[n]); } this.proc=null; this.go('idle'); }
       else this.play('idle',true);
+     warmActor(this);
    } else if(m.status!=='ok'&&!this.ball){ this.ball=pokeBall(); this.body.add(this.ball); } // cargando o sin modelo: Poké Ball, nunca un sprite 2D
  }
  // Cambia de estado con un fundido de 0,15 s (nunca de golpe). once: se reproduce una vez y se queda en el último fotograma

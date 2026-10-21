@@ -175,7 +175,9 @@ ready.then(() => server.listen(0, async () => {
     // Minileyenda de B en el tablero de A: entradas inválidas (jugador inexistente, tipos raros, fuera de rango) y luego una válida
     if (lastPub && !tposSent && rejoined) { tposSent = true; idA = lastPub.pl.find(p => p[1] === 'Ana')[0];
       B.emit('act', { t: 'tpos', b: 99, x: 1, y: 1 }); B.emit('act', { t: 'tpos', b: 'x', x: {}, y: [] }); B.emit('act', { t: 'tpos', b: idA, x: 1e9, y: -1e9 });
-      B.emit('act', { t: 'tpos', b: idA, x: 4.5, y: 9.25 }); }
+      B.emit('act', { t: 'tpos', b: idA, x: 4.5, y: 9.25 });
+      // Acuse de acciones: el servidor devuelve en `aq` el número de la última acción numerada; un número inválido no lo cambia
+      A.emit('act', { t: 'move', from: { i: 0 }, to: { i: 1 }, q: 41 }); A.emit('act', { t: 'lock', q: 'x' }); A.emit('act', { t: 'lock', q: -5 }); A.emit('act', { t: 'lock', q: 1e12 }); A.emit('act', { t: 'lock', q: 1.5 }); }
     for (const [k, s] of [['A', A], ['B', B]]) {
       const p = st[k].priv; if (!p) continue;
       s.emit('act', { t: 'buy', i: Math.floor(Math.random() * 5) });
@@ -193,6 +195,7 @@ ready.then(() => server.listen(0, async () => {
   assert(st.A.cmb > 0 && st.B.cmb > 0, 'cada jugador recibe su combate');
   assert(st.A.cmbs >= 4 && st.B.cmbs >= 4, 'cada jugador recibe todos los combates para poder verlos');
   assert(Array.isArray(st.A.priv.po), 'llegan los posibles rivales');
+  assert.strictEqual(st.A.priv.aq, 41, 'el estado privado devuelve el número de la última acción (los inválidos se ignoran)');
   assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle', 'dratini', 'pichu', 'abra', 'eevee'].includes(p[14])), 'todos los jugadores llevan minileyenda');
   assert.strictEqual(lastPub.pl.find(p => p[1] === 'Ana')[14], 'squirtle', 'la minileyenda de la partida sale de la cuenta');
   const tpB = lastPub.pl.find(p => p[8] && p[1] !== 'Ana')[16];

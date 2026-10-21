@@ -55,11 +55,12 @@ test('sin oro no se puede comprar ni refrescar', async ({ page }) => {
 });
 
 test('tablero: arrastrar del banquillo al tablero y vender arrastrando a la tienda', async ({ page }) => {
+  await jumpToRound(page, 1); // en la 1-1 no se puede vender
   await page.evaluate(() => { G.me.gold = 30; G.me.level = 3; G.me.board = {}; G.me.bench = Array(BENCH).fill(null); addUnitToBench(G.me, makeInst('charmander')); renderUI(); });
   await drag(page, await benchPoint(page, 0), await cellPoint(page, 3, 6));
   await expect.poll(async () => (await me(page)).board).toBe(1);
   expect(await page.evaluate(() => Object.keys(G.me.board)[0])).toBe('3,2');
-  await expect(page.locator('#boardCount')).toContainText('1/3');
+  expect(await page.evaluate(() => boardUnits(G.me).length + '/' + maxBoard(G.me))).toBe('1/3'); // el contador #boardCount ya no existe en la interfaz
   // vender: arrastrarlo sobre la tienda
   const gold = (await me(page)).gold;
   const shop = await page.locator('#cards').boundingBox();
@@ -245,4 +246,30 @@ test('Pokémon favorito: su vida extra se ve en la ficha antes del combate', asy
   });
   expect(r.shown).toBeGreaterThan(r.base);
   await expect(page.locator('#ucard')).toContainText(String(r.shown));
+});
+
+test('minimapa: no se puede arrastrar ni mover la minileyenda desde él, y un clic sigue llevando al tablero', async ({ page }) => {
+  const cell = page.locator('#islands .isleCell').nth(1), box = await cell.boundingBox(), isl = await page.locator('#islands').boundingBox();
+  // el arrastre nativo de la imagen y el menú del clic derecho quedan anulados
+  const nat = await page.evaluate(() => { const im = document.querySelector('#islands img'); const ev = new DragEvent('dragstart', { bubbles: true, cancelable: true }); im.dispatchEvent(ev);
+    const cm = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); document.querySelector('#islands .isleCell').dispatchEvent(cm); return { drag: ev.defaultPrevented, menu: cm.defaultPrevented, sel: getComputedStyle(document.getElementById('islands')).userSelect }; });
+  expect(nat).toEqual({ drag: true, menu: true, sel: 'none' });
+  // clic derecho sostenido sobre el minimapa: la minileyenda no se mueve
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down({ button: 'right' }); await page.mouse.move(isl.x + 20, isl.y + 20, { steps: 6 }); await page.mouse.up({ button: 'right' });
+  expect(await page.evaluate(() => TAC.tx)).toBeNull();
+  // clic derecho sostenido en el tablero que entra en el minimapa: deja de seguir al puntero
+  await page.mouse.move(600, 500); await page.mouse.down({ button: 'right' }); await page.mouse.move(isl.x + 30, isl.y + 30, { steps: 12 });
+  const t1 = await page.evaluate(() => [TAC.tx, TAC.ty]); await page.mouse.move(isl.x + 70, isl.y + 70, { steps: 6 }); await page.mouse.up({ button: 'right' });
+  expect(await page.evaluate(() => [TAC.tx, TAC.ty])).toEqual(t1);
+  // un clic izquierdo normal sigue funcionando
+  await page.locator('#islands .isleCell:not(.me)').first().click(); expect(await page.evaluate(() => !!G.view && G.view.pid !== G.me.id)).toBe(true);
+});
+
+test('pokédex: usa sprites 2D ligeros y no carga ningún modelo 3D', async ({ page }) => {
+  const glb = []; page.on('request', r => { if (/\.glb|\/anims\//.test(r.url())) glb.push(r.url()); });
+  await page.evaluate(() => { performance.clearResourceTimings(); showDex(0); });
+  await expect(page.locator('.dexGrid .dexCard')).toHaveCount(await page.evaluate(() => UNIT_LIST.length));
+  const info = await page.evaluate(() => { const im = [...document.querySelectorAll('.dexGrid img')]; return { n: im.length, bad: im.filter(i => !/sprites\/pokemon\/\d+\.png$/.test(i.src)).length }; });
+  expect(info.n).toBeGreaterThan(100); expect(info.bad).toBe(0);
+  await page.waitForTimeout(1500); expect(glb).toEqual([]);
 });
