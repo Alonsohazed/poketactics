@@ -143,7 +143,7 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .ii i{font-style:normal;font-size:calc(var(--is,40px)*.5);line-height:1}
 .ii.comp{--ic:#aab4c8}
 .ii.full{--ic:var(--gold)}
-.ii.full::after{content:"";position:absolute;inset:-50%;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.4) 50%,transparent 58%);animation:shine 4.5s ease-in-out infinite;pointer-events:none}
+/* Los objetos completos ya no llevan el destello que cruzaba el sprite: solo su aura de fondo, como los componentes */
 .ii.emb{background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--ic) 45%,#2a3566),#0e1430 80%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.2),0 0 10px color-mix(in srgb,var(--ic) 50%,transparent)}
 .ii.emb img{width:86%;height:86%}
 @keyframes shine{0%,60%{transform:translateX(-60%)}100%{transform:translateX(60%)}}
