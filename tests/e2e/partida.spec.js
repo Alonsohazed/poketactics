@@ -107,7 +107,7 @@ test('rasgos: colocar Pokémon activa sus sinergias en el panel', async ({ page 
 });
 
 // Algunos aumentos (emblemas, héroes…) abren una elección pendiente al elegirlos: se acepta la primera opción hasta que no queden
-async function resolverElecciones(page) { for (let i = 0; i < 4; i++) { const hay = await page.locator('#mbox .choice').count(); if (!hay) return; await page.locator('#mbox .choice').first().click(); await page.waitForTimeout(400); } }
+async function resolverElecciones(page) { for (let i = 0; i < 6; i++) { if (await page.locator('#mbox .choice').count()) await page.locator('#mbox .choice').first().click(); else if (await page.locator('#rvOk').count()) await page.locator('#rvOk').click(); else return; await page.waitForTimeout(400); } } // elecciones pendientes y ventanas de resultado (p. ej. la Llamada al Caos) hasta que no quede ninguna
 
 test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page }) => {
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
@@ -452,4 +452,10 @@ test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (
   expect(r[0]).toBe(0);               // con 1 Guardián no hay sinergia
   expect(r[1]).toBeGreaterThanOrEqual(2); // al poner el 2.º se activa y los dos sueltan su escudo
   expect(r[2]).toBeGreaterThanOrEqual(3); // y con el 3.º, los tres
+});
+
+test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran al frente', async ({ page }) => {
+  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['charmander', 'bulbasaur', 'squirtle']) addUnitToBench(me, makeInst(k)); moveTo(me, { i: 2 }, { b: '3,1' }); renderUI(); });
+  const r = await page.evaluate(() => { const A = sceneActors(); return { banca: A.filter(a => a.loc && a.loc.i !== undefined).map(a => +a.face.toFixed(2)), tablero: A.filter(a => a.loc && a.loc.b !== undefined).map(a => +a.face.toFixed(2)) }; });
+  expect(r.banca).toEqual([0, 0]); expect(r.tablero).toEqual([3.14]);
 });

@@ -64,10 +64,14 @@ ALL = [b.name for b in pb]
 L_FEEL = [f"LFeeler{i:02d}" for i in range(1, 11)]; R_FEEL = [f"RFeeler{i:02d}" for i in range(1, 11)]
 HAIR = [f"Hair{i}" for i in range(1, 6)]
 ROOTS = ["Hips", "Spine1"]
+KEYLOC = ROOTS + ["LFoot", "RFoot", "LHand", "RHand"]
 
 class Pose:
     """Pose de un fotograma: rotaciones acumuladas por hueso (en el orden en que se piden) y desplazamiento global del cuerpo."""
     def __init__(s): s.q = {n: Quaternion() for n in ALL}; s.loc = {n: Vector((0, 0, 0)) for n in ALL}
+    def mv(s, bone, v):
+        """Desplaza un hueso (en ejes del mundo) respecto a su reposo: las patas de Chikorita son muñones muy cortos y girarlas apenas se nota, así que los pasos se dan trasladando pies y manos."""
+        if bone in s.loc: s.loc[bone] = s.loc[bone] + loc_local(bone, v)
     def r(s, bone, axis, deg):
         if bone in s.q and deg: s.q[bone] = rot_q(bone, axis, deg) @ s.q[bone]
     def body(s, move=(0, 0, 0), pitch=0.0, roll=0.0, yaw=0.0, pivot=None):
@@ -86,7 +90,7 @@ def key_clip(name, frames, fn, loop=False):
         for n in ALL:
             b = pb[n]; b.rotation_quaternion = P.q[n]; b.location = P.loc[n]
             b.keyframe_insert('rotation_quaternion', frame=f)
-            if n in ROOTS: b.keyframe_insert('location', frame=f)
+            if n in KEYLOC: b.keyframe_insert('location', frame=f)
     for fc in act.fcurves if hasattr(act, 'fcurves') else []:
         for k in fc.keyframe_points: k.interpolation = 'BEZIER'
     act.use_fake_user = True
@@ -117,9 +121,10 @@ def idle(P, t, f):
 # ---------------- correr (bucle de 0,7 s) ----------------
 def run(P, t, f):
     ph = TAU * t
-    P.body(move=(0, 0, .035 * BODYH * abs(S(ph))), pitch=13)
+    P.body(move=(0, 0, .06 * BODYH * abs(S(ph))), pitch=11, roll=9 * S(ph), yaw=6 * S(ph))   # contoneo y saltitos: es lo que hace de «patas»
     for s, k in (("L", 1), ("R", -1)):
         sw = S(ph) * k
+        # (probado: trasladar pies y manos abulta la barriga, porque el modelo no tiene patas, solo muñones; el paso lo da el cuerpo)
         P.r(s + "Thigh", 'x', 38 * sw); P.r(s + "Foot", 'x', 38 * max(0, -math.cos(ph) * k) + 6); P.r(s + "Toe", 'x', -14 * max(0, math.cos(ph) * k))
         P.r(s + "Arm", 'x', -30 * sw); P.r(s + "Arm", 'y', (1 if s == "L" else -1) * 12)
     P.r("Spine2", 'x', -5 + 2 * S(2 * ph)); P.r("Neck", 'x', -6); P.r("Head", 'x', -8 + 3 * S(2 * ph + .5)); P.r("Head", 'z', 3 * S(ph))
@@ -194,7 +199,8 @@ if RENDER:
     for track in arm.animation_data.nla_tracks: track.mute = True
     for name, n, fn in clips:
         for track in arm.animation_data.nla_tracks: track.mute = (track.name != name)
-        marks = [0, .2, .4, .5, .65, .85] if name in ("attack", "faint", "victory") else [0, .25, .5, .75]
+        marks = [0, .2, .4, .5, .65, .85] if name in ("attack", "faint", "victory") else [0, .125, .25, .375, .5, .625, .75, .875] if name == "run" else [0, .25, .5, .75]
+        cam.data.ortho_scale = BODYH * (2.8 if name == "run" else 3.6); c = Vector((0, H["Hips"].y, BODYH * (.35 if name == "run" else .55)))
         for view, d in (("lado", Vector((1, 0, 0))), ("frente", Vector((0, -1, 0)))):
             for i, m in enumerate(marks):
                 sc.frame_set(int(m * n)); cam.location = c + d * 10; cam.rotation_euler = (c - cam.location).to_track_quat('-Z', 'Y').to_euler()
