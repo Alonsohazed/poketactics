@@ -427,3 +427,12 @@ test('orbes de botín en combate PvE: se pueden tomar con la minileyenda en cuan
   expect(r.combatVivo).toBe(true);
   await expect.poll(() => page.evaluate(id => G.me.orbs.some(o => o.id === id), r.id), { timeout: 5000 }).toBe(false); // el orbe se consumió y dio su recompensa
 });
+
+test('retratos pequeños: salen del sprite de la Pokédex al instante (sin descargar modelos 3D) y DEX_FILES coincide con public/dex', async ({ page }) => {
+  const fs = require('fs'), path = require('path'), dir = path.join(__dirname, '..', '..', 'public', 'dex');
+  const files = fs.readdirSync(dir).map(f => +f.replace('.png', '')).sort((a, b) => a - b);
+  const glb = []; page.on('request', r => { if (/\.glb/.test(r.url())) glb.push(r.url()); });
+  const r = await page.evaluate(async () => { const have = [...DEX_FILES].sort((a, b) => a - b); const t = performance.now(); const host = document.createElement('div'); host.innerHTML = [4, 25, 'shiny:130', 'y/150', 129, 446].map(d => `<span class="spr" style="--s:48px" data-dex="${d}"></span>`).join(''); document.body.appendChild(host); hydrate(host);
+    const im = [...host.querySelectorAll('img')]; await new Promise(r => setTimeout(r, 600)); const o = { have, n: im.length, sprites: im.filter(i => /dex\/\d+\.png$/.test(i.src) && i.complete && i.naturalWidth > 0).length, ms: Math.round(performance.now() - t) }; host.remove(); return o; });
+  expect(r.have).toEqual(files); expect(r.n).toBe(6); expect(r.sprites).toBe(6); await page.waitForTimeout(500); expect(glb.filter(u => /\/(4|25|129|130|150|446)\.glb/.test(u))).toEqual([]);
+});

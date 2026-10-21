@@ -1966,7 +1966,7 @@ function initials(name){ return name.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑ]/
 function spriteHTML(d,size,star=1){ return `<span class="spr" style="--s:${size}px" data-dex="${dexOf(d,star)}" data-name="${esc(nameOf(d,star))}" data-color="${typeColor(d)}"></span>`; }
 // Los huecos .spr se rellenan con el retrato 3D del Pokémon
 function hydrate(root){
- root.querySelectorAll('.spr:not([data-h])').forEach(el=>{ el.dataset.h=1; el.innerHTML=portraitImg(+el.dataset.dex); el.firstChild.alt=el.dataset.name; });
+ root.querySelectorAll('.spr:not([data-h])').forEach(el=>{ el.dataset.h=1; el.innerHTML=portraitImg(/^\d+$/.test(el.dataset.dex)?+el.dataset.dex:el.dataset.dex); el.firstChild.alt=el.dataset.name; });
 }
 // Quien tiene la pestaña abierta desde antes de un despliegue sigue con el código viejo hasta recargar: se le avisa una sola vez (en local no hay commit y no avisa)
 let build0=null, buildWarned=false;
@@ -2882,7 +2882,9 @@ const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
 // Retratos pedidos antes de que cargue el módulo 3D: se piden en cuanto esté listo
 const portraitWait=new Set();
 if(!HEADLESS) window.addEventListener('b3ready',()=>{ for(const d of portraitWait) portraitImg(d); portraitWait.clear(); });
-function portraitImg(dex){
+// Retratos pequeños (ficha, lista de daño, formas): el sprite de public/dex (~3 KB, instantáneo) en vez de renderizar el modelo 3D, que obligaba a descargar el .glb (50-460 KB) y mostraba una Poké Ball girando hasta entonces. Solo los que no tienen sprite siguen con el 3D
+const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,532,533,534,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
+function portraitImg(dex){ const n=String(dex).split(/[:/]/).pop(); if(DEX_FILES.has(+n)) return `<img src="${dexUrl(n)}" alt="" decoding="async" data-sp="${n}" class="dexPic">`;
  if(!(window.B3&&B3.portrait)) portraitWait.add(dex);
  const url=window.B3&&B3.portrait?B3.portrait(dex,u=>{ if(u) document.querySelectorAll(`img[data-pdex="${dex}"]`).forEach(im=>{ im.src=u; im.classList.remove('loadingBall'); }); }):null;
  return url?`<img src="${url}" alt="">`:`<img src="${BALL_IMG}" alt="" class="loadingBall" data-pdex="${dex}">`;
