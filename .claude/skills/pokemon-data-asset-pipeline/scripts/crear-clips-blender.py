@@ -2,7 +2,7 @@
 Uso: blender -b --python crear-clips-blender.py -- <entrada.glb sin animaciones> <salida.glb> [render carpeta_de_vistas]
 Ejemplo (Blender 5.2, sin ventana): "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --python crear-clips-blender.py -- 152.glb 152_anim.glb
 Después: node optimizar-modelo.mjs 152_anim.glb 152.glb y copiar a public/anims/ (más su .json y el número en ANIM_SET de board3d.js).
-Ojo: está escrito para el esqueleto de Chikorita (nombres de huesos Hips, Spine1/2, Neck, Head, Hair1-5, L/RArm, L/RThigh, L/RFoot, Tail y L/RFeeler01-10); para otro Pokémon hay que adaptar los nombres y las amplitudes.
+Ojo: está escrito para el esqueleto de Chikorita (nombres de huesos Hips, Spine1/2, Neck, Head, Hair1-5, L/RArm, L/RThigh, L/RFoot y Tail; las lianas L/RFeeler01-10 se eliminan); para otro Pokémon hay que adaptar los nombres y las amplitudes.
 Pasos: importa el GLB de Pokemon-3D-api (sin animaciones) -> hornea su pose por defecto como pose de reposo (así el reposo es el aspecto normal del juego)
 -> anima huesos con rotaciones sobre ejes del mundo -> un clip por pista NLA -> exporta con Draco y WebP."""
 import bpy, math, sys, json
@@ -17,7 +17,15 @@ bpy.ops.import_scene.gltf(filepath=IN)
 sc = bpy.context.scene; sc.render.fps = FPS
 arm = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
 if "Icosphere" in bpy.data.objects: bpy.data.objects.remove(bpy.data.objects["Icosphere"], do_unlink=True)
+# Se quitan las lianas del cuello (mallas, huesos y grupos de vértices): estaban mal modeladas (dos líneas rectas a los lados) y se veían feas
+for o in [o for o in bpy.data.objects if o.type == 'MESH' and 'Vine' in o.name]: bpy.data.objects.remove(o, do_unlink=True)
+bpy.context.view_layer.objects.active = arm; arm.select_set(True)
+bpy.ops.object.mode_set(mode='EDIT')
+for eb in [b for b in arm.data.edit_bones if 'Feeler' in b.name]: arm.data.edit_bones.remove(eb)
+bpy.ops.object.mode_set(mode='OBJECT')
 meshes = [o for o in bpy.data.objects if o.type == 'MESH']
+for m in meshes:
+    for vg in [v for v in m.vertex_groups if 'Feeler' in v.name]: m.vertex_groups.remove(vg)
 
 # ---- 1) la pose por defecto del GLB pasa a ser la pose de reposo ----
 bpy.ops.object.select_all(action='DESELECT')
