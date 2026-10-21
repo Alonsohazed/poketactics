@@ -2883,8 +2883,8 @@ function renderShop(){
    $('xpbar').parentElement.style.setProperty('--sep',cut.length?'linear-gradient(90deg,'+cut.map(p=>`transparent calc(${p}% - 1px),rgba(6,8,18,.9) calc(${p}% - 1px) calc(${p}% + 1px),transparent calc(${p}% + 1px)`).join(',')+')':'none'); }
  $('gold').textContent=me.gold;
  $('odds').innerHTML=SHOP_ODDS[me.level].map((o,i)=>`<span style="color:${COST_HEX[i]}" title="Coste ${i+1}">${o}%</span>`).join('');
- $('xpBtn').disabled=(me.gold<xpCost(me)&&!xpByHp(me))||me.level>=10||!me.alive; $('xpBtn').querySelector('span').textContent=xpByHp(me)?`${me.mods.xpHp} de vida`:`${xpCost(me)} de oro`;
- $('rerollBtn').innerHTML=me.freeRerolls>0?`<b>🔄 Gratis</b><span>quedan ${me.freeRerolls}</span>`:'<b>🔄 Tienda</b><span>2 de oro</span>';
+ $('xpBtn').disabled=(me.gold<xpCost(me)&&!xpByHp(me))||me.level>=10||!me.alive; { const hp=xpByHp(me); $('xpCostTxt').textContent=hp?me.mods.xpHp:xpCost(me); $('xpCoin').classList.toggle('hp',!!hp); $('xpBtn').title=hp?`Comprar 4 de XP por ${me.mods.xpHp} de vida (tecla F)`:`Comprar 4 de XP por ${xpCost(me)} de oro (tecla F)`; }
+ { const fr=me.freeRerolls>0; $('rrCostTxt').textContent=fr?`Gratis${me.freeRerolls>1?' ×'+me.freeRerolls:''}`:2; $('rrCoin').style.display=fr?'none':''; }
  $('rerollBtn').disabled=(me.freeRerolls<=0&&me.gold<2)||!me.alive;
  $('lockBtn').textContent=me.locked?'🔒':'🔓'; $('lockBtn').setAttribute('aria-pressed',me.locked);
  const owned={}, have=new Set(), two={}; for(const u of allUnits(me)){ have.add(u.baseId); if(u.star===1) owned[u.baseId]=(owned[u.baseId]||0)+1; if(u.star===2) two[u.baseId]=(two[u.baseId]||0)+1; }
@@ -2936,7 +2936,7 @@ function renderTraits(){
  renderAugs();
 }
 // Avisos de subida de estrellas: se ven unos segundos junto al nombre
-const UPS={}, UP_MS=12000;
+const UPS={}, UP_MS=7000;
 const POGO='https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Sounds/';
 const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 // Nombre de la forma que sale en la tienda (para su grito)
@@ -2948,11 +2948,25 @@ function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.last
  if(up>sndWatch.up) Music.evolve('unit');
  if(tac>sndWatch.tac) Music.evolve('big');
  sndWatch.up=up; sndWatch.tac=tac; }
-function upBadge(p){
- const u=p.lastUp; if(!u||p===G.me) return ''; const [dex,star,seq]=u, now=performance.now();
- let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderPlayers(); },UP_MS+50); }
- return now-r.t<UP_MS?`<span class="upb s${star}" title="Subió un Pokémon a ${star} estrellas"><img src="${dexUrl(dex)}" alt="" data-sp="${String(dex).split('/').pop()}" decoding="async"><b>${'★'.repeat(star)}</b></span>`:'';
+// Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
+let DEX_NAME=null;
+const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
+const UP_CARDS=new Map();
+function renderUps(){
+ if(HEADLESS||!G||!G.players) return; let L=$('upLayer'); if(!L){ L=document.createElement('div'); L.id='upLayer'; document.body.appendChild(L); }
+ const now=performance.now(), live=new Set(); L.hidden=!liveGame();
+ if(!L.hidden) for(const p of G.players){ const u=p.lastUp; if(!u||p===G.me||!p.alive) continue; const [dex,star,seq]=u;
+   let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderUps(); },UP_MS+50); }
+   if(now-r.t>=UP_MS) continue; const row=document.querySelector('#players .pl[data-pid="'+p.id+'"]'); if(!row) continue;
+   let c=UP_CARDS.get(p.id); if(!c||c.dataset.seq!==String(seq)){ if(c) c.remove(); c=document.createElement('div'); c.className='upCard s'+star; c.dataset.seq=seq; c.style.setProperty('--life',UP_MS+'ms');
+     c.innerHTML=`<span class="un">${esc(p.name)}</span><span class="face"><img src="${dexUrl(dex)}" alt="" data-sp="${String(dex).split('/').pop()}" decoding="async"></span><span class="pi"><b class="pn">${esc(dexName(dex)||'Pokémon')}</b><i class="st" title="Subió a ${star} estrellas">${'★'.repeat(star)}</i></span>`; c.style.visibility='hidden'; L.appendChild(c); UP_CARDS.set(p.id,c); c._new=true; }
+   const info=row.querySelector('.plInfo').getBoundingClientRect(), ring=row.querySelector('.ring').getBoundingClientRect(), h=c.offsetHeight;
+   c.style.right=(innerWidth-info.left+10)+'px'; c.style.top=(ring.top+ring.height/2-h/2)+'px';
+   if(c._new){ c._new=false; const l=c.getBoundingClientRect().left; c.style.setProperty('--ox',(ring.left+ring.width/2-l)+'px'); c.style.visibility=''; }
+   live.add(p.id); }
+ for(const [id,c] of UP_CARDS) if(!live.has(id)){ c.remove(); UP_CARDS.delete(id); }
 }
+function upBadge(){ return ''; }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
 // Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
 const augIcon=(a,cls)=>a.img?`<img class="augImg${cls?' '+cls:''}" src="${a.img}" alt="" data-fb="${esc(a.icon)}">`:a.icon;
@@ -2974,13 +2988,14 @@ function renderPlayers(){
  const po=!combat&&G.me.alive?new Set(G.mirror?(G.me.po||[]):possibleOpps(G.me).map(p=>p.id)):new Set();
  const watching=G.view?G.view.pid:-1;
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
-   ${upBadge(p)}<div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
+   <div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
    <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
    $('viewBack').onclick=()=>spectate(G.me.id); }
  else vi.hidden=true;
+ renderUps();
 }
 // Banca de objetos: en escritorio, casillas fijas (las vacías punteadas) a la izquierda del tablero
 function renderItems(){

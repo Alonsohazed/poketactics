@@ -332,3 +332,22 @@ test('retratos: miniaturas ligeras y, si fallan, el sprite de la Pokédex en vez
   const fb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/webp;base64,AAAA'; /* imagen inválida: falla sin pedir nada a la red */ document.body.appendChild(im); await new Promise(r => setTimeout(r, 800)); const o = { src: im.src, ok: im.naturalWidth > 0 }; im.remove(); return o; });
   expect(fb.src).toMatch(/dex\/4\.png$/); expect(fb.ok).toBe(true);
 });
+
+test('botones de la tienda: etiqueta, moneda con el coste e icono; el coste cambia con los modificadores', async ({ page }) => {
+  await jumpToRound(page, 1);
+  const r = await page.evaluate(() => ({ xp: document.querySelector('#xpBtn b').textContent, rr: document.querySelector('#rerollBtn b').textContent, xc: document.getElementById('xpCostTxt').textContent, rc: document.getElementById('rrCostTxt').textContent,
+    ico: [...document.querySelectorAll('.sbBtn .sbIco')].length, coins: [...document.querySelectorAll('.sbBtn .coin')].map(c => getComputedStyle(c).display) }));
+  expect(r).toEqual({ xp: 'Comprar XP', rr: 'Rerrolear', xc: '4', rc: '2', ico: 2, coins: ['block', 'block'] });
+  await page.evaluate(() => { G.me.freeRerolls = 2; G.me.mods.xpCost = 3; renderUI(); });
+  expect(await page.evaluate(() => [document.getElementById('rrCostTxt').textContent, getComputedStyle(document.getElementById('rrCoin')).display, document.getElementById('xpCostTxt').textContent])).toEqual(['Gratis ×2', 'none', '3']);
+});
+
+test('subida de estrellas de otro jugador: recuadro con su nombre, la cara, el nombre del Pokémon y estrellas de plata (2★) u oro (3★)', async ({ page }) => {
+  await page.evaluate(() => { const o = G.players.find(p => p !== G.me); o.name = 'Webas'; o.lastUp = [94, 3, 1001]; const q = G.players.filter(p => p !== G.me)[1]; q.lastUp = [8, 2, 1002]; renderUI(); });
+  await page.waitForTimeout(700);
+  const r = await page.evaluate(() => [...document.querySelectorAll('#upLayer .upCard')].map(c => ({ n: c.querySelector('.un').textContent, p: c.querySelector('.pn').textContent, s: c.querySelector('.st').textContent, col: getComputedStyle(c.querySelector('.st')).color, img: /dex\/\d+\.png$/.test(c.querySelector('img').src), right: c.getBoundingClientRect().right })));
+  expect(r.length).toBe(2);
+  const g3 = r.find(x => x.p === 'Gengar'), s2 = r.find(x => x.p === 'Wartortle');
+  expect(g3.n).toBe('Webas'); expect(g3.s).toBe('★★★'); expect(g3.col).toBe('rgb(255, 207, 51)'); expect(s2.s).toBe('★★'); expect(s2.col).toBe('rgb(223, 230, 241)'); expect(g3.img && s2.img).toBe(true);
+  expect(await page.evaluate(() => { const lefts = [...document.querySelectorAll('#players .pl .plInfo')].map(e => e.getBoundingClientRect().left); return [...document.querySelectorAll('#upLayer .upCard')].every(c => c.getBoundingClientRect().right <= Math.max(...lefts) + 1); })).toBe(true);
+});
