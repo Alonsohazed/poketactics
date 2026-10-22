@@ -1602,7 +1602,6 @@ function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return f
 function finishCarousel(){ const C=G.carousel; for(const o of C.opts) if(!o.taken) returnToPool(o.key,1); G.carousel=null; renderUI(); later(nextRound,400); }
 const releaseAt=idx=>8+3.5*Math.floor(idx/2); // la primera pareja sale a los 8 s (da tiempo a ver todos los Pokémon y objetos y elegir); las demás, cada 3,5 s
 // Cada pareja que sale a la vez empieza en lados opuestos (misma distancia a todos los Pokémon)
-const BALL_OF=idx=>['poke','great','ultra','master'][Math.min(3,Math.floor(idx/2))]; // ball de cada pareja de salida
 const carAng=(j,n)=>Math.floor(j/2)*Math.PI/Math.ceil(n/2)+(j%2)*Math.PI+Math.PI/8;
 // Instantánea del equipo para el historial: guarda nombre y número de Pokédex, no solo la clave (sobrevive a cambios futuros)
 function compSnap(p){ const tt=traitTiers(p), tc=traitCounts(p);
@@ -2794,8 +2793,8 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
- const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
- const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
+ const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,k:clamp(left/3,0,1)}; }).filter(Boolean):[];
+ const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
    floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});

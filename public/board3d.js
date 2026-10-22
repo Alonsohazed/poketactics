@@ -869,29 +869,22 @@ function makeBubble(o){
  const ring=new THREE.Mesh(barRing(1),new THREE.MeshBasicMaterial({color:BAR_COL,transparent:true,opacity:.95,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.y=.04; g.add(ring);
  scene.add(g); return {g,wall,ring,tex,k:1,col:BAR_COL};
 }
-const PAD_COL={poke:['#cf5a4e',null],great:['#4f7cc9','#cf6474'],ultra:['#3b3b45','#d9b84c'],master:['#7a52b8','#d987b4']}, padTex={}, padVis=new Map();
-function padTexture(kind){
- if(padTex[kind]) return padTex[kind];
- const [top,acc]=PAD_COL[kind]||PAD_COL.poke;
- return padTex[kind]=canvasTex(256,256,(c,w)=>{ const m=w/2, R=w*.46;
-   c.save(); c.beginPath(); c.arc(m,m,R,0,Math.PI*2); c.clip();
-   c.fillStyle='#ece6da'; c.fillRect(0,0,w,w); c.fillStyle=top; c.fillRect(0,0,w,m);
-   if(kind==='great'&&acc){ c.fillStyle=acc; for(const sx of [-1,1]){ c.beginPath(); c.ellipse(m+sx*R*.55,m-R*.42,R*.16,R*.36,sx*.5,0,Math.PI*2); c.fill(); } }
-   if(kind==='ultra'&&acc){ c.fillStyle=acc; c.fillRect(m-R*.75,m-R*.62,R*.32,R*.62); c.fillRect(m+R*.43,m-R*.62,R*.32,R*.62); }
-   if(kind==='master'&&acc){ c.fillStyle=acc; for(const sx of [-1,1]){ c.beginPath(); c.arc(m+sx*R*.55,m-R*.48,R*.17,0,Math.PI*2); c.fill(); }
-     c.fillStyle='#f4eef8'; c.font='bold '+(R*.42|0)+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('M',m,m-R*.5); }
-   c.restore();
-   c.lineWidth=R*.09; c.strokeStyle='#2a2a33'; c.beginPath(); c.moveTo(m-R,m); c.lineTo(m+R,m); c.stroke();
-   c.beginPath(); c.arc(m,m,R,0,Math.PI*2); c.stroke();
-   c.fillStyle='#ece6da'; c.beginPath(); c.arc(m,m,R*.2,0,Math.PI*2); c.fill(); c.stroke();
- },false);
-}
+// Puesto de cada jugador: una mini plataforma circular a juego con la grande (lateral oscuro, aro gris, cara clara y una línea azul claro como las barreras); la ficha pisa su cara (TOP)
+const padVis=new Map(); let padRes=null;
+function padRes0(){
+ if(padRes) return padRes;
+ const top=canvasTex(256,256,(c,w)=>{ const m=w/2, R=w/2-1;
+   c.fillStyle='#7a7f89'; c.beginPath(); c.arc(m,m,R,0,Math.PI*2); c.fill();
+   const gr=c.createRadialGradient(m,m*.8,R*.1,m,m,R*.84); gr.addColorStop(0,'#4a4f59'); gr.addColorStop(1,'#2e3138'); c.fillStyle=gr; c.beginPath(); c.arc(m,m,R*.84,0,Math.PI*2); c.fill();
+   c.strokeStyle='#8fdcff'; c.lineWidth=R*.06; c.beginPath(); c.arc(m,m,R*.68,0,Math.PI*2); c.stroke();
+   c.strokeStyle='rgba(0,0,0,.35)'; c.lineWidth=R*.03; c.beginPath(); c.arc(m,m,R*.84,0,Math.PI*2); c.stroke(); },false);
+ return padRes={geo:new THREE.CylinderGeometry(1.15,1.08,TOP,48),side:new THREE.MeshLambertMaterial({color:'#1d1e22'}),top}; }
 function stepPads(list){
  const seen=new Set();
  for(const o of list||[]){ let v=padVis.get(o.id);
-   if(!v||v.ball!==o.ball){ if(v) scene.remove(v.m); v={ball:o.ball,m:new THREE.Mesh(new THREE.CircleGeometry(1.15,40),new THREE.MeshBasicMaterial({map:padTexture(o.ball),transparent:true,opacity:.8,depthWrite:false}))}; v.m.rotation.x=-Math.PI/2; scene.add(v.m); padVis.set(o.id,v); }
-   seen.add(o.id); const p=W3(o.x,o.y,0); v.m.position.set(p.x,.03,p.z); v.m.material.opacity=o.dim?.35:.7; }
- for(const [id,v] of padVis) if(!seen.has(id)){ scene.remove(v.m); v.m.geometry.dispose(); v.m.material.dispose(); padVis.delete(id); }
+   if(!v){ const R=padRes0(); v={m:new THREE.Mesh(R.geo,[R.side,new THREE.MeshBasicMaterial({map:R.top}),R.side])}; scene.add(v.m); padVis.set(o.id,v); }
+   seen.add(o.id); const p=W3(o.x,o.y,0); v.m.position.set(p.x,TOP/2,p.z); v.m.material[1].color.set(o.dim?'#b8bcc4':'#ffffff'); }
+ for(const [id,v] of padVis) if(!seen.has(id)){ scene.remove(v.m); v.m.material[1].dispose(); padVis.delete(id); }
 }
 function stepBubbles(list,now){
  const seen=new Set();

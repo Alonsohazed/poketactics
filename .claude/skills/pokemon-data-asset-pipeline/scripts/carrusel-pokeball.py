@@ -16,6 +16,7 @@ R = 6.825          # radio de la plataforma (k·rr en unidades del 3D)
 EL, DIST = 39.75, 28.0
 DISC = .441       # ancho de la plataforma en la imagen, en fracción del ancho (1500 px en 3400)
 CENTER_Y = 0.41     # altura del centro de la plataforma en la imagen (desde arriba): deja más suelo abajo, donde la pantalla muestra más
+SUELO = -12.0       # el suelo queda muy por debajo: la plataforma flota (su sombra cae lejos y difusa)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -68,14 +69,18 @@ for o in (band, ln):
     bo = o.modifiers.new('recorte', 'BOOLEAN'); bpy.ops.mesh.primitive_cylinder_add(vertices=192, radius=FACE, depth=2, location=(0, 0, 0))
     cut = bpy.context.object; cut.hide_render = True; cut.hide_viewport = True; bo.operation = 'INTERSECT'; bo.object = cut
 
-# Suelo rojo (sin bordes visibles) con un degradado suave: más claro detrás, como en la referencia
-bpy.ops.mesh.primitive_plane_add(size=400, location=(0, 0, -1.0)); fl = bpy.context.object; fl.name = 'suelo'
+# Base de isla flotante bajo el disco: un cono truncado oscuro que asoma por delante
+bpy.ops.mesh.primitive_cone_add(vertices=192, radius1=R * .72, radius2=R * .98, depth=3.6, location=(0, 0, -2.8)); base = bpy.context.object; base.name = 'base'
+base.data.materials.append(mat('base', hexc('#121214'), .7)); bpy.ops.object.shade_smooth_by_angle(angle=math.radians(30))
+
+# Suelo rojo muy por debajo (sin bordes visibles), más claro a lo lejos: da profundidad
+bpy.ops.mesh.primitive_plane_add(size=600, location=(0, 0, SUELO)); fl = bpy.context.object; fl.name = 'suelo'
 mf = bpy.data.materials.new('suelo'); mf.use_nodes = True; nt = mf.node_tree; b = nt.nodes['Principled BSDF']
 b.inputs['Roughness'].default_value = .8
 tc = nt.nodes.new('ShaderNodeTexCoord'); sep = nt.nodes.new('ShaderNodeSeparateXYZ'); mr = nt.nodes.new('ShaderNodeMapRange')
 ramp = nt.nodes.new('ShaderNodeValToRGB')
-mr.inputs['From Min'].default_value = -20; mr.inputs['From Max'].default_value = 40
-ramp.color_ramp.elements[0].color = (*[c ** 2.2 for c in hexc('#b23a40')], 1); ramp.color_ramp.elements[1].color = (*[c ** 2.2 for c in hexc('#d0585d')], 1)
+mr.inputs['From Min'].default_value = -40; mr.inputs['From Max'].default_value = 60
+ramp.color_ramp.elements[0].color = (*[c ** 2.2 for c in hexc('#9a2a31')], 1); ramp.color_ramp.elements[1].color = (*[c ** 2.2 for c in hexc('#d3646a')], 1)
 nt.links.new(tc.outputs['Object'], sep.inputs[0]); nt.links.new(sep.outputs['Y'], mr.inputs['Value']); nt.links.new(mr.outputs['Result'], ramp.inputs['Fac']); nt.links.new(ramp.outputs['Color'], b.inputs['Base Color'])
 fl.data.materials.append(mf)
 
