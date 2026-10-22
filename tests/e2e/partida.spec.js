@@ -460,6 +460,19 @@ test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (
   expect(r[2]).toBeGreaterThanOrEqual(3); // y con el 3.º, los tres
 });
 
+test('sinergias: el Guardián suelta su escudo de cristal y el Coloso un campo de fuerza (imágenes ligeras, sin Poké Ball)', async ({ page }) => {
+  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['machop', 'geodude', 'squirtle', 'onix']) addUnitToBench(me, makeInst(k)); renderUI(); });
+  await page.waitForTimeout(4000);
+  const pico = () => page.evaluate(async () => { const m = { escudo: 0, burbuja: 0 }; const t0 = performance.now(); while (performance.now() - t0 < 1000) { await new Promise(r => requestAnimationFrame(r)); const c = B3.fxSyn; m.escudo = Math.max(m.escudo, c.escudo); m.burbuja = Math.max(m.burbuja, c.burbuja); } return m; });
+  const r = [];
+  for (let i = 0; i < 4; i++) { const p = pico(); await drag(page, await benchPoint(page, i), await cellPoint(page, i * 2, 5)); r.push(await p); await page.waitForTimeout(1800); }
+  expect(r[0]).toEqual({ escudo: 0, burbuja: 0 });               // 1 Coloso: sin sinergia
+  expect(r[1].burbuja).toBeGreaterThanOrEqual(2);                // 2.º Coloso: los dos sueltan su campo de fuerza
+  expect(r[3].escudo).toBeGreaterThanOrEqual(2);                 // 2.º Guardián: los dos sueltan su escudo
+  const fx = await page.evaluate(async () => Promise.all(['escudo', 'burbuja'].map(n => fetch('img/fx/' + n + '.webp').then(r => r.blob()).then(b => b.size))));
+  expect(fx.every(n => n > 1000 && n < 30000)).toBe(true);
+});
+
 test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran al frente', async ({ page }) => {
   await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['charmander', 'bulbasaur', 'squirtle']) addUnitToBench(me, makeInst(k)); moveTo(me, { i: 2 }, { b: '3,1' }); renderUI(); });
   const r = await page.evaluate(() => { const A = sceneActors(); return { banca: A.filter(a => a.loc && a.loc.i !== undefined).map(a => +a.face.toFixed(2)), tablero: A.filter(a => a.loc && a.loc.b !== undefined).map(a => +a.face.toFixed(2)) }; });
