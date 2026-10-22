@@ -231,6 +231,31 @@ test('carrusel multijugador: con retrasos de red las animaciones no se reinician
   expect(r.tacMax, 'cada minileyenda solo cambia al arrancar y al pararse').toBeLessThanOrEqual(3);
 });
 
+// Ficha: el retrato es el de la forma de su estrella (Charmeleon a 2★, Charizard a 3★); la tienda sigue con la primera forma.
+// Recetas: clic derecho en un componente abre sus 9 combinaciones, resalta las posibles con tu banca y «Crear objeto» combina
+test('ficha con el retrato de su forma y recetas de objetos con clic derecho', async ({ page }) => {
+  const fs = require('fs'), path = require('path');
+  const r = await page.evaluate(async () => { const me = G.me; me.board = {}; const a = makeInst('charmander'); a.star = 2; const c = makeInst('charmander'); c.star = 3; me.board['3,0'] = a; me.board['5,0'] = c; me.items = ['spoon', 'water', 'claw', 'spoon', 'coat']; renderUI();
+    const card = () => [document.querySelector('#ucard .ucShopCard img').getAttribute('src'), document.querySelector('#ucard .ucShopCard .cn').textContent];
+    selected = a; renderCard(); const c2 = card(); selected = c; renderCard(); const c3 = card(); selected = null; renderCard();
+    return { c2, c3, formas: [...FORM_ART].sort((x, y) => x - y) }; });
+  expect(r.c2).toEqual(['art/f/5.avif?v=' + (await page.evaluate(() => ART_V)), 'Charmeleon']);
+  expect(r.c3[1]).toBe('Charizard'); expect(r.c3[0]).toContain('art/f/6.');
+  const dir = path.join(__dirname, '../../public/art/f'), files = fs.readdirSync(dir).filter(f => f.endsWith('.avif')).map(f => +f.split('.')[0]).sort((x, y) => x - y);
+  expect(r.formas, 'FORM_ART coincide con public/art/f').toEqual(files);
+  for (const n of files) expect(fs.existsSync(path.join(dir, n + '.webp')), 'respaldo WebP de ' + n).toBe(true);
+  await page.locator('#items .item[data-i="0"]').click({ button: 'right' });
+  await expect(page.locator('#recipeBox .rbRow')).toHaveCount(9);
+  await expect(page.locator('#recipeBox .rbRow.ok')).toHaveCount(4); // Garra, la otra Cuchara, Agua y Revestimiento
+  await page.locator('#recipeBox .rbRow.ok').first().hover(); await expect(page.locator('#recipeBox .rbMake')).toBeVisible();
+  await page.locator('#recipeBox .rbMake').click();
+  await expect(page.locator('#recipeBox')).toHaveCount(0);
+  expect(await page.evaluate(() => G.me.items.slice())).toEqual(['water', 'shellbell', 'spoon', 'coat']);
+  // un clic derecho abre y un clic fuera cierra
+  await page.locator('#items .item[data-i="2"]').click({ button: 'right' }); await expect(page.locator('#recipeBox')).toHaveCount(1);
+  await page.mouse.click(800, 300); await expect(page.locator('#recipeBox')).toHaveCount(0);
+});
+
 // El carrusel espera 8 s antes de soltar a la primera pareja: tiempo para ver todos los Pokémon y objetos
 test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
   await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');

@@ -2351,14 +2351,18 @@ function floorCountSpec(){
  const n=boardUnits(me).length, max=maxBoard(me), [ax,ay]=cellXY(3,1), [bx,by]=cellXY(3,2);
  return {txt:n+'/'+max,full:n>=max,x:(ax+bx)/2,y:(ay+by)/2};
 }
+// Aumentos sobre el trofeo: cada uno en un recuadro negro con marco negro (como los objetos sobre un Pokémon) y solo su icono de carta:
+// la silueta del color de su rareza (augSil; mientras se calcula, nada dentro del recuadro)
+const AUG_SIL_IMG={};
+function augSilImg(a){ let v=AUG_SIL_IMG[a.id]; if(!v){ v=AUG_SIL_IMG[a.id]={img:null}; augSil(a).then(u=>{ if(!u) return; const im=new Image(); im.onload=()=>{ v.img=im; }; im.src=u; }); } return v.img; }
 function drawTotemIcons(){
  hudAugs=[]; const tt=B3.totemTop&&B3.totemTop(); if(!tt) return;
- const list=(viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean); if(!list.length) return; // sin aumentos no hay recuadro (ni «?»): el trofeo se ve solo hasta elegir el primero
- const R=geo.R, sz=Math.max(30,R*1.05), n=Math.max(1,list.length), w=n*(sz+3)+5, x0=tt[0]-w/2, y0=tt[1]-sz-6;
- ctx.save(); ctx.fillStyle='rgba(6,8,18,.85)'; rrPath(ctx,x0,y0,w,sz+6,5); ctx.fill(); ctx.strokeStyle='rgba(255,215,94,.7)'; ctx.lineWidth=1.5; ctx.stroke();
- ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`${sz*.7}px system-ui`;
- if(!list.length){ ctx.fillStyle='#ffd75e'; ctx.font=`900 ${sz*.7}px Nunito,system-ui`; ctx.fillText('?',tt[0],y0+sz/2+3); }
- list.forEach((a,i)=>{ const cx=x0+4+i*(sz+3)+sz/2, cy=y0+3+sz/2, col={S:'#c9d3e2',G:'#f4c04e',P:'#c97bff'}[a.tier]; ctx.fillStyle='#141a30'; ctx.fillRect(cx-sz/2,cy-sz/2,sz,sz); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.strokeRect(cx-sz/2+1,cy-sz/2+1,sz-2,sz-2); const im=augImgEl(a); if(im) ctx.drawImage(im,cx-sz*.42,cy-sz*.42,sz*.84,sz*.84); else { ctx.fillStyle='#fff'; ctx.fillText(a.icon,cx,cy+1); } hudAugs.push({id:a.id,x:cx,y:cy,s:sz}); });
+ const list=(viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean); if(!list.length) return; // sin aumentos no hay recuadros: el trofeo se ve solo hasta elegir el primero
+ const R=geo.R, sz=Math.max(28,R*1.0), bw=Math.max(2,sz*.1), gap=bw*2+3, w=list.length*(sz+gap)-3, x0=tt[0]-w/2, cy=tt[1]-sz/2-bw-4;
+ ctx.save();
+ list.forEach((a,i)=>{ const cx=x0+i*(sz+gap)+sz/2+bw; ctx.fillStyle='#000'; ctx.fillRect(cx-sz/2-bw,cy-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#04090c'; ctx.fillRect(cx-sz/2,cy-sz/2,sz,sz);
+   const im=augSilImg(a); if(im){ const k=Math.min(sz*.86/im.width,sz*.86/im.height), iw=im.width*k, ih=im.height*k; ctx.imageSmoothingEnabled=true; ctx.drawImage(im,cx-iw/2,cy-ih/2,iw,ih); }
+   hudAugs.push({id:a.id,x:cx,y:cy,s:sz}); });
  ctx.restore();
 }
 function drawBoardTrainers(){
@@ -2474,6 +2478,9 @@ function bindEvents(){
    let to=null; const b=hitBench(x,y); if(b>=0) to={i:b}; else if(G.phase!=='combat'&&G.phase!=='carousel'){ const cell=hitCell(x,y); if(cell&&cell[1]>=4) to={b:cell[0]+','+(cell[1]-4)}; }
    if(to){ Music.drop(); doAct({t:'move',from:d.loc,to},()=>moveTo(me,d.loc,to)); } else renderUI();
  });
+ $('items').addEventListener('contextmenu',e=>{ const el=e.target.closest('.item'); if(!el||!inGame()||viewOwner()!==G.me) return; e.preventDefault(); openRecipes(+el.dataset.i,el); });
+ document.addEventListener('pointerdown',e=>{ if(recipeOpen&&!e.target.closest('#recipeBox')&&!(e.button===2&&e.target.closest('#items .item'))) closeRecipes(); },true);
+ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&recipeOpen) closeRecipes(); });
  $('items').addEventListener('pointerdown',e=>{
    const el=e.target.closest('.item'); if(!el||!inGame()||viewOwner()!==G.me) return; e.preventDefault();
    itemDrag={idx:+el.dataset.i,sx:e.clientX,sy:e.clientY,moved:false,target:-1,t0:0}; $('ghost').innerHTML=itemHTML(G.me.items[itemDrag.idx],48);
@@ -2601,7 +2608,7 @@ function tipHTML(spec){
    const I=ITEMS[key]; if(!I) return '';
    let h=`<h4>${itemHTML(key,30)} ${I.name}</h4>`; const sl=statLine(I.s); if(sl) h+=`<div class="scope">${sl}</div>`; h+=`<div>${I.desc}</div>`;
    if(I.from) h+=`<div class="units">Receta: ${ITEMS[I.from[0]].name} + ${ITEMS[I.from[1]].name}</div>`;
-   if(I.comp) h+=`<div class="units">Combina con: ${ORDER.map(o=>{ const r=ITEMS[combineKey(key,o)]; return `${ITEMS[o].name} → <b>${r.name}</b>`; }).join('<br>')}</div>`;
+   if(I.comp) h+=`<div class="units">Clic derecho: ver qué puedes crear con él</div>`;
    return h;
  }
  if(type==='aug'){ const a=AUG_BY[key]; if(!a) return ''; const pg=G&&G.me&&G.me.augments.includes(key)?(G.mirror?(G.me.augUi||{})[key]:augProgress(G.me,key)):''; return `<h4>${augIcon(a,'augTipIco')} ${a.name}</h4><div class="scope">${TIER_NAME[a.tier]} · ${AUG_CAT[a.cat]||''}</div><div>${a.desc}</div>${pg?`<div class="units">${esc(pg)}</div>`:''}`; }
@@ -3137,8 +3144,6 @@ function upBadge(){ return ''; }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
 // Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
 const augIcon=(a,cls)=>a.img?`<img class="augImg${cls?' '+cls:''}" src="${a.img}" alt="" data-fb="${esc(a.icon)}">`:a.icon;
-const AUG_IMGS={};
-function augImgEl(a){ if(!a.img||HEADLESS) return null; let im=AUG_IMGS[a.id]; if(!im){ im=AUG_IMGS[a.id]=new Image(); im.crossOrigin='anonymous'; im.src=a.img; } return im.complete&&im.naturalWidth?im:null; }
 function renderAugs(){
  const list=viewedPlayer().augments.map(id=>AUG_BY[id]).filter(Boolean), bar=$('augBar'), box=$('augList');
  $('augWrap').innerHTML=''; bar.hidden=true; if(!list.length&&!box.hidden) box.innerHTML='';
@@ -3165,10 +3170,33 @@ function renderPlayers(){
  renderUps();
 }
 // Banca de objetos: en escritorio, casillas fijas (las vacías punteadas) a la izquierda del tablero
+// Recetas de un componente (clic derecho en la banca de objetos, como en TFT): las 9 combinaciones; resaltadas las que puedes hacer ya
+// con lo que tienes en la banca. Al pasar por una fila se ve el objeto que sale y, si lo tienes todo, el botón «Crear objeto» (acción icomb)
+let recipeOpen=null;
+function closeRecipes(){ recipeOpen=null; const b=$('recipeBox'); if(b) b.remove(); }
+function recipePartner(me,i,o){ return me.items.findIndex((k,j)=>j!==i&&k===o); }
+function openRecipes(i,anchor){
+ const me=G.me, k=me.items[i], I=ITEMS[k]; if(!I||!I.comp){ closeRecipes(); return; }
+ if(recipeOpen&&recipeOpen.i===i&&recipeOpen.k===k){ closeRecipes(); return; }
+ closeRecipes(); hideTip(); recipeOpen={i,k};
+ const rows=ORDER.map(o=>{ const r=combineKey(k,o), j=recipePartner(me,i,o); return {o,r,j,ok:j>=0&&inGame()&&viewOwner()===me}; }).filter(x=>x.r&&ITEMS[x.r]);
+ const box=document.createElement('div'); box.id='recipeBox'; const sl=statLine(I.s);
+ box.innerHTML=`<div class="rbHead">${itemHTML(k,52)}<div><b>${esc(I.name)}</b>${sl?`<span>${sl}</span>`:''}</div></div>`
+  +rows.map((x,n)=>`<div class="rbRow${x.ok?' ok':''}" data-n="${n}"><i>+</i>${itemHTML(x.o,34)}<i>›</i>${itemHTML(x.r,34)}<span>${esc(ITEMS[x.r].name)}</span></div>`).join('')
+  +'<div class="rbSide" hidden></div>';
+ document.body.appendChild(box);
+ const r=anchor.getBoundingClientRect(); box.style.left=Math.round(r.right+10)+'px'; box.style.top=Math.round(clamp(r.top-8,8,Math.max(8,innerHeight-box.offsetHeight-8)))+'px';
+ const side=box.querySelector('.rbSide');
+ const show=(row)=>{ const x=rows[+row.dataset.n], R=ITEMS[x.r], rs=statLine(R.s); box.querySelectorAll('.rbRow.cur').forEach(e=>e.classList.remove('cur')); row.classList.add('cur');
+   side.innerHTML=`<div class="rbHead">${itemHTML(x.r,52)}<div><b>${esc(R.name)}</b>${rs?`<span>${rs}</span>`:''}</div></div><p>${R.desc}</p>`+(x.ok?`<button class="rbMake" type="button">Crear objeto</button>`:`<p class="rbNeed">Te falta: ${esc(ITEMS[x.o].name)}</p>`);
+   side.hidden=false; const br=box.getBoundingClientRect(), rr=row.getBoundingClientRect(); side.style.top=Math.round(clamp(rr.top-br.top-20,0,Math.max(0,innerHeight-br.top-side.offsetHeight-8)))+'px';
+   const mk=side.querySelector('.rbMake'); if(mk) mk.onclick=()=>{ const me2=G.me, a=me2.items.indexOf(k)===i?i:me2.items.indexOf(k), b=recipePartner(me2,a,x.o); closeRecipes(); if(a<0||b<0) return; Music.drop&&Music.drop(); doAct({t:'icomb',a,b},()=>combineBench(me2,a,b)); }; };
+ box.querySelectorAll('.rbRow').forEach(row=>{ row.addEventListener('pointerenter',()=>show(row)); row.addEventListener('click',()=>show(row)); });
+}
 function renderItems(){
  const me=viewOwner(), spy=me!==G.me, slots=window.matchMedia&&matchMedia('(min-width:1101px)').matches;
  const key=me.id+':'+(me.items||[]).join()+'|'+slots; $('items').classList.toggle('spy',spy); $('items').title=spy?'Objetos de '+me.name:'';
- if(key===renderItems.last&&$('items').childElementCount) return; renderItems.last=key;
+ if(key===renderItems.last&&$('items').childElementCount) return; renderItems.last=key; closeRecipes();
  const groups=[]; me.items.forEach((k,i)=>{ const g=ITEMS[k]&&ITEMS[k].tool&&groups.find(x=>x.k===k); if(g) g.n++; else groups.push({k,i,n:1}); });
  const it=groups.map(g=>`<div class="item" data-i="${g.i}" data-tip="item:${g.k}" tabindex="0">${itemHTML(g.k)}${g.n>1?`<b class="icount">×${g.n}</b>`:''}</div>`).join('');
  $('items').innerHTML=slots?it+'<span class="islot"></span>'.repeat(Math.max(0,MAX_ITEMS_BENCH-groups.length)):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
@@ -3237,9 +3265,13 @@ const ucUse=id=>'<svg viewBox="0 0 24 24"><use href="#ucs-'+id+'"/></svg>';
 function ucSprite(){ if(document.getElementById('ucSprite')) return; const w=document.createElement('div'); w.innerHTML='<svg id="ucSprite" width="0" height="0" style="position:absolute" aria-hidden="true">'+Object.entries(UC_SYM).map(([k,[c,p]])=>'<symbol id="ucs-'+k+'" viewBox="0 0 24 24"><g style="color:'+c+'" fill="currentColor">'+p+'</g></symbol>').join('')+'</svg>'; document.body.appendChild(w.firstChild); }
 let UC_CUR=null, tipPinned=false;
 // La misma carta que se compra en la tienda, sin botón, para reconocer al Pokémon en su ficha
-function unitCardHTML(d,who){
- const ak=DEF[d.key]?shopArtKey(d.key):d.key, fo=CARD_ART[ak]&&(ART_FOCUS[ak]||ART_DEF), cn=(DEF[ak]||d).name;
- const art=fo?'<span class="art v2art"><img src="'+CARD_ART[ak]+'" alt="" style="--fx:'+fo[0]/100+';--fy:'+fo[1]/100+';--z:'+fo[2]+';--zr:'+(fo[3]||Math.min(1.6,Math.max(1,52/fo[0]))).toFixed(2)+'"></span>':'<span class="art bg-'+elemOf(d)+'"><i class="fx"></i></span><span class="pic">'+portraitImg(dexOf(d,1))+'</span>';
+// Retratos de las formas evolucionadas (public/art/f/<n.º>): la ficha muestra la forma de su estrella (Charmeleon a 2★, Charizard a 3★); la tienda sigue con la primera
+const FORM_ART=new Set('2 3 5 6 8 9 20 25 26 35 36 39 40 44 45 51 53 55 59 61 62 64 65 67 68 75 76 78 82 91 93 94 97 112 117 122 125 130 143 148 149 153 154 176 208 212 229 230 248 282 373 376 389 405 429 445 448 462 464 466 468 477 534 571 609 724 858 1000'.split(' ').map(Number));
+const formArt=dx=>FORM_ART.has(dx)?`art/f/${dx}.${ART_EXT}?v=${ART_V}`:null;
+function unitCardHTML(d,who,star){
+ const sx=star&&Array.isArray(d.dex)?dexOf(d,star):null, fa=sx!=null&&sx!==dexOf(d,1)?formArt(sx):null;
+ const ak=DEF[d.key]?shopArtKey(d.key):d.key, fo=fa?ART_DEF:CARD_ART[ak]&&(ART_FOCUS[ak]||ART_DEF), cn=fa?nameOf(d,star):(DEF[ak]||d).name;
+ const art=fo?'<span class="art v2art"><img src="'+(fa||CARD_ART[ak])+'" alt="" style="--fx:'+fo[0]/100+';--fy:'+fo[1]/100+';--z:'+fo[2]+';--zr:'+(fo[3]||Math.min(1.6,Math.max(1,52/fo[0]))).toFixed(2)+'"></span>':'<span class="art bg-'+elemOf(d)+'"><i class="fx"></i></span><span class="pic">'+portraitImg(dexOf(d,1))+'</span>';
  return '<div class="card c'+(d.cost||1)+' '+(fo?'v2':'')+' ucShopCard" title="'+esc(who)+'">'+art+'<span class="cn">'+esc(cn)+'</span><span class="tr">'+(d.traits||[]).map(t=>'<span title="'+t+'"><i>'+traitIcon(t)+'</i>'+t+'</span>').join('')+'</span>'+(d.cost?'<span class="cc">'+d.cost+'</span>':'')+'</div>';
 }
 // Ventana fijada junto a la ficha (se cierra al hacer clic fuera, con Esc o al repetir el clic)
@@ -3281,7 +3313,7 @@ function renderCard(){
 
  const html='<button class="uc-x" aria-label="Cerrar ficha">✕</button>'
   +'<div class="ucStars s'+star+'"><span>'+'★'.repeat(star)+'</span></div>'
-  +unitCardHTML(d,who)
+  +unitCardHTML(d,who,star)
   +'<div class="ucBar hp"><i style="width:'+clamp(hp/cu.maxHp*100,0,100)+'%"></i><span>'+hpTxt+'</span></div>'
   +'<div class="ucBar mp"><i style="width:'+(noMana?0:clamp(cu.mana/cu.maxMana*100,0,100))+'%"></i><span>'+mpTxt+'</span></div>'
   +'<div class="ucTrio">'
