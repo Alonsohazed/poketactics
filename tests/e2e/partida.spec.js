@@ -228,13 +228,15 @@ test('la burla de otro jugador se anima en tu pantalla', async ({ page }) => {
 });
 
 test('Llamada al Caos: se elige y aparece una ventana con el resultado', async ({ page }) => {
+  // Ya no hay oferta de aceptar o rechazar: el premio sale directamente (y algunos piden elegir un objeto o emblema)
   await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
-  await expect(page.locator('#mbox h1')).toHaveText('Llamada al Caos');
-  await page.locator('#mbox .choice').first().click(); // aceptar el Caos
-  for (let i = 0; i < 4 && !(await page.locator('#mbox .reveal').count()); i++) { await page.waitForTimeout(500); if (await page.locator('#mbox .choice').count()) await page.locator('#mbox .choice').first().click(); } // el resultado al azar puede abrir antes una elección
+  for (let i = 0; i < 6 && !(await page.locator('#mbox .reveal').isVisible()); i++) {
+    const ch = page.locator('#mbox .choice').first(); if (await ch.isVisible()) await ch.click(); else await page.waitForTimeout(300);
+  }
   await expect(page.locator('#mbox .reveal')).toBeVisible();
   await expect(page.locator('#mbox .reveal h1')).not.toBeEmpty();
   await page.locator('#rvOk').click();
+  for (let i = 0; i < 6 && await page.locator('#mbox .choice').first().isVisible(); i++) await page.locator('#mbox .choice').first().click();
   await expect(page.locator('#modal')).toBeHidden();
   // también queda en el registro de la partida (sin pestaña visible)
   await expect(page.locator('#log')).toContainText('Llamada al Caos');

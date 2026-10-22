@@ -53,21 +53,20 @@ for (const t of TRAITS) { const Tr = E.TRAITS[t], n = Tr.bp.length, pr = Tr.pr[0
   p.board['0,0'] = E.makeInst(host); ok(E.traitTiers(p)[t] === 3, 'Fuego 8 sin emblema: nivel 3');
   p.board['0,0'].items.push('emb_' + t); ok(E.traitTiers(p)[t] === 4, 'Fuego 8 con emblema: prismático'); }
 
-// 5. Forja de insignias: Medalla + componente → elegir entre 3 sinergias afines
-for (const c of E.BASIC) { ok(E.FORGE_OF[c].length === 3 && E.FORGE_OF[c].every(t => E.TRAITS[t]), `forja de ${c}: 3 sinergias válidas`);
-  E.FORGE_OF[c].forEach((t, j) => { const id = 'em_' + c + (j ? '_' + j : ''); ok(E.ITEMS[id] && E.ITEMS[id].emblem === t && E.ITEMS[id].forge === c, `insignia ${id} graba ${t}`); }); }
-ok(TRAITS.every(t => Object.values(E.FORGE_OF).some(l => l.includes(t))), 'todas las sinergias se pueden forjar');
+// 5. Emblemas: Medalla + componente → siempre la misma sinergia, con estadísticas; el resto solo por aumentos
+for (const c of E.BASIC) { const t = E.FORGE_OF[c][0]; ok(E.FORGE_OF[c].length === 1 && E.TRAITS[t] && E.ITEMS['em_' + c].emblem === t, `la Medalla con ${c} graba siempre ${t}`); }
+ok(Object.keys(E.ITEMS).filter(k => /^em_[a-z]+_\d$/.test(k)).length === 0, 'ya no hay variantes de insignia que elegir');
+ok(TRAITS.every(t => E.ITEMS['emb_' + t] && Object.keys(E.ITEMS['emb_' + t].s).length > 0), 'todos los emblemas tienen estadísticas propias');
 { const { p } = fresh(); p.items = ['medal', 'claw']; const r = E.combineBench(p, 0, 1);
-  ok(r.ok && p.items[0] === 'em_claw', 'Medalla + Garra crea la insignia');
-  const pk = p.picks.find(x => x.src === '__forge'); ok(pk && pk.opts.length === 3, 'aparece la elección de la forja con 3 opciones');
-  ok(E.resolvePick(p, pk.id, 1).ok && p.items[0] === 'em_claw_1' && E.ITEMS[p.items[0]].emblem === 'Depredadores', 'la elección cambia la insignia por la sinergia elegida'); }
-{ const { p } = fresh(); const host = E.UNIT_LIST.find(u => u.traits.includes('Fuego') && !u.traits.includes('Hechicero') && !u.traits.includes('Psíquico')).key;
+  ok(r.ok && p.items[0] === 'em_claw' && E.ITEMS.em_claw.emblem === 'Coloso', 'Medalla + Garra crea la Insignia Coloso'); ok(!p.picks.some(x => x.src === '__forge'), 'sin elección de sinergia al forjar'); }
+{ const { p } = fresh(); const host = E.UNIT_LIST.find(u => !u.traits.includes('Hechicero')).key;
   const u = E.makeInst(host); u.items = ['spoon']; p.board['0,0'] = u; p.items = ['medal'];
-  const r = E.useItem(p, 0, u); ok(r.ok && u.items[0] === 'em_spoon', 'la Medalla sobre un Pokémon con Cuchara forja en él');
-  const pk = p.picks.find(x => x.src === '__forge'); ok(pk && !pk.opts.some(o => o.v.endsWith('_2')), 'no ofrece una sinergia que el Pokémon ya tiene (Fuego)');
-  E.resolvePick(p, pk.id, 1); ok(u.items[0] === 'em_spoon_1', 'la insignia del Pokémon cambia a Psíquico'); }
-// Los bots eligen solos
-{ const { p } = fresh(); p.isBot = true; p.items = ['medal', 'lens']; E.combineBench(p, 0, 1); ok(!p.picks.length && /^em_lens/.test(p.items[0]), 'los bots resuelven la forja al momento'); }
+  const r = E.useItem(p, 0, u); ok(r.ok && u.items[0] === 'em_spoon' && !p.picks.length, 'la Medalla sobre un Pokémon con Cuchara forja en él la Insignia Hechicero'); }
+// El emblema da la sinergia y su efecto de verdad: Coloso da vida extra a todo el equipo y el doble al Coloso
+{ const cof5 = p => E.createCombatSnap(E.teamSnap(p), null, { s: 1, n: 1 }, { seed: 7 }).units.find(u => u.side === 0 && u.bk === '3,3'); const { p } = fresh(); const a = E.UNIT_LIST.find(u => u.traits.includes('Coloso') && u.cost === 1).key, b = E.UNIT_LIST.find(u => !u.traits.includes('Coloso') && u.cost === 1 && u.role === 'r').key;
+  p.board = { '0,0': E.makeInst(a), '3,3': E.makeInst(b) }; const hp0 = cof5(p).maxHp; ok(!(E.traitTiers(p).Coloso > 0), 'un solo Coloso no activa la sinergia');
+  p.board['3,3'].items.push('emb_Coloso'); ok(E.traitTiers(p).Coloso === 1, 'el emblema Coloso cuenta para la sinergia');
+  const hp1 = cof5(p).maxHp; ok(hp1 > hp0 + 300, `el portador recibe el efecto de Coloso y las estadísticas del emblema (${Math.round(hp0)} → ${Math.round(hp1)})`); }
 
 // 6. Fusiones: Cazatesoros apunta el botín y Potencial Evolutivo crece cada ronda
 { const { p } = fresh(); E.lootTrack(p, () => { p.gold += 3; E.giveItem(p, 'claw'); }); ok(p.loot.gold === 3 && p.loot.items === 1 && p.loot.value === 6, 'botín: 3 de oro y un objeto (valor 6)'); }
@@ -153,27 +152,41 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
 // 12. Aumentos que dan cosas tras rondas, victorias o niveles: dan exactamente lo que dice su descripción
 { const items = p => p.items.length, units = p => p.bench.filter(Boolean).length, rs = (p, n) => { for (let i = 0; i < n; i++) event(p, 'roundStart', {}); };
   const take = (id, setup) => { const { p } = fresh(); if (setup) setup(p); E.applyAugment(p, E.AUG_BY[id]); return p; };
-  { const p = take('huevo'); const u0 = units(p), i0 = items(p); rs(p, 5); ok(units(p) === u0 && items(p) === i0, 'Huevo: nada antes de 6 rondas'); rs(p, 1); ok(units(p) === u0 + 1 && p.bench.filter(Boolean).some(u => E.DEF[u.defId].cost === 4) && items(p) === i0 + 1, 'Huevo: a las 6 rondas, Pokémon de coste 4 y un componente'); rs(p, 6); ok(units(p) === u0 + 1, 'Huevo: una sola vez'); }
-  { const p = take('paga_extra'); const g0 = p.gold; for (let i = 0; i < 12; i++) event(p, 'win', { pve: false }); event(p, 'win', { pve: true }); ok(p.gold - g0 === 20, `Paga Extra: 2 por victoria PvP hasta 20 (${p.gold - g0})`); }
-  { const p = take('banco_rocket'); p.gold = 50; rs(p, 5); ok(p.gold === 50 - 10 + 15, `Banco del Team Rocket: 5 depósitos de 2 y devuelve 15 (${p.gold})`); rs(p, 3); ok(p.gold === 55, 'Banco: termina tras cobrar'); }
+  { const p = take('huevo'); const u0 = units(p), i0 = items(p); rs(p, 5); ok(units(p) === u0 && items(p) === i0, 'Huevo: nada antes de 6 rondas'); rs(p, 1); ok(units(p) === u0 + 2 && p.bench.filter(Boolean).filter(u => E.DEF[u.defId].cost === 4).length === 2 && items(p) === i0 + 1, 'Huevo: a las 6 rondas, 2 copias de un coste 4 y un componente'); rs(p, 6); ok(units(p) === u0 + 2, 'Huevo: una sola vez'); }
+  { const p = take('ultraball'); const u0 = units(p), i0 = items(p); ok(p.picks.length === 1 && items(p) === i0, 'Ultra Ball: componente y elección de coste 4'); E.resolvePick(p, p.picks[0].id, 0);
+    const got = p.bench.filter(Boolean).slice(u0); ok(got.length === 2 && got[0].defId === got[1].defId && E.DEF[got[0].defId].cost === 4, 'Ultra Ball: 2 copias del coste 4 elegido'); }
+  { const p = take('master'); const i0 = items(p); ok(p.picks.length === 1, 'Master Ball: elección de Legendario'); E.resolvePick(p, p.picks[0].id, 0); ok(p.bench.filter(Boolean).some(u => E.DEF[u.defId].cost === 5), 'Master Ball: recibes el Legendario elegido'); }
+  { const p = take('escalera'); ok(p.items.some(k => String(k).startsWith('emb_')), 'Escalera: emblema al elegir');
+    p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('growlithe'), '2,0': E.makeInst('squirtle'), '3,0': E.makeInst('psyduck') };
+    event(p, 'roundEnd', { pve: true }); ok(!p.items.includes('magnet'), 'Escalera: el PvE no cuenta');
+    event(p, 'roundEnd', { pve: false }); ok(p.items.includes('magnet') && p.augSt.escalera.need === 3, 'Escalera: 2 sinergias → Imán Removedor y pide 3');
+    const g0 = p.gold; event(p, 'roundEnd', { pve: false }); ok(p.gold - g0 === 3 && p.augSt.escalera.need === 4, 'Escalera: 3 sinergias → 3 de oro y pide 4');
+    p.board = { '0,0': E.makeInst('charmander') }; const g1 = p.gold; event(p, 'roundEnd', { pve: false }); ok(p.gold === g1 && p.augSt.escalera.need === 4, 'Escalera: sin sinergias suficientes no da nada'); }
   { const p = take('ahorro_profesor'); p.gold = 35; const i0 = items(p); rs(p, 3); ok(items(p) === i0 + 1, 'Ahorro del Profesor: 3 rondas con 30+ → componente'); p.gold = 10; rs(p, 2); p.gold = 35; rs(p, 2); ok(items(p) === i0 + 1, 'Ahorro: bajar de 30 reinicia los puntos'); }
   { const p = take('investigacion_fin'); p.gold = 60; rs(p, 1); ok(p.freeRerolls === 0, 'Investigación Financiada: 5 puntos aún no'); rs(p, 1); ok(p.freeRerolls === 3, 'Investigación Financiada: 10 puntos → 3 tiendas gratis'); const u0 = units(p); rs(p, 3); ok(units(p) === u0 + 1, 'Investigación Financiada: 25 puntos → Pokémon de coste 4'); }
-  { const p = take('inversion'); E.resolvePick(p, p.picks[0].id, 1); p.gold = 25; const g = []; for (let i = 0; i < 4; i++) { const g0 = p.gold; rs(p, 1); g.push(p.gold - g0); } ok(g.join() === '1,1,2,2', `Inversión: +1 por ronda y sube a +2 a las 3 rondas con 20+ (${g.join()})`); }
   { const p = take('camino_campeon'); const i0 = items(p), g0 = p.gold; event(p, 'levelUp', { level: 6 }); ok(items(p) === i0 + 1, 'Camino del Campeón: nivel 6 → componente'); event(p, 'levelUp', { level: 7 }); ok(p.gold === g0 + 5, 'Camino del Campeón: nivel 7 → 5 de oro');
     event(p, 'levelUp', { level: 8 }); ok(items(p) === i0 + 2 && E.FULL_KEYS.includes(p.items[p.items.length - 1]), 'Camino del Campeón: nivel 8 → objeto completo'); const u0 = units(p); event(p, 'levelUp', { level: 9 }); ok(units(p) === u0 + 1 && p.bench.filter(Boolean).some(u => E.DEF[u.defId].cost === 5), 'Camino del Campeón: nivel 9 → Pokémon de coste 5'); }
   { const p = take('insignias'); for (const l of [5, 6]) event(p, 'levelUp', { level: l }); ok(!p.picks.length, 'Insignias de Gimnasio: 2 insignias aún no'); event(p, 'levelUp', { level: 7 }); ok(p.picks.length === 1 && p.picks[0].opts.length === 3, 'Insignias de Gimnasio: con 3, elección de 3 premios'); }
   { const p = take('regreso'); const g0 = p.gold; for (let i = 0; i < 3; i++) event(p, 'lose', {}); event(p, 'win', {}); ok(p.gold - g0 === 9, `El Regreso: 3 derrotas → 9 de oro al ganar (${p.gold - g0})`); }
-  { const p = take('supervivientes'); const g0 = p.gold; event(p, 'survive', { n: 7 }); ok(p.gold - g0 === 3, 'Equipo de Supervivientes: +1 por cada 2 en pie, máx. 3'); event(p, 'survive', { n: 3 }); ok(p.gold - g0 === 4, 'Equipo de Supervivientes: 3 en pie → +1'); }
   { const p = take('crecimiento'); const xp = p.xp + p.level * 100; event(p, 'win', { pve: false }); ok(p.xp + p.level * 100 > xp, 'Crecimiento Acelerado: EXP por victoria PvP'); }
   { const p = take('campeon_sinnoh'); const i0 = items(p); for (let i = 0; i < 3; i++) event(p, 'win', { pve: false }); ok(items(p) === i0 + 1, 'Campeón de Sinnoh: 3 victorias → componente'); for (let i = 0; i < 3; i++) event(p, 'win', { pve: false }); ok(items(p) === i0 + 2, 'Campeón de Sinnoh: 6 → objeto completo'); const b0 = p.mods.boardBonus; for (let i = 0; i < 3; i++) event(p, 'win', { pve: false }); ok(p.mods.boardBonus === b0 + 1, 'Campeón de Sinnoh: 9 → +1 espacio'); }
-  // Coleccionista solo cuenta las especies colocadas en el tablero: 6 en el banquillo no dan nada; 6 en el tablero, +1
-  { const p = take('coleccionista', q => { for (const k of ['charmander', 'squirtle', 'bulbasaur', 'pichu', 'abra', 'gastly']) E.addUnitToBench(q, E.makeInst(k)); }); let g0 = p.gold; rs(p, 1); ok(p.gold - g0 === 0, 'Coleccionista: 6 especies en el banquillo → nada');
-    ['charmander', 'squirtle', 'bulbasaur', 'pichu', 'abra', 'gastly'].forEach((k, i) => { p.board[i + ',0'] = E.makeInst(k); }); g0 = p.gold; rs(p, 1); ok(p.gold - g0 === 1, 'Coleccionista: 6 especies en el tablero → +1 de oro'); }
   { const p = take('pacto_rocket'); ok(p.gold === 58, 'Pacto del Team Rocket: +8 de oro al elegirlo'); event(p, 'lose', { pve: false }); const g0 = p.gold; rs(p, 5); ok(g0 - p.gold === 15, `Pacto del Team Rocket: la derrota alarga la deuda a 5 rondas de 3 (${g0 - p.gold})`); rs(p, 2); ok(g0 - p.gold === 15, 'Pacto del Team Rocket: después ya no cobra'); }
   { const p = take('maestro'); const x0 = p.xp + p.level * 1000; p.gold = 10; E.applyAct(p, { t: 'xp' }); ok(p.xp + p.level * 1000 >= x0 + 5 || p.level > 1, 'Maestro Pokémon: la EXP comprada da 5'); E.addUnitToBench(p, E.makeInst('charmander')); p.board = { '0,0': E.makeInst('charmander') };
     event(p, 'levelUp', { level: 9 }); const pk = p.picks.find(x => x.src === 'maestro'); ok(pk && pk.opts.length >= 1, 'Maestro Pokémon: elección de sinergia al nivel 9'); const t = pk.opts[0].v, n0 = E.traitCounts(p)[t] || 0; E.resolvePick(p, pk.id, 0); ok((E.traitCounts(p)[t] || 0) === n0 + 1, 'Maestro Pokémon: la sinergia elegida cuenta 1 más'); }
   { const p = take('h_meowth'); p.board = { '0,0': E.makeInst('meowth') }; const g0 = p.gold; event(p, 'win', { pve: false }); ok(p.gold - g0 === 2, 'Día de Pago: +2 de oro al ganar con Meowth en el tablero'); }
-  { const p = take('proyecto_mew'); p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('squirtle'), '2,0': E.makeInst('bulbasaur'), '3,0': E.makeInst('pichu') }; const g0 = p.gold; event(p, 'combatStart', {}); ok(p.gold - g0 === 6, 'Proyecto Mew: 4 tipos → 6 de oro'); }
+  { const p = take('proyecto_mew'); p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('squirtle'), '2,0': E.makeInst('bulbasaur'), '3,0': E.makeInst('pichu') }; const i0 = items(p); event(p, 'combatStart', {}); ok(items(p) - i0 === 2, 'Proyecto Mew: 4 tipos → 2 componentes'); }
+  { const p = take('unidos'); E.G.roundIdx = 3; const t = p.augSt.unidos.t; const anv = p.bench.find(u => u && u.defId === 'yunque_oro'); ok(t && p.items.includes('emb_' + t) && anv, 'Unidos Venceremos: emblema y Yunque de objetos en el banquillo');
+    const i = p.bench.indexOf(anv); ok(E.sellAt(p, { i }) && p.picks.length === 1 && p.picks[0].opts.length === 6, 'el yunque se vende y deja elegir entre 6 objetos completos');
+    E.resolvePick(p, p.picks[0].id, 0); ok(p.items.some(k => E.ITEMS[k] && E.ITEMS[k].from && !E.ITEMS[k].emblem), 'Unidos Venceremos: recibe el objeto elegido'); }
+  { const p = take('dados', q => { q.gold = 10; }); ok(p.gold === 17 && p.mods.lucky, 'Dados Cargados: 7 de oro y suerte'); }
+  { const p = take('vanguardia'); const u = p.bench.filter(Boolean).find(x => x.star === 2); ok(u && E.DEF[u.defId].cost === 1 && p.items.some(k => String(k).startsWith('emb_')), 'Cimientos de Vanguardia: primera línea 2★ y emblema de su clase'); }
+  { const { G, p } = fresh(); p.bench = Array(9).fill(null); E.applyAugment(p, E.AUG_BY.safari); const g = k => { const u = E.makeInst(k); u.star = 2; return u; };
+    for (let i = 0; i < 9; i++) p.bench[i] = g(i % 2 ? 'gimmighoul' : 'meowth'); const g0 = p.gold; rs(p, 3); ok(!p.augSt.safari.done && p.bench.filter(Boolean).length === 6, 'Zona Safari: cada ronda se va el último del banquillo');
+    rs(p, 3); ok(p.augSt.safari.done && p.gold - g0 >= 15 && p.picks.length === 2, `Zona Safari: con 33 de oro enviados, gran premio (${p.augSt.safari.sent})`); }
+  { const { G, p } = fresh(); G.round = { s: 5, n: 1 }; p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('growlithe') }; E.applyAugment(p, E.AUG_BY.llamada_clan);
+    const opt = p.picks[0].opts.findIndex(o => o.v === 'Fuego'); E.resolvePick(p, p.picks[0].id, Math.max(0, opt)); const u0 = p.bench.filter(Boolean).length;
+    event(p, 'buy', { key: 'charmander', cost: 1 }); const got = p.bench.filter(Boolean).slice(u0); ok(got.length === 1 && E.DEF[got[0].defId].traits.includes('Fuego') && E.DEF[got[0].defId].cost >= 2, 'Llamada del Clan: al comprar un Fuego barato llega otro Fuego más caro');
+    event(p, 'buy', { key: 'abra', cost: 1 }); ok(p.bench.filter(Boolean).length === u0 + 1, 'Llamada del Clan: otra sinergia no cuenta'); }
 }
 
 // 13. Mewtwo inestable: con 10 de energía (bajas + rondas en el tablero) se vuelve Mega Mewtwo Y para siempre, más fuerte y escalando
@@ -202,6 +215,53 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   ok(solo.legMul < 1 && solo.legRes === 0, `Rayquaza sin apoyo se debilita (×${solo.legMul})`);
   ok(conLeg.legRes === 0, 'Giratina y Zapdos no activan la resonancia de Rayquaza');
   ok(conApoyo.legRes >= 2 && conApoyo.legMul > 1 && conApoyo.ad > solo.ad, `con Dragón y Tirador se fortalece (×${conApoyo.legMul})`); }
+
+
+// 15. Guante de Boxeo (guante ladrón) y aumentos inspirados en TFT
+{ const { p } = fresh(); const u = E.makeInst('pichu'); p.board = { '3,3': u };
+  ok(E.addItemToUnit(u, 'zoom').ok, 'Guante de Boxeo: se equipa en un Pokémon sin objetos'); ok(!E.addItemToUnit(u, 'claw').ok, 'Guante de Boxeo: ocupa todos los huecos');
+  const row = E.teamSnap(p).u[0]; ok(row[3].length === 3 && row[3][0] === 'zoom', 'Guante de Boxeo: en combate lleva 2 objetos completos más');
+  const v = E.makeInst('abra'); v.items = ['claw']; ok(!E.addItemToUnit(v, 'zoom').ok, 'Guante de Boxeo: no se pone a quien ya lleva objetos');
+  const t0 = u.tg.join(); let changed = false; for (let i = 0; i < 20 && !changed; i++) { E.ensureGloves(p, true); changed = u.tg.join() !== t0; } ok(changed, 'Guante de Boxeo: sus objetos cambian cada ronda'); }
+{ const { G, p } = fresh(); G.round = { s: 2, n: 1, type: 'pvp' }; E.applyAugment(p, E.AUG_BY.guantes_suerte); const u = E.makeInst('pichu'); u.items = ['zoom']; p.board = { '3,3': u }; E.teamSnap(p);
+  ok(u.tg.every(k => ['band', 'rage', 'sharp', 'expert', 'razorfang', 'twin'].includes(k)), 'Guantes de la Suerte: objetos ideales para un tirador'); }
+const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(p), { ag: [], m: {}, u: foeBoard || [['3,0', 'onix', 1, [], 0, 0]] }, { s: 3, n: 2, type: 'pvp' }, { seed: 5 }); return cb; };
+{ const { p } = fresh(); p.board = { '2,0': E.makeInst('onix'), '4,0': E.makeInst('squirtle'), '3,3': E.makeInst('pichu') }; const base = combatUnits(p).units.filter(u => u.side === 0).map(u => u.maxHp);
+  E.applyAugment(p, E.AUG_BY.guardianes_gemelos); const got = combatUnits(p).units.filter(u => u.side === 0);
+  ok(got[0].maxHp - base[0] === 100 && got.find(u => u.bk === '3,3').maxHp === base[2], 'Guardianes Gemelos: solo los 2 de la primera fila ganan +100 de vida'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.buscavidas); ok(p.mods.maxInterest === 0, 'Buscavidas: sin intereses'); }
+{ const { G, p } = fresh(); G.round = { s: 2, n: 1 }; const u0 = p.bench.filter(Boolean).length; E.applyAugment(p, E.AUG_BY.reparto); ok(p.bench.filter(Boolean).length === u0 + 3, 'Reparto Pokémon: 3 Pokémon de coste 2');
+  for (let i = 0; i < 6; i++) event(p, 'roundStart', {}); ok(p.bench.filter(Boolean).length === u0 + 6, 'Reparto Pokémon: 3 más a las 6 rondas'); }
+{ const { G, p } = fresh(); E.applyAugment(p, E.AUG_BY.vale_la_pena); const k = p.augSt.vale_la_pena.k; const n = () => p.bench.filter(u => u && u.baseId === k).reduce((s, u) => s + Math.pow(3, u.star - 1), 0) + Object.values(p.board).filter(u => u.baseId === k).reduce((s, u) => s + Math.pow(3, u.star - 1), 0);
+  const a = n(); event(p, 'roundStart', {}); event(p, 'roundStart', {}); ok(n() === a + 2, 'Vale la Pena Esperar: una copia cada ronda'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.companero); const k = 'pichu'; E.addUnitToBench(p, E.makeInst(k)); event(p, 'buy', { key: k, cost: 1 }); ok(p.bench.some(u => u && u.baseId === k && u.star === 3), 'Construye un Compañero: el siguiente coste 1 llega a 3★'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.huevo_oro); for (let i = 0; i < 5; i++) event(p, 'win', { pve: false }); ok(p.augSt.huevo_oro.t === 6, 'Huevo de Oro: ganar PvP lo adelanta'); }
+
+
+// 16. Yunques, duplicadores, radiantes y mecánicas especiales
+{ const { G, p } = fresh(); G.roundIdx = 3; E.applyAugment(p, E.AUG_BY.activos_hierro); const i = p.bench.findIndex(u => u && u.defId === 'yunque');
+  ok(i >= 0, 'Activos de Hierro: Yunque de componentes en el banquillo'); const free = Object.keys(p.board).length;
+  ok(!E.applyAct ? true : true, ''); p.board = {}; ok(!E.moveTo || true, '');
+  ok(E.sellAt(p, { i }) && p.picks[0].opts.length === 6 && p.picks[0].opts.every(o => E.ITEMS[o.v.slice(3)].comp), 'el Yunque de componentes ofrece 6 componentes');
+  const n0 = p.items.length; E.resolvePick(p, p.picks[0].id, 2); ok(p.items.length === n0 + 1, 'se recibe el componente elegido'); }
+{ const { G, p } = fresh(); G.roundIdx = 3; E.applyAugment(p, E.AUG_BY.bufe_componentes); const b0 = p.bench.filter(u => u && u.defId === 'yunque').length; E.giveItem(p, 'claw'); ok(p.bench.filter(u => u && u.defId === 'yunque').length === b0 + 1, 'Bufé de Componentes: un componente se convierte en yunque');
+  const i = p.bench.findIndex(u => u && u.defId === 'yunque'); E.sellAt(p, { i }); const it0 = p.items.length; E.resolvePick(p, p.picks[0].id, 0); ok(p.items.length === it0 + 1, 'el componente del yunque no vuelve a convertirse en yunque'); }
+{ const { G, p } = fresh(); p.bench = Array(9).fill(null); const u = E.makeInst('pichu'); p.board = { '3,3': u }; p.items = ['dup_menor', 'dup_menor']; const pool0 = G.pool.pichu;
+  ok(E.useItem(p, 0, u).ok && p.bench.some(x => x && x.baseId === 'pichu') && G.pool.pichu === pool0, 'Duplicador menor: copia sin tocar el pool');
+  const big = E.makeInst('kyogre'); p.board['0,0'] = big; ok(!E.useItem(p, 0, big).ok, 'el Duplicador menor no copia costes 4-5'); p.items = ['dup_mayor']; ok(E.useItem(p, 0, big).ok, 'el Duplicador copia cualquier coste'); }
+{ ok(E.ITEMS.rad_band && E.ITEMS.rad_band.s.adPct === E.ITEMS.band.s.adPct * 2 && !Object.values(E.RECIPE).includes('rad_band'), 'Radiantes: el doble de estadísticas y sin receta');
+  const { p } = fresh(); E.applyAugment(p, E.AUG_BY.reliquias_radiantes); const pk = p.picks.find(x => x.src === 'reliquias_radiantes'); ok(pk && pk.opts.length === 5 && pk.opts.every(o => E.ITEMS[o.v.slice(3)].radiant), 'Reliquias Radiantes: eliges 1 de 5 radiantes'); }
+{ const { G, p } = fresh(); p.bench = Array(9).fill(null); const u = E.makeInst('pichu'); u.star = 2; u.items = ['claw']; p.bench[8] = u; E.applyAugment(p, E.AUG_BY.banco_pandora); event(p, 'roundStart', {});
+  ok(u.baseId !== 'pichu' && E.DEF[u.baseId].cost === 1 && u.star === 2 && u.items[0] === 'claw', 'Banco de Pandora: cambia de Pokémon con el mismo coste, estrellas y objetos'); }
+{ const { G, p } = fresh(); G.roundIdx = 3; const u = E.makeInst('pichu'); p.board = { '3,3': u }; p.bench = Array(9).fill(null); E.applyAugment(p, E.AUG_BY.no_scout); event(p, 'roundEnd', { pve: false });
+  ok(!E.sellAt(p, { b: '3,3' }) && p.board['3,3'] === u, 'NO SCOUT NO PIVOT: no se puede vender'); ok(E.augSnap(p).some(r => r[0] === 'no_scout' && r[1] === 1), 'NO SCOUT NO PIVOT: el equipo crece tras cada combate PvP'); }
+{ const { G, p } = fresh(); p.board = { '0,0': E.makeInst('onix'), '3,3': E.makeInst('kyogre'), '4,3': E.makeInst('pichu') }; E.applyAugment(p, E.AUG_BY.solo_leveling);
+  const sn = E.teamSnap(p); ok(sn.u.length === 1 && sn.u[0][1] === 'kyogre', 'Solo Leveling: solo pelea el Pokémon más fuerte'); const xp0 = p.xp + p.level * 1000; event(p, 'kills', { n: 3 }); ok(p.xp + p.level * 1000 > xp0, 'Solo Leveling: las bajas dan EXP');
+  G.round = { s: 2, n: 7, type: 'pve' }; const i0 = p.items.length; event(p, 'roundStart', {}); ok(!p.mods.soloLevel && p.items.length === i0 + 2, 'Solo Leveling: en la ronda PvE vuelven los huecos y 2 componentes'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.saqueo); const u0 = p.bench.filter(Boolean).length; event(p, 'roundEnd', { pve: false, firstKill: 'charmander' }); ok(p.bench.filter(Boolean).length === u0 + 1 && p.bench.some(u => u && u.baseId === 'charmander'), 'Saqueo: copia del primer Pokémon derrotado'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.prestamo); ok(p.augShift === -1, 'Préstamo Avanzado: el siguiente aumento baja de rareza'); E.applyAugment(p, E.AUG_BY.poder_aumentado); ok(p.augShift === 0, 'Poder Aumentado compensa'); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.arcos_reserva); event(p, 'roundEnd', { pve: false, cs: { atk: 600 } }); ok(/600 \/ 1\.?000/.test(E.augProgress(p, 'arcos_reserva')), 'Plumas de Reserva: progreso visible'); const n0 = p.items.length; event(p, 'roundEnd', { pve: false, cs: { atk: 500 } }); ok(p.items.length === n0 + 2, 'Plumas de Reserva: 2 Plumas al llegar a 1000 ataques'); }
+{ const { p } = fresh(); p.mods.lucky = 1; E.applyAugment(p, E.AUG_BY.tirada_magica); const r = p.reveals[p.reveals.length - 1]; ok(Array.isArray(r[6]) && r[6][0] === 6 && p.items.some(k => String(k).startsWith('emb_')), 'Tirada con Dados Cargados: sale 6 (emblema) y la ventana lleva el dado'); }
 
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }

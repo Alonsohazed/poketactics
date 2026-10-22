@@ -144,6 +144,10 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .ii i{font-style:normal;font-size:calc(var(--is,40px)*.5);line-height:1}
 .ii.comp{--ic:#aab4c8}
 .ii.full{--ic:var(--gold)}
+/* Radiantes: aura dorada que late (no se craftean) */
+.ii.rad{--ic:#ffd65a;box-shadow:inset 0 0 0 2px #ffd65a,inset 0 0 14px rgba(255,214,90,.7),0 0 10px rgba(255,214,90,.75),0 0 2px #fff6c8;animation:radGlow 1.6s ease-in-out infinite}
+@keyframes radGlow{50%{box-shadow:inset 0 0 0 2px #fff1a8,inset 0 0 18px rgba(255,230,140,.9),0 0 16px rgba(255,214,90,.95),0 0 3px #fff}}
+@media (prefers-reduced-motion:reduce){.ii.rad{animation:none}}
 /* Los objetos completos ya no llevan el destello que cruzaba el sprite: solo su aura de fondo, como los componentes */
 .ii.emb{background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--ic) 45%,#2a3566),#0e1430 80%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),inset 0 2px 0 rgba(255,255,255,.2),0 0 10px color-mix(in srgb,var(--ic) 50%,transparent)}
 .ii.emb img{width:86%;height:86%}
@@ -186,6 +190,16 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .reveal{text-align:center;padding:6px 8px 2px}
 .reveal .rvIcon{font-size:64px;line-height:1;filter:drop-shadow(0 0 18px var(--rk));animation:rvPop .5s cubic-bezier(.2,1.6,.4,1)}
 .reveal h1{padding:0;margin:6px 0 8px;font-size:30px;color:var(--rk)}
+/* Tiradas de dados: caen rodando, rebotan y el premio aparece cuando paran */
+.dice{display:flex;gap:16px;justify-content:center;margin:8px 0 12px;perspective:600px}
+.die{width:62px;height:62px;border-radius:14px;background:linear-gradient(150deg,#fffdf6,#eadfc6);box-shadow:inset 0 -5px 0 #cdbd92,inset 0 2px 0 #fff,0 8px 16px rgba(0,0,0,.45);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9px;box-sizing:border-box}
+.die i{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#5b4a86,#21183a);place-self:center;opacity:0;transform:scale(.4);transition:opacity .08s,transform .12s}
+.die i.on{opacity:1;transform:none}
+.die.roll{animation:dieRoll 1s cubic-bezier(.3,1.35,.5,1) var(--d,0s) both}
+@keyframes dieRoll{0%{transform:translateY(-60px) rotateX(-320deg) rotateZ(-160deg) scale(.6);opacity:0}55%{transform:translateY(8px) rotateX(20deg) rotateZ(12deg) scale(1.06);opacity:1}75%{transform:translateY(-6px) rotateZ(-4deg)}100%{transform:none}}
+.rvDice .rvAfter{animation:rvFade .45s ease-out 1.05s both}
+@keyframes rvFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.die.roll,.rvDice .rvAfter{animation:none}}
 .reveal .rvKind{display:inline-block;padding:2px 12px;border-radius:999px;background:var(--rk);color:#14101e;font-weight:900;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
 .reveal p{margin:14px auto 18px;max-width:42ch}
 @keyframes rvPop{from{transform:scale(.2) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}

@@ -258,6 +258,7 @@ const animFetch=p=>animReady.then(()=>ANIM_BASE?hedged(ANIM_BASE+p,p):fetch(p));
 const SM_CLIPS=['idle','run','attack','special','hit','faint','victory'];
 function wantModel(dex){
  let m=models[dex]; if(m) return m;
+ if(String(dex).startsWith('anvil')) return models[dex]={status:'anvil'}; // yunque: se dibuja por código
  m=models[dex]={status:'queued'};
  if(ANIM_SET.has(+dex)){ m.status='meta'; animFetch('anims/'+dex+'.json').then(r=>r.ok?r.json():{}).catch(()=>({})).then(j=>{ m.meta=j||{}; if(m.meta.glb){ m.url=ANIM_BASE+'anims/'+dex+'.glb'; m.local='anims/'+dex+'.glb'; } m.status='queued'; queue.push(dex); pump(); }); return m; }
  queue.push(dex); pump(); return m;
@@ -469,6 +470,14 @@ const starTex=canvasTex(64,64,g=>{ const r=g.createRadialGradient(32,32,0,32,32,
 const ballMats=[new THREE.MeshStandardMaterial({color:'#e8402e',roughness:.35}),new THREE.MeshStandardMaterial({color:'#f4f4f4',roughness:.35}),new THREE.MeshStandardMaterial({color:'#1a1a22',roughness:.5})];
 const ballTop=new THREE.SphereGeometry(.24,24,12,0,TAU,0,Math.PI/2), ballBot=new THREE.SphereGeometry(.24,24,12,0,TAU,Math.PI/2,Math.PI/2), ballBand=new THREE.CylinderGeometry(.245,.245,.04,24), ballBtn=new THREE.CylinderGeometry(.07,.07,.05,16);
 function pokeBall(){ const g=new THREE.Group(), a=new THREE.Mesh(ballTop,ballMats[0]), b=new THREE.Mesh(ballBot,ballMats[1]), c=new THREE.Mesh(ballBand,ballMats[2]), d=new THREE.Mesh(ballBtn,ballMats[1]); d.rotation.x=Math.PI/2; d.position.z=.24; g.add(a,b,c,d); g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.position.y=.25; return g; }
+// Yunque del banquillo (plateado el de componentes, dorado el de objetos)
+const anvilMats={c:new THREE.MeshStandardMaterial({color:'#8a93a6',roughness:.35,metalness:.8}),f:new THREE.MeshStandardMaterial({color:'#e8b83a',roughness:.3,metalness:.85,emissive:'#3a2600'}),d:new THREE.MeshStandardMaterial({color:'#2a2f3a',roughness:.6,metalness:.5})};
+function anvilMesh(gold){ const g=new THREE.Group(), m=gold?anvilMats.f:anvilMats.c;
+ const base=new THREE.Mesh(new THREE.BoxGeometry(.34,.08,.22),anvilMats.d); base.position.y=.04;
+ const waist=new THREE.Mesh(new THREE.BoxGeometry(.16,.14,.14),m); waist.position.y=.15;
+ const top=new THREE.Mesh(new THREE.BoxGeometry(.44,.09,.2),m); top.position.y=.265;
+ const horn=new THREE.Mesh(new THREE.ConeGeometry(.08,.2,12),m); horn.rotation.z=Math.PI/2; horn.position.set(.31,.265,0);
+ g.add(base,waist,top,horn); g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.scale.setScalar(1.4); return g; }
 class Actor{
  constructor(spec){
    this.root=new THREE.Group(); this.body=new THREE.Group(); this.root.add(this.body);
@@ -500,7 +509,8 @@ class Actor{
      if(m.sm){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.smActs={}; for(const n in m.sm.clips){ this.smActs[n]=this.mixer.clipAction(m.sm.clips[n]); if(m.sm.alt[n]) this.smActs[n+"~"]=this.mixer.clipAction(m.sm.alt[n]); } this.proc=null; this.go('idle'); }
       else this.play('idle',true);
      warmActor(this);
-   } else if(m.status!=='ok'&&!this.ball){ this.ball=pokeBall(); this.body.add(this.ball); } // cargando o sin modelo: Poké Ball, nunca un sprite 2D
+   } else if(m.status==='anvil'&&!this.ball){ this.ball=anvilMesh(String(this.dex).endsWith('oro')); this.body.add(this.ball); }
+   else if(m.status!=='ok'&&!this.ball){ this.ball=pokeBall(); this.body.add(this.ball); } // cargando o sin modelo: Poké Ball, nunca un sprite 2D
  }
  // Cambia de estado con un fundido de 0,15 s (nunca de golpe). once: se reproduce una vez y se queda en el último fotograma
  go(name,o={}){ let a=this.smActs&&this.smActs[name]; if(!a) return false; const S=this.sm;
@@ -1063,9 +1073,9 @@ function render(F){
  // casillas resaltadas al arrastrar
  for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,ccol(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
  hexMesh.instanceColor.needsUpdate=true; hexMesh.material.opacity=F.cells&&F.cells.drop?.7:.38;
- for(let i=0;i<9;i++) benchPads.setColorAt(i,ccol(F.benchHover===i?'#c8d8ff':'#dfe8ff')); benchPads.instanceColor.needsUpdate=true;
+ for(let i=0;i<9;i++) benchPads.setColorAt(i,ccol(F.benchHover===i?'#c8d8ff':F.pandora&&F.pandora.includes(i)?(Math.sin(now*4)>0?'#ffd65a':'#ffae3a'):'#dfe8ff')); // Banco de Pandora: los 3 huecos que se transforman, en dorado benchPads.instanceColor.needsUpdate=true;
  // escenario plano: las casillas del banquillo son las losas de la imagen; las 3D solo se intuyen al arrastrar una ficha
- if(FLAT&&curArena==='glade'){ benchPads.visible=!!(F.cells&&F.cells.drop); benchPads.material.transparent=true; benchPads.material.opacity=.3; benchPads.material.depthWrite=false; }
+ if(FLAT&&curArena==='glade'){ benchPads.visible=!!(F.cells&&F.cells.drop)||!!(F.pandora&&F.pandora.length); benchPads.material.transparent=true; benchPads.material.opacity=F.pandora&&!(F.cells&&F.cells.drop)?.5:.3; benchPads.material.depthWrite=false; }
  hexMesh.visible=hexRing.visible=F.arena!=='plaza'&&!!(F.cells&&F.cells.drop);
  stepCount(F.floorCount,now);
  // actores
