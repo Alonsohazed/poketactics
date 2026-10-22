@@ -190,15 +190,46 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     event(p, 'buy', { key: 'abra', cost: 1 }); ok(p.bench.filter(Boolean).length === u0 + 1, 'Llamada del Clan: otra sinergia no cuenta'); }
 }
 
-// 13. Mewtwo inestable: con 10 de energía (bajas + rondas en el tablero) se vuelve Mega Mewtwo Y para siempre, más fuerte y escalando
-{ const { G, p } = fresh(); for (const q of G.players) q.board = {}; const u = E.makeInst('mewtwo'); u.kills = 6; p.board = { '3,3': u };
-  for (let i = 0; i < 3; i++) E.mewtwoUnstable(); ok(u.defId === 'mewtwo' && u.mwR === 3, 'Mewtwo: 6 bajas + 3 rondas = 9, aún no');
-  E.mewtwoUnstable(); ok(u.defId === 'megamewtwo' && E.DEF.megamewtwo.evoOf === 'mewtwo', 'Mewtwo: con 10 de energía se vuelve Mega Mewtwo Y');
-  const back = E.unpackInst(E.packInst(Object.assign(E.makeInst('mewtwo'), { mwR: 4 }))); ok(back.mwR === 4, 'la energía de Mewtwo viaja por red');
-  const snap = k => ({ ag: [], m: {}, u: [['3,3', k, 2, [], 0, 0], ['3,0', 'onix', 2, [], 0, 0]] }), foe = { ag: [], m: {}, u: [['3,0', 'machop', 2, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0]] };
-  const a = E.createCombatSnap(snap('mewtwo'), foe, { s: 5, n: 2 }, { seed: 9 }), b = E.createCombatSnap(snap('megamewtwo'), foe, { s: 5, n: 2 }, { seed: 9 });
-  const ma = a.units.find(x => x.d.key === 'mewtwo'), mb = b.units.find(x => x.d.key === 'megamewtwo'); ok(mb.maxHp > ma.maxHp * 1.3 && mb.ad > ma.ad * 1.3, 'Mega Mewtwo: más vida y ataque');
-  const hp0 = mb.maxHp, ap0 = mb.ap; E.simulate(b); ok(mb.castN > 0 && mb.maxHp > hp0 && mb.ap > ap0, `Mega Mewtwo: cada lanzamiento le da vida máxima y poder (${Math.round(hp0)}→${Math.round(mb.maxHp)} vida, ${ap0}→${Math.round(mb.ap)} poder)`); }
+// 13. Mewtwo (rework): cargas psíquicas, Juicio Psíquico cada 4 lanzamientos y Mega Mewtwo Y dentro del combate
+{ const cast = (cb, u) => E.castAbility(cb, u, u.ab);
+  const mk = (st, foes) => E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'mewtwo', st, [], 0, 0]] }, { ag: [], m: {}, u: foes.map((k, i) => [['3,0', '2,0', '4,0', '3,1', '1,0'][i], k, 2, [], 0, 0]) }, { s: 5, n: 2 }, { seed: 4 });
+  { const cb = mk(2, ['onix', 'larvitar', 'lapras']); const m = cb.units.find(x => x.d.key === 'mewtwo');
+    ok(m.mana === 0 && m.maxMana === 45, 'Mewtwo: maná 0/45');
+    const hp = () => cb.units.filter(x => x.side === 1).reduce((t, x) => t + x.hp, 0); let h0 = hp(); cast(cb, m); const d1 = h0 - hp(); h0 = hp(); cast(cb, m); const d2 = h0 - hp();
+    ok(m.psyC === 2 && d2 > d1 * 1.02, `Mewtwo: cada lanzamiento da una carga y la siguiente pega más (${Math.round(d1)} → ${Math.round(d2)})`);
+    // Juicio en el 4.º: el enemigo con menos % de vida; a 2★ lo ejecuta por debajo del 15 %
+    const low = cb.units.find(x => x.d.key === 'lapras'); for (const x of cb.units) if (x.side === 1) { x.hp = x.maxHp; x.mr = 99999; } low.hp = low.maxHp * .12; cast(cb, m); // resistencia enorme: la onda casi no hace daño y se ve solo el Juicio
+    ok(!low.dead && m.psyC === 3, 'Mewtwo: el 3.er lanzamiento no es Juicio');
+    for (const x of cb.units) if (x.side === 1 && !x.dead) x.hp = x.maxHp; low.hp = low.maxHp * .14 + 1; const k0 = m.kills; low.shield = 0;
+    const before = cb.units.filter(x => x.side === 1 && !x.dead).map(x => x.hp / x.maxHp); cast(cb, m);
+    ok(m.judgeN === 1 && low.dead && m.kills === k0 + 1, 'Mewtwo: el 4.º lanzamiento es Juicio y ejecuta al de menos vida (2★, por debajo del 15 %) contando una sola baja'); }
+  { const cb = mk(1, ['onix', 'larvitar']); const m = cb.units.find(x => x.d.key === 'mewtwo'); const a = cb.units.find(x => x.d.key === 'onix'), b = cb.units.find(x => x.d.key === 'larvitar');
+    m.psyC = 3; a.hp = a.maxHp * .5; b.hp = b.maxHp * .5; a.mr = b.mr = 9999; // empate de % (y casi sin daño de la onda): gana el primero del orden de unidades
+    const ha = a.hp, hb = b.hp; cast(cb, m); ok(!a.dead && !b.dead && (ha - a.hp) > (hb - b.hp), 'Mewtwo: con % de vida empatado, el Juicio va siempre al mismo (orden de unidades) y a 1★ no ejecuta por encima del 10 %'); }
+  { const cb = mk(3, ['onix', 'larvitar']); const m = cb.units.find(x => x.d.key === 'mewtwo'); const a = cb.units.find(x => x.d.key === 'onix'); m.psyC = 3; for (const x of cb.units) if (x.side === 1) x.mr = 9999; a.hp = a.maxHp * .9;
+    cast(cb, m); ok(a.dead || cb.units.filter(x => x.side === 1).some(x => x.dead), 'Mewtwo 3★: el Juicio ejecuta aunque tenga mucha vida'); }
+  { const cb = mk(2, ['onix', 'larvitar', 'lapras', 'machop', 'abra']); const m = cb.units.find(x => x.d.key === 'mewtwo'); for (const x of cb.units) if (x.side === 1) { x.maxHp *= 50; x.hp = x.maxHp; }
+    for (let i = 0; i < 9; i++) cast(cb, m); ok(!m.megaOn, 'Mewtwo: con 9 de energía aún no es Mega'); cast(cb, m);
+    ok(m.megaOn && m.d.key === 'megamewtwo' && m.psyC === 10 && m.mana < m.maxMana, 'Mewtwo: con 10 de energía se transforma en Mega Mewtwo Y, conserva sus cargas y no recibe maná gratis');
+    const m2 = m.megaOn; cast(cb, m); ok(m2 && m.megaOn && cb.cExtra.indexOf('se transforma') < 0, 'Mewtwo: la transformación solo ocurre una vez por combate');
+    const next = mk(2, ['onix']); const n = next.units.find(x => x.side === 0); ok(!n.megaOn && !n.psyC && n.d.key === 'mewtwo', 'Mewtwo: al empezar el siguiente combate vuelve a ser Mewtwo sin cargas'); }
+  { const { G, p } = fresh(); const u = E.makeInst('megamewtwo'); p.board = { '3,3': u }; E.mewtwoUnstable(); ok(u.defId === 'mewtwo', 'Mewtwo: ya no hay transformación permanente entre rondas'); }
+  // determinismo: misma semilla, mismo resultado con y sin efectos visuales
+  { const A = { ag: [], m: {}, u: [['3,3', 'mewtwo', 2, ['specs'], 0, 0], ['3,0', 'onix', 2, [], 0, 0]] }, B = { ag: [], m: {}, u: [['3,0', 'machop', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0]] };
+    const r = v => { const cb = E.createCombatSnap(A, B, { s: 5, n: 2 }, { seed: 77, visual: v }); E.simulate(cb); return cb.winner + '|' + cb.units.map(x => Math.round(x.hp)).join(','); }; ok(r(true) === r(false), 'Mewtwo: el combate es determinista'); } }
+
+// Coste 4: Bagon mago tanque, Timburr con golpes que saltan, tanques a 3★ con su bonus de defensa
+{ const b2 = E.baseCombatUnit(E.DEF.bagon, 0, 2), r2 = E.baseCombatUnit(E.DEF.ralts, 0, 2); ok(b2.role === 't' && b2.range === 1 && b2.maxHp > r2.maxHp * 1.5, 'Bagon: stats y alcance de tanque');
+  const bx = Object.assign({}, b2, { ap: 50 }), bh = Object.assign({}, b2, { maxHp: b2.maxHp * 2 }); ok(E.abilPower(bx) > E.abilPower(b2) * 1.4 && Math.abs(E.abilPower(bh) - E.abilPower(b2)) < 1, 'Bagon: su habilidad escala con el poder, no con la vida');
+  const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0]] };
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'bagon', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'bagon'); E.castAbility(cb, u, u.ab);
+    ok(Math.abs(u.shield - u.maxHp * .2) < 1 && u.tdr >= .25 && u.tdrT > 0, 'Bagon: Draco Meteoro le da un escudo del 20 % y un 25 % de reducción de daño'); }
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'ralts', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'ralts'); E.castAbility(cb, u, u.ab); ok(!(u.shield > 0), 'Ralts (también meteoro) no recibe el escudo de Bagon'); }
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'machop', 1, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'timburr'), [m, o] = [cb.units.find(x => x.d.key === 'machop'), cb.units.find(x => x.d.key === 'onix')];
+    m.hp = 1; u.target = m; const o0 = o.hp + o.shield; E.castAbility(cb, u, u.ab); ok(m.dead && o.hp + o.shield < o0, 'Timburr: si el objetivo cae, los golpes que sobran van al siguiente enemigo'); }
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'scyther', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'machop', 1, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'scyther'), [m, o] = [cb.units.find(x => x.d.key === 'machop'), cb.units.find(x => x.d.key === 'onix')];
+    if (u.ab[0] === 'combo') { m.hp = 1; u.target = m; const o0 = o.hp + o.shield; E.castAbility(cb, u, u.ab); ok(o.hp + o.shield === o0, 'Scyther: sus golpes sobrantes no saltan (solo Timburr lleva spill)'); } }
+  const t2 = E.baseCombatUnit(E.DEF.larvitar, 0, 2), t3 = E.baseCombatUnit(E.DEF.larvitar, 0, 3); ok(t3.df === t2.df && t3.mr === t2.mr, `Tanques: a 3★ conservan el bonus de defensa y resistencia de 2★ (${t2.df}/${t2.mr} → ${t3.df}/${t3.mr})`); }
 
 // Kyogre: poco maná, 3 disparos pequeños a un objetivo y el 4.º lanzamiento es un maremoto en área que no vacía la mesa
 { const k = E.baseCombatUnit(E.DEF.kyogre, 0, 2); ok(k.maxMana <= 40 && k.mana >= k.maxMana, `Kyogre: maná bajo y lanza al empezar (${k.mana}/${k.maxMana})`);
@@ -222,11 +253,32 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   const M = run('moltres'); ok(M.f.length >= 2 && M.f[0].h >= 5, `Moltres: varios lanzamientos que golpean a todo el tablero (${M.f.length} lanzamientos, ${M.f[0] && M.f[0].h} golpeados)`);
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'moltres', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31 }); const mo = cb.units.find(x => x.d.key === 'moltres'); mo.mana = mo.maxMana; for (let i = 0; i < 400 && !mo.castN; i++) vmStep(cb);
     const en = cb.units.filter(x => x.side === 1 && !x.dead); ok(en.every(e => e.woundT > 0 && e.burns.length > 0), 'Moltres: todos los golpeados quedan quemados y con curación reducida'); }
-  // Ho-Oh: cada 5 lanzamientos revive al aliado caído más valioso
+  // Ho-Oh: cada 3 lanzamientos revive al aliado caído más valioso
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'hooh', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31, visual: true }); const h = cb.units.find(x => x.d.key === 'hooh'), la = cb.units.find(x => x.d.key === 'lapras');
-    la.hp = 0; la.dead = true; h.rbN = 4; h.mana = h.maxMana; for (let i = 0; i < 400 && !h.castN; i++) vmStep(cb); ok(!la.dead && la.hp > 0, 'Ho-Oh: al 5.º lanzamiento revive al aliado caído'); }
+    la.hp = 0; la.dead = true; h.rbN = 2; h.mana = h.maxMana; for (let i = 0; i < 400 && !h.castN; i++) vmStep(cb); ok(!la.dead && la.hp > 0, 'Ho-Oh: al 3.er lanzamiento revive al aliado caído'); }
+  // Ho-Oh: golpea a un solo enemigo, le quita armadura un tiempo (se renueva, no se acumula, y luego vuelve exacta) y cura a todos sus aliados
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'hooh', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31 }); const h = cb.units.find(x => x.d.key === 'hooh'), la = cb.units.find(x => x.d.key === 'lapras');
+    const en = cb.units.filter(x => x.side === 1), t = en[0]; h.target = t; const hp0 = en.map(x => x.hp), df0 = t.df; la.hp = la.maxHp * .5; const lh = la.hp; E.castAbility(cb, h, h.ab);
+    ok(en.filter((x, i) => x.hp < hp0[i]).length === 1 && t.hp < hp0[0], 'Ho-Oh: Fuego Sagrado golpea a un solo enemigo'); ok(Math.abs(t.df - df0 * .6) < .01 && la.hp > lh, `Ho-Oh: le quita un 40 % de armadura y cura a sus aliados (${df0}→${t.df})`);
+    E.castAbility(cb, h, h.ab); ok(Math.abs(t.df - df0 * .6) < .01, 'Ho-Oh: lanzarlo dos veces no acumula la reducción'); h.stun = 99; h.mana = 0;
+    for (let i = 0; i < 140; i++) vmStep(cb); ok(t.dead || Math.abs(t.df - df0) < .01, `Ho-Oh: al acabar la reducción la armadura vuelve exacta (${t.df})`); }
   // Zapdos: mediocre sin objetos, mucho mejor con sus objetos (hipercarry)
-  const z0 = E.baseCombatUnit(E.DEF.zapdos, 0, 2), z1 = Object.assign({}, z0, { ad: z0.ad * 1.85 }); ok(E.abilPower(z1) / E.abilPower(z0) > 1.85 * 1.4, 'Zapdos: el ataque extra rinde más que proporcional en su habilidad');
+  const z0 = E.baseCombatUnit(E.DEF.zapdos, 0, 2), z1 = Object.assign({}, z0, { ad: z0.ad * 1.85 }); ok(E.abilPower(z1) / E.abilPower(z0) > 1.85 * 1.2, 'Zapdos: el ataque extra rinde más que proporcional en su habilidad');
+  // Zapdos: Electrocución solo aturde al primero; cada 2 bajas +1 % de vel. de ataque y cada 5, un rebote más en sus ataques (cada enemigo cuenta una vez)
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'zapdos', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31 }); const z = cb.units.find(x => x.d.key === 'zapdos'), en = cb.units.filter(x => x.side === 1);
+    z.target = en[0]; E.castAbility(cb, z, z.ab); ok(en.filter(x => x.stun > 0).length === 1, `Zapdos: Electrocución aturde solo a un enemigo (${en.filter(x => x.stun > 0).length})`);
+    const as0 = z.as; for (const e of en.slice(0, 2)) E.dealDamage(cb, z, e, 1e9, 'true', true); ok(z.stormK === 2 && Math.abs(z.as - as0 * 1.01) < 1e-9 && !z.stormBounce, 'Zapdos: 2 bajas → +1 % de velocidad de ataque');
+    for (const e of en.slice(2, 5)) E.dealDamage(cb, z, e, 1e9, 'true', true); ok(z.stormK === 5 && z.stormBounce === 1, 'Zapdos: 5 bajas → sus ataques rebotan a un enemigo más');
+    en[0].dead = false; en[0].hp = 10; E.dealDamage(cb, z, en[0], 1e9, 'true', true); ok(z.stormK === 5, 'Zapdos: un enemigo que renace y vuelve a caer no cuenta dos veces');
+    const left = en[5]; left.hp = left.maxHp; const ralts = left; const hp1 = ralts.hp; z.target = ralts; const fake = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'zapdos', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 32 }); const z2 = fake.units.find(x => x.d.key === 'zapdos'), e2 = fake.units.filter(x => x.side === 1);
+    z2.stormBounce = 2; vmStep(fake); const h2 = e2.map(x => x.hp + x.shield); for (const x of e2) x.dodge = 0; z2.target = e2[0]; fake.units.forEach(x => { x.atkCd = 99; x.moveCd = 99; }); z2.atkCd = 0; z2.range = 9; vmStep(fake);
+    ok(e2.filter((x, i) => x.hp + x.shield < h2[i]).length === 3, `Zapdos: con 2 rebotes, un ataque alcanza a 3 enemigos distintos (${e2.filter((x, i) => x.hp + x.shield < h2[i]).length})`); }
+  // Rayquaza: apunta donde atraviesa a más enemigos y cada lanzamiento suma +15 % (máx. +75 %)
+  { const grupo = { ag: [], m: {}, u: [['0,0', 'onix', 2, [], 0, 0], ['3,1', 'timburr', 2, [], 0, 0], ['3,2', 'larvitar', 2, [], 0, 0], ['3,3', 'beldum', 2, [], 0, 0]] };
+    const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'rayquaza', 2, [], 0, 0]] }, grupo, { s: 5, n: 2 }, { seed: 5 }); const r = cb.units.find(x => x.d.key === 'rayquaza'), en = cb.units.filter(x => x.side === 1); r.target = en[0];
+    const h0 = en.map(x => x.hp); E.castAbility(cb, r, r.ab); ok(en.filter((x, i) => x.hp < h0[i]).length >= 3, `Rayquaza: el rayo va hacia la fila con más enemigos (${en.filter((x, i) => x.hp < h0[i]).length} alcanzados)`);
+    const cb2 = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'rayquaza', 2, [], 0, 0]] }, grupo, { s: 5, n: 2 }, { seed: 5 }); const r2 = cb2.units.find(x => x.d.key === 'rayquaza'), e2 = cb2.units.filter(x => x.side === 1); for (const x of e2) { x.maxHp = x.hp = 1e7; } const dmg = () => { const b = e2.reduce((t, x) => t + x.hp, 0); E.castAbility(cb2, r2, r2.ab); return b - e2.reduce((t, x) => t + x.hp, 0); };
+    const d = [1, 2, 3, 4, 5, 6, 7, 8].map(dmg); ok(d[1] > d[0] * 1.1 && Math.abs(d[7] / d[6] - 1) < .02 && d[7] / d[0] < 1.8, `Rayquaza: su daño crece con cada lanzamiento y se para en +75 % (${Math.round(d[0])}→${Math.round(d[7])})`); }
   // Giratina: menos daño base que antes, más crecimiento por devorado
   const gp = E.DEF.giratina.ab[0][2]; ok(gp.m < 3.8 && gp.ghp > 60 && gp.gad > 6, 'Giratina: menos daño base y más escalado por devorado'); }
 
