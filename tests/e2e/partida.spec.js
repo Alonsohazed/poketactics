@@ -111,11 +111,17 @@ async function resolverElecciones(page) { for (let i = 0; i < 6; i++) { if (awai
 
 test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page }) => {
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
-  await expect(page.locator('#mbox .augCard2')).toHaveCount(3);
+  await expect(page.locator('#mbox .augCard3')).toHaveCount(3);
   await expect(page.locator('#mbox .augRR')).toHaveCount(3); // un cambio por carta
-  // Las cartas llegan cerradas como una ball y solo se pueden elegir cuando se abren
-  await expect(page.locator('#mbox .augBox.opened')).toHaveCount(3, { timeout: 9000 });
-  await page.locator('#mbox .augCard2').first().click();
+  // Cartas nuevas: marco dorado, icono como silueta del color de la rareza, sin apertura de Poké Ball; título y descripción caben siempre
+  await expect(page.locator('#mbox .augCard3 .ac3Ico img')).toHaveCount(3, { timeout: 15000 });
+  const c = await page.evaluate(() => ({ ball: document.querySelectorAll('#mbox .augBox,#mbox .lidT').length, sale: [...document.querySelectorAll('#mbox .augCard3')].filter(el => { const b = el.querySelector('.ac3Name'), s = b.firstElementChild, d = el.querySelector('.ac3Desc'); return s.offsetHeight > b.clientHeight + 1 || s.offsetWidth > b.clientWidth + 1 || d.scrollHeight > d.clientHeight + 1; }).length }));
+  expect(c).toEqual({ ball: 0, sale: 0 });
+  // aparición: empiezan transparentes y escalonadas, y en menos de 1,5 s están todas visibles
+  const ap = await page.evaluate(() => [...document.querySelectorAll('#mbox .augCard3')].map(e => e.classList.contains('nuevo') && getComputedStyle(e).animationName));
+  expect(ap).toEqual(['augIn', 'augIn', 'augIn']);
+  await expect.poll(() => page.evaluate(() => [...document.querySelectorAll('#mbox .augCard3')].every(e => getComputedStyle(e).opacity === '1')), { timeout: 3000 }).toBe(true);
+  await page.locator('#mbox .augCard3').first().click();
   await page.waitForTimeout(500); await resolverElecciones(page);
   await expect(page.locator('#modal')).toBeHidden();
   expect((await me(page)).augs).toHaveLength(1);
@@ -206,11 +212,71 @@ test('carrusel multijugador: los Pokémon no se recrean con cada mensaje del ser
   expect(r.nuevos, 'ningún modelo nuevo mientras llegan mensajes iguales').toBeLessThanOrEqual(1);
 });
 
+// Regresión: en multijugador los mensajes del carrusel llegan con retrasos variables; los Pokémon se paraban y volvían a arrancar
+// (la animación de correr se reiniciaba). Se simula un cliente: el carrusel real corre aparte y solo llegan sus mensajes, cada 120-420 ms y con 0-250 ms de retraso
+test('carrusel multijugador: con retrasos de red las animaciones no se reinician', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel'); await page.waitForTimeout(1500);
+  const r = await page.evaluate(async () => {
+    const H = G.carousel; H.t = 7; let last = performance.now(), stop = false, s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const msg = () => { const { cx, cy, rr } = carGeo(), nx = x => +((x - cx) / rr).toFixed(3), ny = y => +((y - cy) / rr).toFixed(3);
+      return { rot: +H.rot.toFixed(3), t: +H.t.toFixed(2), opts: H.opts.map(o => [o.key, o.item, o.taken ? o.taken.id : -1]), av: H.order.map(p => { const a = H.av[p.id] || {}; return [p.id, a.x == null ? null : nx(a.x), a.y == null ? null : ny(a.y), a.rel ? 1 : 0, a.done ? 1 : 0, a.carry ? a.carry.key : '', a.target == null ? -1 : a.target]; }) }; };
+    (async () => { while (!stop && !H.finished) { const now = performance.now(), save = G.carousel; G.carousel = H; updateCarousel((now - last) / 1000); G.carousel = save; last = now; const m = msg(); setTimeout(() => { if (!stop) applyCar(m); }, rnd() * 250); await new Promise(r => setTimeout(r, 120 + rnd() * 300)); } })();
+    const sw = {}, prev = {}, m0 = B3.made, t0 = performance.now();
+    await new Promise(res => { (function f() { const info = B3.smInfo; for (const d in info) for (const o of info[d]) { if (prev[o.key] !== undefined && prev[o.key] !== o.estado) sw[o.key] = (sw[o.key] || 0) + 1; prev[o.key] = o.estado; } if (performance.now() - t0 < 7000) requestAnimationFrame(f); else res(); })(); });
+    stop = true; const e = Object.entries(sw).map(([k, v]) => [String(k), v]);
+    return { nuevos: B3.made - m0, opts: e.filter(([k]) => k.startsWith('co')).reduce((a, [, v]) => a + v, 0), tacMax: Math.max(0, ...e.filter(([k]) => k.startsWith('tac')).map(([, v]) => v)) };
+  });
+  expect(r.nuevos, 'ningún modelo se recrea').toBeLessThanOrEqual(1);
+  expect(r.opts, 'los Pokémon del carrusel no se paran y arrancan').toBe(0);
+  expect(r.tacMax, 'cada minileyenda solo cambia al arrancar y al pararse').toBeLessThanOrEqual(3);
+});
+
+// Ficha: el retrato es el de la forma de su estrella (Charmeleon a 2★, Charizard a 3★); la tienda sigue con la primera forma.
+// Recetas: clic derecho en un componente abre sus 9 combinaciones, resalta las posibles con tu banca y «Crear objeto» combina
+test('ficha con el retrato de su forma y recetas de objetos con clic derecho', async ({ page }) => {
+  const fs = require('fs'), path = require('path');
+  const r = await page.evaluate(async () => { const me = G.me; me.board = {}; const a = makeInst('charmander'); a.star = 2; const c = makeInst('charmander'); c.star = 3; me.board['3,0'] = a; me.board['5,0'] = c; me.items = ['spoon', 'water', 'claw', 'spoon', 'coat']; renderUI();
+    const card = () => [document.querySelector('#ucard .ucShopCard img').getAttribute('src'), document.querySelector('#ucard .ucShopCard .cn').textContent];
+    selected = a; renderCard(); const c2 = card(); selected = c; renderCard(); const c3 = card(); selected = null; renderCard();
+    return { c2, c3, formas: [...FORM_ART].sort((x, y) => x - y) }; });
+  expect(r.c2).toEqual(['art/f/5.avif?v=' + (await page.evaluate(() => ART_V)), 'Charmeleon']);
+  expect(r.c3[1]).toBe('Charizard'); expect(r.c3[0]).toContain('art/f/6.');
+  const dir = path.join(__dirname, '../../public/art/f'), files = fs.readdirSync(dir).filter(f => f.endsWith('.avif')).map(f => +f.split('.')[0]).sort((x, y) => x - y);
+  expect(r.formas, 'FORM_ART coincide con public/art/f').toEqual(files);
+  for (const n of files) expect(fs.existsSync(path.join(dir, n + '.webp')), 'respaldo WebP de ' + n).toBe(true);
+  await page.locator('#items .item[data-i="0"]').click({ button: 'right' });
+  await expect(page.locator('#recipeBox .rbRow')).toHaveCount(9);
+  await expect(page.locator('#recipeBox .rbRow.ok')).toHaveCount(4); // Garra, la otra Cuchara, Agua y Revestimiento
+  await page.locator('#recipeBox .rbRow.ok').first().hover(); await expect(page.locator('#recipeBox .rbMake')).toBeVisible();
+  await page.locator('#recipeBox .rbMake').click();
+  await expect(page.locator('#recipeBox')).toHaveCount(0);
+  expect(await page.evaluate(() => G.me.items.slice())).toEqual(['water', 'shellbell', 'spoon', 'coat']);
+  // un clic derecho abre y un clic fuera cierra
+  await page.locator('#items .item[data-i="2"]').click({ button: 'right' }); await expect(page.locator('#recipeBox')).toHaveCount(1);
+  await page.mouse.click(800, 300); await expect(page.locator('#recipeBox')).toHaveCount(0);
+});
+
 // El carrusel espera 8 s antes de soltar a la primera pareja: tiempo para ver todos los Pokémon y objetos
 test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
   await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
   const r = await page.evaluate(() => ({ s0: releaseAt(0), s1: releaseAt(1), s2: releaseAt(2) }));
   expect(r).toEqual({ s0: 8, s1: 8, s2: 11.5 });
+});
+
+// Carrusel: la vista gira para que tu puesto quede abajo, las barreras son azul claro (sin cúpula) y tras coger tu Pokémon sigues caminando
+test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Pokémon', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
+  const r = await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 800)); const C = G.carousel, me = G.me, a = C.av[me.id], { cx, cy } = carGeo();
+    const bars = B3.bars, an = carAng(C.order.indexOf(me), C.order.length), [px, py] = carV(cx + Math.cos(an), cy + Math.sin(an));
+    C.t = Math.max(C.t, releaseAt(C.order.indexOf(me))); await new Promise(r => setTimeout(r, 200));
+    doAct({ t: 'car', i: C.opts.findIndex(o => !o.taken) }); for (let n = 0; n < 60 && !a.done; n++) await new Promise(r => setTimeout(r, 100));
+    const x0 = a.x, y0 = a.y; doAct({ t: 'carmove', x: -.8, y: .2 }); await new Promise(r => setTimeout(r, 600));
+    return { abajo: Math.abs(px - cx) < 1e-6 && py > cy, bars: bars.length, col: [...new Set(bars.map(b => b.col))], piezas: Math.max(...bars.map(b => b.piezas)), done: a.done, movido: Math.hypot(a.x - x0, a.y - y0), invalido: applyAct(me, { t: 'carmove', x: NaN, y: 0 }).ok };
+  });
+  expect(r.abajo, 'tu puesto queda abajo en pantalla').toBe(true);
+  expect(r.bars).toBeGreaterThan(0); expect(r.col).toEqual(['#8fdcff']); expect(r.piezas, 'pared y aro, sin cúpula ni halo').toBe(2);
+  expect(r.done).toBe(true); expect(r.movido, 'con el Pokémon cogido se sigue moviendo').toBeGreaterThan(5); expect(r.invalido).toBe(false);
 });
 
 // La burla de Charmander (H) de otro jugador sube su contador en pub; quien mira su mismo tablero ve su animación de lanzamiento y la bola de fuego
@@ -336,8 +402,12 @@ test('lista de jugadores: filas repartidas con la misma separación hasta el min
 });
 
 test('retratos: miniaturas ligeras y, si fallan, el sprite de la Pokédex en vez de una imagen rota', async ({ page }) => {
-  const r = await page.evaluate(() => { const im = [...document.querySelectorAll('#players img.artPic')]; return { n: im.length, thumbs: im.every(i => /art\/t\/[a-z]+\.webp$/.test(i.src)) }; });
-  expect(r.n).toBeGreaterThan(5); expect(r.thumbs).toBe(true);
+  const r = await page.evaluate(() => { const im = [...document.querySelectorAll('#players img.artPic')]; return { n: im.length, thumbs: im.every(i => /art\/t\/[a-z]+\.avif\?v=\d+$/.test(i.src)), cargadas: im.every(i => i.complete && i.naturalWidth > 0 && !i.classList.contains('artFb')) }; });
+  expect(r.n).toBeGreaterThan(5); expect(r.thumbs).toBe(true); expect(r.cargadas).toBe(true);
+  // si un AVIF no carga, se pide el WebP antes que el sprite de la Pokédex
+  const wb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/avif;base64,AAAA#no-existe.avif?v=1'; /* inválida y sin pedir nada a la red */ document.body.appendChild(im);
+    await new Promise(r => setTimeout(r, 800)); const o = { probóWebp: im.dataset.fbw === '1', src: im.getAttribute('src') }; im.remove(); return o; });
+  expect(wb.probóWebp).toBe(true); expect(wb.src).toMatch(/dex\/4\.png$/);
   const fb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/webp;base64,AAAA'; /* imagen inválida: falla sin pedir nada a la red */ document.body.appendChild(im); await new Promise(r => setTimeout(r, 800)); const o = { src: im.src, ok: im.naturalWidth > 0 }; im.remove(); return o; });
   expect(fb.src).toMatch(/dex\/4\.png$/); expect(fb.ok).toBe(true);
 });
@@ -406,7 +476,7 @@ test('carga: la CDN lenta o caída no retrasa los modelos (petición en carrera 
     const t2 = performance.now(); try { await B3.hedged(U + 'caida', U + 'caida'); res.ambas = 'resolvió'; } catch (e) { res.ambas = 'rechazó'; } res.ambasMs = Math.round(performance.now() - t2); return res; });
   expect(r.lenta[0]).toBe('rapida'); expect(r.lenta[1]).toBeGreaterThan(1300); expect(r.lenta[1]).toBeLessThan(3000);
   expect(r.caida[0]).toBe('rapida'); expect(r.caida[1]).toBeLessThan(800); expect(r.ambas).toBe('rechazó');
-  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.webp', 'items/water.webp', 'dex/4.png']);
+  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.avif?v=' + 3, 'items/water.webp', 'dex/4.png']);
 });
 
 test('objetos: el marco dorado es solo de la banca; sobre un Pokémon (lienzo y ficha) el marco es negro', async ({ page }) => {
@@ -454,6 +524,35 @@ test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (
   expect(r[0]).toBe(0);               // con 1 Guardián no hay sinergia
   expect(r[1]).toBeGreaterThanOrEqual(2); // al poner el 2.º se activa y los dos sueltan su escudo
   expect(r[2]).toBeGreaterThanOrEqual(3); // y con el 3.º, los tres
+});
+
+test('sinergias: el Guardián suelta su escudo de cristal y el Coloso un campo de fuerza (imágenes ligeras, sin Poké Ball)', async ({ page }) => {
+  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['magikarp', 'geodude', 'squirtle', 'onix']) addUnitToBench(me, makeInst(k)); renderUI(); });
+  await page.waitForTimeout(4000);
+  const pico = () => page.evaluate(async () => { const m = { escudo: 0, burbuja: 0 }; const t0 = performance.now(); while (performance.now() - t0 < 1000) { await new Promise(r => requestAnimationFrame(r)); const c = B3.fxSyn; m.escudo = Math.max(m.escudo, c.escudo); m.burbuja = Math.max(m.burbuja, c.burbuja); } return m; });
+  const r = [];
+  for (let i = 0; i < 4; i++) { const p = pico(); await drag(page, await benchPoint(page, i), await cellPoint(page, i * 2, 5)); r.push(await p); await page.waitForTimeout(1800); }
+  expect(r[0]).toEqual({ escudo: 0, burbuja: 0 });               // 1 Coloso: sin sinergia
+  expect(r[1].burbuja).toBeGreaterThanOrEqual(2);                // 2.º Coloso: los dos sueltan su campo de fuerza
+  expect(r[3].escudo).toBeGreaterThanOrEqual(2);                 // 2.º Guardián: los dos sueltan su escudo
+  const fx = await page.evaluate(async () => Promise.all(['escudo', 'burbuja'].map(n => fetch('img/fx/' + n + '.webp').then(r => r.blob()).then(b => b.size))));
+  expect(fx.every(n => n > 1000 && n < 30000)).toBe(true);
+});
+
+test('descripciones: la sinergia muestra los retratos de sus Pokémon y combinar enseña los dos componentes con una barra de carga', async ({ page }) => {
+  await page.evaluate(() => { G.me.board = { '3,3': makeInst('gastly') }; G.me.items = ['coat', 'coat']; renderItems.last = null; renderUI(); });
+  await page.locator('#traits [data-tip^="trait:Hechicero"]').first().hover();
+  const sin = await page.evaluate(() => { const u = [...document.querySelectorAll('#tip .trU')]; return { n: u.length, total: UNIT_LIST.filter(d => d.traits.includes('Hechicero')).length, on: u.filter(x => x.classList.contains('on')).length }; });
+  expect(sin.n).toBe(sin.total); expect(sin.on).toBe(1);
+  const a = await page.locator('#items .item[data-i="0"]').boundingBox(), b = await page.locator('#items .item[data-i="1"]').boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + 30, a.y + 30, { steps: 4 }); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.waitForTimeout(300);
+  const antes = await page.evaluate(() => { const c = document.querySelector('#tip .combBar'); return { comps: c.querySelectorAll('.ii').length, p: +getComputedStyle(c).getPropertyValue('--p'), listo: c.classList.contains('ready'), circulo: getComputedStyle(document.querySelector('#items .item.target'), '::after').content }; });
+  expect(antes.comps).toBe(3); expect(antes.p).toBeGreaterThan(0); expect(antes.p).toBeLessThan(1); expect(antes.listo).toBe(false); expect(antes.circulo).toBe('none');
+  await page.waitForTimeout(900);
+  await expect(page.locator('#tip .combBar')).toHaveClass(/ready/); await expect(page.locator('#tip .combBar .cbT')).toHaveText('✓ Suelta para combinar');
+  await page.mouse.up();
+  expect(await page.evaluate(() => G.me.items.length)).toBe(1);
 });
 
 test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran al frente', async ({ page }) => {

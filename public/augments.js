@@ -17,7 +17,7 @@ const AUG_ROUNDS_INFO='Ofertas en las rondas 2-1, 3-2 y 4-2 (3 opciones; eliges 
 const AUG_CAT={econ:'Economía',reroll:'Reroll',slow:'Ahorro',fast:'Nivel rápido',streak:'Rachas',emblem:'Emblemas',trait:'Sinergias',
  evo:'Evolución',carry:'Hiper carry',risk:'Riesgo',chaos:'Caos',rules:'Reglas',quest:'Misión',hybrid:'Híbrido',classic:'Clásico'};
 const ELEM_TRAITS=['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dragón','Fantasma','Hada','Normal','Acero','Siniestro','Lucha'];
-const CLASS_TRAITS=['Guardián','Coloso','Tirador','Hechicero','Asesino','Sanador','Cazatesoros','Depredadores','Team Rocket','Potencial Evolutivo'];
+const CLASS_TRAITS=['Guardián','Coloso','Peleador','Tirador','Hechicero','Asesino','Sanador','Cazatesoros','Depredadores','Team Rocket','Potencial Evolutivo'];
 const AUG_MAX_DEPTH=3; // protección contra efectos que se disparan unos a otros en bucle
 
 /* ---------- estado y utilidades ---------- */
@@ -213,7 +213,7 @@ AG({id:'ultima_ball',tier:'P',cat:'streak',tags:['lose'],name:'Última Poké Bal
 const emblemOpts=(list,p)=>shuffle(list.filter(t=>TRAITS[t]).slice()).slice(0,3).map(t=>({t:'Emblema '+t,i:TRAITS[t].icon,d:TRAITS[t].sum,v:'em:'+t}));
 AG({id:'emb_elemental',tier:'S',cat:'emblem',tags:['emblem'],name:'Mochila de Emblemas',icon:'🎒',desc:'Elige 1 de 3 emblemas de tipo. Un emblema añade su sinergia al Pokémon que lo lleve.',
  on:{select:c=>c.offer('Emblemas de tipo','Elige uno',emblemOpts(ELEM_TRAITS,c.p))}});
-AG({id:'emb_clase',tier:'G',cat:'emblem',tags:['emblem'],name:'Insignias de Clase',icon:'🔰',desc:'Elige 1 de 3 emblemas de clase (Guardián, Coloso, Tirador, Hechicero, Asesino, Sanador, Cazatesoros, Depredadores, Team Rocket, Potencial Evolutivo) y recibes 3 de oro.',
+AG({id:'emb_clase',tier:'G',cat:'emblem',tags:['emblem'],name:'Insignias de Clase',icon:'🔰',desc:'Elige 1 de 3 emblemas de clase (Guardián, Coloso, Peleador, Tirador, Hechicero, Asesino, Sanador, Cazatesoros, Depredadores, Team Rocket, Potencial Evolutivo) y recibes 3 de oro.',
  on:{select:c=>{ c.p.gold+=3; c.offer('Emblemas de clase','Elige uno',emblemOpts(CLASS_TRAITS,c.p)); }}});
 AG({id:'emb_doble',tier:'P',cat:'emblem',tags:['emblem'],name:'Doble Insignia',icon:'🎖️',desc:'Dos elecciones: un emblema de tipo y otro de clase, cada una entre 3.',
  on:{select:c=>{ c.offer('Emblema de tipo','Elige uno',emblemOpts(ELEM_TRAITS,c.p)); c.offer('Emblema de clase','Elige uno',emblemOpts(CLASS_TRAITS,c.p)); }}});

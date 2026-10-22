@@ -45,7 +45,8 @@ app.get('/api/build', (req, res) => res.json({ commit: process.env.RENDER_GIT_CO
 app.use('/api', auth.router);
 // Sin caché larga: tras cada despliegue el navegador revalida (ETag) y nunca mezcla versiones
 // Imágenes (arte de cartas, logo, iconos): caché de 7 días; HTML y JS se revalidan siempre porque cambian con cada despliegue
-app.use(express.static(path.join(__dirname, 'public'), { setHeaders(res, file) { if (/\.(webp|png|jpe?g|svg)$/i.test(file)) res.setHeader('Cache-Control', 'public, max-age=604800'); } }));
+express.static.mime.define({ 'image/avif': ['avif'] }); // los retratos van en AVIF y esta versión de Express no conoce el tipo
+app.use(express.static(path.join(__dirname, 'public'), { setHeaders(res, file) { if (/\.(webp|avif|png|jpe?g|svg)$/i.test(file)) res.setHeader('Cache-Control', 'public, max-age=604800'); } }));
 
 const server = http.createServer(app);
 // Mensajes de 1 KB o más comprimidos (estado de la partida en JSON: ocupa una fracción); los pequeños van tal cual para no gastar CPU
