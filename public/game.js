@@ -1639,7 +1639,7 @@ function applyAct(p,a){
     // Refresco de una sola carta: otra del mismo nivel que no esté ya en la oferta
     const keep=p.augChoices.filter((_,j)=>j!==i), tmp={...p,augments:[...p.augments,...keep]}, nw=augmentChoices(tmp,p.augTier||G.augTiers[G.round.aug],1)[0]; if(!nw) return {ok:false,why:'No hay más aumentos de este nivel'};
     p.augChoices[i]=nw; (p.augRR=p.augRR||[0,0,0])[i]=1; return {ok:true}; }
-  case 'carmove': { if(ph!=='carousel'||!G.carousel) return {ok:false}; const av=G.carousel.av[p.id]; if(!av||av.done) return {ok:false}; const {cx,cy,rr}=carGeo(), nx=clamp(+a.x||0,-1.25,1.25), ny=clamp(+a.y||0,-1.1,1.1); av.tx=cx+nx*rr; av.ty=cy+ny*rr; av.target=null; return {ok:true}; }
+  case 'carmove': { if(ph!=='carousel'||!G.carousel) return {ok:false}; const av=G.carousel.av[p.id]; if(!av) return {ok:false}; let nx=+a.x, ny=+a.y; if(!Number.isFinite(nx)||!Number.isFinite(ny)) return {ok:false}; const {cx,cy,rr}=carGeo(), d=Math.hypot(nx,ny), M=1.2; if(d>M){ nx*=M/d; ny*=M/d; } av.tx=cx+nx*rr; av.ty=cy+ny*rr; av.target=null; return {ok:true}; }
   case 'car': { if(ph!=='carousel'||!G.carousel) return {ok:false}; const av=G.carousel.av[p.id], i=idx(a.i); if(av&&av.rel&&!av.done&&G.carousel.opts[i]&&!G.carousel.opts[i].taken){ av.target=i; return {ok:true}; } return {ok:false}; }
  }
  return {ok:false};
@@ -2373,29 +2373,34 @@ const EMOTES=['¡Vamos!','😤','👍','¡Allá voy!','😎','GG','🔥','¿Eso 
 function hitMyTrainer(){ if(!G||!G.players.length||G.phase==='carousel'||!myTrBox) return false; const [x,y]=ptr, [tx,ty,s]=myTrBox; return Math.abs(x-tx)<s*.4&&y<ty+s*.1&&y>ty-s*.95; }
 
 /* ---------- carrusel ---------- */
-function carGeo(){ const cx=geo.W/2, cy=geo.pad+geo.bh/2, rr=Math.min(geo.W*.42,geo.bh*.42); return {cx,cy,rr}; }
+// CAR_K agranda el carrusel sin agrandar las fichas (la cámara se aleja para encuadrarlo): más sitio para caminar entre los Pokémon
+const CAR_K=1.4;
+function carGeo(){ const cx=geo.W/2, cy=geo.pad+geo.bh/2, rr=Math.min(geo.W*.42,geo.bh*.42)*CAR_K; return {cx,cy,rr}; }
+// Vista girada para que tu puesto quede siempre abajo (solo dibujo y ratón: la simulación y la red no giran). inv: de pantalla a simulación
+function carTheta(){ const C=G.carousel, i=C?C.order.indexOf(G.me):-1; return i<0?0:Math.PI/2-carAng(i,C.order.length); }
+function carV(x,y,inv){ const {cx,cy}=carGeo(), t=inv?-carTheta():carTheta(), c=Math.cos(t), s=Math.sin(t), dx=x-cx, dy=y-cy; return [cx+dx*c-dy*s,cy+dx*s+dy*c]; }
 // Los Pokémon giran con la rotación de la simulación más lo que ha pasado desde su último paso (60 fps suaves aunque el paso sea de 33 ms o llegue cada 160 ms por red)
 function carRot(C){ const at=C.mirror?C.rotAt:C.tickAt; return C.rot+(at?.2*clamp((performance.now()-at)/1000,0,.3):0); }
 function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+carRot(C); return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.55]; }
 function updateCarousel(dt){
  const C=G.carousel; if(!C||C.finished||C.mirror) return;
  C.t+=dt; C.rot+=.2*dt; if(!HEADLESS) C.tickAt=performance.now(); // despacio: da tiempo a correr hasta el Pokémon que quieres
- const {cx,cy,rr}=carGeo(), sp=geo.R*4.2;
+ const {cx,cy,rr}=carGeo(), sp=geo.R*5;
  const toward=(a,tx,ty)=>{ const dx=tx-a.x, dy=ty-a.y, d=Math.hypot(dx,dy); if(d>1){ const st=Math.min(d,sp*dt); a.x+=dx/d*st; a.y+=dy/d*st; } return d; };
  C.order.forEach((p,idx)=>{
    const a=C.av[p.id]; if(!a) return;
    // Empiezan en el borde, cada uno dentro de su campo de fuerza
    if(a.x===null){ a.x=cx+Math.cos(a.ang)*rr*1.12; a.y=cy+Math.sin(a.ang)*rr*1.12; }
-   if(a.done){ toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
+   if(a.done){ if(isHuman(p)&&!p.away){ if(a.tx!=null) toward(a,a.tx,a.ty); } else toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
    if(p.away){ a.rel=true; return; } // desconectado: no camina; al final se le da uno de los que sobran (más abajo)
-   if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Fuera el campo de fuerza! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
+   if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Se abre tu barrera! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
    if(a.target!=null&&C.opts[a.target].taken) a.target=null;
    if(a.tx==null&&a.target==null&&(!isHuman(p)?C.t-a.relT>a.delay:C.t-a.relT>10)) a.target=carouselChoice(p);
    if(a.target!=null){ const [ox,oy]=optPos(C,a.target); toward(a,ox,oy); } else if(a.tx!=null) toward(a,a.tx,a.ty);
    // Se lleva el Pokémon que toque al pasar por encima
-   for(let i=0;i<C.opts.length;i++){ const o=C.opts[i]; if(o.taken) continue; const [ox,oy]=optPos(C,i); if(Math.hypot(ox-a.x,oy-a.y)<geo.R*.6&&takeCarousel(p,i)){ a.done=true; a.carry=o; a.ang=Math.atan2(a.y-cy,a.x-cx); renderUI(); break; } }
+   for(let i=0;i<C.opts.length;i++){ const o=C.opts[i]; if(o.taken) continue; const [ox,oy]=optPos(C,i); if(Math.hypot(ox-a.x,oy-a.y)<geo.R*.6&&takeCarousel(p,i)){ a.done=true; a.target=null; a.carry=o; a.ang=Math.atan2(a.y-cy,a.x-cx); renderUI(); break; } }
  });
  // Cuando todos los presentes han elegido, a quien está desconectado se le da uno de los Pokémon que sobran (con su objeto)
  const pend=C.order.filter(p=>p.away&&C.av[p.id]&&!C.av[p.id].done);
@@ -2436,7 +2441,7 @@ function bindEvents(){
  let tacHold=false, carSent=0;
  const tacGoto=(e,mark)=>{ if(!G||!G.players.length||!G.me.alive) return; const [x,y]=canvasPos(e), now=performance.now();
    // En el carrusel cada destino es un mensaje al servidor: como mucho uno cada 120 ms mientras se arrastra
-   if(G.phase==='carousel'){ if(!mark&&now-carSent<120) return; carSent=now; const {cx,cy,rr}=carGeo(); TAC.mark={x,y,t0:now}; doAct({t:'carmove',x:(x-cx)/rr,y:(y-cy)/rr}); return; }
+   if(G.phase==='carousel'){ if(!mark&&now-carSent<120) return; carSent=now; const {cx,cy,rr}=carGeo(), [lx,ly]=carV(x,y,true); TAC.mark={x,y,t0:now}; doAct({t:'carmove',x:(lx-cx)/rr,y:(ly-cy)/rr}); return; }
    const A=tacArea(); TAC.tx=clamp(x,A.x0,A.x1); TAC.ty=clamp(y,A.y0,A.y1); if(mark||!TAC.mark) TAC.mark={x:TAC.tx,y:TAC.ty,t0:now}; };
  cv.addEventListener('pointerdown',e=>{ if(e.button!==2||!G||!G.players.length) return; canvasPos(e); if(onTotem()) return; tacHold=true; tacGoto(e,true); });
  cv.addEventListener('pointermove',e=>{ if(!tacHold) return; if(!(e.buttons&2)){ tacHold=false; return; } tacGoto(e,false); });
@@ -2752,7 +2757,7 @@ function sceneActors(){
        hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
  } else if(inCar){
-   const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=optPos(C,i); A.push({key:'co'+i+':'+o.key,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
+   const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=carV(...optPos(C,i)); A.push({key:'co'+i+':'+o.key,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
  } else {
    const who=viewedPlayer(), mine=who===me, ctx=who.id+'|'+G.phase+'|'+G.roundIdx, quiet=ctx!==synCtx, now=performance.now(); synCtx=ctx;
    const info=[], fr=++synFrame, tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
@@ -2772,7 +2777,7 @@ function sceneActors(){
  if(!inCar){
    A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
    for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDex(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
- else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,a.x,a.y); A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+ else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:drag.loc&&drag.loc.i!==undefined?0:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
@@ -2789,8 +2794,8 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
- const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,a.x,a.y); return {id:p.id,x:vx,y:vy+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
- const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length); return {id:p.id,x:cx+Math.cos(an)*rr*1.12,y:cy+Math.sin(an)*rr*1.12+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
+ const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,ball:BALL_OF(idx),k:clamp(left/3,0,1)}; }).filter(Boolean):[];
+ const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,ball:BALL_OF(idx),dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
    floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
@@ -2819,21 +2824,21 @@ function drawFxHud(cb){
 function drawCarouselHud(){
  const C=G.carousel, R=geo.R;
  const meAv=C.av[G.me.id];
- if(meAv&&meAv.target!=null&&!meAv.done&&C.opts[meAv.target]&&!C.opts[meAv.target].taken){ const [ox,oy]=optPos(C,meAv.target), [x,y]=scr(ox,oy,0), [,y2]=scr(ox,oy+R*.9,0); ctx.save(); ctx.strokeStyle='#ffd75e'; ctx.lineWidth=3; ctx.setLineDash([6,5]); ctx.lineDashOffset=-performance.now()/40; ctx.beginPath(); ctx.ellipse(x,y,R*.95,Math.max(4,y2-y),0,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
+ if(meAv&&meAv.target!=null&&!meAv.done&&C.opts[meAv.target]&&!C.opts[meAv.target].taken){ const [ox,oy]=carV(...optPos(C,meAv.target)), [x,y]=scr(ox,oy,0), [,y2]=scr(ox,oy+R*.9,0); ctx.save(); ctx.strokeStyle='#ffd75e'; ctx.lineWidth=3; ctx.setLineDash([6,5]); ctx.lineDashOffset=-performance.now()/40; ctx.beginPath(); ctx.ellipse(x,y,R*.95,Math.max(4,y2-y),0,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
  const now=performance.now();
  // Los entrenadores corren hacia el Pokémon que eligen (de atrás adelante para que se solapen bien)
  const list=C.order.map(p=>{ const a=C.av[p.id]; if(!a||a.x===null) return null;
    let x=a.x, y=a.y; if(C.mirror&&a.px!=null){ const k=clamp((now-a.at)/170,0,1); x=a.px+(a.x-a.px)*k; y=a.py+(a.y-a.py)*k; }
    if(!C.mirror){ if(a.lx!=null&&Math.abs(x-a.lx)>.3) a.face=x<a.lx?-1:1; a.moving=a.lx!=null&&Math.hypot(x-a.lx,y-a.ly)>.2; a.lx=x; a.ly=y; }
    else a.moving=a.px!=null&&Math.hypot(a.x-a.px,a.y-a.py)>.5;
-   return {p,a,x,y}; }).filter(Boolean).sort((u,v)=>u.y-v.y);
+   [x,y]=carV(x,y); return {p,a,x,y}; }).filter(Boolean).sort((u,v)=>u.y-v.y);
  for(const {p,a,x,y} of list){
    const locked=!a.rel&&!a.done, mine=p===G.me;
    const [sx,sy,ss]=drawTrainer(x,y+R*.35,trainerOf(p),{noSprite:true,s:R*1.7,ring:mine?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',face:a.face||1,mode:a.moving?'run':a.done?'cheer':'idle',seed:p.id*.7,dim:locked,label:(p.name.length>10?p.name.slice(0,9)+'…':p.name)+(locked?' 🔒':''),emoji:p.emoji});
    if(a.carry&&DEF[a.carry.key]){ const dx=dexOf(DEF[a.carry.key],1), u=B3.portrait(dx); const e=u?loadImg('pt:'+dx,u):null; const s=ss*.65; if(e&&e.status==='ok') ctx.drawImage(e.img,sx+ss*.1,sy-ss*.95-s*.5,s,s); }
  }
  const myIdx=C.order.indexOf(G.me), myAv=C.av[G.me.id];
- const msg=!myAv?'Mirando el carrusel':myAv.done?'Ya tienes tu Pokémon. Esperando al resto…':myAv.rel?'¡Libre! Clic derecho para moverte y pasa por encima de un Pokémon':`Tu campo de fuerza cae en ${Math.max(0,Math.ceil(releaseAt(myIdx)-C.t))}s · menos vida = sales antes`;
+ const msg=!myAv?'Mirando el carrusel':myAv.done?'Ya tienes tu Pokémon: sigue moviéndote con clic derecho mientras eligen los demás':myAv.rel?'¡Libre! Clic derecho para moverte y pasa por encima de un Pokémon':`Tu barrera se abre en ${Math.max(0,Math.ceil(releaseAt(myIdx)-C.t))}s · menos vida = sales antes`;
  ctx.save(); ctx.font=`900 ${Math.max(12,R*.42)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.fillStyle='#fff'; const mx=view.rect?view.rect.x+view.rect.w/2:view.W/2, my=view.rect?view.rect.y+8:8; ctx.strokeText(msg,mx,my); ctx.fillText(msg,mx,my); ctx.restore();
 }
 function renderFeed(){ return; // el registro de habilidades ya no se muestra

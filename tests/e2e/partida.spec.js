@@ -213,6 +213,22 @@ test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
   expect(r).toEqual({ s0: 8, s1: 8, s2: 11.5 });
 });
 
+// Carrusel: la vista gira para que tu puesto quede abajo, las barreras son azul claro (sin cúpula) y tras coger tu Pokémon sigues caminando
+test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Pokémon', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
+  const r = await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 800)); const C = G.carousel, me = G.me, a = C.av[me.id], { cx, cy } = carGeo();
+    const bars = B3.bars, an = carAng(C.order.indexOf(me), C.order.length), [px, py] = carV(cx + Math.cos(an), cy + Math.sin(an));
+    C.t = Math.max(C.t, releaseAt(C.order.indexOf(me))); await new Promise(r => setTimeout(r, 200));
+    doAct({ t: 'car', i: C.opts.findIndex(o => !o.taken) }); for (let n = 0; n < 60 && !a.done; n++) await new Promise(r => setTimeout(r, 100));
+    const x0 = a.x, y0 = a.y; doAct({ t: 'carmove', x: -.8, y: .2 }); await new Promise(r => setTimeout(r, 600));
+    return { abajo: Math.abs(px - cx) < 1e-6 && py > cy, bars: bars.length, col: [...new Set(bars.map(b => b.col))], piezas: Math.max(...bars.map(b => b.piezas)), done: a.done, movido: Math.hypot(a.x - x0, a.y - y0), invalido: applyAct(me, { t: 'carmove', x: NaN, y: 0 }).ok };
+  });
+  expect(r.abajo, 'tu puesto queda abajo en pantalla').toBe(true);
+  expect(r.bars).toBeGreaterThan(0); expect(r.col).toEqual(['#8fdcff']); expect(r.piezas, 'pared y aro, sin cúpula ni halo').toBe(2);
+  expect(r.done).toBe(true); expect(r.movido, 'con el Pokémon cogido se sigue moviendo').toBeGreaterThan(5); expect(r.invalido).toBe(false);
+});
+
 // La burla de Charmander (H) de otro jugador sube su contador en pub; quien mira su mismo tablero ve su animación de lanzamiento y la bola de fuego
 test('la burla de otro jugador se anima en tu pantalla', async ({ page }) => {
   const r = await page.evaluate(async () => {
