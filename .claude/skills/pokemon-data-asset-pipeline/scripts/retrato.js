@@ -3,7 +3,12 @@
 // Uso: node retrato.js <sprite.png> <salida.webp> 828 512 carta 621 384   (retrato de la carta, public/art/<clave>.webp)
 //      node retrato.js <sprite.png> <salida.webp> 552 342 centro 224 139   (miniatura centrada para cabezas redondas, public/art/t/<clave>.webp)
 // Necesita sharp (fuera del proyecto, no es dependencia del juego): npm i sharp
+// Encuadre a mano para los muy anchos (la cara a la derecha y arriba; el cuerpo se sale): alto=<fracción del alto> foco=<x>,<y> (la cara en el sprite) destino=<x>,<y> [suave=<sigma>]
+//   Kyogre:   alto=.62 foco=.47,.6 destino=.7,.46 suave=.9
+//   Giratina: alto=1.3 foco=.22,.55 destino=.76,.42
 const sharp = require('sharp');
+const opt = (k) => { const a = process.argv.find(v => v.startsWith(k + '=')); return a ? a.split('=')[1].split(',').map(Number) : null; };
+const ALTO = opt('alto'), FOCO = opt('foco'), DEST = opt('destino') || [.72, .45];
 const [inp, out, W = 828, H = 512, MODE = 'carta'] = process.argv.slice(2).map((v, i) => i > 1 && i < 4 ? +v : v);
 // modo 'carta': Pokémon a la derecha y fundido a oscuro a la izquierda (sinergias y nombre); 'centro': centrado y sin fundido (cabezas redondas)
 const CENTER = MODE === 'centro';
@@ -43,13 +48,22 @@ const css = (rgb, a = 1) => `rgba(${rgb.join(',')},${a})`;
   const c1 = vivid(ac[0] || pal[0].rgb, 1.35), c2 = vivid(ac[1] || (pal[1] || pal[0]).rgb, 1.25), c3 = vivid(pal[0].rgb, 1.1);
   // sprite escalado (suave) hasta ~84 % del alto; los sprites pixelados primero se doblan sin suavizar y luego se suavizan
   // en la carta se recorta arriba y abajo (es más ancha que el retrato): margen de un 12 % arriba y un 9 % abajo
-  const tall = Math.round(H * (CENTER ? .9 : .79)), maxW = Math.round(W * (CENTER ? .9 : t.info.width / t.info.height > 1.6 ? .78 : .6)),   // los muy alargados (Kyogre) pueden ocupar más ancho
+  const tall = Math.round(H * (ALTO ? ALTO[0] : CENTER ? .9 : .79)), maxW = ALTO ? 99999 : Math.round(W * (CENTER ? .9 : t.info.width / t.info.height > 1.6 ? .78 : .6)),   // los muy alargados (Kyogre) pueden ocupar más ancho
     small = (await sharp(inp).metadata()).width <= 128;   // pixel art (Bank: 128 px): escalado entero sin suavizar
   const spr = sharp(t.data, { raw: t.info });
-  const sprBuf = small ? await spr.resize({ height: t.info.height * Math.max(1, Math.floor(Math.min(tall / t.info.height, maxW / t.info.width))), kernel: 'nearest' }).png().toBuffer() : await spr.resize({ height: tall, width: maxW, fit: 'inside', kernel: 'lanczos3' }).png().toBuffer();   // los muy anchos (Geodude, Kyogre) se limitan por el ancho
-  const sm = await sharp(sprBuf).metadata(); const sw = sm.width, sh = sm.height;
-  const cx = Math.round(W * (CENTER ? .5 : .68)), left = Math.round(CENTER ? Math.max(0, cx - sw / 2) : Math.min(W - sw - W * .03, Math.max(W * .42, cx - sw / 2))), top = H - sh - Math.round(H * (CENTER ? .04 : .09));
-  const ax = left + sw / 2, ay = top + sh * .52;
+  let sprBuf = small ? await spr.resize({ height: t.info.height * Math.max(1, Math.floor(Math.min(tall / t.info.height, maxW / t.info.width))), kernel: 'nearest' }).png().toBuffer() : await spr.resize({ height: tall, width: maxW, fit: 'inside', kernel: 'lanczos3' }).png().toBuffer();   // los muy anchos (Geodude, Kyogre) se limitan por el ancho
+  // suave=<sigma>: un leve desenfoque para los sprites pequeños muy ampliados (si no, se ven los escalones de los píxeles)
+  if (opt('suave')) sprBuf = await sharp(sprBuf).blur(opt('suave')[0]).png().toBuffer();
+  const sm = await sharp(sprBuf).metadata(); let sw = sm.width, sh = sm.height;
+  const cx = Math.round(W * (CENTER ? .5 : .68));
+  let left = Math.round(CENTER ? Math.max(0, cx - sw / 2) : Math.min(W - sw - W * .03, Math.max(W * .42, cx - sw / 2))), top = H - sh - Math.round(H * (CENTER ? .04 : .09));
+  let ax = left + sw / 2, ay = top + sh * .52, SHADOW = true;
+  if (FOCO) {   // la cara en el destino; lo que se salga del retrato se recorta (y sin sombra en el suelo, que queda fuera)
+    left = Math.round(DEST[0] * W - FOCO[0] * sw); top = Math.round(DEST[1] * H - FOCO[1] * sh); ax = DEST[0] * W; ay = DEST[1] * H; SHADOW = false;
+    const x0 = Math.max(0, -left), y0 = Math.max(0, -top), x1 = Math.min(sw, W - left), y1 = Math.min(sh, H - top);
+    sprBuf = await sharp(sprBuf).extract({ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }).png().toBuffer();
+    left += x0; top += y0; sw = x1 - x0; sh = y1 - y0;
+  }
   // fondo: oscuro con el aura de sus colores detrás del Pokémon
   const bg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs>
     <radialGradient id="a" cx="${ax / W}" cy="${ay / H}" r="${.62}" gradientUnits="objectBoundingBox" fx="${ax / W}" fy="${ay / H}">
@@ -79,7 +93,7 @@ const css = (rgb, a = 1) => `rgba(${rgb.join(',')},${a})`;
   const img = await sharp(bg).composite([
     { input: motesSvg, left: 0, top: 0 },
     { input: haloDim, left: 0, top: 0 },
-    { input: shadow, left: 0, top: 0 },
+    ...(SHADOW ? [{ input: shadow, left: 0, top: 0 }] : []),
     { input: sprBuf, left, top },
     { input: over, left: 0, top: 0 },
   ]).png().toBuffer();
