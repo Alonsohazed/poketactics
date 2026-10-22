@@ -473,6 +473,22 @@ test('sinergias: el Guardián suelta su escudo de cristal y el Coloso un campo d
   expect(fx.every(n => n > 1000 && n < 30000)).toBe(true);
 });
 
+test('descripciones: la sinergia muestra los retratos de sus Pokémon y combinar enseña los dos componentes con una barra de carga', async ({ page }) => {
+  await page.evaluate(() => { G.me.board = { '3,3': makeInst('gastly') }; G.me.items = ['coat', 'coat']; renderItems.last = null; renderUI(); });
+  await page.locator('#traits [data-tip^="trait:Hechicero"]').first().hover();
+  const sin = await page.evaluate(() => { const u = [...document.querySelectorAll('#tip .trU')]; return { n: u.length, total: UNIT_LIST.filter(d => d.traits.includes('Hechicero')).length, on: u.filter(x => x.classList.contains('on')).length }; });
+  expect(sin.n).toBe(sin.total); expect(sin.on).toBe(1);
+  const a = await page.locator('#items .item[data-i="0"]').boundingBox(), b = await page.locator('#items .item[data-i="1"]').boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down(); await page.mouse.move(a.x + 30, a.y + 30, { steps: 4 }); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.waitForTimeout(300);
+  const antes = await page.evaluate(() => { const c = document.querySelector('#tip .combBar'); return { comps: c.querySelectorAll('.ii').length, p: +getComputedStyle(c).getPropertyValue('--p'), listo: c.classList.contains('ready'), circulo: getComputedStyle(document.querySelector('#items .item.target'), '::after').content }; });
+  expect(antes.comps).toBe(3); expect(antes.p).toBeGreaterThan(0); expect(antes.p).toBeLessThan(1); expect(antes.listo).toBe(false); expect(antes.circulo).toBe('none');
+  await page.waitForTimeout(900);
+  await expect(page.locator('#tip .combBar')).toHaveClass(/ready/); await expect(page.locator('#tip .combBar .cbT')).toHaveText('✓ Suelta para combinar');
+  await page.mouse.up();
+  expect(await page.evaluate(() => G.me.items.length)).toBe(1);
+});
+
 test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran al frente', async ({ page }) => {
   await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['charmander', 'bulbasaur', 'squirtle']) addUnitToBench(me, makeInst(k)); moveTo(me, { i: 2 }, { b: '3,1' }); renderUI(); });
   const r = await page.evaluate(() => { const A = sceneActors(); return { banca: A.filter(a => a.loc && a.loc.i !== undefined).map(a => +a.face.toFixed(2)), tablero: A.filter(a => a.loc && a.loc.b !== undefined).map(a => +a.face.toFixed(2)) }; });

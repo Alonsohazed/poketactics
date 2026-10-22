@@ -2429,7 +2429,8 @@ function bindEvents(){
        document.querySelectorAll('#items .item.target').forEach(x=>{ if(x!==it) x.classList.remove('target'); });
        if((res?j:-1)!==itemDrag.target){ itemDrag.target=res?j:-1; itemDrag.t0=performance.now(); if(res) holdTick(); }
        if(res){ it.classList.add('target'); const I=ITEMS[res], t=$('tip'), sl=statLine(I.s); t.classList.remove('shopTip'); tipAnchor=null;
-         t.innerHTML=`<div class="combRes">${itemHTML(res,64)}<div><div class="scope">Mantén 1 s y suelta para crear</div><h4>${esc(I.name)}</h4></div></div>${sl?`<div class="scope">${sl}</div>`:''}<div>${I.desc}</div>`;
+         const ka=G.me.items[itemDrag.idx], kb=G.me.items[j];
+         t.innerHTML=`<div class="combRes">${itemHTML(res,64)}<div><h4>${esc(I.name)}</h4>${sl?`<div class="scope">${sl}</div>`:''}</div></div><div>${I.desc}</div><div class="combBar">${itemHTML(ka,40)}<b>+</b>${itemHTML(kb,40)}<div class="cbM"><span class="cbT">Mantén para combinar</span><i><s></s></i></div>${itemHTML(res,40)}</div>`;
          t.style.display='block'; tipOn=true; }
        else {
          // Encima de un Pokémon tuyo que ya lleva un componente: qué objeto saldrá al soltar
@@ -2536,7 +2537,7 @@ function tipHTML(spec){
    const onBoard=new Set(G&&G.me?boardUnits(G.me).map(u=>u.defId):[]);
    return `<h4>${Tr.icon} ${key} <span class="small muted">${c}/${Tr.bp.find(b=>b>c)||Tr.bp[Tr.bp.length-1]}</span></h4><div class="scope">${Tr.scope}</div><div>${Tr.sum}</div>
      <div style="margin-top:6px">${Tr.lv.map((t,j)=>`<div class="tl ${tier>j?'on':''}"><b>(${Tr.bp[j]})</b> ${t}</div>`).join('')}${Tr.pr?`<div class="tl pr ${tier>Tr.bp.length?'on':''}"><b>(${Tr.pr[0]})</b> 🌈 ${Tr.pr[1]}${e?'':' <i>🔒 Solo con al menos un emblema</i>'}</div>`:''}</div>
-     <div class="units">Pokémon (${units.length}): ${units.map(u=>onBoard.has(u.key)?`<b>${u.name}</b>`:u.name).join(', ')}</div>${key==='Cazatesoros'?lootHTML():''}`;
+     <div class="trUnits">${units.map(u=>{ const k=CARD_ART[u.key]?u.key:null; return `<span class="trU c${u.cost} ${onBoard.has(u.key)?'on':''}" title="${esc(u.name)}">${k?`<img src="${artThumb(k)}" alt="" class="artPic" data-dex="${dexOf(u,1)}">`:portraitImg(dexOf(u,1))}</span>`; }).join('')}</div>${key==='Cazatesoros'?lootHTML():''}`;
  }
  if(type==='item'){
    const I=ITEMS[key]; if(!I) return '';
@@ -3131,10 +3132,11 @@ function itemTargetAt(e){
  if(G.phase==='combat'&&G.combat&&!G.combat.done&&viewCombat()===G.combat){ const cu=combatUnitAt(x,y); if(cu&&!cu.creep&&cu.side===(curFlip()?1:0)&&cu.bk&&me.board[cu.bk]) hit={u:me.board[cu.bk],loc:{b:cu.bk}}; }
  return hit;
 }
-// Círculo de carga al mantener un componente sobre otro: se llena en 1 s (combinar sigue siendo al soltar)
+// Barra de carga en la ficha al mantener un componente sobre otro: se llena en 1 s (combinar sigue siendo al soltar)
 function holdTick(){
  const d=itemDrag; if(!d||d.target<0) return;
- const el=document.querySelector(`#items .item[data-i="${d.target}"]`); if(el){ const p=Math.min(1,(performance.now()-d.t0)/1000); el.style.setProperty('--p',p); el.classList.toggle('ready',p>=1); }
+ const p=Math.min(1,(performance.now()-d.t0)/1000), bar=document.querySelector('#tip .combBar');
+ if(bar){ bar.style.setProperty('--p',p); const done=p>=1; if(bar.classList.contains('ready')!==done){ bar.classList.toggle('ready',done); bar.querySelector('.cbT').textContent=done?'✓ Suelta para combinar':'Mantén para combinar'; } }
  setTimeout(holdTick,30);
 }
 function setSideTab(t){ sideTab=t; document.querySelectorAll('.sideTabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); $('tabPl').hidden=t!=='pl'; $('tabDmg').hidden=t!=='dmg'; $('tabLog').hidden=t!=='log'; renderDmg(); }
