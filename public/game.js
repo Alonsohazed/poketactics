@@ -3354,21 +3354,54 @@ function confirmQuit(){
  $('qYes').onclick=()=>{ closeModal(); if(G) G.over=true; if(NET.mode!=='sp') leaveRoom(); showMenu(); };
  $('qNo').onclick=closeModal;
 }
-// Aumentos ya mostrados en esta ronda: solo se anima la apertura de los nuevos (al refrescar uno, solo ese)
-let augSeen={round:-1,ids:new Set()};
+// Carta de aumento: marco dorado (img/aug-marco.svg) y el icono del aumento como silueta del color de su rareza (plata, oro o prismático),
+// que conserva sus detalles por la luminosidad. Se calcula una vez por aumento en un lienzo (sprite recortado y ampliado sin suavizar)
+const AUG_TINT={S:[[134,140,149],[228,231,236]],G:[[146,98,36],[240,208,140]],P:[[150,88,226],[70,196,190],[128,186,255]]}, augSilC={};
+function augSil(a){
+ if(augSilC[a.id]) return augSilC[a.id];
+ return augSilC[a.id]=new Promise(res=>{
+   const paint=im=>{ try{
+     let w,h,src=document.createElement('canvas'), c=src.getContext('2d',{willReadFrequently:true});
+     if(im){ src.width=im.naturalWidth; src.height=im.naturalHeight; c.drawImage(im,0,0); } else { src.width=src.height=120; c.font='96px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(a.icon||'✨',60,64); }
+     let d=c.getImageData(0,0,src.width,src.height), x0=1e9,y0=1e9,x1=-1,y1=-1;
+     for(let y=0;y<d.height;y++) for(let x=0;x<d.width;x++) if(d.data[(y*d.width+x)*4+3]>20){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+     if(x1<0) return res(null); w=x1-x0+1; h=y1-y0+1; d=c.getImageData(x0,y0,w,h);
+     const T=AUG_TINT[a.tier]||AUG_TINT.S, P=d.data;
+     for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const i=(y*w+x)*4; if(!P[i+3]) continue; const lum=(P[i]*.3+P[i+1]*.59+P[i+2]*.11)/255;
+       let t=T.length>2?((x/w)+(1-y/h))/2:1-y/h, col; if(T.length>2){ const k=t*2, j=Math.min(1,Math.floor(k)), f=k-j; col=T[j].map((v,n)=>v+(T[j+1][n]-v)*f); } else col=T[0].map((v,n)=>v+(T[1][n]-v)*t);
+       const s=.55+.6*lum; P[i]=Math.min(255,col[0]*s); P[i+1]=Math.min(255,col[1]*s); P[i+2]=Math.min(255,col[2]*s); }
+     const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h; tmp.getContext('2d').putImageData(d,0,0);
+     // sprites pequeños (objetos): ampliados sin suavizar; ilustraciones grandes (Pokémon): reducidas con suavizado
+     const big=Math.max(w,h)>180, k=big?200/Math.max(w,h):Math.max(1,Math.min(8,Math.floor(180/Math.max(w,h)))), out=document.createElement('canvas'); out.width=Math.round(w*k); out.height=Math.round(h*k);
+     const o=out.getContext('2d'); o.imageSmoothingEnabled=big||!im; o.imageSmoothingQuality='high'; o.drawImage(tmp,0,0,out.width,out.height); res(out.toDataURL());
+   }catch(e){ res(null); } };
+   if(!a.img) return paint(null);
+   // Pokémon: su ilustración oficial (silueta suave); si no carga, el sprite de siempre
+   const art=(a.img.match(/sprites\/pokemon\/(\d+)\.png$/)||[])[1], load=(u,fb)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>paint(im); im.onerror=()=>fb?load(fb):paint(null); im.src=u; };
+   art?load(a.img.replace(/\d+\.png$/,`other/official-artwork/${art}.png`),a.img):load(a.img);
+ });
+}
+// Título y descripción caben siempre en su hueco: se reduce la letra hasta que no se salen
+function fitAugCard(el){
+ const fit=(n,max,min,ok)=>{ for(let s=max;s>=min;s-=.5){ n.style.fontSize=s+'px'; if(ok()) return; } };
+ const b=el.querySelector('.ac3Name'), d=el.querySelector('.ac3Desc');
+ const sp=b&&b.firstElementChild, lines=()=>sp.offsetHeight/(parseFloat(b.style.fontSize)*1.05);
+ // título: en una línea si cabe con letra decente; si no, en dos sin pasar de su hueco (se mide el texto, que crece hacia arriba y abajo)
+ if(sp){ fit(b,27,19,()=>lines()<1.5&&sp.offsetWidth<=b.clientWidth+1); if(lines()>=1.5) fit(b,24,14,()=>sp.offsetHeight<=b.clientHeight+1&&sp.offsetWidth<=b.clientWidth+1); }
+ if(d) fit(d,15,9,()=>d.scrollHeight<=d.clientHeight+1);
+}
+function augCardHTML(a,i){ return `<button class="augCard3 t${a.tier}" data-i="${i}" title="${esc(TIER_NAME[a.tier])}"><span class="ac3Ico" data-aug="${esc(a.id)}"></span><b class="ac3Name"><span>${esc(a.name)}</span></b><span class="ac3Desc">${esc(a.desc)}</span></button>`; }
+function hydrateAugCards(root){
+ root.querySelectorAll('.augCard3').forEach(fitAugCard);
+ root.querySelectorAll('.ac3Ico[data-aug]').forEach(el=>{ const a=AUG_BY[el.dataset.aug]; if(!a) return; augSil(a).then(u=>{ el.innerHTML=u?`<img src="${u}" alt="">`:`<span class="ac3Emo">${esc(a.icon||'✨')}</span>`; }); });
+}
 function showAugment(){
  const me=G.me; if(!me.augChoices||!me.augChoices.length) return;
  const choices=me.augChoices.map(id=>AUG_BY[id]).filter(Boolean), rr=me.augRR||[0,0,0];
- NET.augKey=me.augChoices.join()+'|'+rr.join();
- if(augSeen.round!==G.roundIdx) augSeen={round:G.roundIdx,ids:new Set()};
- // Cada carta llega cerrada como su ball, se tambalea con suavidad y se abre hacia arriba y hacia abajo
- let k=0; const anim=choices.map(a=>augSeen.ids.has(a.id)?-1:k++);
- // Solo las cartas: cada una con el color de su rareza y su botón de refresco debajo
- openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol"><div class="augBox t${a.tier} ${anim[i]<0?'opened':'closed'}" style="--d:${Math.max(0,anim[i])*.18}s"><div class="augClip"><button class="augCard2 tier${a.tier}" data-i="${i}"><span class="ac2Ico">${augIcon(a)}</span><b>${esc(a.name)}</b><span class="ac2Desc${a.desc.length>150?' long':''}">${esc(a.desc)}</span><span class="ac2Tier">${TIER_NAME[a.tier]}</span></button><i class="lidT"></i><i class="lidB"></i><i class="ballBtn"></i><i class="seamGlow"></i></div></div>
-   <button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
- choices.forEach(a=>augSeen.ids.add(a.id));
- $('mbox').querySelectorAll('.augBox.closed').forEach(b=>{ const d=parseFloat(b.style.getPropertyValue('--d'))||0; setTimeout(()=>b.classList.add('opened'),(d+2.1)*1000); setTimeout(()=>Music.sfx('ball'),(d+1)*1000); });
- $('mbox').querySelectorAll('.augCard2').forEach(b=>b.onclick=()=>{ if(!b.closest('.augBox').classList.contains('opened')) return; const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
+ NET.augKey=me.augChoices.join()+'|'+(rr).join();
+ openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol">${augCardHTML(a,i)}<button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
+ hydrateAugCards($('mbox'));
+ $('mbox').querySelectorAll('.augCard3').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });
 }
 // Elecciones pendientes de los aumentos (emblemas, recompensas, Llamada al Caos…)

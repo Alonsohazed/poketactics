@@ -518,68 +518,20 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 body:has(#menu:not(.hidden)) #boardStack,body:has(#auth:not(.hidden)) #boardStack{visibility:hidden}
 body:has(#menu:not(.hidden)),body:has(#auth:not(.hidden)){background:radial-gradient(120% 90% at 50% 0%,#24407a 0%,#14224a 45%,#0a1128 100%) fixed,#0a1128}
 body:has(#menu:not(.hidden))::before,body:has(#auth:not(.hidden))::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;background:radial-gradient(circle at 50% 50%,#fff 1.5px,transparent 2px) 0 0/26px 26px}
-/* Mientras se abren las balls, las tapas salen de la carta: sin barra de desplazamiento */
-.mbox.bare:has(.augBox.closed:not(.opened)){overflow:visible}
 .augPick{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
 .augCol{display:flex;flex-direction:column;align-items:center;gap:12px}
-/* Carta de aumento: una Poké Ball por rareza (Plata = Poké Ball, Oro = Ultra Ball, Prismático = Master Ball; img/aug-card-*.png, 774×1126).
-   Sprite del aumento en el círculo blanco, nombre y descripción bajo la línea y rareza en el semicírculo de abajo. */
-.augCard2{--tc:#ff5a5a;--tg:rgba(255,70,70,.55);position:relative;width:290px;aspect-ratio:774/1126;padding:0;border:0;cursor:pointer;text-align:center;color:#fff;
-  background:url(img/aug-card-s.webp) center/100% 100% no-repeat;filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 10px var(--tg));transition:transform .14s,filter .14s}
-.augCard2::before{content:"";position:absolute;left:1.7%;right:1.7%;top:56%;bottom:12.5%;pointer-events:none;background:radial-gradient(80% 60% at 50% 40%,color-mix(in srgb,var(--tc) 13%,transparent),transparent 72%)}
-.augCard2:hover{transform:translateY(-6px);filter:drop-shadow(0 20px 26px rgba(0,0,0,.65)) drop-shadow(0 0 18px var(--tg))}
-.augCard2:focus-visible{outline:3px solid var(--tc);outline-offset:4px}
-.augCard2.tierS{--tc:#ff6464;--tg:rgba(255,60,60,.55)}
-.augCard2.tierG{--tc:#ffc61a;--tg:rgba(255,198,26,.65);background-image:url(img/aug-card-g.webp)}
-.augCard2.tierP{--tc:#c49bff;--tg:rgba(170,110,255,.75);background-image:url(img/aug-card-p.webp);animation:prismGlow 3s linear infinite}
-@keyframes prismGlow{0%,100%{filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(255,80,170,.8))}50%{filter:drop-shadow(0 14px 22px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(130,100,255,.85))}}
-.ac2Ico{position:absolute;left:49.6%;top:34.3%;width:35%;aspect-ratio:1;transform:translate(-50%,-50%);display:grid;place-items:center;font-size:54px;line-height:1;border-radius:50%}
-.ac2Ico img{width:78%;height:78%;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 2px 1px rgba(0,0,0,.25))}
-.augCard2 b{position:absolute;left:7%;right:7%;top:55%;height:9%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:400;font-size:20px;line-height:1.05;color:#fff;text-shadow:0 2px 0 #000,0 0 12px color-mix(in srgb,var(--tc) 50%,transparent)}
-.ac2Desc{position:absolute;left:7%;right:7%;top:64.5%;bottom:13.5%;display:flex;align-items:flex-start;justify-content:center;font-size:12.5px;font-weight:700;line-height:1.36;color:#e6eaf3}
-.ac2Desc.long{font-size:11.5px;line-height:1.3}
-.ac2Tier{position:absolute;left:35.6%;right:36.1%;top:88%;height:5.6%;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:9.5px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
-.augCard2.tierP .ac2Tier{background:linear-gradient(90deg,#ff7ac8,#c49bff,#8fb2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-/* Apertura: la carta llega cerrada como su ball (mismo contorno), brilla el botón y las dos mitades se separan con suavidad */
-/* Apertura: la carta llega como una ball con volumen (perfectamente redonda), se entreabre, deja ver la luz y el aumento de dentro
-   y, al separarse las dos mitades, el círculo se estira hasta la carta con la parte de arriba y de abajo redondeadas */
-.augBox{position:relative;--d:0s}
-.augBox .augCard2{border-radius:50% / 14%;box-shadow:inset 0 0 0 5px #fff}
-.augBox:not(.opened) .augCard2{pointer-events:none}
-.augClip{position:relative;perspective:900px;clip-path:inset(15.63% 0 round 50% / 34.37%)}
-.augBox.opened .augClip{clip-path:none}
-.augBox .lidT,.augBox .lidB,.augBox .ballBtn,.augBox .seamGlow{position:absolute;pointer-events:none}
-.augBox .lidT{z-index:3;left:0;right:0;top:15.63%;height:34.37%;border-radius:50% 50% 0 0 / 100% 100% 0 0;transform-origin:50% 0%;border-bottom:7px solid #121218;box-sizing:border-box;
-  box-shadow:inset 0 -12px 16px rgba(0,0,0,.28);background:radial-gradient(26% 24% at 33% 30%,rgba(255,255,255,.95),rgba(255,255,255,0) 70%),radial-gradient(60% 46% at 40% 36%,rgba(255,255,255,.22),transparent 70%),radial-gradient(118% 128% at 50% 100%,transparent 50%,rgba(0,0,0,.5) 100%),linear-gradient(180deg,#ff6158,#e3171f 55%,#a30c13)}
-.augBox .lidB{z-index:3;left:0;right:0;top:50%;height:34.37%;border-radius:0 0 50% 50% / 0 0 100% 100%;border-top:7px solid #121218;box-sizing:border-box;
-  background:radial-gradient(70% 34% at 50% 0%,rgba(0,0,0,.28),transparent 75%),radial-gradient(36% 26% at 62% 72%,rgba(255,255,255,.7),transparent 70%),radial-gradient(118% 128% at 50% 0%,transparent 48%,rgba(30,34,52,.5) 100%),linear-gradient(180deg,#fbfbfd,#d6d8e1)}
-.augBox.tG .lidT{background:radial-gradient(26% 24% at 33% 30%,rgba(255,255,255,.95),rgba(255,255,255,0) 70%),radial-gradient(60% 46% at 40% 36%,rgba(255,255,255,.22),transparent 70%),radial-gradient(118% 128% at 50% 100%,transparent 50%,rgba(0,0,0,.5) 100%),linear-gradient(90deg,transparent 15%,#ffc61a 15% 31%,transparent 31% 69%,#ffc61a 69% 85%,transparent 85%),linear-gradient(180deg,#3a3a46,#16161c 60%,#08080b)}
-.augBox.tP .lidT{background:radial-gradient(26% 24% at 33% 30%,rgba(255,255,255,.95),rgba(255,255,255,0) 70%),radial-gradient(60% 46% at 40% 36%,rgba(255,255,255,.22),transparent 70%),radial-gradient(118% 128% at 50% 100%,transparent 50%,rgba(0,0,0,.5) 100%),radial-gradient(circle at 24% 66%,#ff8cc4 0 5%,#ff4f9f 8.5%,#c22a72 10.5%,transparent 11%),radial-gradient(circle at 76% 66%,#ff8cc4 0 5%,#ff4f9f 8.5%,#c22a72 10.5%,transparent 11%),linear-gradient(180deg,#8f82e6,#5d4bbd 55%,#3c2c8a)}
-.augBox.tP .lidT::after{content:"M";position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);font-family:var(--display);font-size:44px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 8px rgba(255,255,255,.4)}
-.augBox .ballBtn{z-index:4;left:50%;top:50%;width:23%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:7px solid #121218;
-  background:radial-gradient(circle at 50% 50%,transparent 38%,rgba(0,0,0,.18) 40%,transparent 46%),radial-gradient(circle at 38% 32%,#fff 0,#f1f2f7 32%,#b7bbc9 76%,#8a8fa0);
-  box-shadow:0 0 0 3px #f2f2f6,0 0 0 4px rgba(0,0,0,.25),inset 0 -3px 6px rgba(0,0,0,.25),0 3px 6px rgba(0,0,0,.4)}
-.augBox .seamGlow{z-index:2;left:4%;right:4%;top:50%;height:18%;transform:translateY(-50%) scaleX(.3);opacity:0;border-radius:50%;
-  background:radial-gradient(50% 50% at 50% 50%,#fff,color-mix(in srgb,var(--glow) 80%,#fff) 30%,transparent 70%)}
-.augBox.opened .lidT,.augBox.opened .lidB,.augBox.opened .ballBtn,.augBox.opened .seamGlow{display:none}
-/* Secuencia (sin desplazar la ball): aparece, brilla el botón, se entreabre con luz dentro y se abre hasta ser la carta */
-.augBox.closed{animation:augFade .35s ease-out var(--d) both}
-.augBox.closed .ballBtn{animation:btnGlow .4s ease-in-out calc(var(--d) + .3s) 2 alternate,btnFade .3s ease-out calc(var(--d) + 1.15s) forwards}
-.augBox.closed .lidT{animation:lidOpenT 1.5s cubic-bezier(.45,0,.25,1) calc(var(--d) + .55s) forwards}
-.augBox.closed .lidB{animation:lidOpenB 1.5s cubic-bezier(.45,0,.25,1) calc(var(--d) + .55s) forwards}
-.augBox.closed .augClip{animation:ballToCard 1.5s cubic-bezier(.45,0,.25,1) calc(var(--d) + .55s) forwards}
-.augBox.closed .seamGlow{animation:seam 1.5s ease-out calc(var(--d) + .55s) forwards}
-.augBox.closed::after{content:"";position:absolute;z-index:5;left:50%;top:50%;width:120%;aspect-ratio:1;border-radius:50%;pointer-events:none;opacity:0;transform:translate(-50%,-50%) scale(.2);
-  background:radial-gradient(circle,rgba(255,255,255,.6),color-mix(in srgb,var(--glow) 55%,transparent) 32%,transparent 62%);animation:augFlash .9s ease-out calc(var(--d) + 1.15s)}
-.augBox.tS{--glow:#ff6464}.augBox.tG{--glow:#ffc61a}.augBox.tP{--glow:#c49bff}
-@keyframes augFade{from{opacity:0}to{opacity:1}}
-@keyframes btnGlow{to{box-shadow:0 0 0 3px #f2f2f6,0 0 0 4px rgba(0,0,0,.25),inset 0 -3px 6px rgba(0,0,0,.25),0 0 20px 7px var(--glow)}}
-@keyframes btnFade{to{opacity:0}}
-@keyframes lidOpenT{0%{transform:none}30%,42%{transform:translateY(-5%) rotateX(-34deg)}85%{transform:translateY(-45.5%) rotateX(-14deg);opacity:1}100%{transform:translateY(-45.5%);opacity:0}}
-@keyframes lidOpenB{0%,40%{transform:none}85%{transform:translateY(45.5%);opacity:1}100%{transform:translateY(45.5%);opacity:0}}
-@keyframes ballToCard{0%,40%{clip-path:inset(15.63% 0 round 50% / 34.37%)}85%,100%{clip-path:inset(0 round 50% / 14%)}}
-@keyframes seam{0%{opacity:0;transform:translateY(-50%) scaleX(.3)}25%,42%{opacity:1;transform:translateY(-50%) scaleX(1)}75%,100%{opacity:0;transform:translateY(-50%) scaleX(1.2)}}
-@keyframes augFlash{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:.85}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+/* Carta de aumento: marco dorado (img/aug-marco.svg, 682×1212) igual para las tres rarezas; la rareza la da el color del icono (plata, oro o prismático) y el brillo al pasar el ratón */
+.augCard3{--tg:rgba(200,205,214,.45);position:relative;width:300px;aspect-ratio:682/1212;padding:0;border:0;cursor:pointer;text-align:center;color:#fff;border-radius:4px;
+  background:#000 url(img/aug-marco.svg) center/100% 100% no-repeat;box-shadow:0 16px 28px rgba(0,0,0,.6);transition:transform .14s,box-shadow .14s;animation:augIn .25s ease-out both}
+.augCard3.tG{--tg:rgba(232,190,110,.55)}.augCard3.tP{--tg:rgba(150,140,255,.6)}
+.augCard3:hover{transform:translateY(-6px);box-shadow:0 20px 32px rgba(0,0,0,.65),0 0 22px var(--tg)}
+.augCard3:focus-visible{outline:3px solid #e9cf95;outline-offset:4px}
+.ac3Ico{position:absolute;left:18%;right:18%;top:17%;height:26%;display:grid;place-items:center}
+.ac3Ico img{max-width:100%;max-height:100%;width:auto;height:100%;object-fit:contain;image-rendering:pixelated}
+.ac3Emo{font-size:84px;line-height:1;filter:grayscale(1) brightness(1.3)}
+.ac3Name{position:absolute;left:10%;right:10%;top:45%;height:9.5%;display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:27px;line-height:1.05;color:#fff;overflow:hidden}
+.ac3Desc{position:absolute;left:10%;right:10%;top:56%;bottom:11%;display:flex;align-items:flex-start;justify-content:center;font-size:15px;font-weight:700;line-height:1.42;color:#f2f2f2;overflow:hidden}
+@keyframes augIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 /* Minimapa de islas (abajo a la derecha del campo): un clic lleva a la isla de cada jugador */
 .islands{position:fixed;right:12px;bottom:calc(var(--shopH,190px) + 14px);z-index:5;width:210px;height:168px;border-radius:16px;
   background:radial-gradient(120% 100% at 50% 40%,rgba(40,110,160,.55),rgba(8,20,40,.85));border:1px solid rgba(255,255,255,.14);box-shadow:0 8px 22px rgba(0,0,0,.45),inset 0 0 30px rgba(120,200,255,.12)}
@@ -902,7 +854,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   .card .pic{width:100%;top:12px;-webkit-mask-image:none;mask-image:none}
 }
 /* Con «reducir movimiento» se quitan las animaciones, salvo la apertura de los aumentos: es corta, no se repite y es parte de la elección */
-@media (prefers-reduced-motion:reduce){ :not(.augBox,.augBox *){transition:none!important;animation:none!important} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 /* ===================== Ventanas, botones de partida y pantallas competitivas (sistema pixel) =====================
    Mismo lenguaje que el menú: marcos de dos anillos con esquinas escalonadas, Pixelify Sans y la paleta --px*. */
 :root{--pxCutS:polygon(0 4px,2px 4px,2px 2px,4px 2px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 2px,calc(100% - 2px) 2px,calc(100% - 2px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 2px) calc(100% - 4px),calc(100% - 2px) calc(100% - 2px),calc(100% - 4px) calc(100% - 2px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 2px),2px calc(100% - 2px),2px calc(100% - 4px),0 calc(100% - 4px))}
