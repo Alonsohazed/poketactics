@@ -1702,10 +1702,15 @@ function connLost(reason,s){
 }
 function showLostBar(reason){
  let b=$('lostBar'); if(!b){ b=document.createElement('div'); b.id='lostBar'; b.setAttribute('role','alert'); document.body.appendChild(b); b.addEventListener('click',e=>{ const a=e.target.closest('button'); if(!a) return; if(a.dataset.a==='back') tryRejoin(); else if(a.dataset.a==='menu') giveUpLost(); }); }
- b.innerHTML=`<b>Conexión perdida</b> · ${esc(reasonText(reason))}. Reconectando…<span><button class="btn sm" data-a="back">Volver a mi partida</button><button class="btn sm" data-a="menu">Salir al menú</button></span>`; b.hidden=false;
+ b.innerHTML=`<b>Conexión perdida</b> · ${esc(reasonText(reason))}. <i class="lbMsg">Reconectando…</i><span><button class="btn sm" data-a="back">Volver a mi partida</button><button class="btn sm" data-a="menu">Salir al menú</button></span>`; b.hidden=false;
 }
-function hideLostBar(){ const b=$('lostBar'); if(b) b.hidden=true; clearTimeout(NET.lostT); }
-function tryRejoin(){ const s=sock(); if(!s) return; NET.mode='joining'; if(s.connected) s.emit('rejoin'); else s.connect(); }
+function hideLostBar(){ const b=$('lostBar'); if(b) b.hidden=true; clearTimeout(NET.lostT); clearTimeout(NET.rjT); }
+// «Volver a mi partida»: reintenta YA (sin esperar la espera creciente de socket.io) y, si en 8 s no llega el asiento, rehace la conexión
+// (puede estar «conectada» a medias: el navegador aún no ha notado el corte). Con el socket conectado, 'connect' emite rejoin al volver
+function tryRejoin(){ const s=sock(); if(!s) return; NET.mode='joining'; NET.lost=NET.lost||Date.now();
+ if(s.connected) s.emit('rejoin'); else { s.disconnect(); s.connect(); } lostBarMsg('Volviendo a tu partida…');
+ clearTimeout(NET.rjT); NET.rjT=setTimeout(()=>{ if(NET.mode==='joining'&&NET.lost){ s.disconnect(); s.connect(); lostBarMsg('Sin respuesta, reconectando…'); } },8000); }
+function lostBarMsg(t){ const b=$('lostBar'), m=b&&b.querySelector('.lbMsg'); if(m) m.textContent=t; }
 function giveUpLost(){ hideLostBar(); NET.lost=null; if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); }
 // Botón del menú para volver a una partida a medias (el servidor guarda tu asiento unos minutos; un bot juega por ti mientras tanto)
 function renderResume(){
@@ -3712,9 +3717,10 @@ function serverAct(peer,a){ if(!G||!G.players) return; const p=G.players.find(x=
 // Un jugador desconectado queda «ausente» (p.away): conserva su asiento y se comporta como un jugador presente que no toca nada (cobra su economía, su tablero pelea,
 // se aplican los mismos automatismos que a cualquiera que no actúa), pero NO lo juega ningún bot y la partida no se espera a que esté listo
 function serverLeave(peer){ if(!G||!G.players) return; const p=G.players.find(x=>x.remote&&x.peer===peer); if(p){ p.remote=false; p.away=true; p.tp=null; note(null,`🔌 ${p.name} se desconectó (su asiento queda reservado)`); } }
-// Reconexión: el asiento de un jugador que se fue (un bot juega por él) vuelve a ser suyo con otro id de conexión
+// Reconexión: el asiento vuelve a ser suyo con otro id de conexión. También si el servidor aún cree viva la conexión vieja
+// (un corte de red tarda hasta 55 s en notarse por el latido): si no, «Volver a mi partida» fallaba justo cuando hace falta
 function serverRejoin(oldPeer,newPeer){
- if(!G||!G.players||G.over) return false; const p=G.players.find(x=>x.peer===oldPeer&&x.alive&&!x.remote&&x.away); if(!p) return false;
+ if(!G||!G.players||G.over) return false; const p=G.players.find(x=>x.peer===oldPeer&&x.alive&&(x.away||x.remote)); if(!p) return false;
  p.peer=newPeer; p.remote=true; p.away=false; p.tp=null; if(G.phase==='augment'&&G.augDeadline) G.augDeadline=Math.max(G.augDeadline,Date.now()+20000); NET.lastPriv[p.id]=''; NET.lastPub=''; NET.lastBdP=[]; note(null,`🔌 ${p.name} volvió a la partida`); return true;
 }
 // Reenvía a quien vuelve lo que solo se manda una vez: su estado, el combate de la ronda y el carrusel

@@ -208,8 +208,10 @@ function leave(socket) {
     if (room.owner === socket.id) room.owner = room.seats[0].peer;
     emitLobby(room); broadcastRooms();
   } else {
+    // Si el asiento ya pasó a otra conexión (volvió antes de que el servidor notara el corte), la vieja no lo toca
     const seat = room.seats.find(s => s.peer === socket.id);
-    if (seat) { seat.connected = false; seat.lostAt = Date.now(); }
+    if (!seat) return;
+    seat.connected = false; seat.lostAt = Date.now();
     try { room.game.serverLeave(socket.id); } catch (e) { /* noop */ }
   }
 }
@@ -243,7 +245,8 @@ io.on('connection', socket => {
     seat.peer = socket.id; seat.connected = true; seat.lostAt = 0; room.emptySince = 0;
     socket.join(room.code); socket.data.room = room.code;
     let ok = false; try { ok = room.game.serverRejoin(old, socket.id); } catch (e) { console.error(e); }
-    if (!ok) { seat.connected = false; socket.leave(room.code); socket.data.room = null; return socket.emit('rejoinfail', { why: 'No se pudo recuperar tu asiento' }); }
+    if (!ok) { seat.peer = old; seat.connected = false; socket.leave(room.code); socket.data.room = null; return socket.emit('rejoinfail', { why: 'No se pudo recuperar tu asiento' }); } // deshace el cambio: si no, asiento y jugador quedaban con ids distintos y ningún intento posterior funcionaba
+    console.log(`[${room.code}] ${seat.nick} vuelve a la partida (${old === socket.id ? 'misma conexión' : 'conexión nueva'})`);
     socket.emit('start', { seats: publicSeats(room.seats) });
     room.game.serverResend(socket.id);
   });
@@ -311,7 +314,11 @@ io.on('connection', socket => {
   });
 
   socket.on('leave', () => leave(socket));
-  socket.on('disconnect', () => { unqueue(socket); leave(socket); });
+  socket.on('disconnect', reason => {
+    // Registro de cortes en partida (se ve en los logs de Render) para saber por qué se cae la gente: ping timeout, transport close…
+    const room = rooms.get(socket.data.room); if (room && room.state === 'game') console.log(`[${room.code}] ${socket.data.user.name} se desconecta: ${reason}`);
+    unqueue(socket); leave(socket);
+  });
 });
 
 if (process.env.RENDER && !process.env.DATABASE_URL) {

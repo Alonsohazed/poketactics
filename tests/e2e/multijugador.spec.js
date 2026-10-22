@@ -80,6 +80,13 @@ test('un corte de red no te saca de la partida: vuelve solo, o con el botón del
   expect(tras.modo).toBe('client'); expect(tras.mismoJugador).toBe(idB); expect(tras.cartas).toBe(5); expect(tras.motivo).toBeTruthy();
   await expect.poll(() => B.evaluate(() => G.players.length)).toBe(8);
 
+  // 2b) El botón «Volver a mi partida» de la barra recupera el asiento al momento (antes no hacía nada con la conexión a medias)
+  await B.evaluate(() => { NET.sock.io.reconnection(false); NET.sock.io.engine.close(); });
+  await expect(B.locator('#lostBar')).toBeVisible(); await B.waitForTimeout(500);
+  await B.evaluate(() => NET.sock.io.reconnection(true)); await B.locator('#lostBar button[data-a="back"]').click();
+  await expect(B.locator('#lostBar')).toBeHidden({ timeout: 15_000 });
+  await expect.poll(() => B.evaluate(() => NET.mode + ':' + G.me.id)).toBe('client:' + idB);
+
   // 3) «Salir al menú» tras otro corte y volver con el botón «Volver a tu partida»
   await B.evaluate(() => NET.sock.io.engine.close());
   await expect(B.locator('#lostBar')).toBeVisible();

@@ -32,6 +32,16 @@ ready.then(() => server.listen(0, async () => {
   assert(S.st.ri >= antes, 'la partida no retrocede (ronda ' + antes + ' → ' + S.st.ri + ')'); assert.strictEqual(yo().away, false, 'vuelve a estar presente'); assert(yo().remote);
   assert.strictEqual(rooms.size, 1, 'la sala sigue viva');
 
+  // 1b) Corte «a medias»: el navegador ya se reconectó con otra conexión, pero el servidor aún cree viva la vieja (tarda hasta 55 s en notarlo).
+  //     Volver debe funcionar al momento y, cuando por fin cae la conexión vieja, no debe dejar el asiento bloqueado
+  const T1 = conn(); await sleep(400); T1.emit('rejoin'); await sleep(800);
+  assert.strictEqual(T1.st.fail, null, 'vuelve aunque el servidor aún crea viva la conexión vieja: ' + JSON.stringify(T1.st.fail)); assert.strictEqual(T1.st.start, 1, 'recibe start');
+  assert(yo().remote && !yo().away && yo().peer === T1.id, 'el asiento pasa a la conexión nueva');
+  S.disconnect(); await sleep(600); // por fin cae la vieja
+  assert(yo().remote && !yo().away && yo().peer === T1.id, 'la caída de la conexión vieja no deja ausente al jugador que ya volvió');
+  T1.disconnect(); await sleep(600); assert.strictEqual(yo().away, true, 'si cae la nueva, queda ausente');
+  S = conn(); await sleep(400); S.emit('rejoin'); await sleep(800); assert.strictEqual(S.st.fail, null, 'y puede volver otra vez'); assert(yo().remote && !yo().away);
+
   // 2) Se va y no vuelve: pasado el plazo queda eliminado en el último puesto y se apunta el resultado
   S.disconnect(); await sleep(6500);
   assert.strictEqual(rooms.size, 0, 'la sala se cierra tras el plazo');
