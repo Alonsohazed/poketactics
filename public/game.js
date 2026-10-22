@@ -3390,16 +3390,20 @@ function fitAugCard(el){
  if(sp){ fit(b,27,19,()=>lines()<1.5&&sp.offsetWidth<=b.clientWidth+1); if(lines()>=1.5) fit(b,24,14,()=>sp.offsetHeight<=b.clientHeight+1&&sp.offsetWidth<=b.clientWidth+1); }
  if(d) fit(d,15,9,()=>d.scrollHeight<=d.clientHeight+1);
 }
-function augCardHTML(a,i){ return `<button class="augCard3 t${a.tier}" data-i="${i}" title="${esc(TIER_NAME[a.tier])}"><span class="ac3Ico" data-aug="${esc(a.id)}"></span><b class="ac3Name"><span>${esc(a.name)}</span></b><span class="ac3Desc">${esc(a.desc)}</span></button>`; }
+function augCardHTML(a,i,anim){ return `<button class="augCard3 t${a.tier}${anim!=null?' nuevo':''}" data-i="${i}"${anim!=null?` style="--d:${anim*.12}s"`:''} title="${esc(TIER_NAME[a.tier])}"><span class="ac3Ico" data-aug="${esc(a.id)}"></span><b class="ac3Name"><span>${esc(a.name)}</span></b><span class="ac3Desc">${esc(a.desc)}</span></button>`; }
 function hydrateAugCards(root){
  root.querySelectorAll('.augCard3').forEach(fitAugCard);
  root.querySelectorAll('.ac3Ico[data-aug]').forEach(el=>{ const a=AUG_BY[el.dataset.aug]; if(!a) return; augSil(a).then(u=>{ el.innerHTML=u?`<img src="${u}" alt="">`:`<span class="ac3Emo">${esc(a.icon||'✨')}</span>`; }); });
 }
+// Aumentos ya mostrados en esta ronda: solo aparecen con efecto los nuevos (al cambiar uno, solo ese)
+let augSeen={round:-1,ids:new Set()};
 function showAugment(){
  const me=G.me; if(!me.augChoices||!me.augChoices.length) return;
  const choices=me.augChoices.map(id=>AUG_BY[id]).filter(Boolean), rr=me.augRR||[0,0,0];
  NET.augKey=me.augChoices.join()+'|'+(rr).join();
- openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol">${augCardHTML(a,i)}<button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
+ if(augSeen.round!==G.roundIdx) augSeen={round:G.roundIdx,ids:new Set()};
+ let k=0; const anim=choices.map(a=>augSeen.ids.has(a.id)?null:k++); choices.forEach(a=>augSeen.ids.add(a.id));
+ openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol">${augCardHTML(a,i,anim[i])}<button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
  hydrateAugCards($('mbox'));
  $('mbox').querySelectorAll('.augCard3').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });

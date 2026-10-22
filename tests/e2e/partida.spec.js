@@ -117,6 +117,10 @@ test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page })
   await expect(page.locator('#mbox .augCard3 .ac3Ico img')).toHaveCount(3, { timeout: 15000 });
   const c = await page.evaluate(() => ({ ball: document.querySelectorAll('#mbox .augBox,#mbox .lidT').length, sale: [...document.querySelectorAll('#mbox .augCard3')].filter(el => { const b = el.querySelector('.ac3Name'), s = b.firstElementChild, d = el.querySelector('.ac3Desc'); return s.offsetHeight > b.clientHeight + 1 || s.offsetWidth > b.clientWidth + 1 || d.scrollHeight > d.clientHeight + 1; }).length }));
   expect(c).toEqual({ ball: 0, sale: 0 });
+  // aparición: empiezan transparentes y escalonadas, y en menos de 1,5 s están todas visibles
+  const ap = await page.evaluate(() => [...document.querySelectorAll('#mbox .augCard3')].map(e => e.classList.contains('nuevo') && getComputedStyle(e).animationName));
+  expect(ap).toEqual(['augIn', 'augIn', 'augIn']);
+  await expect.poll(() => page.evaluate(() => [...document.querySelectorAll('#mbox .augCard3')].every(e => getComputedStyle(e).opacity === '1')), { timeout: 3000 }).toBe(true);
   await page.locator('#mbox .augCard3').first().click();
   await page.waitForTimeout(500); await resolverElecciones(page);
   await expect(page.locator('#modal')).toBeHidden();
