@@ -579,6 +579,7 @@ class Actor{
      if(this.noKo) lean=k*1.35; lift-=Math.max(0,this.deadT-.6)*.6;
      this.setAlpha(1-clamp((this.deadT-.5)/.7,0,1)); this.root.visible=this.deadT<1.3;
    } else {
+     if(this.deadT>=0){ this.deadT=-1; this.noKo=false; this.root.visible=true; if(this.sm){ this.sm.st=''; this.go('idle'); } } // renace (Ho-Oh, Moltres): vuelve a verse
      if(this.sm) this.smUpdate(spec,dt,this.lastSpeed||0);
      else { if(this.cur&&!this.cur.isRunning()&&this.curName!=='idle'&&this.curName!=='walk'){ this.cur.stop(); this.cur=null; }
        if(!this.cur||this.curName==='idle'||this.curName==='walk'){ if(this.moveT>0&&this.acts&&this.acts.walk) this.play('walk',true); else this.play('idle',true); } }

@@ -11,6 +11,9 @@
  *       Dos composiciones (clave:estrellas[:objeto+objeto], ...). Tasa de victoria, duración y supervivientes.
  *   node .claude/skills/autochess-balance-simulator/scripts/sim.js games [--n 30] [--diff normal]
  *       Partidas completas de 8 bots. Puesto medio por aumento y por sinergia principal.
+ *   node .claude/skills/autochess-balance-simulator/scripts/sim.js carry [--cost 5] [--star 2] [--n 20] [--only kyogre]
+ *       Cada Pokémon del coste como carry de un equipo (4 fichas de coste 3-4 a 2★) contra los demás de su coste,
+ *       con/sin sinergias y con/sin sus 3 objetos recomendados.
  *   Añade --json para salida en JSON.
  */
 const fs = require('fs');
@@ -32,6 +35,8 @@ const args = process.argv.slice(2);
 const mode = args[0];
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d; };
 const flag = k => args.includes('--' + k);
+// --set "kyogre.mm=20,kyogre.big=1.5": cambia parámetros de habilidad solo en memoria, para probar valores sin tocar game.js
+for (const kv of (opt('set', '') || '').split(',').filter(Boolean)) { const [path, v] = kv.split('='), [k, prm] = path.split('.'); if (!E.DEF[k]) throw new Error(`Pokémon desconocido: ${k}`); for (const ab of E.DEF[k].ab) ab[2][prm] = +v; }
 const R = { s: +opt('stage', 4), n: 2 }; // ronda usada para los combates (afecta a nada salvo PvE)
 const pct = x => (x * 100).toFixed(1) + '%';
 
@@ -112,7 +117,35 @@ async function modeGames() {
   process.exit(0);
 }
 
+// Cada Pokémon del coste pedido (2★ por defecto) como carry de un equipo de 4 fichas de coste 3-4 a 2★, contra todos los demás del mismo coste.
+// 4 escenarios: con/sin sinergias (compañeros que comparten sus rasgos o que no comparten ninguno) × con/sin sus 3 objetos recomendados (GLOVE_BIS del rol).
+const BIS = { r: ['band', 'rage', 'sharp'], a: ['band', 'blood', 'sharp'], b: ['blood', 'titan', 'sturdy'], m: ['moon', 'specs', 'wise'], h: ['moon', 'soothe', 'energy'], t: ['vest', 'leftovers', 'helmet'] };
+function carryTeam(d, syn, items, star) {
+  const own = d.traits.filter(t => t !== 'Legendario'), pool = E.UNIT_LIST.filter(u => (u.cost === 3 || u.cost === 4) && !u.traits.includes('Legendario') && !E.DEF[u.key].evoOf);
+  const share = u => u.traits.filter(t => own.includes(t)).length, front = u => ['t', 'b'].includes(u.role), pick = [];
+  const take = (ok, n) => { for (const u of pool) { if (pick.length >= n) break; if (!pick.includes(u) && ok(u)) pick.push(u); } };
+  if (syn) { pool.sort((a, b) => share(b) - share(a) || b.cost - a.cost || a.key.localeCompare(b.key)); take(u => front(u) && share(u) > 0, 1); take(u => front(u), 1); take(() => true, 4); }
+  else { const free = u => share(u) === 0 && pick.every(p => !p.traits.some(t => u.traits.includes(t))); take(u => front(u) && free(u), 2); take(free, 4); take(u => share(u) === 0, 4); }
+  return compSnap([`${d.key}:${star}${items ? ':' + BIS[d.role].join('+') : ''}`, ...pick.map(u => `${u.key}:2`)].join(','));
+}
+function modeCarry() {
+  const n = +opt('n', 20), star = +opt('star', 2), cost = +opt('cost', 5), only = opt('only');
+  const list = E.UNIT_LIST.filter(u => u.cost === cost && !E.DEF[u.key].evoOf), cfg = [['sinSin', 0, 0], ['sinObj', 1, 0], ['objSin', 0, 1], ['ambos', 1, 1]], out = [];
+  for (const a of list) { if (only && !only.split(',').includes(a.key)) continue; const row = { pokemon: a.key, rol: a.role, rasgos: a.traits.join('/') };
+    for (const [name, syn, it] of cfg) { let w = 0, g = 0, t = 0; const A = carryTeam(a, syn, it, star);
+      for (const b of list) { if (a === b) continue; const B = carryTeam(b, syn, it, star);
+        for (let s = 1; s <= n; s++) { const r = s % 2 ? fight(A, B, s * 7919) : fight(B, A, s * 7919); g++; t += r.t; if (r.w === (s % 2 ? 0 : 1)) w++; } }
+      row[name] = g ? w / g : 0; row['t_' + name] = +(t / g).toFixed(1); }
+    out.push(row); }
+  out.sort((x, y) => y.ambos - x.ambos);
+  if (flag('json')) return console.log(JSON.stringify(out, null, 2));
+  console.log(`Coste ${cost} como carry (${star}★) + 4 fichas de coste 3-4 a 2★ contra los demás de su coste · ${n} semillas por emparejamiento (SIMULACIÓN)`);
+  console.log(`${'pokemon'.padEnd(11)} rol  ${'nada'.padStart(6)} ${'sinerg'.padStart(6)} ${'objet'.padStart(6)} ${'ambos'.padStart(6)}   duración media (s)`);
+  for (const r of out) console.log(`${r.pokemon.padEnd(11)} ${r.rol}   ${pct(r.sinSin).padStart(6)} ${pct(r.sinObj).padStart(6)} ${pct(r.objSin).padStart(6)} ${pct(r.ambos).padStart(6)}   ${r.t_sinSin}/${r.t_sinObj}/${r.t_objSin}/${r.t_ambos}`);
+}
+
 if (mode === 'units') modeUnits();
 else if (mode === 'comp') modeComp();
+else if (mode === 'carry') modeCarry();
 else if (mode === 'games') modeGames();
 else { console.log(fs.readFileSync(__filename, 'utf8').split('*/')[0]); process.exit(1); }
