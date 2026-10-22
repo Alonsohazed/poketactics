@@ -2925,18 +2925,9 @@ const TRAIT_SVG={
 const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="${TRAIT_SVG[t]}"/></svg>`:(TRAITS[t]?TRAITS[t].icon:'');
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
-// Ilustraciones recortadas de cartas TCG (public/art): retratos de la tienda y de las minileyendas, sin cargar modelos 3D
-// Retrato de cada carta: punto del Pokémon en su arte [x %, y %] y zoom; ese punto se coloca a la derecha de la carta (a la izquierda queda el fundido para las sinergias)
-const ART_FOCUS={
- abra:[45,40,1.2],absol:[52,40,1.2],bagon:[50,45,1.15],beldum:[55,45,1.15],bulbasaur:[42,55,1.2],charmander:[60,50,1.2],chikorita:[55,55,1.2],cleffa:[50,50,1.3],
- darkrai:[45,45,1.15],diglett:[48,45,1.15],ditto:[50,50,1.15],dratini:[48,46,1.2],drowzee:[45,40,1.15],duskull:[40,35,1.15],eevee:[52,45,1.2],elekid:[75,45,1.15],
- espeon:[45,40,1.15],flareon:[40,45,1.15],gastly:[42,55,1.2],geodude:[50,45,1.15],gible:[40,40,1.1],gimmighoul:[52,45,1.25],giratina:[50,60,1.1],groudon:[65,50,1.1],
- growlithe:[45,40,1.15],hatenna:[45,40,1.15],hooh:[72,35,1.15],horsea:[70,40,1.2],houndour:[55,45,1.15],igglybuff:[45,50,1.15],jolteon:[40,50,1.15],kyogre:[55,50,1.1],
- lapras:[60,50,1.15],larvitar:[50,45,1.15],leafeon:[40,55,1.2],litwick:[45,40,1.1],lugia:[42,40,1.05],machop:[52,45,1.15],magikarp:[52,36,1.25],magnemite:[52,55,1.1],
- meowth:[42,45,1.15],mewtwo:[45,40,1.1],mimejr:[50,55,1.3],misdreavus:[55,60,1.1],moltres:[55,45,1.1],munchlax:[45,55,1.15],oddish:[50,55,1.15],onix:[70,45,1.1],
- pichu:[55,40,1.15],poliwag:[50,50,1.15],ponyta:[36,38,1.15],psyduck:[65,55,1.1],ralts:[45,35,1.1],rattata:[55,45,1.2],rayquaza:[65,45,1.1],rhyhorn:[55,50,1.15],
- riolu:[55,45,1.1],rowlet:[45,45,1.15],sableye:[50,45,1.15],scyther:[70,40,1.1],shellder:[40,40,1.1],shinx:[45,35,1.15],squirtle:[60,72,1.3],sylveon:[65,40,1.1],
- tauros:[45,55,1.1],timburr:[45,40,1.1],togepi:[57,60,1.15],turtwig:[60,45,1.1],umbreon:[30,45,1.1],vaporeon:[60,45,1.1],zapdos:[50,40,1.1],zorua:[50,55,1.15]};
+// Retratos (public/art): sprites de Pokémon GO compuestos con un aura de sus colores, el Pokémon a la derecha (centro en el 68 % del ancho y el 52 % del alto) y la izquierda oscura para sinergias y nombre (retrato.js en la skill de recursos). Sin cargar modelos 3D
+// ART_FOCUS: [x %, y %, zoom] del punto que la carta coloca a la derecha; todos los retratos comparten encuadre
+const ART_FOCUS={}, ART_DEF=[68,50,1,.87];   // 4.º valor: escala mínima respecto al ancho (.87 = el retrato entero, sin ampliar de más)
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
 const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
@@ -2983,9 +2974,9 @@ function renderShop(){
    if(window.B3&&B3.preload) B3.preload([...me.shop.filter(k=>k&&DEF[k]).map(k=>dexOf(DEF[k],1)),...allUnits(me).map(u=>dexOf(DEF[u.defId],Math.min(3,u.star+1)))]);
    $('cards').innerHTML=me.shop.map((k,i)=>{
      if(!k||!DEF[k]) return `<div class="card empty"></div>`;
-     const d=DEF[k], can=canBuy(me,i)&&me.alive, ak=shopArtKey(k), fo=CARD_ART[ak]&&(ART_FOCUS[ak]||[50,50,1.2]);
+     const d=DEF[k], can=canBuy(me,i)&&me.alive, ak=shopArtKey(k), fo=CARD_ART[ak]&&(ART_FOCUS[ak]||ART_DEF);
      return `<button class="card c${d.cost} ${fo?'v2':''} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
-       ${fo?`<span class="art v2art"><img src="${CARD_ART[ak]}" alt="" style="--fx:${fo[0]/100};--fy:${fo[1]/100};--z:${fo[2]};--zr:${Math.min(1.6,Math.max(1,52/fo[0])).toFixed(2)}"></span>`:CARD_ART[shopArtKey(k)]?`<span class="art cardArt" style="background-image:url('${CARD_ART[shopArtKey(k)]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
+       ${fo?`<span class="art v2art"><img src="${CARD_ART[ak]}" alt="" style="--fx:${fo[0]/100};--fy:${fo[1]/100};--z:${fo[2]};--zr:${(fo[3]||Math.min(1.6,Math.max(1,52/fo[0]))).toFixed(2)}"></span>`:CARD_ART[shopArtKey(k)]?`<span class="art cardArt" style="background-image:url('${CARD_ART[shopArtKey(k)]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
        <i class="frame"></i>${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
        <span class="cn">${DEF[shopArtKey(k)].name}</span>
        <span class="tr">${d.traits.map(t=>`<span title="${t}"><i>${traitIcon(t)}</i>${t}</span>`).join('')}</span>
@@ -3159,8 +3150,8 @@ function ucSprite(){ if(document.getElementById('ucSprite')) return; const w=doc
 let UC_CUR=null, tipPinned=false;
 // La misma carta que se compra en la tienda, sin botón, para reconocer al Pokémon en su ficha
 function unitCardHTML(d,who){
- const ak=DEF[d.key]?shopArtKey(d.key):d.key, fo=CARD_ART[ak]&&(ART_FOCUS[ak]||[50,50,1.2]), cn=(DEF[ak]||d).name;
- const art=fo?'<span class="art v2art"><img src="'+CARD_ART[ak]+'" alt="" style="--fx:'+fo[0]/100+';--fy:'+fo[1]/100+';--z:'+fo[2]+';--zr:'+Math.min(1.6,Math.max(1,52/fo[0])).toFixed(2)+'"></span>':'<span class="art bg-'+elemOf(d)+'"><i class="fx"></i></span><span class="pic">'+portraitImg(dexOf(d,1))+'</span>';
+ const ak=DEF[d.key]?shopArtKey(d.key):d.key, fo=CARD_ART[ak]&&(ART_FOCUS[ak]||ART_DEF), cn=(DEF[ak]||d).name;
+ const art=fo?'<span class="art v2art"><img src="'+CARD_ART[ak]+'" alt="" style="--fx:'+fo[0]/100+';--fy:'+fo[1]/100+';--z:'+fo[2]+';--zr:'+(fo[3]||Math.min(1.6,Math.max(1,52/fo[0]))).toFixed(2)+'"></span>':'<span class="art bg-'+elemOf(d)+'"><i class="fx"></i></span><span class="pic">'+portraitImg(dexOf(d,1))+'</span>';
  return '<div class="card c'+(d.cost||1)+' '+(fo?'v2':'')+' ucShopCard" title="'+esc(who)+'">'+art+'<span class="cn">'+esc(cn)+'</span><span class="tr">'+(d.traits||[]).map(t=>'<span title="'+t+'"><i>'+traitIcon(t)+'</i>'+t+'</span>').join('')+'</span>'+(d.cost?'<span class="cc">'+d.cost+'</span>':'')+'</div>';
 }
 // Ventana fijada junto a la ficha (se cierra al hacer clic fuera, con Esc o al repetir el clic)
