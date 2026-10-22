@@ -1,4 +1,4 @@
-# Fondo del carrusel: plataforma Poké Ball sobre suelo rojo, con la misma perspectiva que la cámara del carrusel del juego
+# Fondo del carrusel: plataforma Poké Ball flotando sobre un mar de nubes, con la misma perspectiva que la cámara del carrusel del juego
 # (fitCamera en board3d.js con una pantalla de 1920×1080: elevación ≈ 40°, distancia 28 radios de casilla, el borde del suelo a 1,3 radios del carrusel = 6,825).
 # Uso: blender -b --python carrusel-pokeball.py -- <salida.png> [ancho=3400] [alto=2100] [muestras=96]
 # Deja además <salida>.json con los píxeles de los extremos N/S/W/E del borde de la plataforma (para PLAZA_IMG en board3d.js).
@@ -16,7 +16,7 @@ R = 6.825          # radio de la plataforma (k·rr en unidades del 3D)
 EL, DIST = 39.75, 28.0
 DISC = .441       # ancho de la plataforma en la imagen, en fracción del ancho (1500 px en 3400)
 CENTER_Y = 0.41     # altura del centro de la plataforma en la imagen (desde arriba): deja más suelo abajo, donde la pantalla muestra más
-SUELO = -12.0       # el suelo queda muy por debajo: la plataforma flota (su sombra cae lejos y difusa)
+SUELO = -12.0       # altura del mar de nubes, muy por debajo de la plataforma: flota (su sombra cae lejos y difusa sobre las nubes)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -73,20 +73,57 @@ for o in (band, ln):
 bpy.ops.mesh.primitive_cone_add(vertices=192, radius1=R * .72, radius2=R * .98, depth=3.6, location=(0, 0, -2.8)); base = bpy.context.object; base.name = 'base'
 base.data.materials.append(mat('base', hexc('#121214'), .7)); bpy.ops.object.shade_smooth_by_angle(angle=math.radians(30))
 
-# Suelo rojo muy por debajo (sin bordes visibles), más claro a lo lejos: da profundidad
-bpy.ops.mesh.primitive_plane_add(size=600, location=(0, 0, SUELO)); fl = bpy.context.object; fl.name = 'suelo'
-mf = bpy.data.materials.new('suelo'); mf.use_nodes = True; nt = mf.node_tree; b = nt.nodes['Principled BSDF']
-b.inputs['Roughness'].default_value = .8
-tc = nt.nodes.new('ShaderNodeTexCoord'); sep = nt.nodes.new('ShaderNodeSeparateXYZ'); mr = nt.nodes.new('ShaderNodeMapRange')
-ramp = nt.nodes.new('ShaderNodeValToRGB')
-mr.inputs['From Min'].default_value = -40; mr.inputs['From Max'].default_value = 60
-ramp.color_ramp.elements[0].color = (*[c ** 2.2 for c in hexc('#9a2a31')], 1); ramp.color_ramp.elements[1].color = (*[c ** 2.2 for c in hexc('#d3646a')], 1)
-nt.links.new(tc.outputs['Object'], sep.inputs[0]); nt.links.new(sep.outputs['Y'], mr.inputs['Value']); nt.links.new(mr.outputs['Result'], ramp.inputs['Fac']); nt.links.new(ramp.outputs['Color'], b.inputs['Base Color'])
-fl.data.materials.append(mf)
+# Bruma con la distancia a la cámara (perspectiva aérea): lo lejano se funde con el color del cielo
+SKY = hexc('#bcdcff')
+def hazed(m, d0=30, d1=120, top=.8):
+    nt = m.node_tree; out = nt.nodes['Material Output']; sh = out.inputs['Surface'].links[0].from_node
+    cd = nt.nodes.new('ShaderNodeCameraData'); mr = nt.nodes.new('ShaderNodeMapRange'); em = nt.nodes.new('ShaderNodeEmission'); mx = nt.nodes.new('ShaderNodeMixShader')
+    mr.inputs['From Min'].default_value = d0; mr.inputs['From Max'].default_value = d1; mr.inputs['To Max'].default_value = top
+    em.inputs['Color'].default_value = (*[c ** 2.2 for c in SKY], 1); em.inputs['Strength'].default_value = 1
+    nt.links.new(cd.outputs['View Distance'], mr.inputs['Value']); nt.links.new(mr.outputs['Result'], mx.inputs['Fac'])
+    nt.links.new(sh.outputs[0], mx.inputs[1]); nt.links.new(em.outputs[0], mx.inputs[2]); nt.links.new(mx.outputs[0], out.inputs['Surface'])
+    return m
 
-# Luz: cielo suave y un sol desde arriba a la izquierda (como el resto del escenario), sombras blandas
+# Cielo profundo muy por debajo de las nubes (se ve por los huecos)
+bpy.ops.mesh.primitive_plane_add(size=900, location=(0, 0, SUELO - 40)); fondo = bpy.context.object; fondo.name = 'cielo_bajo'
+mf = bpy.data.materials.new('cielo_bajo'); mf.use_nodes = True; b = mf.node_tree.nodes['Principled BSDF']
+b.inputs['Base Color'].default_value = (*[c ** 2.2 for c in hexc('#6fa9e6')], 1); b.inputs['Roughness'].default_value = 1
+fondo.data.materials.append(hazed(mf, 40, 160, .55))
+
+# Mar de nubes: cúmulos de esferas suavizadas (una malla compartida, muchas instancias), aplanados por abajo
+import random
+rnd = random.Random(7)
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=1); esf = bpy.context.object; me = esf.data
+for p in me.polygons: p.use_smooth = True
+bpy.data.objects.remove(esf)
+mc = bpy.data.materials.new('nube'); mc.use_nodes = True; b = mc.node_tree.nodes['Principled BSDF']
+b.inputs['Base Color'].default_value = (1, 1, 1, 1); b.inputs['Roughness'].default_value = .95
+if 'Subsurface Weight' in b.inputs: b.inputs['Subsurface Weight'].default_value = .25; b.inputs['Subsurface Radius'].default_value = (1, 1, 1)
+if 'Specular IOR Level' in b.inputs: b.inputs['Specular IOR Level'].default_value = .1
+hazed(mc, 30, 125, .75); me.materials.append(mc)
+col = bpy.data.collections.new('nubes'); sc.collection.children.link(col)
+def cumulo(cx, cy, cz, size):
+    n = rnd.randint(7, 13)
+    for i in range(n):
+        r = size * rnd.uniform(.45, 1.0); ang = rnd.uniform(0, math.tau); d = size * rnd.uniform(0, 1.3)
+        o = bpy.data.objects.new('nube', me); col.objects.link(o)
+        o.location = (cx + math.cos(ang) * d * 1.3, cy + math.sin(ang) * d, cz + r * rnd.uniform(-.1, .45) * (1 - d / (size * 1.6)))
+        o.scale = (r, r * rnd.uniform(.8, 1.1), r * .72)
+# la plataforma flota sobre un claro: nubes alrededor y debajo, con huecos al cielo
+for gy in range(-14, 96, 7):
+    for gx in range(-95, 96, 8):
+        x, y = gx + rnd.uniform(-3, 3), gy + rnd.uniform(-3, 3)
+        if rnd.random() < .22: continue                     # huecos al cielo
+        if math.hypot(x * .8, y - 4) < 9 and rnd.random() < .7: continue  # bajo la plataforma, más abierto
+        cumulo(x, y, SUELO + rnd.uniform(-1.5, 1.5), rnd.uniform(2.2, 4.2))
+# segunda capa, mucho más baja y dispersa: asoma por los huecos y la bruma la difumina (profundidad)
+for gy in range(-20, 120, 11):
+    for gx in range(-130, 131, 13):
+        if rnd.random() < .45: continue
+        cumulo(gx + rnd.uniform(-5, 5), gy + rnd.uniform(-5, 5), SUELO - 16 + rnd.uniform(-2, 2), rnd.uniform(3, 5.5))
+
 wd = bpy.data.worlds.new('mundo'); sc.world = wd; wd.use_nodes = True; bg = wd.node_tree.nodes['Background']
-bg.inputs['Color'].default_value = (1, .96, .95, 1); bg.inputs['Strength'].default_value = .55
+bg.inputs['Color'].default_value = (*[c ** 2.2 for c in SKY], 1); bg.inputs['Strength'].default_value = .8
 bpy.ops.object.light_add(type='SUN', rotation=(math.radians(38), math.radians(-22), math.radians(-30))); sun = bpy.context.object
 sun.data.energy = 3.2; sun.data.angle = math.radians(14)
 bpy.ops.object.light_add(type='AREA', location=(0, -6, 22)); ar = bpy.context.object; ar.data.energy = 2500; ar.data.size = 30
