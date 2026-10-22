@@ -2951,13 +2951,15 @@ const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vie
 // Retratos (public/art): sprites de Pokémon GO compuestos con un aura de sus colores, el Pokémon a la derecha (centro en el 68 % del ancho y el 52 % del alto) y la izquierda oscura para sinergias y nombre (retrato.js en la skill de recursos). Sin cargar modelos 3D
 // ART_FOCUS: [x %, y %, zoom] del punto que la carta coloca a la derecha; todos los retratos comparten encuadre
 // Versión de los retratos: las imágenes se guardan 7 días en el navegador con el mismo nombre; al cambiarlos hay que subir este número para que se descarguen de nuevo
-const ART_V=2;
+const ART_V=3;
+// Formato de los retratos: AVIF (un tercio menos que WebP con la misma calidad); si el navegador no lo entiende (Safari < 16.4…), WebP. Ver artFormat()
+let ART_EXT='avif';
 const ART_FOCUS={}, ART_DEF=[68,50,1,.87];   // 4.º valor: escala mínima respecto al ancho (.87 = el retrato entero, sin ampliar de más)
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
-const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.webp?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
+const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 // Cabezas, minimapa y menú usan la miniatura (224 px, ~5 KB; la ilustración completa de la tienda pesa hasta 43 KB). Si falla (CDN y luego nuestro servidor), se muestra el sprite de la Pokédex en vez de una imagen rota o de cargar un modelo 3D
-const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.webp?v='+ART_V;
+const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.'+ART_EXT+'?v='+ART_V;
 const ART_PRE=new Set();
 function preloadArt(keys){ for(const k of keys){ if(ART_PRE.has(k)||!CARD_ART[k]) continue; ART_PRE.add(k); const im=new Image(); im.decoding='async'; im.src=artThumb(k); } } // las 7 minileyendas ya están en caché cuando salen en la lista de jugadores
 const dexUrl=dex=>(window.ASSET_BASE||'')+'dex/'+String(dex).split('/').pop()+'.png';
@@ -3663,8 +3665,14 @@ function resetSocket(){ if(NET.sock){ NET.sock.removeAllListeners(); NET.sock.di
 // Ahorro de transferencia de Render: los retratos (art/) y las insignias (img/rank) se piden a jsDelivr fijados al commit
 // desplegado, como los modelos animados. Solo se cambia si jsDelivr responde; si una imagen falla, vuelve a nuestro servidor.
 // Las imágenes pequeñas (retratos, objetos, Pokédex, insignias, trofeo) se piden a nuestro servidor: jsDelivr tardaba hasta 30 s en servir por primera vez cada archivo de un commit nuevo y no había forma de saber cuáles estaban listos. Solo los modelos 3D van por CDN (con respaldo en carrera, ver hedged en board3d.js). Aquí queda la cadena de respaldo de imágenes y la precarga de los retratos
+// Un AVIF diminuto: si el navegador no sabe decodificarlo, todos los retratos pasan a WebP (y se repinta lo que ya estaba en pantalla)
+function artFormat(){ const im=new Image(); im.onerror=()=>{ if(ART_EXT==='webp') return; ART_EXT='webp'; for(const k in CARD_ART) CARD_ART[k]=CARD_ART[k].replace('.avif?','.webp?'); if(G&&G.players&&G.players.length) renderUI(); };
+ im.src='data:image/avif;base64,AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAAB0AAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgSACAAAAABRpc3BlAAAAAAAAAAEAAAABAAAAEHBpeGkAAAAAAwgICAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAAlbWRhdBIACgc4AAaQENBpMhAZQmMEwAA0AACQQM6Xt10S'; }
 function cdnAssets(){
+ artFormat();
  addEventListener('error',e=>{ const el=e.target; if(!el||el.tagName!=='IMG') return;
+   // un retrato AVIF que falla se pide en WebP antes de caer al sprite de la Pokédex
+   const src=el.getAttribute('src')||''; if(src.includes('.avif?')&&!el.dataset.fbw){ el.dataset.fbw=1; el.src=src.replace('.avif?','.webp?'); return; }
    if(el.dataset&&el.dataset.sp&&!el.dataset.fb3){ el.dataset.fb3=1; el.src=SPRITE(el.dataset.sp); }
    else if(el.dataset&&el.dataset.dex&&!el.dataset.fb2){ el.dataset.fb2=1; el.src='dex/'+String(el.dataset.dex).split('/').pop()+'.png'; el.classList.add('artFb'); } },true);
  preloadArt(TAC_KEYS);

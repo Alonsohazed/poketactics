@@ -336,8 +336,12 @@ test('lista de jugadores: filas repartidas con la misma separación hasta el min
 });
 
 test('retratos: miniaturas ligeras y, si fallan, el sprite de la Pokédex en vez de una imagen rota', async ({ page }) => {
-  const r = await page.evaluate(() => { const im = [...document.querySelectorAll('#players img.artPic')]; return { n: im.length, thumbs: im.every(i => /art\/t\/[a-z]+\.webp\?v=\d+$/.test(i.src)) }; });
-  expect(r.n).toBeGreaterThan(5); expect(r.thumbs).toBe(true);
+  const r = await page.evaluate(() => { const im = [...document.querySelectorAll('#players img.artPic')]; return { n: im.length, thumbs: im.every(i => /art\/t\/[a-z]+\.avif\?v=\d+$/.test(i.src)), cargadas: im.every(i => i.complete && i.naturalWidth > 0 && !i.classList.contains('artFb')) }; });
+  expect(r.n).toBeGreaterThan(5); expect(r.thumbs).toBe(true); expect(r.cargadas).toBe(true);
+  // si un AVIF no carga, se pide el WebP antes que el sprite de la Pokédex
+  const wb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/avif;base64,AAAA#no-existe.avif?v=1'; /* inválida y sin pedir nada a la red */ document.body.appendChild(im);
+    await new Promise(r => setTimeout(r, 800)); const o = { probóWebp: im.dataset.fbw === '1', src: im.getAttribute('src') }; im.remove(); return o; });
+  expect(wb.probóWebp).toBe(true); expect(wb.src).toMatch(/dex\/4\.png$/);
   const fb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/webp;base64,AAAA'; /* imagen inválida: falla sin pedir nada a la red */ document.body.appendChild(im); await new Promise(r => setTimeout(r, 800)); const o = { src: im.src, ok: im.naturalWidth > 0 }; im.remove(); return o; });
   expect(fb.src).toMatch(/dex\/4\.png$/); expect(fb.ok).toBe(true);
 });
@@ -406,7 +410,7 @@ test('carga: la CDN lenta o caída no retrasa los modelos (petición en carrera 
     const t2 = performance.now(); try { await B3.hedged(U + 'caida', U + 'caida'); res.ambas = 'resolvió'; } catch (e) { res.ambas = 'rechazó'; } res.ambasMs = Math.round(performance.now() - t2); return res; });
   expect(r.lenta[0]).toBe('rapida'); expect(r.lenta[1]).toBeGreaterThan(1300); expect(r.lenta[1]).toBeLessThan(3000);
   expect(r.caida[0]).toBe('rapida'); expect(r.caida[1]).toBeLessThan(800); expect(r.ambas).toBe('rechazó');
-  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.webp?v=' + 2, 'items/water.webp', 'dex/4.png']);
+  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.avif?v=' + 3, 'items/water.webp', 'dex/4.png']);
 });
 
 test('objetos: el marco dorado es solo de la banca; sobre un Pokémon (lienzo y ficha) el marco es negro', async ({ page }) => {
