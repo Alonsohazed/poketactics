@@ -206,6 +206,25 @@ test('carrusel multijugador: los Pokémon no se recrean con cada mensaje del ser
   expect(r.nuevos, 'ningún modelo nuevo mientras llegan mensajes iguales').toBeLessThanOrEqual(1);
 });
 
+// Regresión: en multijugador los mensajes del carrusel llegan con retrasos variables; los Pokémon se paraban y volvían a arrancar
+// (la animación de correr se reiniciaba). Se simula un cliente: el carrusel real corre aparte y solo llegan sus mensajes, cada 120-420 ms y con 0-250 ms de retraso
+test('carrusel multijugador: con retrasos de red las animaciones no se reinician', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel'); await page.waitForTimeout(1500);
+  const r = await page.evaluate(async () => {
+    const H = G.carousel; H.t = 7; let last = performance.now(), stop = false, s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const msg = () => { const { cx, cy, rr } = carGeo(), nx = x => +((x - cx) / rr).toFixed(3), ny = y => +((y - cy) / rr).toFixed(3);
+      return { rot: +H.rot.toFixed(3), t: +H.t.toFixed(2), opts: H.opts.map(o => [o.key, o.item, o.taken ? o.taken.id : -1]), av: H.order.map(p => { const a = H.av[p.id] || {}; return [p.id, a.x == null ? null : nx(a.x), a.y == null ? null : ny(a.y), a.rel ? 1 : 0, a.done ? 1 : 0, a.carry ? a.carry.key : '', a.target == null ? -1 : a.target]; }) }; };
+    (async () => { while (!stop && !H.finished) { const now = performance.now(), save = G.carousel; G.carousel = H; updateCarousel((now - last) / 1000); G.carousel = save; last = now; const m = msg(); setTimeout(() => { if (!stop) applyCar(m); }, rnd() * 250); await new Promise(r => setTimeout(r, 120 + rnd() * 300)); } })();
+    const sw = {}, prev = {}, m0 = B3.made, t0 = performance.now();
+    await new Promise(res => { (function f() { const info = B3.smInfo; for (const d in info) for (const o of info[d]) { if (prev[o.key] !== undefined && prev[o.key] !== o.estado) sw[o.key] = (sw[o.key] || 0) + 1; prev[o.key] = o.estado; } if (performance.now() - t0 < 7000) requestAnimationFrame(f); else res(); })(); });
+    stop = true; const e = Object.entries(sw).map(([k, v]) => [String(k), v]);
+    return { nuevos: B3.made - m0, opts: e.filter(([k]) => k.startsWith('co')).reduce((a, [, v]) => a + v, 0), tacMax: Math.max(0, ...e.filter(([k]) => k.startsWith('tac')).map(([, v]) => v)) };
+  });
+  expect(r.nuevos, 'ningún modelo se recrea').toBeLessThanOrEqual(1);
+  expect(r.opts, 'los Pokémon del carrusel no se paran y arrancan').toBe(0);
+  expect(r.tacMax, 'cada minileyenda solo cambia al arrancar y al pararse').toBeLessThanOrEqual(3);
+});
+
 // El carrusel espera 8 s antes de soltar a la primera pareja: tiempo para ver todos los Pokémon y objetos
 test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
   await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');

@@ -2379,7 +2379,13 @@ function carGeo(){ const cx=geo.W/2, cy=geo.pad+geo.bh/2, rr=Math.min(geo.W*.42,
 function carTheta(){ const C=G.carousel, i=C?C.order.indexOf(G.me):-1; return i<0?0:Math.PI/2-carAng(i,C.order.length); }
 function carV(x,y,inv){ const {cx,cy}=carGeo(), t=inv?-carTheta():carTheta(), c=Math.cos(t), s=Math.sin(t), dx=x-cx, dy=y-cy; return [cx+dx*c-dy*s,cy+dx*s+dy*c]; }
 // Los Pokémon giran con la rotación de la simulación más lo que ha pasado desde su último paso (60 fps suaves aunque el paso sea de 33 ms o llegue cada 160 ms por red)
-function carRot(C){ const at=C.mirror?C.rotAt:C.tickAt; return C.rot+(at?.2*clamp((performance.now()-at)/1000,0,.3):0); }
+// En multijugador la rotación del cliente nunca se para ni retrocede entre mensajes: con los retrasos de red se detenía y arrancaba, y la animación de correr se reiniciaba
+let carRotV=null;
+function carRot(C){ // en el servidor (HEADLESS) no hay performance ni tickAt: solo C.rot
+ if(!C.mirror) return C.rot+(C.tickAt?.2*clamp((performance.now()-C.tickAt)/1000,0,.3):0);
+ const now=performance.now(), tgt=C.rot+.2*Math.min(1.5,(now-C.rotAt)/1000), v=carRotV;
+ if(!v||Math.abs(tgt-v.r)>.6){ carRotV={r:tgt,t:now}; return tgt; } // carrusel nuevo o salto grande: se coloca sin más
+ const dt=(now-v.t)/1000; if(dt>0){ let r=v.r+.2*dt; r+=(tgt-r)*Math.min(1,dt*1.5); v.r=Math.max(v.r,r); v.t=now; } return v.r; }
 function optPos(C,i){ const {cx,cy,rr}=carGeo(); const a=i*Math.PI*2/C.opts.length+carRot(C); return [cx+Math.cos(a)*rr*.55, cy+Math.sin(a)*rr*.55]; }
 function updateCarousel(dt){
  const C=G.carousel; if(!C||C.finished||C.mirror) return;
@@ -2737,7 +2743,7 @@ function activeTraits(who){ if(synCache.v!==G.uiV||synCache.who!==who){ const t=
 let sceneLinks=[];
 // Entrenadores del carrusel: la posición que se dibuja persigue a la real con suavizado exponencial (sin saltos entre pasos de 33 ms ni entre mensajes de red)
 const carVis=new Map(); let carFrame=0, carVisT=0, carDt=0;
-function carPos(pid,x,y){ let v=carVis.get(pid); if(!v){ v={x,y,f:-1}; carVis.set(pid,v); } if(v.f!==carFrame){ const k=1-Math.exp(-carDt*15); v.x+=(x-v.x)*k; v.y+=(y-v.y)*k; v.f=carFrame; } return [v.x,v.y]; }
+function carPos(pid,x,y){ let v=carVis.get(pid); if(!v){ v={x,y,f:-1}; carVis.set(pid,v); } if(v.f!==carFrame){ const k=1-Math.exp(-carDt*(G.carousel&&G.carousel.mirror?7:15)); v.x+=(x-v.x)*k; v.y+=(y-v.y)*k; v.f=carFrame; } return [v.x,v.y]; }
 // Efecto de una vez al colocar una ficha que comparte sinergia: memoria de cada ficha del tablero (casilla y sinergias activas)
 const synMem=new WeakMap(); let synCtx='', synFrame=0; // m.last = último fotograma en que la ficha estaba en el tablero (entrar = no estaba en el anterior)
 function sceneActors(){
@@ -2756,7 +2762,7 @@ function sceneActors(){
        hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
  } else if(inCar){
-   const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=carV(...optPos(C,i)); A.push({key:'co'+i+':'+o.key,opt:i,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
+   const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=carV(...optPos(C,i)); A.push({key:'co'+i+':'+o.key,opt:i,hold:.5,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:[o.item]}}); });
  } else {
    const who=viewedPlayer(), mine=who===me, ctx=who.id+'|'+G.phase+'|'+G.roundIdx, quiet=ctx!==synCtx, now=performance.now(); synCtx=ctx;
    const info=[], fr=++synFrame, tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
@@ -2776,7 +2782,7 @@ function sceneActors(){
  if(!inCar){
    A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
    for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDex(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
- else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+ else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:drag.loc&&drag.loc.i!==undefined?0:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
