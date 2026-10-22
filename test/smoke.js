@@ -196,7 +196,7 @@ ready.then(() => server.listen(0, async () => {
   assert(st.A.cmbs >= 4 && st.B.cmbs >= 4, 'cada jugador recibe todos los combates para poder verlos');
   assert(Array.isArray(st.A.priv.po), 'llegan los posibles rivales');
   assert.strictEqual(st.A.priv.aq, 41, 'el estado privado devuelve el número de la última acción (los inválidos se ignoran)');
-  assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle', 'dratini', 'pichu', 'abra', 'eevee'].includes(p[14])), 'todos los jugadores llevan minileyenda');
+  assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle', 'dratini', 'pichu', 'abra', 'chikorita', 'eevee'].includes(p[14])), 'todos los jugadores llevan minileyenda');
   assert.strictEqual(lastPub.pl.find(p => p[1] === 'Ana')[14], 'squirtle', 'la minileyenda de la partida sale de la cuenta');
   const tpB = lastPub.pl.find(p => p[8] && p[1] !== 'Ana')[16];
   assert.deepStrictEqual(tpB, [idA, 4.5, 9.25], 'la posición de la minileyenda de B llega a todos (y las inválidas se ignoran): ' + JSON.stringify(tpB));

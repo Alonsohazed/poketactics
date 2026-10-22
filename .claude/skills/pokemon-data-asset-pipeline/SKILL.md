@@ -62,3 +62,11 @@ Para añadir un entrenador: comprueba la URL de Showdown con `curl -I` antes de 
 - `validate.js --net` termina sin errores y `npm test` pasa.
 - Ningún recurso nuevo rompe la carga: hay alternativa visible si falla.
 - Los nombres en español siguen la nomenclatura oficial española cuando existe.
+
+## Animaciones creadas en Blender
+- `scripts/crear-clips-generico.py`: los 5 clips del juego (idle, run, attack, victory, faint) para cualquier modelo de Pokemon-3D-api con el esqueleto estándar (cuadrúpedos y bípedos). Revisa siempre las vistas (`render carpeta`) y luego el modelo en el juego (`B3.debugShot(dex, clip, fracción)` con la ficha sola en la banca, que mira a la cámara).
+- `scripts/crear-esqueleto.py`: crea un esqueleto completo con los nombres estándar a un modelo que no lo trae (pies por k-medias, cabeza, cola y brazos por la forma; pesos automáticos o por cercanía) y lo exporta; después se anima con `crear-clips-generico.py`. Revisa siempre la imagen `vista=`.
+- `scripts/crear-clips-sin-esqueleto.py`: solo para lo que no tiene extremidades (Pupitar, Steelix): anima el cuerpo entero (`flota=1` para fantasmas).
+- Opciones del genérico: `flota=1`, `relax=0` (no bajar brazos), `tipo=cuadrupedo|bipedo`, `amp=` (amplitud) y `caer=<prefijo>+<prefijo>:<grados>` (deja colgar cadenas que el modelo trae rectas, p. ej. `caer=LFeeler+RFeeler:75` en Riolu).
+- `scripts/crear-clips-blender.py`: el de Chikorita (152), hecho a mano para su esqueleto.
+- Después: `scripts/optimizar-modelo.mjs`, el `.json` del modelo en `public/anims/` y el número en `ANIM_SET` de `board3d.js`.

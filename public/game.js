@@ -214,13 +214,15 @@ const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
 // Minileyendas: el Pokémon que te representa en el tablero (evoluciona al llegar a nivel 6)
 // Etapas: base · nivel 6 · nivel 8 (sin Megaevoluciones). Eevee no tiene línea fija: al llegar a 6 y a 8 eliges su evolución (pick: opciones de cada subida)
 const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,6]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur y Venusaur',dex:[1,2,3]},squirtle:{name:'Squirtle',evo:'Wartortle y Blastoise',dex:[7,8,9]},
- dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},
+ dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154]},
  eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
 const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 const TAC_KEYS=Object.keys(TACS);
 // Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
-const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.pick&&st>0){ const k=p.tacForm&&p.tacForm[st-1]; if(k&&DEF[k]) return dexOf(DEF[k],1); } return t.dex[st]; };
+const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.pick&&st>0){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); if(k&&DEF[k]) return dexOf(DEF[k],1); return t.dex[0]; } return t.dex[st]; };
+// Eevee (prueba): desde el nivel 6 (y para siempre), las teclas 1, 2 y 3 le dan la forma Vaporeon, Flareon o Jolteon (se puede cambiar cuantas veces se quiera)
+const EEVEE_KEYS=['vaporeon','flareon','jolteon'];
 
 /* ============================ [ABILITIES] ============================ */
 // Habilidad al estilo TFT: cada número es el valor real (con tus estadísticas) y lleva el icono de lo que lo hace crecer.
@@ -429,7 +431,7 @@ function income(p,idx){
 function addXp(p,n){ const l0=p.level; p.xp+=n; while(p.level<10&&p.xp>=XP_NEED[p.level]){ p.xp-=XP_NEED[p.level]; p.level++; } if(p.level>=10) p.xp=0; if(p.level>l0){ augFire(p,'levelUp',{level:p.level}); tacOffer(p); } }
 // Minileyenda Eevee: al subir a 6 y a 8 se ofrece elegir su evolución (los rivales eligen solos)
 function tacOffer(p){ const t=TACS[p.tac]; if(!t||!t.pick) return; p.tacOff=p.tacOff||[0,0];
- for(let st=1;st<=2;st++){ if(tacStage(p)<st||p.tacOff[st-1]||(p.tacForm&&p.tacForm[st-1])) continue; p.tacOff[st-1]=1;
+ for(let st=1;st<=2;st++){ if(tacStage(p)<st||p.tacOff[st-1]||(p.tacForm&&p.tacForm[st-1])) continue; if(!p.isBot&&!G.auto) continue; p.tacOff[st-1]=1;
    augOffer(p,'__tac',st===1?'🌀 Tu Eevee evoluciona':'🌀 Tu Eevee vuelve a evolucionar','Elige la forma de tu minileyenda.',t.pick[st-1].map(k=>({t:DEF[k].name,i:'🌀',d:DEF[k].traits.join(' · '),v:'te:'+st+'|'+k}))); } }
 const xpCost=p=>p.mods.xpCost||4;
 const xpByHp=p=>!!(p.mods.xpHp&&p.hp>20);
@@ -1508,6 +1510,7 @@ function applyAct(p,a){
   case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
   case 'pick': return resolvePick(p,a.id|0,idx(a.i));
   case 'tac': { if(!TACS[a.k]) return {ok:false}; p.tac=a.k; return {ok:true}; }
+  case 'tform': { const f=EEVEE_KEYS[(a.k|0)-1]; if(p.tac!=='eevee'||tacStage(p)<1||!f) return {ok:false}; p.tacForm=p.tacForm||['','']; p.tacForm[0]=f; return {ok:true}; }
   case 'orb': { return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
   // Burla de Charmander (H): se cuenta para que todos los que miran su tablero la vean (el contador viaja en pub.pl[i][17])
   case 'taunt': { if((TACS[p.tac]?p.tac:'charmander')!=='charmander') return {ok:false}; const t=Date.now(); if(t-(p.tauntAt||0)<1400) return {ok:false}; p.tauntAt=t; p.tn=((p.tn||0)+1)%1000; return {ok:true}; }
@@ -2247,6 +2250,9 @@ function tacFire(){
  setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty); },170);
  if(NET.mode==='client') doAct({t:'taunt'}); // los demás la ven en su pantalla (stepOthers)
 }
+// Teclas 1-3 con la minileyenda Eevee desde el nivel 6: cambia su forma al momento y avisa a los demás
+function eeveeForm(n){ const me=G&&G.me; if(!me||!me.alive||me.tac!=='eevee'||tacStage(me)<1||!EEVEE_KEYS[n-1]) return; if(me.tacForm&&me.tacForm[0]===EEVEE_KEYS[n-1]) return;
+ doAct({t:'tform',k:n}); }
 const EMOTES=['¡Vamos!','😤','👍','¡Allá voy!','😎','GG','🔥','¿Eso es todo?'];
 function hitMyTrainer(){ if(!G||!G.players.length||G.phase==='carousel'||!myTrBox) return false; const [x,y]=ptr, [tx,ty,s]=myTrBox; return Math.abs(x-tx)<s*.4&&y<ty+s*.1&&y>ty-s*.95; }
 
@@ -2288,6 +2294,7 @@ function bindEvents(){
  // Los paneles se reescriben en cada acción aunque no cambien: repintar el lateral con sus recortes y sombras costaba ~30 ms de trama (el tirón al soltar una ficha). Si el HTML es idéntico, no se toca el DOM
  for(const id of ['cards','traits','players','augBar','augList','log','odds','rerollBtn','incomeInfo','dmgList']){ const el=$(id); if(!el) continue; const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML'); Object.defineProperty(el,'innerHTML',{configurable:true,get(){ return d.get.call(this); },set(v){ v=String(v); if(this._h===v) return; this._h=v; d.set.call(this,v); }}); }
  document.addEventListener('pointerdown',()=>Music.init());
+ document.addEventListener('pointerdown',e=>{ if(tipPinned&&!e.target.closest('#tip')&&!e.target.closest('[data-pop]')) unpinTip(); },true);
  // La ficha de un Pokémon se cierra al tocar cualquier otra cosa (si se toca otro Pokémon, se abre la suya)
  document.addEventListener('pointerdown',e=>{ if((selected||selCombat)&&!e.target.closest('#ucard')){ selected=null; selCombat=null; renderCard(); } },true);
  cv.addEventListener('pointerdown',e=>{
@@ -2397,6 +2404,7 @@ function bindEvents(){
  $('ucard').addEventListener('click',e=>{
    const me=G.me;
    if(e.target.closest('.uc-x')){ selected=null; selCombat=null; renderCard(); return; }
+   const pop=e.target.closest('[data-pop]'); if(pop){ e.stopPropagation(); ucPop(pop.dataset.pop,pop); return; }
    const rm=e.target.closest('[data-rm]'); if(rm&&selected){ const loc=findLoc(me,selected); if(loc) doAct({t:'rmitem',loc,idx:+rm.dataset.rm},()=>{ removeItem(me,selected,+rm.dataset.rm); }); return; }
    if(e.target.closest('#ucSell')&&selected){ const loc=findLoc(me,selected); if(loc){ doAct({t:'sell',loc}); selected=null; renderCard(); } }
  });
@@ -2412,6 +2420,7 @@ function bindEvents(){
    else if(k===' '){ e.preventDefault(); onReady(); }
    else if(k==='t'){ trEmote={t0:performance.now(),txt:'👍'}; }
    else if(k==='h'){ tacFire(); }
+   else if(k>='1'&&k<='3'&&!e.ctrlKey&&!e.metaKey&&!e.altKey) eeveeForm(+k);
  });
  document.addEventListener('pointerover',e=>{ const el=e.target.closest&&e.target.closest('[data-tip]'); if(!el||itemDrag){ if(!itemDrag) hideTip(); return; } if(tipAnchor===el) return; showTip(el.dataset.tip,e,el); });
  window.addEventListener('resize',layout);
@@ -2463,12 +2472,12 @@ function tipHTML(spec){
 let tipOn=false, tipCanvas=null;
 // Las fichas de las cartas de la tienda se anclan encima de la carta; el resto sigue al puntero
 let tipAnchor=null;
-function showTip(spec,e,el){ const h=tipHTML(spec); if(!h){ hideTip(); return; } const t=$('tip'); t.innerHTML=h; t.style.display='block'; tipOn=true;
+function showTip(spec,e,el){ tipPinned=false; const h=tipHTML(spec); if(!h){ hideTip(); return; } const t=$('tip'); t.innerHTML=h; t.style.display='block'; tipOn=true;
  t.classList.toggle('shopTip',spec.startsWith('shop:')); tipAnchor=spec.startsWith('shop:')&&el?el:null;
  if(tipAnchor){ const r=el.getBoundingClientRect(), w=t.offsetWidth, hh=t.offsetHeight; t.style.setProperty('--cc',getComputedStyle(el).getPropertyValue('--cc')); t.style.left=clamp(r.left+r.width/2-w/2,8,innerWidth-w-8)+'px'; t.style.top=Math.max(8,r.top-hh-10)+'px'; }
  else moveTip(e); }
 function moveTip(e){ if(!tipOn||tipAnchor) return; const t=$('tip'); const w=t.offsetWidth, h=t.offsetHeight; let x=e.clientX+16, y=e.clientY+16; if(x+w>innerWidth-8) x=e.clientX-w-16; if(y+h>innerHeight-8) y=Math.max(8,innerHeight-h-8); t.style.left=Math.max(8,x)+'px'; t.style.top=y+'px'; }
-function hideTip(){ if(!tipOn) return; tipOn=false; tipAnchor=null; $('tip').style.display='none'; }
+function hideTip(){ if(!tipOn||tipPinned) return; tipOn=false; tipAnchor=null; $('tip').style.display='none'; }
 
 /* ---------- tablero 3D + capa 2D ---------- */
 // El tablero, los Pokémon y los efectos los pinta board3d.js (three.js). Aquí se le dice qué hay
@@ -2496,10 +2505,11 @@ function pickActor(test){
    if(px<bx-w||px>bx+w||py<ay-6||py>by+geo.R*.35) continue; const d=Math.abs(px-bx)+Math.abs(py-(ay+by)/2)*.5; if(d<bd){bd=d;best=a;} }
  return best;
 }
+// Objeto sobre un Pokémon en el lienzo (tablero, combate propio y rival, carrusel): siempre con su aura del color del objeto, igual de viva que en la ficha
 function drawItemBadge(k,x,y,sz,n){
  const I=ITEMS[k]; if(!I) return;
  ctx.save(); const col=itemColor(I);
- const fxc=itemFxRGB(k), pu=.5+.5*Math.sin(performance.now()/1000*2.4+k.length*1.7), g=ctx.createRadialGradient(x,y+sz*.06,0,x,y,sz*.72); g.addColorStop(0,`rgba(${fxc},${(.55+.35*pu).toFixed(2)})`); g.addColorStop(.5,`rgba(${fxc},${(.18+.12*pu).toFixed(2)})`); g.addColorStop(1,'#0a0f22'); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#0a0e1c'; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
+ const fxc=itemFxRGB(k), pu=.5+.5*Math.sin(performance.now()/1000*2.4+k.length*1.7), g=ctx.createRadialGradient(x,y+sz*.04,0,x,y,sz*.74); g.addColorStop(0,`rgba(${fxc},${(.85+.12*pu).toFixed(2)})`); g.addColorStop(.48,`rgba(${fxc},${(.42+.12*pu).toFixed(2)})`); g.addColorStop(.76,`rgba(${fxc},.1)`); g.addColorStop(1,`rgba(${fxc},0)`); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#04090c'; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
  const e=getItemImg(k);
  if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
@@ -2516,11 +2526,13 @@ function drawHud(a){
  if(!a.anchor||a.dead) return;
  const R=geo.R, o=a.hud; let [hx,hy]=a.anchor;
  // Como en TFT: barra arriba y, debajo, la fila de objetos; las estrellas encima de todo
- const isz=o.items&&o.items.length?Math.max(22,R*.8):0; let itemsY=hy-isz-4;
+ // Los objetos van pegados, marco con marco, y las barras de vida y maná miden exactamente lo mismo que la fila de 3 objetos (marcos incluidos)
+ const bsz=Math.max(22,R*.8), bbw=Math.max(2,bsz*.1), slot=bsz+2*bbw, rowW=slot*3;
+ const isz=o.items&&o.items.length?bsz:0; let itemsY=hy-isz-4;
  ctx.save();
  if(o.hp!==undefined){
-   const w=Math.max(22,R*.8)*3+4, bx=Math.round(hx-w/2), hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+3:0));
-   itemsY=by+hh+(hasM?mh+1:0)+3;
+   const w=rowW-3, bx=hx-w/2, hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+1.5+2*bbw:0));
+   itemsY=by+hh+(hasM?mh+1:0)+1.5+bbw;
    ctx.fillStyle='rgba(10,12,24,.85)'; ctx.fillRect(bx-1.5,by-1.5,w+3,hh+(hasM?mh+1:0)+3);
    const hpK=clamp(o.hp/o.maxHp,0,1); if(a.cu){ let tr=HP_TRAIL.get(a.cu); if(tr==null||tr<hpK) tr=hpK; else tr=Math.max(hpK,tr-(tr-hpK)*.06-.003); HP_TRAIL.set(a.cu,tr); if(tr>hpK){ ctx.fillStyle='rgba(255,236,200,.9)'; ctx.fillRect(bx+w*hpK,by,w*(tr-hpK),hh); } }
    ctx.fillStyle=o.mine?'#3fd27a':'#ff5a5f'; ctx.fillRect(bx,by,w*hpK,hh);
@@ -2536,7 +2548,7 @@ function drawHud(a){
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
    const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
  }
- if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*(sz+Math.max(2,sz*.1)*2+2); drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
+ if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
 }
 // Posición en pantalla y tamaño de un entrenador colocado en (x,y) del tablero con altura s (px de tablero)
@@ -2961,11 +2973,11 @@ const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.name;
 // Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
 let sndWatch={g:null,up:0,tac:0};
-function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me);
- if(sndWatch.g!==G){ sndWatch={g:G,up,tac}; return; }
+function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join();
+ if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm}; return; }
  if(up>sndWatch.up) Music.evolve('unit');
- if(tac>sndWatch.tac) Music.evolve('big');
- sndWatch.up=up; sndWatch.tac=tac; }
+ if(tac>sndWatch.tac||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
+ sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; }
 // Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
 let DEX_NAME=null;
 const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
@@ -3053,38 +3065,105 @@ function holdTick(){
 }
 function setSideTab(t){ sideTab=t; document.querySelectorAll('.sideTabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); $('tabPl').hidden=t!=='pl'; $('tabDmg').hidden=t!=='dmg'; $('tabLog').hidden=t!=='log'; renderDmg(); }
 function renderLog(){ $('log').innerHTML=G.log.slice(0,16).map(l=>`<li>${esc(l)}</li>`).join(''); }
+// ---------- Ficha del Pokémon (estilo TFT): iconos, carta, ventanas con clic ----------
+const UC_STATS=['ad','ap','df','mr','as','cc','cd','om','dr','dg'];
+const UC_ST={
+ ad:{n:"Ataque",d:"Daño de cada ataque básico."},
+ ap:{n:"Poder",d:"Aumenta el daño, la curación y los escudos de sus habilidades (100 es lo normal)."},
+ df:{n:"Defensa",d:"Reduce el daño físico que recibe: daño × 100 / (100 + defensa)."},
+ mr:{n:"Resistencia",d:"Reduce el daño mágico que recibe: daño × 100 / (100 + resistencia)."},
+ as:{n:"Velocidad de ataque",d:"Ataques básicos por segundo."},
+ cc:{n:"Probabilidad de crítico",d:"Probabilidad de que un ataque básico sea crítico."},
+ cd:{n:"Daño crítico",d:"Daño de los críticos (140 % = el golpe hace ×1,4)."},
+ om:{n:"Omnivampirismo",d:"Porcentaje del daño que inflige (también con habilidades) que recupera como vida."},
+ dr:{n:"Reducción de daño",d:"Porcentaje fijo de todo el daño que recibe que se ignora (máximo 75 %)."},
+ dg:{n:"Esquiva",d:"Probabilidad de evitar por completo un ataque básico."}
+};
+// Iconos de la ficha: un solo sprite de <symbol> que se inserta una vez (color de cada uno incluido); cada ficha solo lleva un <use>
+const UC_SYM={
+ ad:["#ff8a3d","<path d=\"M4 20l1.5-4.5L16 5h4v4L9.5 19.5zM3 17l4 4M14 7l3 3\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/>"],
+ ap:["#9a86ff","<path d=\"M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z\" fill=\"currentColor\"/>"],
+ df:["#ffd24a","<path d=\"M12 2l8 3v6c0 5-3.6 8.6-8 11-4.4-2.4-8-6-8-11V5z\" fill=\"currentColor\"/>"],
+ mr:["#4cc9f0","<path d=\"M12 2l8 3v6c0 5-3.6 8.6-8 11-4.4-2.4-8-6-8-11V5z\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"11.5\" r=\"3.4\" fill=\"#0b1324\"/>"],
+ as:["#ffe45e","<path d=\"M13.5 2L5 13.5h6L9.5 22 19 10h-6z\" fill=\"currentColor\"/>"],
+ cc:["#ff6b6b","<circle cx=\"12\" cy=\"12\" r=\"7.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"/><path d=\"M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5\" stroke=\"currentColor\" stroke-width=\"2.2\"/><circle cx=\"12\" cy=\"12\" r=\"2\" fill=\"currentColor\"/>"],
+ cd:["#ff3b6a","<path d=\"M12 1l2.6 6.4L21 4.6l-2.8 6.5L23 14l-6.8.9L16 22l-4-5.4L8 22l-.2-7.1L1 14l4.8-2.9L3 4.6l6.4 2.8z\" fill=\"currentColor\"/>"],
+ om:["#ff4d8d","<path d=\"M12 2.5C9 7 5 11 5 15.2A7 7 0 0 0 19 15.2C19 11 15 7 12 2.5z\" fill=\"currentColor\"/>"],
+ dr:["#3fd27a","<path d=\"M3 5h18v4H3zM3 10h8v4H3zM12 10h9v4h-9zM3 15h18v4H3z\" fill=\"currentColor\"/>"],
+ dg:["#5ee0c8","<path d=\"M12 4a8 8 0 1 0 8 8 5.5 5.5 0 0 0-11-1 3 3 0 0 0 6 .5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\"/>"],
+ hf:["#f1f6f8","<path d=\"M7.6 2.4000000000000004l4 2.3v4.6l-4 2.3-4-2.3v-4.6z\" fill=\"currentColor\" /><path d=\"M16.4 2.4000000000000004l4 2.3v4.6l-4 2.3-4-2.3v-4.6z\" fill=\"currentColor\" /><path d=\"M12 10l4 2.3v4.6l-4 2.3-4-2.3v-4.6z\" fill=\"currentColor\" opacity=\".28\"/><path d=\"M12 21.8v-3M9.6 19.8L12 22l2.4-2.2\" stroke=\"currentColor\" stroke-width=\"1.4\" fill=\"none\" opacity=\".7\"/>"],
+ hb:["#f1f6f8","<path d=\"M7.6 2.4000000000000004l4 2.3v4.6l-4 2.3-4-2.3v-4.6z\" fill=\"currentColor\" opacity=\".28\"/><path d=\"M16.4 2.4000000000000004l4 2.3v4.6l-4 2.3-4-2.3v-4.6z\" fill=\"currentColor\" opacity=\".28\"/><path d=\"M12 10l4 2.3v4.6l-4 2.3-4-2.3v-4.6z\" fill=\"currentColor\" />"],
+ rg:["#f1f6f8","<path d=\"M3 21L20 4M20 4h-7M20 4v7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M4 14l6 6\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"/>"],
+ rh:["#6fe0ee","<path d=\"M12 2l8 3v6c0 5-3.6 8.6-8 11-4.4-2.4-8-6-8-11V5z\" fill=\"currentColor\"/>"],
+ ra:["#6fe0ee","<path d=\"M4 20l1.5-4.5L16 5h4v4L9.5 19.5zM3 17l4 4\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/>"],
+ rp:["#6fe0ee","<path d=\"M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z\" fill=\"currentColor\"/>"]
+};
+const ucUse=id=>'<svg viewBox="0 0 24 24"><use href="#ucs-'+id+'"/></svg>';
+function ucSprite(){ if(document.getElementById('ucSprite')) return; const w=document.createElement('div'); w.innerHTML='<svg id="ucSprite" width="0" height="0" style="position:absolute" aria-hidden="true">'+Object.entries(UC_SYM).map(([k,[c,p]])=>'<symbol id="ucs-'+k+'" viewBox="0 0 24 24"><g style="color:'+c+'" fill="currentColor">'+p+'</g></symbol>').join('')+'</svg>'; document.body.appendChild(w.firstChild); }
+let UC_CUR=null, tipPinned=false;
+// La misma carta que se compra en la tienda, sin botón, para reconocer al Pokémon en su ficha
+function unitCardHTML(d,who){
+ const ak=DEF[d.key]?shopArtKey(d.key):d.key, fo=CARD_ART[ak]&&(ART_FOCUS[ak]||[50,50,1.2]), cn=(DEF[ak]||d).name;
+ const art=fo?'<span class="art v2art"><img src="'+CARD_ART[ak]+'" alt="" style="--fx:'+fo[0]/100+';--fy:'+fo[1]/100+';--z:'+fo[2]+';--zr:'+Math.min(1.6,Math.max(1,52/fo[0])).toFixed(2)+'"></span>':'<span class="art bg-'+elemOf(d)+'"><i class="fx"></i></span><span class="pic">'+portraitImg(dexOf(d,1))+'</span>';
+ return '<div class="card c'+(d.cost||1)+' '+(fo?'v2':'')+' ucShopCard" title="'+esc(who)+'">'+art+'<span class="cn">'+esc(cn)+'</span><span class="tr">'+(d.traits||[]).map(t=>'<span title="'+t+'"><i>'+traitIcon(t)+'</i>'+t+'</span>').join('')+'</span>'+(d.cost?'<span class="cc">'+d.cost+'</span>':'')+'</div>';
+}
+// Ventana fijada junto a la ficha (se cierra al hacer clic fuera, con Esc o al repetir el clic)
+function pinTip(html,anchor){ const t=$('tip'); t.innerHTML=html; t.style.display='block'; t.classList.add('shopTip'); t.style.setProperty('--cc',getComputedStyle($('ucard')).getPropertyValue('--tc')||'#7fd0ff'); tipOn=true; tipAnchor=anchor; tipPinned=true;
+ const r=$('ucard').getBoundingClientRect(), ar=anchor.getBoundingClientRect(), w=t.offsetWidth, h=t.offsetHeight; t.style.left=Math.max(8,r.left-w-10)+'px'; t.style.top=clamp(ar.top+ar.height/2-h/2,8,Math.max(8,innerHeight-h-8))+'px'; }
+function unpinTip(){ if(!tipPinned) return; tipPinned=false; tipAnchor=null; hideTip(); }
+function ucPop(key,anchor){
+ const cu=UC_CUR&&UC_CUR.cu; if(!cu) return; const [k,v]=key.split(':'); if(tipPinned&&tipPinned===key){ unpinTip(); return; }
+ let h='';
+ if(k==='ab'){ const {ab,star}=UC_CUR, d=cu.d, el=elemOf(d), ic=elIcon(ab[2]&&ab[2].el||el)||'✨'; h='<div class="stHead" style="--tc:'+(TRAITS[el]?TRAITS[el].color:'#7fd0ff')+'"><span class="stIco">'+ic+'</span><div><div class="stName">'+esc(ab[1])+'</div><div class="stMana">Activa · '+KIND_NAME[ab[0]]+' · 💧 '+(cu.maxMana>=9999?'—':R0(cu.mana)+'/'+cu.maxMana)+'</div></div></div><div class="stBody">'+abHTML(ab,cu,star)+'</div>'; }
+ else if(k==='it') h=tipHTML('item:'+v);
+ else if(k==='st'){ const i=UC_STATS.indexOf(v), s=UC_ST[v]; h='<h4>'+s.n+'</h4><div>'+s.d+'</div><div class="scope">Valor actual: <b>'+UC_CUR.stats[i][2]+'</b></div>'; }
+ if(!h) return; pinTip(h,anchor); tipPinned=key;
+}
 function renderCard(){
  if(HEADLESS) return; const el=$('ucard'), me=G.me;
  let inst=null, cu=null, live=false;
  if(selCombat&&viewCombat()&&viewCombat().units.includes(selCombat)&&!selCombat.dead){ cu=selCombat; live=true; }
  else if(selected&&findLoc(me,selected)){ inst=selected; cu=prepUnit(inst)||makeCombatUnit(inst,me,traitTiers(me),0); }
  else { selected=null; selCombat=null; el.classList.add('hidden'); return; }
- const d=cu.d, star=cu.star, ab=cu.copied||cu.ab, P=abilPower(cu), col=typeColor(d);
+ const d=cu.d, star=cu.star, ab=cu.copied||cu.ab, col=typeColor(d);
  el.style.setProperty('--tc',col); el.classList.remove('hidden');
- const traits=inst?unitTraits(inst):(d.traits||[]);
  const mineSide=curFlip()?1:0;
  const who=live?(cu.side===mineSide?'Tu Pokémon':'Rival'):`Coste ${d.cost||'—'} · ${ROLE_NAME[d.role]||'Salvaje'}`;
  const pct=v=>R0(v*100)+'%';
  const stats=[['⚔️','Ataque',R0(cu.ad)],['✨','Poder',R0(100+cu.ap)],['🛡️','Defensa',R0(cu.df)],['🔰','Resistencia',R0(cu.mr)],['⚡','Vel. de ataque',cu.as.toFixed(2)],['💥','Prob. crítica',pct(Math.min(1,cu.critC))],['💢','Daño crítico',pct(cu.critM)],['🩸','Omnivampirismo',pct(cu.omni)],['🧱','Reducción de daño',pct(Math.min(.75,cu.dr))],['🌀','Esquiva',pct(cu.dodge)]];
- const mpS=((10+cu.manaPerAtk)*cu.as+cu.manaRegen).toFixed(1).replace('.',','), hp=live?cu.hp:cu.maxHp, noMana=cu.maxMana>=9999;
- const POS={"t":"Delante","b":"Delante","a":"Atrás (salta)","r":"Atrás","m":"Atrás","h":"Atrás"};
- const evo=d.names&&!d.evoOf?`<div class="uc-evo">${[1,2,3].map(s=>`<div class="f ${s===star?'on':''}" data-tip="form:${d.key}|${s}">${spriteHTML(d,40,s)}<b>${'★'.repeat(s)}</b>${esc(nameOf(d,s))}<span class="muted">${esc(abOf(d,s)[1])}</span></div>`).join('')}</div>`:'';
- const items=inst||cu.items?`<div class="uc-items">${[0,1,2].map(i=>{ const it=(inst?inst.items:cu.items)[i]; if(!it) return `<div class="slot">Vacío</div>`; const I=ITEMS[it]; if(!I) return `<div class="slot">Vacío</div>`; return `<div class="slot full" data-tip="item:${it}">${itemHTML(it)}${esc(I.name)}</div>`; }).join('')}</div>`:'';
+ const hp=live?cu.hp:cu.maxHp, noMana=cu.maxMana>=9999;
+ // --- Ficha del Pokémon, al estilo TFT: estrellas, la carta de la tienda, barras, habilidad / posición / alcance, objetos, rol y estadísticas (solo icono; con clic, su descripción) ---
  const gab=abOf(d,star), goldLine=inst&&gab[2]&&gab[2].g?`<p class="small goldGen">💰 Oro generado por ${esc(gab[1])}: <b>${inst.goldGen||0}</b></p>`:'';
  const legLine=cu.legMul?`<p class="small">👑 Resonancia: <b>${cu.legMul>=1?'+':'−'}${R0(Math.abs(cu.legMul-1)*100)}%</b> de vida, ataque y habilidad (${cu.legRes||0} niveles activos de sus otras sinergias)</p>`:'';
  const stacks=live?[cu.sp.rage?`😤 Cinta Furia: <b>${cu.rageN||0}</b> cargas (vel. de ataque ${cu.as.toFixed(2)})`:'',cu.sp.rampAp?`🌙 Piedra Lunar: <b>+${R0(cu.apGain||0)}</b> de poder`:'',cu.sp.titan?`🦾 Coraza Titán: <b>${cu.titanN||0}</b>/25 cargas`:''].filter(Boolean).map(t=>`<p class="small">${t}</p>`).join(''):'';
  const extra=inst&&inst.defId==='mewtwo'?`<p class="small">Inestable: <b>${Math.min(MEW_NEED,(inst.kills||0)+(inst.mwR||0))}/${MEW_NEED}</b> de energía (bajas y rondas en tu tablero) para volverse Mega Mewtwo Y</p>`:inst&&inst.defId==='eevee'?`<p class="small">🌀 Evoluciona al derrotar ${me.mods.eeveeKills} enemigos: <b>${Math.min(inst.kills,me.mods.eeveeKills)}/${me.mods.eeveeKills}</b></p>`:'';
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad||inst.stk.ap)?`<p class="small">Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque · +${R0(inst.stk.ap||0)} poder</p>`:'';
- el.innerHTML=`<div class="uc-head">${spriteHTML(d,64,star)}<div><div class="uc-name">${esc(cu.name)} <span style="color:${star===3?'#d9a400':star===2?'#8e9bb0':'#b07a45'}">${'★'.repeat(star)}</span></div><div class="uc-sub">${who}</div></div><button class="uc-x" aria-label="Cerrar ficha">✕</button></div>
-  <div class="uc-bar hp"><i style="width:${clamp(hp/cu.maxHp*100,0,100)}%"></i><span>❤️ ${R0(hp)} / ${R0(cu.maxHp)}</span></div>
-  <div class="uc-bar mp"><i style="width:${noMana?0:clamp(cu.mana/cu.maxMana*100,0,100)}%"></i><span>💧 ${noMana?'Sin maná':`${R0(cu.mana)} / ${cu.maxMana}`}</span><em>💧 ${mpS}/seg</em></div>
-  <div class="uc-pos"><span>📍 ${POS[d.role]||'—'}</span><span>🎯 ${cu.range} hex.</span><span>${ROLE_NAME[d.role]||'Salvaje'}</span></div>
-  <div>${traits.map(t=>TRAITS[t]?`<span class="chip" data-tip="trait:${t}">${TRAITS[t].icon} ${t}</span>`:'').join('')}</div>
-  <div class="uc-ab"><div class="t"><span class="abIco">${elIcon(ab[2]&&ab[2].el||elemOf(d))||'✨'}</span>${esc(ab[1])}<span class="abMana">💧 ${cu.maxMana>=9999?'—':cu.maxMana}</span></div><div class="m">${KIND_NAME[ab[0]]} · escala con ${SCALE_TXT[scaleOf(cu)]} · pasa el ratón por un número para ver su ratio</div>${abHTML(ab,cu,star)}</div>
-  <div class="uc-stats">${stats.map(([i,a,b])=>`<div title="${a}"><span>${i} ${a}</span><b>${b}</b></div>`).join('')}</div>
-  ${goldLine}${legLine}${evo}${items}${stacks}${extra}${stk}
-  ${inst?`<button class="btn sm" id="ucSell">Vender por ${sellValue(inst)} de oro</button>`:''}`;
+ const front=d.role==='t'||d.role==='b', sc=scaleOf(cu), role={hp:['Tanque','Su habilidad escala sobre todo con la vida máxima'],ad:['Tirador','Su habilidad escala sobre todo con el ataque'],ap:['Mago','Su habilidad escala sobre todo con el poder']}[sc];
+ const hpTxt=R0(hp)+' / '+R0(cu.maxHp), mpTxt=noMana?'Sin maná':R0(cu.mana)+' / '+cu.maxMana;
+ UC_CUR={cu,inst,star,ab,live,stats,role};
+ const slots=[0,1,2].map(i=>{ const it=inst?inst.items[i]:cu.items&&cu.items[i]; if(!ITEMS[it]) return '<div class="ucIt empty"></div>'; return '<button class="ucIt" data-pop="it:'+it+'">'+itemHTML(it)+(cu.cnt&&cu.cnt[it]?'<b>'+cu.cnt[it]+'</b>':'')+'</button>'; }).join('');
+
+ const html='<button class="uc-x" aria-label="Cerrar ficha">✕</button>'
+  +'<div class="ucStars s'+star+'"><span>'+'★'.repeat(star)+'</span></div>'
+  +unitCardHTML(d,who)
+  +'<div class="ucBar hp"><i style="width:'+clamp(hp/cu.maxHp*100,0,100)+'%"></i><span>'+hpTxt+'</span></div>'
+  +'<div class="ucBar mp"><i style="width:'+(noMana?0:clamp(cu.mana/cu.maxMana*100,0,100))+'%"></i><span>'+mpTxt+'</span></div>'
+  +'<div class="ucTrio">'
+  +'<button class="ucBox ab" data-pop="ab" style="--tc:'+col+'"><span class="abI">'+(elIcon(ab[2]&&ab[2].el||elemOf(d))||'✨')+'</span><em>'+esc(ab[1])+'</em></button>'
+  +'<div class="ucBox pos">'+ucUse(front?'hf':'hb')+'<em>'+(front?'Al frente':'Atrás')+'</em></div>'
+  +'<div class="ucBox rng">'+ucUse('rg')+'<em>'+cu.range+' hex.</em></div></div>'
+  +'<hr class="ucHr">'
+  +'<div class="ucItems">'+slots+'</div>'
+  +'<div class="ucRole">'+ucUse({hp:'rh',ad:'ra',ap:'rp'}[sc])+'<i></i><span>'+role[0]+'</span></div>'
+  +'<hr class="ucHr"><hr class="ucHr">'
+  +'<div class="ucStats">'+stats.map((s,k)=>'<button class="ucSt" data-pop="st:'+UC_STATS[k]+'">'+ucUse(UC_STATS[k])+'<b>'+s[2]+'</b></button>').join('')+'</div>'
+  +(goldLine+legLine+stacks+extra+stk?'<div class="ucNotes">'+goldLine+legLine+stacks+extra+stk+'</div>':'')
+  +(inst?'<button class="btn sm" id="ucSell">Vender por '+sellValue(inst)+' de oro</button>':'');
+ // sin cambios (mismo HTML y misma altura de pantalla) no se toca el DOM: así renderUI no repinta la ficha a cada paso
+ const key=html+'|'+innerHeight; if(el._k===key) return; el._k=key; ucSprite(); el.innerHTML=html; unpinTip();
  hydrate(el);
+ // la ficha es larga: si no cabe por encima de la tienda, se reduce para verla entera
+ el.style.transform=''; { const sp=$('shopPanel'), lim=(sp?sp.getBoundingClientRect().top:innerHeight-190)-8, r=el.getBoundingClientRect(), z=Math.min(1,(lim-r.top)/r.height); if(z<1) el.style.transform='scale('+Math.max(.6,z).toFixed(3)+')'; }
 }
 
 /* ---------- modales ---------- */

@@ -245,7 +245,7 @@ function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[d
 // Cada uno tiene public/anims/<n.º>.json (fotograma de impacto y, opcional, "glb": true para usar anims/<n.º>.glb con los clips ya
 // renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
 // Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
-const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,152,230,250,570,571]);
+const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,247,248,250,281,282,356,359,372,373,375,376,382,383,388,389,404,405,429,439,444,445,446,447,448,462,464,466,468,470,477,487,491,533,534,570,571,608,609,700,723,724,857,858]);
 // En producción los modelos animados salen de jsDelivr fijados al commit desplegado (mismos archivos, caché de un año y
 // sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
 let ANIM_BASE='';
@@ -544,9 +544,10 @@ class Actor{
    const p=W3(spec.x,spec.y,0);
    // Solo se gira al caminar: los quietos (tablero y banquillo) miran siempre al frente y un salto grande (soltar una ficha, reajuste del tablero) es un teletransporte
    const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0; this.lastSpeed=dt>0?(this.lastSpeed||0)*.7+.3*(dd/dt):0; const _=0, jump=dd>1.2, moving=!spec.still&&!jump&&dd>.004; this.moveT=moving?.15:(spec.still||jump)?0:Math.max(0,this.moveT-dt);
-   if(moving&&!spec.drag){ const dx=p.x-this.lastPos.x, dz=p.z-this.lastPos.z; this.face=Math.atan2(dx,dz); }
+   if(moving&&!spec.drag){ const dx=p.x-this.lastPos.x, dz=p.z-this.lastPos.z; this.face=Math.atan2(dx,dz); if(spec.tac) this.walked=true; }
    else if(spec.tx!=null&&!this.moveT){ const q=W3(spec.tx,spec.ty); this.face=Math.atan2(q.x-p.x,q.z-p.z); }
-   else if(spec.face!=null&&!this.moveT) this.face=spec.face;
+   // La minileyenda, una vez que ha caminado, se queda mirando hacia donde iba (no vuelve a la diagonal de partida al llegar)
+   else if(spec.face!=null&&!this.moveT&&!(spec.tac&&this.walked)) this.face=spec.face;
    this.lastPos=p.clone();
    const sc=spec.scale||1; this.root.position.set(p.x,0,p.z);
    // giro suave hacia donde mira
@@ -890,11 +891,14 @@ function stepBubbles(list,now){
 // Los cristales salen de los 5 huecos pintados en la imagen del escenario (FLAT_IMG.holes)
 let totem=null; const crystals=[];
 function buildProps(){
- // Trofeo de los aumentos: una imagen (img/trofeo.webp, 36 KB) en un sprite anclado por su base al suelo, con una sombra suave debajo. Antes eran ~19 mallas con sombra (cilindros, aros, esfera, bultos y un texto), unas 20 llamadas de dibujo y ~10 000 triángulos
- const g=new THREE.Group(), tex=new THREE.TextureLoader().load('img/trofeo.webp'); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
- const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false})), H=2.35; sp.center.set(.5,0); sp.scale.set(H*436/808,H,1); sp.position.y=0; sp.renderOrder=2;
- const sh=new THREE.Mesh(blobGeo,blobMat); sh.scale.setScalar(1.3); sh.position.y=.01;
- g.add(sh,sp); scene.add(g); totem=g;
+ // Trofeo de los aumentos: una imagen (img/trofeo.webp, 36 KB) en un sprite anclado por su base al suelo, sin sombra. Antes eran ~19 mallas con sombra (cilindros, aros, esfera, bultos y un texto), unas 20 llamadas de dibujo y ~10 000 triángulos
+ // El ancho sale de la proporción de la imagen al cargarla (así se puede cambiar el trofeo sin tocar el código)
+ // La imagen trae bajo la base un margen (PAD, fracción del alto) con su sombra de contacto pintada: el ancla va en la base, no en el borde
+ const PAD=.0472, H=2.35/(1-PAD), sp=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthWrite:false}));
+ const g=new THREE.Group(), tex=new THREE.TextureLoader().load('img/trofeo.webp',t=>{ const im=t.image; if(im&&im.height) sp.scale.set(H*im.width/im.height,H,1); }); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+ sp.material.map=tex; sp.center.set(.5,PAD); sp.scale.set(H*.62,H,1); sp.position.y=0; sp.renderOrder=2;
+ // Sin la sombra redonda de las fichas (con ella parecía flotar): la sombra de contacto va pintada en la propia imagen, pegada a la base
+ g.add(sp); scene.add(g); totem=g;
  const cg=new THREE.OctahedronGeometry(.26,0);
  for(let i=0;i<10;i++){ const m=new THREE.Mesh(cg,new THREE.MeshStandardMaterial({color:'#4a6c9a',emissive:'#000000',roughness:.25,metalness:.2,transparent:true,opacity:.65})); m.scale.y=1.9; const h=glowSprite('#7fe0ff',1.3); h.visible=false; const c=new THREE.Group(); c.add(m,h); c.userData={m,h}; scene.add(c); crystals.push(c); }
 }
@@ -1198,5 +1202,5 @@ function debugInfo(){ const c={mallas:0,piel:0,actores:0,efectos:0,escenario:0,s
  const act=new Set(); for(const a of actors.values()) a.root.traverse(m=>act.add(m));
  scene.traverseVisible(o=>{ if(o.isMesh||o.isSprite||o.isPoints){ c.mallas++; if(o.isSkinnedMesh) c.piel++; if(o.isSprite) c.sprites++; if(o.isPoints) c.puntos++; if(inFx.has(o)) c.efectos++; else if(act.has(o)) c.actores++; else c.escenario++; for(const m of [].concat(o.material)) c.materiales.add(m); } });
  c.materiales=c.materiales.size; c.programas=renderer.info.programs?renderer.info.programs.length:0; c.sombras=sun.castShadow; return c; }
-window.B3={hedged,init,prefetch,get flatInfo(){ return {t:flatEl?flatEl.style.transform:null,totem:totem?[+totem.position.x.toFixed(3),+totem.position.z.toFixed(3)]:null,crys:crystals.filter(c=>c.visible).map(c=>[+c.position.x.toFixed(3),+c.position.z.toFixed(3)])}; },debugInfo,debugView,fireball,get made(){ return madeN; },get evos(){ return evoN; },dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
+window.B3={hedged,init,prefetch,faceOf:k=>{ const a=actors.get(k); return a?Math.atan2(Math.sin(a.body.rotation.y),Math.cos(a.body.rotation.y)):null; },get flatInfo(){ return {t:flatEl?flatEl.style.transform:null,totem:totem?[+totem.position.x.toFixed(3),+totem.position.z.toFixed(3)]:null,crys:crystals.filter(c=>c.visible).map(c=>[+c.position.x.toFixed(3),+c.position.z.toFixed(3)])}; },debugInfo,debugView,fireball,get made(){ return madeN; },get evos(){ return evoN; },dropQueue,debugPose,debugShot,get smDebug(){ const o=[]; for(const [,ac] of actors) if(ac.m&&ac.m.sm) o.push({dex:ac.dex,sm:!!ac.sm,acts:ac.smActs?Object.keys(ac.smActs):null,clips:Object.keys(ac.m.sm.clips),model:!!ac.model,body:ac.m.sm.body,bones:(()=>{ const n=[]; ac.m.scene.traverse(x=>{ if(x.isBone||/Thigh|Arm|Head|Hips/.test(x.name)) n.push((x.isBone?'B:':x.type+':')+x.name); }); return n.slice(0,12); })()}); return o; }, get smInfo(){ const o={}; for(const [k,ac] of actors) if(ac.sm){ const x=ac.sm.act; (o[ac.dex]=o[ac.dex]||[]).push({key:k,ry:+ac.body.rotation.y.toFixed(2),face:+ac.face.toFixed(2),estado:ac.sm.st,t:x?+(x.time/x.getClip().duration).toFixed(2):null,run:x?x.isRunning():null,paused:x?x.paused:null,spec:ac.sm.spec,started:ac.sm.atkStarted}); } return o; },setAuto:b=>{ autoQ=!!b; },get slow(){ return SLOW.splice(0); },resize,render,project,unproject,preload,modelStatus,setQuality,portrait,totemTop,get info(){ const n=PT.n||1, o={actorsMs:+(PT.a/n).toFixed(2),fxMs:+(PT.f/n).toFixed(2),glMs:+(PT.g/n).toFixed(2)}; PT.a=PT.f=PT.g=PT.n=0; return renderer?{...o,calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures}:null; },get quality(){ return qLevel; },get fps(){ return perf.fps; },get ready(){ return ready; }};
 window.dispatchEvent(new Event('b3ready'));

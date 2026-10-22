@@ -167,34 +167,11 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 
 /* ---------- ficha del Pokémon ---------- */
 .right{display:flex;flex-direction:column;gap:14px}
-.ucard{background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 16%,var(--panel2)),var(--panel));border:2px solid var(--tc,var(--line2));border-radius:18px;padding:12px;position:sticky;top:76px;max-height:calc(100vh - 230px);overflow:auto;box-shadow:var(--shadow)}
+.ucard{position:sticky;top:76px}
 .ucard.hidden{display:none}
-.uc-head{display:flex;gap:10px;align-items:center}
-.uc-head .spr{background:radial-gradient(circle,color-mix(in srgb,var(--tc) 40%,transparent),transparent 70%);border-radius:14px}
-.uc-name{font-family:var(--display);font-size:20px;line-height:1.1}
-.uc-sub{font-size:12px;color:var(--muted)}
-.uc-x{margin-left:auto;align-self:flex-start;border:1px solid var(--line2);background:var(--panel3);border-radius:9px;width:30px;height:30px;font-size:14px;cursor:pointer}
-.uc-hp{height:8px;border-radius:5px;background:var(--panel3);overflow:hidden;margin:8px 0 2px}
-.uc-bar{position:relative;height:16px;border-radius:6px;background:var(--panel3);overflow:hidden;margin:6px 0 0;font-size:11px;font-weight:800}
-.uc-bar i{position:absolute;inset:0 auto 0 0;display:block}.uc-bar.hp i{background:linear-gradient(90deg,#2fbf63,#7cf0a4)}.uc-bar.mp i{background:linear-gradient(90deg,#2f7fe0,#7cc4ff)}
-.uc-bar span{position:relative;padding-left:8px;line-height:16px;color:#fff;text-shadow:0 1px 2px #000a}.uc-bar em{position:absolute;right:8px;top:0;line-height:16px;font-style:normal;color:#e3f1ff;text-shadow:0 1px 2px #000a}
-.uc-pos{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;font-size:11.5px;font-weight:800}.uc-pos span{background:var(--panel3);border-radius:7px;padding:2px 8px}
-.uc-ab .abIco{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:color-mix(in srgb,var(--tc) 45%,#0006);font-size:14px}.uc-ab .abMana{margin-left:auto;font-family:var(--body,inherit);font-size:11.5px;color:#9cd0ff}
 .sv{color:var(--ink);font-weight:800;white-space:nowrap;cursor:help}.sv i{font-style:normal;font-size:.8em;margin-left:1px}
 .abList{margin-top:6px;border-top:1px solid #ffffff1f;padding-top:5px;font-size:11.5px}.abv{display:grid;grid-template-columns:1fr auto 54px;gap:6px;align-items:center;padding:1px 0;color:var(--muted)}
 .abv b{font-weight:700;color:var(--muted)}.abv b.on{color:#ffd75e;font-weight:900}.abv small{text-align:right;color:#c9b8ff}.abBonus{margin-top:5px;font-size:11.5px;color:#c9b8ff}
-.uc-hp i{display:block;height:100%;background:linear-gradient(90deg,#2fbf63,#7cf0a4)}
-.uc-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 6px;margin:10px 0;font-size:12.5px}
-.uc-stats div{display:flex;justify-content:space-between;background:var(--panel3);border-radius:8px;padding:4px 8px}
-.uc-stats b{font-family:var(--display);font-weight:400}
-.uc-ab{border-radius:12px;padding:10px;background:color-mix(in srgb,var(--tc) 14%,var(--panel3));border:1px solid color-mix(in srgb,var(--tc) 70%,transparent);margin:8px 0}
-.uc-ab .t{font-family:var(--display);font-size:16px;display:flex;align-items:center;gap:6px}
-.uc-ab .m{font-size:11px;color:var(--muted);font-weight:800}
-.uc-ab p{margin:4px 0 0;font-size:12.5px}
-.uc-evo{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:6px 0}
-.uc-evo .f{display:flex;flex-direction:column;align-items:center;font-size:10.5px;padding:4px;border-radius:10px;border:1px solid transparent;cursor:help;width:72px;text-align:center}
-.uc-evo .f.on{border-color:var(--tc);background:var(--panel3)}
-.uc-items{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
 .slot{border:2px dashed var(--line2);border-radius:12px;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;text-align:center;position:relative;padding:5px;color:var(--muted)}
 .slot.full{border:1px solid var(--line2);background:var(--panel3);color:var(--ink)}
 .slot .ii{--is:34px}
@@ -843,7 +820,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
    y los paneles flotan encima, semitransparentes; los huecos vacíos dejan pasar el ratón al tablero */
 body.fullField .top,body.fullField .layout,body.fullField .shop{--ink:#eef2ff;--muted:#a7b3d8;--panel:#141c36;--panel2:#1b2548;--panel3:#243161;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);--btn1:#2b3a70;--btn2:#1d2851;--btnEdge:#090e20;color:var(--ink);color-scheme:dark}
 /* La ficha del Pokémon flota a la izquierda del panel de entrenadores, sin empujarlo */
-body.fullField .ucard{position:fixed;top:64px;right:calc(14px + 290px + 10px);width:310px;max-height:calc(100vh - 300px);z-index:6}
+body.fullField .ucard{position:fixed;top:88px;right:14px;width:310px;z-index:12}
 body.fullField #boardStack{position:fixed;inset:0;z-index:0;border-radius:0;box-shadow:none;max-width:none;pointer-events:auto}
 body.fullField .layout{position:relative;z-index:2;pointer-events:none;align-items:start}
 body.fullField .traitsPanel,body.fullField .right,body.fullField .boardInfo span,body.fullField .viewInfo{pointer-events:auto;position:relative;z-index:1}
@@ -869,7 +846,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   .lvl{width:auto;flex:1 1 180px}
   .shopMain{grid-template-columns:110px minmax(0,1fr)}
   .card{--ch:132px}
-  .ucard{position:fixed;left:8px;right:8px;bottom:8px;top:auto;max-height:60vh;z-index:13;box-shadow:0 -8px 30px rgba(0,0,0,.4)}
+  .ucard{position:fixed;left:8px;right:8px;bottom:8px;top:auto;z-index:13;box-shadow:0 -8px 30px rgba(0,0,0,.4)}
 }
 @media (max-width:820px){
   .mnLayout{grid-template-columns:minmax(0,440px);grid-template-areas:"logo" "nav" "who";row-gap:16px}
@@ -1145,9 +1122,54 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 @media (prefers-reduced-motion:reduce){.ii[class*=" fx-"]::before{animation:none}}
 /* itemfx:end */
 /* Objetos puestos en un Pokémon (ficha, historial…): marco negro, nunca el dorado (que es solo de la banca), pero con el tinte y el aura del color del objeto */
-.slot .ii,.hItems .ii,.uc-items .ii,#tip h4 .ii{border:3px solid #000;border-radius:4px;background:radial-gradient(circle at 50% 40%,rgba(var(--fx,200,215,245),.45),#0a0e1c 80%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.8),0 2px 4px rgba(0,0,0,.5)}
+.slot .ii,.hItems .ii,#tip h4 .ii{border:3px solid #000;border-radius:4px;background:radial-gradient(circle at 50% 40%,rgba(var(--fx,200,215,245),.45),#0a0e1c 80%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.8),0 2px 4px rgba(0,0,0,.5)}
 .hItems .ii{border-width:1px}
 .spr img.dexPic,.pic img.dexPic,.upb img.dexPic{image-rendering:auto}
+/* ---------- Ficha del Pokémon (estilo TFT) ----------
+   Marco dorado fuera y azul dentro; todo el contenido al mismo ancho. --sp es el respiro entre secciones. */
+.ucard{--sp:34px;border:2px solid #c9a24a;border-radius:6px;padding:14px;color:#e8eef9;background:linear-gradient(180deg,#0f1d24,#0a1318);box-shadow:0 8px 28px rgba(0,0,0,.6);transform-origin:100% 0}
+.ucard::before{content:"";position:absolute;inset:5px;border:2px solid #2f7fd8;pointer-events:none;z-index:3}
+.uc-x{position:absolute;top:18px;right:18px;z-index:5;width:26px;height:26px;border-radius:5px;border:1px solid rgba(255,255,255,.25);background:rgba(8,14,20,.75);color:#fff;font-size:12px;cursor:pointer}
+.ucStars{position:absolute;left:50%;top:-17px;transform:translateX(-50%);z-index:4;height:19px;isolation:isolate;pointer-events:none;color:#c98b52}
+.ucStars.s2{color:#dfe6f1}.ucStars.s3{color:#ffcf33}
+.ucStars span{position:relative;display:flex;align-items:center;justify-content:center;height:100%;min-width:62px;padding:0 20px;font-size:13px;letter-spacing:2px;line-height:1;background:#b8933e;clip-path:polygon(9px 0,calc(100% - 9px) 0,100% 100%,0 100%)}
+.ucStars span::before{content:"";position:absolute;inset:2px 2px 0;background:linear-gradient(#18262d,#0c161b);clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 100%,0 100%);z-index:-1}
+.ucard .ucShopCard.card{--ch:128px;cursor:default;border:0!important;border-radius:0;box-shadow:none;width:100%}
+.ucard .ucShopCard.card:hover{transform:none;box-shadow:none}
+.ucard .ucShopCard .cn{border:0}
+.ucBar{position:relative;height:21px;background:#04080b;border:1px solid #000;overflow:hidden}
+.ucBar.hp{margin-top:8px}.ucBar+.ucBar{margin-top:3px}
+.ucBar i{position:absolute;inset:0 auto 0 0}
+.ucBar.hp i{background:linear-gradient(180deg,#1fcf5a,#139a3f)}.ucBar.mp i{background:linear-gradient(180deg,#2b8cff,#1560c0)}
+.ucBar span{position:relative;display:block;text-align:center;font-family:var(--display);font-size:14px;line-height:21px;color:#fff;text-shadow:0 1px 2px #000}
+.ucTrio,.ucItems{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ucTrio{margin-top:12px}
+.ucBox{aspect-ratio:1;border:2px solid #000;background:#0b1a20;border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#dfeef2;padding:4px 2px;cursor:default;font:inherit}
+.ucBox em{font-style:normal;font-size:12px;font-weight:800;text-align:center;line-height:1.1}
+.ucBox svg{width:30px;height:30px}
+.ucBox.ab{cursor:pointer;background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--tc,#4cc9f0) 40%,#0b1a20),#0b1a20 80%)}
+.ucBox.ab:hover{filter:brightness(1.15)}
+.ucBox.ab .abI{font-size:28px;line-height:1;display:grid;place-items:center;width:34px;height:34px}.ucBox.ab .abI svg{width:28px;height:28px}
+.ucBox.ab em{font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ucIt{aspect-ratio:1;border:2px solid #000;background:#04090c;border-radius:3px;padding:0;position:relative;overflow:hidden;cursor:pointer}
+.ucIt.empty{cursor:default}
+.ucIt i{display:grid;place-items:center;height:100%;font-style:normal;font-size:30px}
+.ucIt b{position:absolute;right:3px;bottom:2px;font-family:var(--display);font-size:13px;color:#ffd75e;text-shadow:0 1px 2px #000,0 0 4px #000}
+.ucard .ucIt .ii{--is:100%;width:100%;height:100%;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+.ucard .ucIt .ii img{width:80%;height:80%;position:relative;z-index:1;object-fit:cover;display:block;image-rendering:auto}
+.ucard .ucIt .ii::before{inset:-5%;border-radius:0;background:radial-gradient(circle at 50% 52%,rgba(var(--fx),1),rgba(var(--fx),.55) 48%,rgba(var(--fx),.12) 76%,transparent);animation:none;opacity:.85;transform:none}
+.ucRole{margin-top:var(--sp);border:2px solid #2f8f9c;background:#0a1c22;display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:3px;font-size:16px;font-weight:800;color:#dff6fa}
+.ucRole svg{width:22px;height:22px}.ucRole i{width:2px;align-self:stretch;background:#3a8f9a}
+.ucHr{border:0;height:2px;background:#16414a;margin:var(--sp) 0}
+.ucTrio+.ucHr{margin:calc(var(--sp)/2) 0}.ucRole+.ucHr{margin-top:calc(var(--sp)/2)}
+.ucHr+.ucHr{margin-top:calc(var(--sp)*1.5);margin-bottom:calc(var(--sp)/2)}
+.ucStats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px 4px;margin-bottom:4px}
+.ucSt{background:none;border:0;padding:4px 0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font:inherit}
+.ucSt svg{width:24px;height:24px;filter:drop-shadow(0 1px 1px #000)}
+.ucSt b{font-family:var(--display);font-weight:400;font-size:14px;color:#f3f7f8}
+.ucSt:hover{filter:brightness(1.3);transform:translateY(-1px)}
+.ucNotes{margin-top:10px;font-size:11.5px;color:#b9c6cf}.ucNotes p{margin:3px 0}
+#ucSell{margin-top:10px;width:100%}
 </style>
 </head>
 <body>

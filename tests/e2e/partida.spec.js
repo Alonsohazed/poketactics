@@ -412,7 +412,7 @@ test('objetos: el marco dorado es solo de la banca; sobre un Pokémon (lienzo y 
     for (const k of ['claw', 'zoom', 'band']) drawItemBadge(k, 100, 100, 30, 0); ctx.strokeRect = o;
     G.me.items = ['claw']; renderItems.last = null; renderUI();
     const bench = getComputedStyle(document.querySelector('#items .item .ii')).backgroundImage;
-    const tmp = document.createElement('div'); tmp.className = 'uc-items'; tmp.innerHTML = '<div class="slot full">' + itemHTML('zoom', 34) + '</div>'; document.body.appendChild(tmp);
+    const tmp = document.createElement('div'); tmp.innerHTML = '<div class="slot full">' + itemHTML('zoom', 34) + '</div>'; document.body.appendChild(tmp);
     const eq = getComputedStyle(tmp.querySelector('.ii')); const out = { strokes, bench: /linear-gradient/.test(bench), eqBorder: eq.borderTopColor, eqBg: /linear-gradient/.test(eq.backgroundImage) }; tmp.remove(); return out; });
   expect(r.strokes.every(s => s === '#000000')).toBe(true); expect(r.strokes.length).toBe(3); expect(r.bench).toBe(true); expect(r.eqBorder).toBe('rgb(0, 0, 0)'); expect(r.eqBg).toBe(false);
 });
@@ -458,4 +458,68 @@ test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran 
   await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['charmander', 'bulbasaur', 'squirtle']) addUnitToBench(me, makeInst(k)); moveTo(me, { i: 2 }, { b: '3,1' }); renderUI(); });
   const r = await page.evaluate(() => { const A = sceneActors(); return { banca: A.filter(a => a.loc && a.loc.i !== undefined).map(a => +a.face.toFixed(2)), tablero: A.filter(a => a.loc && a.loc.b !== undefined).map(a => +a.face.toFixed(2)) }; });
   expect(r.banca).toEqual([0, 0]); expect(r.tablero).toEqual([3.14]);
+});
+
+test('ficha del Pokémon: estrellas, carta, barras, habilidad/posición/alcance, 3 objetos, rol y estadísticas solo con icono; con clic salen las descripciones', async ({ page }) => {
+  await page.evaluate(() => { const u = makeInst('machop'); u.star = 2; u.items = ['claw', 'zoom']; G.me.board = { '3,2': u }; G.me.bench = Array(BENCH).fill(null); selected = u; renderUI(); });
+  const c = page.locator('#ucard');
+  await expect(c.locator('.ucStars')).toHaveText('★★');
+  await expect(c.locator('.ucShopCard')).toBeVisible();
+  await expect(c.locator('.ucBar.hp span')).toContainText('/');
+  await expect(c.locator('.ucBar.mp span')).toContainText('/');
+  await expect(c.locator('.ucTrio .ucBox')).toHaveCount(3);
+  await expect(c.locator('.ucTrio .pos em')).toHaveText('Al frente');
+  await expect(c.locator('.ucTrio .rng em')).toContainText('hex');
+  await expect(c.locator('.ucItems > *')).toHaveCount(3);
+  await expect(c.locator('.ucItems .ucIt:not(.empty)')).toHaveCount(2);
+  await expect(c.locator('.ucRole')).toContainText(/Tanque|Tirador|Mago/);
+  await expect(c.locator('.ucStats .ucSt')).toHaveCount(10);
+  // las estadísticas son solo icono + valor (sin su nombre) y el objeto equipado no lleva marco
+  const r = await page.evaluate(() => ({ txt: [...document.querySelectorAll('#ucard .ucSt')].map(b => b.textContent.trim()), noLabel: [...document.querySelectorAll('#ucard .ucSt')].every(b => !/[A-Za-z]{3}/.test(b.textContent.replace(/%/g, ''))), bd: getComputedStyle(document.querySelector('#ucard .ucIt:not(.empty) img')).borderTopWidth }));
+  expect(r.noLabel).toBe(true); expect(r.bd).toBe('0px');
+  // marco dorado/azul, estrellas en una muesca por encima del arte; los objetos llevan aura y no hay marco
+  expect(await page.evaluate(() => { const u = makeInst('vaporeon'); u.items = ['claw']; G.me.board = { '3,2': u }; selected = u; renderUI(); const k = document.querySelector('#ucard'); return [!!k.querySelector('.ucIt .ii.fx-claw'), getComputedStyle(k.querySelector('.ucStars')).position, k.querySelectorAll('use').length >= 13]; })).toEqual([true, 'absolute', true]);
+  await page.evaluate(() => { const u = makeInst('machop'); u.star = 2; u.items = ['claw', 'zoom']; G.me.board = { '3,2': u }; selected = u; renderUI(); });
+  // clic en la habilidad, un objeto y una estadística: ventana fijada con su descripción
+  await c.locator('[data-pop="ab"]').click(); await expect(page.locator('#tip')).toContainText('Activa');
+  await c.locator('[data-pop^="it:"]').first().click(); await expect(page.locator('#tip')).toContainText('Garra Afilada');
+  await c.locator('[data-pop="st:ap"]').click(); await expect(page.locator('#tip')).toContainText('Valor actual');
+  await page.mouse.click(300, 650); await expect(page.locator('#tip')).toBeHidden();
+});
+
+test('minileyenda Eevee: sigue siendo Eevee hasta el nivel 6 y desde ahí, siempre, con 1, 2 y 3 toma la forma Vaporeon, Flareon o Jolteon', async ({ page }) => {
+  await jumpToRound(page, 1);
+  const f = () => page.evaluate(() => ({ f: G.me.tacForm[0], dex: tacDex(G.me), picks: G.me.picks.length }));
+  await page.evaluate(() => { G.me.tac = 'eevee'; G.me.level = 5; renderUI(); });
+  await page.keyboard.press('2'); expect((await f()).f).toBe(''); expect((await f()).dex).toBe(133);
+  await page.evaluate(() => { addXp(G.me, 1000 * 0 + XP_NEED[5] - G.me.xp); renderUI(); }); // sube a 6
+  expect(await page.evaluate(() => G.me.level)).toBe(6);
+  expect(await f()).toEqual({ f: '', dex: 133, picks: 0 }); // no se abre ninguna elección y sigue siendo Eevee
+  await page.keyboard.press('1'); expect(await f()).toMatchObject({ f: 'vaporeon', dex: 134 });
+  await page.keyboard.press('2'); expect(await f()).toMatchObject({ f: 'flareon', dex: 136 });
+  await page.keyboard.press('3'); expect(await f()).toMatchObject({ f: 'jolteon', dex: 135 });
+  // a nivel 8 no hay otra elección: las mismas teclas siguen cambiando la forma cuando se quiera
+  await page.evaluate(() => { G.me.level = 8; addXp(G.me, 0); renderUI(); });
+  expect(await page.evaluate(() => [G.me.picks.length, tacDex(G.me)])).toEqual([0, 135]);
+  await page.keyboard.press('1'); expect(await f()).toMatchObject({ f: 'vaporeon', dex: 134 });
+  await page.keyboard.press('2'); expect(await f()).toMatchObject({ f: 'flareon', dex: 136 });
+  // otra minileyenda ignora las teclas y la acción inválida se rechaza
+  const r = await page.evaluate(() => { const a = applyAct(G.me, { t: 'tform', k: 9 }); G.me.tac = 'charmander'; const b = applyAct(G.me, { t: 'tform', k: 1 }); return [a.ok, b.ok, G.me.tacForm[0]]; });
+  expect(r).toEqual([false, false, 'flareon']);
+});
+
+test('minileyenda: al llegar a su destino se queda mirando hacia donde caminaba (no vuelve a la diagonal de partida)', async ({ page }) => {
+  await page.waitForFunction(() => B3.faceOf && B3.faceOf('tac:' + G.me.id) != null);
+  const ang = () => page.evaluate(() => B3.faceOf('tac:' + G.me.id));
+  const inicio = await ang();
+  // camina hacia la izquierda: al llegar debe seguir mirando a la izquierda
+  await page.evaluate(() => { TAC.tx = TAC.x - geo.R * 4; TAC.ty = TAC.y; });
+  await page.waitForFunction(() => TAC.tx == null, null, { timeout: 8000 }); await page.waitForTimeout(1500);
+  const izq = await ang();
+  await page.evaluate(() => { TAC.tx = TAC.x + geo.R * 4; TAC.ty = TAC.y; });
+  await page.waitForFunction(() => TAC.tx == null, null, { timeout: 8000 }); await page.waitForTimeout(1500);
+  const der = await ang();
+  const dif = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  expect(dif(izq, der)).toBeGreaterThan(2.5);   // mira a lados opuestos
+  expect(dif(izq, inicio)).toBeGreaterThan(.3); expect(dif(der, inicio)).toBeGreaterThan(.3);  // y ninguna es la diagonal de partida
 });
