@@ -5,6 +5,7 @@ const src = ['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirn
 const ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const E = ctx.module.exports;
+const vmStep = vm.runInContext('stepCombat', ctx); // un paso de combate (50 ms) para comprobar estados a mitad
 let fails = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { fails++; console.log('FALLO:', msg); } };
 const fresh = () => { E.newGame({ auto: true, diff: 'normal' }); const G = E.G; G.auto = false; G.roundIdx = 1;  const p = G.players[0]; p.isBot = false; p.gold = 50; p.items = []; p.picks = []; return { G, p }; };
@@ -198,6 +199,36 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   const a = E.createCombatSnap(snap('mewtwo'), foe, { s: 5, n: 2 }, { seed: 9 }), b = E.createCombatSnap(snap('megamewtwo'), foe, { s: 5, n: 2 }, { seed: 9 });
   const ma = a.units.find(x => x.d.key === 'mewtwo'), mb = b.units.find(x => x.d.key === 'megamewtwo'); ok(mb.maxHp > ma.maxHp * 1.3 && mb.ad > ma.ad * 1.3, 'Mega Mewtwo: más vida y ataque');
   const hp0 = mb.maxHp, ap0 = mb.ap; E.simulate(b); ok(mb.castN > 0 && mb.maxHp > hp0 && mb.ap > ap0, `Mega Mewtwo: cada lanzamiento le da vida máxima y poder (${Math.round(hp0)}→${Math.round(mb.maxHp)} vida, ${ap0}→${Math.round(mb.ap)} poder)`); }
+
+// Kyogre: poco maná, 3 disparos pequeños a un objetivo y el 4.º lanzamiento es un maremoto en área que no vacía la mesa
+{ const k = E.baseCombatUnit(E.DEF.kyogre, 0, 2); ok(k.maxMana <= 40 && k.mana >= k.maxMana, `Kyogre: maná bajo y lanza al empezar (${k.mana}/${k.maxMana})`);
+  const me = { ag: [], m: {}, u: [['3,3', 'kyogre', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0]] }, foe = { ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['4,0', 'beldum', 2, [], 0, 0], ['3,1', 'onix', 2, [], 0, 0], ['2,3', 'ralts', 2, [], 0, 0]] };
+  const cb = E.createCombatSnap(me, foe, { s: 5, n: 2 }, { seed: 31, visual: true }); E.simulate(cb); const f = cb.feed.filter(x => x.s === 0 && x.n === 'Kyogre');
+  ok(f.length >= 3 && f.slice(0, 2).every(x => x.h <= 1 && /marea/.test(x.x)), 'Kyogre: los disparos de marea golpean a un solo enemigo (empieza en 1/4)');
+  ok(f[2] && /maremoto/.test(f[2].x) && f[2].h >= 2, `Kyogre: el 3.er lanzamiento es un maremoto en área (${f[2] && f[2].h} golpeados)`);
+  ok(f[2] && f[2].k < 5, 'Kyogre: el maremoto no borra la mesa entera'); ok(/maremoto/.test(E.abDesc(E.DEF.kyogre.ab[0], 100, 2)), 'Kyogre: la descripción explica el maremoto'); }
+// Rework de costes 5: cada mecánica nueva hace lo que dice
+{ const foe = { ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['4,0', 'beldum', 2, [], 0, 0], ['3,3', 'rowlet', 2, [], 0, 0], ['2,3', 'ralts', 2, [], 0, 0], ['4,3', 'hatenna', 2, [], 0, 0]] };
+  const run = (k, star = 2, items = [], seed = 31) => { const front = ['t', 'b', 'a'].includes(E.DEF[k].role); const me = { ag: [], m: {}, u: [[front ? '3,0' : '3,3', k, star, items, 0, 0], [front ? '2,0' : '3,0', 'lapras', 2, [], 0, 0], ['4,0', 'onix', 2, [], 0, 0], ['2,3', 'rowlet', 2, [], 0, 0]] };
+    const cb = E.createCombatSnap(me, foe, { s: 5, n: 2 }, { seed, visual: true }), u = cb.units.find(x => x.d.key === k), hp0 = u.maxHp; E.simulate(cb); return { cb, u, hp0, f: cb.feed.filter(x => x.s === 0 && x.n === u.name) }; };
+  // Groudon: tanque, aturde en área al primer lanzamiento, gana vida (para siempre) con las bajas cercanas
+  const g = E.baseCombatUnit(E.DEF.groudon, 0, 2); ok(g.role === 't' && g.mana >= g.maxMana * .8, `Groudon: tanque con maná inicial alto (${g.mana}/${g.maxMana})`);
+  const G = run('groudon'); ok(G.f[0] && G.f[0].st, 'Groudon: su primer lanzamiento aturde'); ok(G.u.quakeGain > 0 && G.u.maxHp > G.hp0, `Groudon: gana vida con las bajas cercanas (+${G.u.quakeGain})`);
+  { const { G: Gm, p } = fresh(); const inst = E.makeInst('groudon'), mk = (k, s) => Object.assign(E.makeInst(k), { star: s }); inst.star = 2; p.board = { '3,0': inst, '2,0': mk('lapras', 2), '4,0': mk('onix', 2), '2,3': mk('rowlet', 2) }; const sa = E.teamSnap(p); const cb = E.createCombatSnap(sa, foe, { s: 5, n: 2 }, { seed: 31, refsA: p.board }); E.simulate(cb); ok(inst.stk.hp > 0, `Groudon: la vida ganada se guarda para siempre (+${inst.stk.hp})`); }
+  // Darkrai: duerme a 3 enemigos al azar a 1★ y a 4 a 2★, más tiempo a 2★
+  const D1 = run('darkrai', 1), D2 = run('darkrai', 2); ok(D1.f[0] && D1.f[0].h === 3, `Darkrai 1★: duerme a 3 (${D1.f[0] && D1.f[0].h})`); ok(D2.f[0] && D2.f[0].h === 4, `Darkrai 2★: duerme a 4 (${D2.f[0] && D2.f[0].h})`);
+  ok(/3 enemigos al azar 2.4s/.test(E.abDesc(E.DEF.darkrai.ab[0], 100, 1)) && /4 enemigos al azar 3.2s/.test(E.abDesc(E.DEF.darkrai.ab[0], 100, 2)), 'Darkrai: la descripción muestra objetivos y duración por estrella');
+  // Moltres: golpea a todos, quema y reduce la curación; lanza varias veces
+  const M = run('moltres'); ok(M.f.length >= 2 && M.f[0].h >= 5, `Moltres: varios lanzamientos que golpean a todo el tablero (${M.f.length} lanzamientos, ${M.f[0] && M.f[0].h} golpeados)`);
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'moltres', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31 }); const mo = cb.units.find(x => x.d.key === 'moltres'); mo.mana = mo.maxMana; for (let i = 0; i < 400 && !mo.castN; i++) vmStep(cb);
+    const en = cb.units.filter(x => x.side === 1 && !x.dead); ok(en.every(e => e.woundT > 0 && e.burns.length > 0), 'Moltres: todos los golpeados quedan quemados y con curación reducida'); }
+  // Ho-Oh: cada 5 lanzamientos revive al aliado caído más valioso
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'hooh', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31, visual: true }); const h = cb.units.find(x => x.d.key === 'hooh'), la = cb.units.find(x => x.d.key === 'lapras');
+    la.hp = 0; la.dead = true; h.rbN = 4; h.mana = h.maxMana; for (let i = 0; i < 400 && !h.castN; i++) vmStep(cb); ok(!la.dead && la.hp > 0, 'Ho-Oh: al 5.º lanzamiento revive al aliado caído'); }
+  // Zapdos: mediocre sin objetos, mucho mejor con sus objetos (hipercarry)
+  const z0 = E.baseCombatUnit(E.DEF.zapdos, 0, 2), z1 = Object.assign({}, z0, { ad: z0.ad * 1.85 }); ok(E.abilPower(z1) / E.abilPower(z0) > 1.85 * 1.4, 'Zapdos: el ataque extra rinde más que proporcional en su habilidad');
+  // Giratina: menos daño base que antes, más crecimiento por devorado
+  const gp = E.DEF.giratina.ab[0][2]; ok(gp.m < 3.8 && gp.ghp > 60 && gp.gad > 6, 'Giratina: menos daño base y más escalado por devorado'); }
 
 // 10. Determinismo: dibujar el combate (efectos, retrasos visuales de impacto) no cambia su resultado
 { const big = ['machop', 'onix', 'charmander', 'pichu', 'abra', 'gastly', 'magnemite', 'riolu', 'cleffa'], big2 = ['magikarp', 'bulbasaur', 'squirtle', 'meowth', 'dratini', 'larvitar', 'cleffa', 'abra', 'pichu'];
