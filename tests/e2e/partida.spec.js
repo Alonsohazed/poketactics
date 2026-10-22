@@ -502,7 +502,7 @@ test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (
 });
 
 test('sinergias: el Guardián suelta su escudo de cristal y el Coloso un campo de fuerza (imágenes ligeras, sin Poké Ball)', async ({ page }) => {
-  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['machop', 'geodude', 'squirtle', 'onix']) addUnitToBench(me, makeInst(k)); renderUI(); });
+  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['magikarp', 'geodude', 'squirtle', 'onix']) addUnitToBench(me, makeInst(k)); renderUI(); });
   await page.waitForTimeout(4000);
   const pico = () => page.evaluate(async () => { const m = { escudo: 0, burbuja: 0 }; const t0 = performance.now(); while (performance.now() - t0 < 1000) { await new Promise(r => requestAnimationFrame(r)); const c = B3.fxSyn; m.escudo = Math.max(m.escudo, c.escudo); m.burbuja = Math.max(m.burbuja, c.burbuja); } return m; });
   const r = [];

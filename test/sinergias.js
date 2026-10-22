@@ -30,7 +30,8 @@ for (const t of TRAITS) { const Tr = E.TRAITS[t], n = Tr.bp.length, pr = Tr.pr[0
 { const { p } = fresh(); const mk = (t, k) => E.makeCombatUnit(E.makeInst(keyWith(t)), p, { [t]: k }, 0);
   ok(mk('Fuego', 4).burnPct >= .1 && mk('Fuego', 4).fireBoom === 300, 'Fuego prismático: quemadura del 10% y explosión de 300');
   ok(mk('Hechicero', 5).echo === true && !mk('Hechicero', 4).echo, 'Hechicero prismático: doble lanzamiento solo en el prismático');
-  ok(mk('Tirador', 4).range === mk('Tirador', 3).range + 1, 'Tirador prismático: +1 de alcance');
+  const PR = s => E.TRAITS[s].bp.length + 1; // escalón prismático de cada sinergia
+  ok(mk('Tirador', PR('Tirador')).range === mk('Tirador', PR('Tirador') - 1).range + 1, 'Tirador prismático: +1 de alcance');
   ok(mk('Depredadores', 3).rival[2] === 1, 'Depredadores 6: reinicia la habilidad al matar');
   ok(mk('Siniestro', 2).execTh === .2 && mk('Siniestro', 3).execTh === .3, 'Siniestro: umbral de ejecución 20% → 30% prismático');
   ok(mk('Acero', 2).fort === .4, 'Acero: absorbe el 40% de los adyacentes');
@@ -217,6 +218,30 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   // determinismo: misma semilla, mismo resultado con y sin efectos visuales
   { const A = { ag: [], m: {}, u: [['3,3', 'mewtwo', 2, ['specs'], 0, 0], ['3,0', 'onix', 2, [], 0, 0]] }, B = { ag: [], m: {}, u: [['3,0', 'machop', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0]] };
     const r = v => { const cb = E.createCombatSnap(A, B, { s: 5, n: 2 }, { seed: 77, visual: v }); E.simulate(cb); return cb.winner + '|' + cb.units.map(x => Math.round(x.hp)).join(','); }; ok(r(true) === r(false), 'Mewtwo: el combate es determinista'); } }
+
+// Escalones 2/3/4/5 (Tirador, Dragón, Roca, Coloso) y la sinergia nueva Peleador (2/4/6, prismático en 8)
+{ for (const s of ['Tirador', 'Dragón', 'Roca', 'Coloso']) ok(E.TRAITS[s].bp.join() === '2,3,4,5' && E.TRAITS[s].pr[0] === 7 && E.TRAITS[s].lv.length === 4, s + ': escalones 2/3/4/5, prismático en 7 y un texto por escalón');
+  ok(E.TRAITS.Peleador && E.TRAITS.Peleador.bp.join() === '2,4,6' && E.TRAITS.Peleador.pr[0] === 8, 'Peleador: 2/4/6 y prismático en 8');
+  const mem = s => E.UNIT_LIST.filter(u => u.traits.includes(s)).map(u => u.key).sort().join();
+  ok(mem('Coloso') === 'beldum,geodude,groudon,magikarp,rhyhorn,tauros', 'Coloso: solo los 6 pesados (' + mem('Coloso') + ')');
+  ok(mem('Peleador') === 'charmander,ditto,eevee,elekid,growlithe,machop,poliwag,timburr', 'Peleador: los 8 melés ágiles (' + mem('Peleador') + ')');
+  ok(E.DEF.flareon.traits.includes('Peleador') && !E.DEF.flareon.traits.includes('Coloso'), 'Flareon hereda Peleador');
+  // el escalón máximo se alcanza con como mucho 1 legendario
+  for (const s of ['Tirador', 'Dragón', 'Roca', 'Coloso', 'Peleador']) { const nl = E.UNIT_LIST.filter(u => u.traits.includes(s) && !u.traits.includes('Legendario') && !E.DEF[u.key].evoOf).length; ok(nl + 1 >= E.TRAITS[s].bp[E.TRAITS[s].bp.length - 1], s + ': su último escalón se alcanza con ≤1 legendario (' + nl + ' sin legendario)'); }
+  // los recuentos que ya existían dan lo mismo que antes: 4 de Tirador/Dragón/Roca = escalón 3 con los valores del antiguo escalón de 4
+  const { p } = fresh(), mk = (k, Tt) => E.makeCombatUnit(E.makeInst(k), p, Tt, 0);
+  ok(mk('gible', { 'Dragón': 3 }).dragonRamp === .025 && mk('gible', { 'Dragón': 3 }).dragonCap === .5, '4 dragones: +2,5%/s hasta +50% (como antes)');
+  ok(mk('rowlet', { Tirador: 3 }).hexAmp === .1, '4 tiradores: +10% por casilla (como antes)');
+  ok(mk('larvitar', { Roca: 3 }).df - mk('larvitar', {}).df === 65, '4 de Roca: +55 propia y +10 de equipo (como antes)');
+  // Peleador: vida máxima y furia al bajar del 50%
+  const b0 = mk('machop', {}), b2 = mk('machop', { Peleador: 2 }); ok(Math.abs(b2.maxHp / b0.maxHp - 1.35) < .01 && b2.fury[0] === .35, 'Peleador 4: +35% de vida y furia +35% de vel. de ataque');
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'machop', 2, [], 0, 0], ['2,0', 'charmander', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 4 });
+    const u = cb.units.find(x => x.d.key === 'machop'), as0 = u.as, foe = cb.units.find(x => x.side === 1); E.dealDamage(cb, foe, u, u.hp * .3, 'true', false); ok(!u.furyOn && u.as === as0, 'sin furia por encima del 50%');
+    E.dealDamage(cb, foe, u, u.hp * .5, 'true', false); ok(u.furyOn && Math.abs(u.as - Math.min(3, as0 * 1.2)) < 1e-9, '¡Furia! al bajar del 50%: +20% de vel. de ataque (Peleador 2)'); const as1 = u.as; E.dealDamage(cb, foe, u, 1, 'true', false); ok(u.as === as1, 'la furia solo se activa una vez'); }
+  // Legendarios: ven las sinergias rediseñadas como antes (misma resonancia y mismo efecto propio con las mismas fichas)
+  const r3 = mk('rayquaza', { 'Dragón': 2 }), r1 = mk('rayquaza', { 'Dragón': 1 }); ok(r3.dragonCap === r1.dragonCap && r3.dragonRamp === .015, 'Rayquaza con 3 dragones: el bonus del escalón de antes (2-3 = 1.º)');
+  const q = fresh().p; q.board = { '0,0': E.makeInst('rayquaza'), '1,0': E.makeInst('dratini'), '2,0': E.makeInst('horsea'), '3,0': E.makeInst('gible') };
+  ok(E.traitTiers(q).nl['Dragón'] === 1 && E.traitTiers(q)['Dragón'] === 3, 'resonancia con los escalones viejos: 3 dragones no legendarios = 1 nivel (sinergia: escalón 3)'); }
 
 // Coste 4: Bagon mago tanque, Timburr con golpes que saltan, tanques a 3★ con su bonus de defensa
 { const b2 = E.baseCombatUnit(E.DEF.bagon, 0, 2), r2 = E.baseCombatUnit(E.DEF.ralts, 0, 2); ok(b2.role === 't' && b2.range === 1 && b2.maxHp > r2.maxHp * 1.5, 'Bagon: stats y alcance de tanque');
