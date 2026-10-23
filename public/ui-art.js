@@ -85,9 +85,35 @@
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (!g[y][x]) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const c = g[y + dy] && g[y + dy][x + dx]; if (c && c !== 'k') { o[y][x] = 'k'; break; } }
     return grids[name] = o;
   }
+  // Iconos modernos (SVG suave de 24×24, sin píxeles): sustituyen a los de la rejilla en todo lo que se ve (menú, ventanas, amigos, perfil).
+  // Los que no están aquí siguen saliendo de la rejilla pixel
+  const MODERN = {
+    ball: '<circle cx="12" cy="12" r="10" fill="#f4f1e8"/><path d="M2 12a10 10 0 0 1 20 0z" fill="#e0412f"/><rect x="2" y="11" width="20" height="2" fill="#0b0d18"/><circle cx="12" cy="12" r="3.4" fill="#f4f1e8" stroke="#0b0d18" stroke-width="2"/><circle cx="12" cy="12" r="10" fill="none" stroke="#0b0d18" stroke-width="1.6"/>',
+    ranked: '<path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5z" fill="#7c4dff"/><path d="M12 6.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 14.7l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/>',
+    hourglass: '<path d="M6 3h12v2l-4.5 7L18 19v2H6v-2l4.5-7L6 5z" fill="#ffd23f"/><path d="M8.5 5h7L12 10.5z" fill="#fff6c8" opacity=".8"/><path d="M12 14l3 4.5H9z" fill="#e0a524"/>',
+    dex: '<rect x="4" y="2.5" width="16" height="19" rx="3" fill="#e0412f"/><circle cx="9" cy="7" r="2.6" fill="#fff"/><circle cx="9" cy="7" r="1.3" fill="#3f7fe0"/><circle cx="14.5" cy="5.5" r="1" fill="#ffd23f"/><circle cx="17" cy="5.5" r="1" fill="#3fbf5a"/><rect x="6" y="13" width="12" height="5" rx="1.5" fill="#7fd9a0"/>',
+    bag: '<path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="#b07a12" stroke-width="2.5" fill="none"/><rect x="4" y="8" width="16" height="13" rx="3" fill="#d79b3a"/><rect x="10" y="12" width="4" height="3" rx="1" fill="#ffd23f"/>',
+    book: '<path d="M3 5c3-1.5 6-1.5 9 0 3-1.5 6-1.5 9 0v14c-3-1.5-6-1.5-9 0-3-1.5-6-1.5-9 0z" fill="#f4f1e8"/><path d="M12 5v14" stroke="#3a4266" stroke-width="1.5"/><path d="M5.5 8.5h4M5.5 11h4M14.5 8.5h4M14.5 11h4" stroke="#b9b4d4" stroke-width="1.2" stroke-linecap="round"/>',
+    gear: '<path fill="#b9b4d4" fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/>',
+    people: '<circle cx="8.5" cy="7.5" r="3.2" fill="#3f7fe0"/><path d="M2.5 18c0-3.5 2.7-5.5 6-5.5s6 2 6 5.5v1h-12z" fill="#3f7fe0"/><circle cx="16" cy="8.5" r="2.8" fill="#e0412f"/><path d="M13.5 19v-1c0-2 .8-3.6 2.1-4.7 2.7.2 5.9 2 5.9 5.2v.5z" fill="#e0412f"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>',
+    check: '<path d="M4 12.5l5 5L20 7" stroke="#3fbf5a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+    candy: '<ellipse cx="12" cy="12" rx="5.5" ry="4.6" fill="#ff6fa8"/><path d="M6.5 12l-4-3.5v7zM17.5 12l4-3.5v7z" fill="#ff6fa8"/><path d="M9.5 10.5c1.5 1 3.5 1 5 0M9.5 13.5c1.5 1 3.5 1 5 0" stroke="#fff" stroke-width="1.2" fill="none" opacity=".8"/>',
+    swap: '<path d="M4 8h12l-3-3M20 16H8l3 3" stroke="#ffd23f" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+    star: '<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" fill="#ffd23f"/>',
+    crystal: '<path d="M12 2l6 6-6 14-6-14z" fill="#7fb2ff"/><path d="M12 2l6 6H6z" fill="#c8e0ff"/>',
+    addfriend: '<circle cx="9" cy="7.5" r="3.4" fill="#f4f1e8"/><path d="M2.5 19c0-3.8 3-6 6.5-6s6.5 2.2 6.5 6v1h-13z" fill="#f4f1e8"/><path d="M18.5 5v7M15 8.5h7" stroke="#3fbf5a" stroke-width="2.6" stroke-linecap="round"/>',
+    trophy: '<path d="M7 3h10v6a5 5 0 0 1-10 0z" fill="#ffd23f"/><path d="M5 5h2v4a3 3 0 0 1-2-3zM17 5h2a3 3 0 0 1-2 4z" fill="#e0a524"/><rect x="10.5" y="13" width="3" height="4" fill="#e0a524"/><rect x="7" y="17" width="10" height="3.5" rx="1" fill="#b07a12"/>',
+    medal: '<path d="M8 2h3l1 5-3.5 1zM16 2h-3l-1 5 3.5 1z" fill="#e0412f"/><circle cx="12" cy="14" r="6" fill="#ffd23f"/><circle cx="12" cy="14" r="3.2" fill="#fff0b0"/>',
+    sound: '<path d="M3 9h4l5-4v14l-5-4H3z" fill="#f4f1e8"/><path d="M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11" stroke="#3f7fe0" stroke-width="2" fill="none" stroke-linecap="round"/>',
+    mute: '<path d="M3 9h4l5-4v14l-5-4H3z" fill="#f4f1e8"/><path d="M15 9l6 6M21 9l-6 6" stroke="#e0412f" stroke-width="2.4" stroke-linecap="round"/>',
+    back: '<path d="M11 5l-7 7 7 7M4 12h16" stroke="#f4f1e8" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
   const svgCache = {};
   function icon(name, size = 32, cls = '') {
-    const k = name + '|' + size + '|' + cls; if (svgCache[k]) return svgCache[k]; const g = grid(name); if (!g) return '';
+    const k = name + '|' + size + '|' + cls; if (svgCache[k]) return svgCache[k];
+    if (MODERN[name]) return svgCache[k] = `<svg class="pxi mi ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${MODERN[name]}</svg>`;
+    const g = grid(name); if (!g) return '';
     let r = ''; for (let y = 0; y < 16; y++) { let x = 0; while (x < 16) { const c = g[y][x]; let e = x + 1; while (e < 16 && g[y][e] === c) e++; if (c) r += `<rect x="${x}" y="${y}" width="${e - x}" height="1" fill="${PAL[c]}"/>`; x = e; } }
     return svgCache[k] = `<svg class="pxi ${cls}" width="${size}" height="${size}" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false">${r}</svg>`;
   }

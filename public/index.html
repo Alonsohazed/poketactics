@@ -948,22 +948,19 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .candyRow b{color:#9cd3ff;font-size:17px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}
 .mnRow{grid-template-columns:repeat(5,1fr)}
 .pxb-sq{font-size:13px}
-/* Eevee del gacha (menú): la ilustración oficial de Eevee (PokeAPI, nítida a este tamaño; el sprite de GO solo mide 92 px) dentro de un halo dorado de energía (img/menu/halo-oro*.webp, hechos con halo-oro.js: anillo
-   inclinado con resplandor, vetas, rayos y destellos; la parte baja del anillo va por delante del sprite). Al pasar el ratón su silueta se resalta en dorado y
-   abre el gacha (sustituye al botón «Gacha»). A la izquierda de la pantalla, algo por debajo del centro */
-.mnEevee{position:fixed;left:clamp(8px,calc(50% - 740px),320px);top:58%;transform:translateY(-50%);z-index:16;width:340px;height:400px;overflow:visible;border:0;background:none;padding:0;cursor:pointer;display:block;clip-path:none;box-shadow:none}
+/* Eevee del gacha (menú): la ilustración de Eevee dentro de un halo dorado de energía (img/menu/halo-oro*.webp, hechos con halo-oro.js: anillo
+   inclinado con resplandor, vetas, rayos y destellos; la parte baja del anillo va por delante del sprite). Abajo a la izquierda; al pasar el ratón su
+   silueta se resalta en dorado y abre el gacha (sustituye al botón «Gacha»). Pequeño por defecto; a ×1,5 en escritorio (tema moderno, más abajo) */
+.mnEevee{position:fixed;left:6px;bottom:6px;z-index:16;width:176px;height:200px;overflow:visible;border:0;background:none;padding:0;cursor:pointer;display:block;clip-path:none;box-shadow:none}
 .mnEevee .halo,.mnEevee .haloF,.mnEevee .ev{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none}
-.mnEevee .halo,.mnEevee .haloF{width:330px;height:330px;animation:mnHalo 3.6s ease-in-out infinite}
-.mnEevee .haloF{opacity:1}
-.mnEevee .ev{width:230px;height:230px;top:48%;filter:drop-shadow(0 10px 10px rgba(0,0,0,.45));transition:transform .15s,filter .15s}
-.mnEevee span{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);font-family:var(--pxFont);font-size:16px;letter-spacing:.06em;color:#f4d27a;text-shadow:1px 1px 0 var(--pxK),0 0 10px rgba(255,215,94,.55)}
+.mnEevee .halo,.mnEevee .haloF{width:176px;height:176px;animation:mnHalo 3.6s ease-in-out infinite}
+.mnEevee .ev{width:116px;height:116px;top:48%;filter:drop-shadow(0 10px 10px rgba(0,0,0,.45));transition:transform .15s,filter .15s}
+.mnEevee span{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);font-family:var(--display);font-size:14px;letter-spacing:.08em;color:#f4d27a;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 10px rgba(255,215,94,.55)}
 @keyframes mnHalo{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.04)}}
 .mnEevee:hover .ev,.mnEevee:focus-visible .ev{transform:translate(-50%,-52%);filter:drop-shadow(2px 0 0 #ffd75e) drop-shadow(-2px 0 0 #ffd75e) drop-shadow(0 2px 0 #ffd75e) drop-shadow(0 -2px 0 #ffd75e) drop-shadow(0 0 12px rgba(255,215,94,.9)) brightness(1.06)}
 .mnEevee:hover .halo,.mnEevee:focus-visible .halo{filter:brightness(1.15) saturate(1.1)}
 .mnEevee:hover span,.mnEevee:focus-visible span{color:#fff2b0}
 .mnEevee:focus-visible{outline:none}
-/* el menú (776 px centrado) deja a la izquierda (50% − 388 px); si no caben los 340 px del Eevee (ancho < 1480) o la pantalla es baja, va pequeño abajo a la izquierda */
-@media (max-width:1479px),(max-height:979px){ .mnEevee{left:6px;top:auto;bottom:6px;transform:none;width:176px;height:200px} .mnEevee .halo,.mnEevee .haloF{width:176px;height:176px} .mnEevee .ev{width:116px;height:116px} .mnEevee span{font-size:13px} }
 @media (prefers-reduced-motion:reduce){ .mnEevee .halo,.mnEevee .haloF{animation:none} }
 /* ---------- cola ---------- */
 #queueBar{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);bottom:18px;z-index:30;display:flex;align-items:center;gap:14px;padding:14px 16px 14px 18px;min-width:min(520px,calc(100vw - 32px));color:var(--pxInk);animation:pxIn .3s steps(4) both}
@@ -1432,6 +1429,56 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
 .cfgSur small{color:#a9b8c8;font-size:12.5px;max-width:260px}
 @media (max-width:620px){ .cfgRow{grid-template-columns:1fr;gap:6px} .cfgSep{margin-left:-16px;margin-right:-16px} .mbox.cfg{padding:22px 16px 18px} }
 @keyframes cbBan{0%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.97)}}
+/* ===================== Tema moderno del menú y de las ventanas (sustituye al pixel art) =====================
+   Esquinas redondeadas, Nunito para los textos y Lilita One para los títulos de los botones, sombras suaves y transiciones lisas.
+   Se mantienen la paleta --px* y las clases .pxb/.pxpanel/.btn: estas reglas van después y las redefinen. */
+:root{--pxFont:"Nunito",system-ui,sans-serif}
+.pxb{clip-path:none;border-radius:16px;box-shadow:inset 0 0 0 2px var(--acc),0 8px 18px rgba(0,0,0,.35);text-shadow:none;transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}
+.pxb::before{display:none}
+.pxb b{font-family:var(--display);font-weight:400;letter-spacing:.03em;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+.pxb small{font-weight:700;text-shadow:none}
+.pxb:hover,.pxb:focus-visible{box-shadow:inset 0 0 0 2px var(--pxGold),0 10px 22px rgba(0,0,0,.4),0 0 16px rgba(255,210,63,.25)}
+.pxb:active{transform:translateY(1px)}
+.pxb-main{border-radius:20px;--fill:linear-gradient(180deg,#f0553f,#c93422)}
+.pxb-main:hover,.pxb-main:focus-visible{--fill:linear-gradient(180deg,#ff6a50,#d93b28)}
+.pxb-alt{border-radius:18px;--fill:linear-gradient(180deg,#2b3a6e,#1c2750)}
+.pxb-sq{border-radius:14px;font-weight:800;font-size:14px;text-shadow:none}
+.pxCaret{clip-path:none;width:12px;height:12px;background:none;border-right:3px solid var(--pxGold);border-bottom:3px solid var(--pxGold);border-radius:2px;transform:rotate(-45deg) translate(-3px,-3px)}
+.pxb:hover .pxCaret,.pxb:focus-visible .pxCaret{transform:rotate(-45deg)}
+.pxpanel{clip-path:none;border-radius:18px;box-shadow:inset 0 0 0 2px var(--pxLine),0 16px 40px rgba(0,0,0,.45)}
+.tcard .mnTag{letter-spacing:.18em;font-weight:800;font-size:11px}
+.tcard .mnTag::before,.tcard .mnTag::after{height:1px;background:var(--pxLine)}
+.stand.artStand img{clip-path:none;border-radius:12px;box-shadow:0 0 0 2px var(--pxK),0 0 0 4px var(--pxGold2)}
+.stand.artStand::after{display:none}
+#menu .mnNav>*,#menu #menuWho,#menu .mnLogo{animation-timing-function:ease-out}
+.frBtn{border-radius:999px;padding:9px 16px 9px 12px;font-weight:800}
+.frBtn .frOn{clip-path:none;border-radius:999px;box-shadow:inset 0 0 0 2px #2b7c36}
+.frPanel{border-radius:18px;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--frAc) 55%,var(--pxLine)),0 16px 40px rgba(0,0,0,.5)}
+.frHead b{text-shadow:none;letter-spacing:.08em;font-weight:900}
+.frRow{border-radius:10px}
+/* Ventanas y botones de partida y acceso, con el mismo lenguaje */
+.btn{clip-path:none;border-radius:12px;font-family:var(--pxFont);font-weight:800;text-shadow:none;box-shadow:inset 0 0 0 2px var(--pxLine),0 4px 10px rgba(0,0,0,.3);transition:transform .1s ease,filter .1s ease,box-shadow .1s ease}
+.btn:hover{box-shadow:inset 0 0 0 2px var(--pxGold),0 6px 14px rgba(0,0,0,.35)}
+.btn:active{transform:translateY(1px);box-shadow:inset 0 0 0 2px var(--pxGold)}
+.btn.primary{background:linear-gradient(180deg,#f0553f,#c93422);box-shadow:inset 0 0 0 2px var(--pxGold2),0 4px 10px rgba(0,0,0,.3)}
+.btn.primary:hover{background:linear-gradient(180deg,#ff6a50,#d93b28);box-shadow:inset 0 0 0 2px var(--pxGold),0 6px 14px rgba(0,0,0,.35)}
+.btn.gold{box-shadow:inset 0 0 0 2px #fff0b0,0 4px 10px rgba(0,0,0,.3)}
+.mbox{clip-path:none;border-radius:18px}
+.mclose{clip-path:none;border-radius:50%;box-shadow:inset 0 0 0 2px var(--pxLine)}
+.mclose:hover{box-shadow:inset 0 0 0 2px var(--pxGold)}
+.field input,.field select,#auth .field input{border-radius:10px;box-shadow:inset 0 0 0 2px var(--pxLine)}
+.field input:focus,.field select:focus,#auth .field input:focus{box-shadow:inset 0 0 0 2px var(--pxGold)}
+.field label,#auth .field label{font-weight:800}
+/* Disposición del menú en escritorio: logo arriba, ficha del entrenador a la derecha, Normal y Clasificatoria (con la fila de botones) abajo a la derecha y el Eevee del gacha abajo a la izquierda */
+@media (min-width:1100px) and (min-height:760px){
+  .mnLayout{grid-template-columns:1fr;grid-template-areas:"logo";max-width:none;margin:1vh auto 0}
+  .mnNav{position:fixed;right:28px;bottom:28px;width:440px;z-index:16} .mnNav .mnRow{order:-1;margin:0 0 2px} /* la fila de botones encima de Normal y Clasificatoria, que quedan abajo del todo */
+  #menuWho{position:fixed;right:28px;top:auto;bottom:296px;width:300px;max-height:calc(100vh - 372px);overflow:auto;z-index:16} /* encima de la columna de botones (250 px + márgenes), nunca encima de ellos; si no cabe, hace scroll */
+  .mnEevee{left:24px;bottom:0;width:510px;height:600px}
+  .mnEevee .halo,.mnEevee .haloF{width:495px;height:495px}
+  .mnEevee .ev{width:345px;height:345px;top:47%}
+  .mnEevee span{font-size:22px;bottom:16px}
+}
 </style>
 </head>
 <body>
