@@ -576,10 +576,25 @@ test('descripciones: la sinergia muestra los retratos de sus Pokémon y combinar
   expect(await page.evaluate(() => G.me.items.length)).toBe(1);
 });
 
-test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran al frente', async ({ page }) => {
+test('banca y tablero: en planificación todas las fichas miran a la cámara (hacia el jugador)', async ({ page }) => {
   await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['charmander', 'bulbasaur', 'squirtle']) addUnitToBench(me, makeInst(k)); moveTo(me, { i: 2 }, { b: '3,1' }); renderUI(); });
   const r = await page.evaluate(() => { const A = sceneActors(); return { banca: A.filter(a => a.loc && a.loc.i !== undefined).map(a => +a.face.toFixed(2)), tablero: A.filter(a => a.loc && a.loc.b !== undefined).map(a => +a.face.toFixed(2)) }; });
-  expect(r.banca).toEqual([0, 0]); expect(r.tablero).toEqual([3.14]);
+  expect(r.banca).toEqual([0, 0]); expect(r.tablero).toEqual([0]);
+});
+
+test('preparación del combate: 3 s en los que no se pelea y las fichas del tablero se dan la vuelta; luego sale «¡Combate!» y empieza', async ({ page }) => {
+  await page.evaluate(() => { const me = G.me; me.level = 1; me.board = { '3,3': makeInst('charmander') }; me.bench = Array(BENCH).fill(null); addUnitToBench(me, makeInst('bulbasaur')); renderUI(); });
+  await expect.poll(() => page.evaluate(() => { const s = B3.smInfo[4]; return !!(s && s[0] && s[0].estado); }), { timeout: 30000 }).toBe(true);
+  expect(await page.evaluate(() => B3.smInfo[4][0].ry)).toBe(0);      // en el tablero mira al jugador
+  await page.evaluate(() => startCombat());
+  await page.waitForTimeout(1500);
+  const prep = await page.evaluate(() => ({ t: G.combat.t, ry: Math.abs(B3.smInfo[4][0].ry), cartel: document.getElementById('cbBanner').classList.contains('on'), banca: sceneActors().filter(a => a.loc && a.loc.i !== undefined).map(a => a.face) }));
+  expect(prep.t).toBe(0);                                              // durante la preparación el combate no avanza
+  expect(prep.ry).toBeGreaterThan(3);                                  // ya se ha dado la vuelta hacia el rival
+  expect(prep.cartel).toBe(false); expect(prep.banca).toEqual([0]);    // sin cartel todavía y la banca sigue mirando al jugador
+  await page.waitForTimeout(2200);
+  const luego = await page.evaluate(() => ({ t: G.combat.t, cartel: document.getElementById('cbBanner').classList.contains('on') }));
+  expect(luego.t).toBeGreaterThan(0); expect(luego.cartel).toBe(true); // a los 3 s empieza el combate con su cartel
 });
 
 test('arrastrar una ficha: va quieta (sin correr ni moverse su pose) y al soltarla tampoco corre', async ({ page }) => {

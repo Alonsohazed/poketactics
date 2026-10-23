@@ -569,7 +569,7 @@ function liveItems(p,inst){
  const f=(G.fights||[]).find(x=>x.a===p||(x.b===p&&!x.ghost)); if(!f||!f.c) return;
  const side=f.a===p?0:1, bk=Object.keys(p.board).find(k=>p.board[k]===inst); if(!bk) return;
  if(!G.mp){ if(!f.c.done) applyLiveItems(f.c,side,bk,inst.items.slice()); return; }
- const t=Math.ceil(((Date.now()-f.t0)/1000*G.speed)/DT)*DT, ev={t,side,bk,items:inst.items.slice()};
+ const t=Math.max(0,Math.ceil(((Date.now()-f.t0)/1000*G.speed)/DT)*DT), ev={t,side,bk,items:inst.items.slice()};
  (f.ev=f.ev||[]).push(ev); f.c=resimFight(f,G.round);
  G.resolveNotBefore=Math.max(G.resolveNotBefore||0,f.t0+f.c.t/G.speed*1000+5000);
  if(NET.named) NET.named.emit('cmbev',{seed:f.seed,ev}).catch(()=>{});
@@ -673,7 +673,7 @@ function note(p,msg,toastIt){
 }
 
 /* ============================== [COMBAT] ============================== */
-const DT=0.05, COMBAT_T=40; // duración máxima del combate (luego empate)
+const DT=0.05, COMBAT_T=40, PREP_T=3; // duración máxima del combate (luego empate) y preparación antes de pelear (las fichas se dan la vuelta hacia el rival)
 function hexDist(c1,r1,c2,r2){ const x1=c1-(r1-(r1&1))/2, x2=c2-(r2-(r2&1))/2; const y1=-x1-r1,y2=-x2-r2; return Math.max(Math.abs(x1-x2),Math.abs(y1-y2),Math.abs(r1-r2)); }
 const dU=(a,b)=>hexDist(a.c,a.r,b.c,b.r);
 function neighbors(c,r){ const d=(r&1)?[[1,0],[-1,0],[1,-1],[0,-1],[1,1],[0,1]]:[[1,0],[-1,0],[0,-1],[-1,-1],[0,1],[-1,1]]; return d.map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<7&&b>=0&&b<8); }
@@ -1453,7 +1453,9 @@ function startCombat(){
  if(R.type==='pve') for(const p of alive) G.fights.push({a:p,b:null,pve:true});
  else G.fights=makeFights(alive);
  for(const f of G.fights) if(f.b===me&&!f.ghost) [f.a,f.b]=[f.b,f.a];
- for(const f of G.fights){ f.t0=Date.now(); if(f.pve&&isHuman(f.a)&&!G.auto){ f.lootKeys=pveLootKeys(f.a,R); f.lootN=0; } }
+ // El reloj de cada combate empieza tras la preparación: todo lo que se mide desde f.t0 (objetos en directo, oro, orbes, fin de ronda) la tiene en cuenta
+ const prepMs=G.auto?0:PREP_T*1000/G.speed; G.prepT=G.auto?0:PREP_T;
+ for(const f of G.fights){ f.t0=Date.now()+prepMs; if(f.pve&&isHuman(f.a)&&!G.auto){ f.lootKeys=pveLootKeys(f.a,R); f.lootN=0; } }
  for(const p of alive) autoPicks(p);
  for(const f of G.fights){ augFire(f.a,'combatStart',{pve:!!f.pve,opp:f.b?f.b.id:null}); if(f.b&&!f.ghost) augFire(f.b,'combatStart',{pve:false,opp:f.a.id}); }
  let myFight=null, maxRemote=0;
@@ -1467,7 +1469,7 @@ function startCombat(){
  }
  G.combat=myFight?myFight.c:null; G.flip=false; G.view=null;
  G.myOpp=myFight?oppLabel(myFight,0):''; G.myOppTr=myFight&&!myFight.pve&&myFight.b?myFight.b.tr:'';
- G.resolveNotBefore=G.mp?Date.now()+maxRemote/G.speed*1000+5000:0;
+ G.resolveNotBefore=G.mp?Date.now()+prepMs+maxRemote/G.speed*1000+5000:0;
  if(NET.mode==='host') netSendCombats();
  renderUI();
  if(!G.combat&&!G.mp) later(resolveRound,0);
@@ -1846,6 +1848,7 @@ function applyPub(d){
  G.players=list;
  G.preview=G.round.type==='pve'&&G.phase==='planning'?pveWave(G.round.s,G.round.n):null;
  if(prevPh==='combat'&&G.phase!=='combat'){ G.combat=null; G.view=null; selCombat=null; }
+ if(prevPh!=='combat'&&G.phase==='combat') G.prepT=PREP_T; // preparación, igual que en el servidor (f.t0 empieza tras ella)
  if(G.phase!=='carousel') G.carousel=null;
  if(prevPh==='augment'&&G.phase!=='augment'&&NET.modal==='aug') closeModal();
  if((d.ov||!G.me.alive)&&!NET.shownOver){ NET.shownOver=true; showGameOver(); }
@@ -1890,7 +1893,7 @@ function applyCmb(d){
  if(!d||!d.a) return;
  const R={s:clamp(d.R&&d.R[0]|0,1,9),n:clamp(d.R&&d.R[1]|0,1,7)};
  G.cmbData={a:d.a,b:d.b||null,R,seed:d.seed}; G.fightEv=G.fightEv||{}; const evs=G.fightEv[d.seed]||[];
- G.combat=createCombatSnap(d.a,d.b||null,R,{seed:d.seed,visual:true}); G.combat.evq=evs.slice(); G.flip=d.side===1; G.acc=0; G.myOpp=String(d.opp||'').slice(0,40); G.myOppTr=TRAINER_BY[d.ot]?d.ot:''; selCombat=null;
+ G.combat=createCombatSnap(d.a,d.b||null,R,{seed:d.seed,visual:true}); G.combat.evq=evs.slice(); G.flip=d.side===1; G.acc=0; if(!(G.prepT>0)) G.prepT=PREP_T; G.myOpp=String(d.opp||'').slice(0,40); G.myOppTr=TRAINER_BY[d.ot]?d.ot:''; selCombat=null;
  renderUI();
 }
 // Evento de objeto en un combate en curso: se aplica a su tiempo o se reconstruye el combate si ya pasó
@@ -2829,7 +2832,7 @@ function sceneActors(){
      for(const p of par){ if(p.m.t===now) continue; p.m.n++; p.m.t=now; p.m.tr=sh.filter(t=>p.syn.includes(t)); p.m.from=[i.x,i.y]; p.m.to=null; } }
    for(const i of info){ const {u,k,x,y,syn,m}=i, st=mine?planStats(u):null, d=DEF[u.defId];
      if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
-     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:dexOf(d,u.star),x,y,face:Math.PI,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
+     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
  if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:(cr.boss?1.35:1)*(cr.big||1),hud:{creep:true}}); }); // clave estable: en multijugador la lista llega nueva en cada mensaje
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
@@ -2841,7 +2844,7 @@ function sceneActors(){
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
  const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star,still:true,dex:dexOf(d,u.star),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); }); }
- if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:drag.loc&&drag.loc.i!==undefined?0:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
+ if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:0,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
 function draw(){
@@ -2932,13 +2935,15 @@ function tick(){
 }
 function stepVisual(dt,isHost){
  const cb=G.combat;
- if(cb&&!cb.done){ if(isHost&&document.hidden) simulate(cb); else { G.acc+=dt*G.speed; let n=0; while(G.acc>=DT&&n++<200){ stepWithEv(cb); G.acc-=DT; if(cb.done) break; } } }
+ // Preparación (PREP_T): los combates aún no avanzan mientras las fichas se dan la vuelta; al acabar sale «¡Combate!»
+ const prep=G.prepT>0; if(prep){ G.prepT-=dt*G.speed; if(G.prepT<=0) combatBanner(); }
+ if(cb&&!cb.done&&!prep){ if(isHost&&document.hidden) simulate(cb); else { G.acc+=dt*G.speed; let n=0; while(G.acc>=DT&&n++<200){ stepWithEv(cb); G.acc-=DT; if(cb.done) break; } } }
  if(cb&&document.hidden) ageFx(cb,dt*Math.min(G.speed,2));
 
  if(isHost){ dropKillOrbs(); payCombatGold(false); }
  // El combate que estás mirando avanza al mismo ritmo que el tuyo
  const v=G.view&&G.view.cb?G.view:null;
- if(v){ if(!v.cb.done){ v.acc+=dt*G.speed; let n=0; while(v.acc>=DT&&n++<200){ stepWithEv(v.cb); v.acc-=DT; if(v.cb.done) break; } }
+ if(v){ if(!v.cb.done&&!prep){ v.acc+=dt*G.speed; let n=0; while(v.acc>=DT&&n++<200){ stepWithEv(v.cb); v.acc-=DT; if(v.cb.done) break; } }
    if(document.hidden) ageFx(v.cb,dt*Math.min(G.speed,2)); }
  if(isHost&&!G.resolving&&(!cb||cb.done)&&(!v||v.cb.done)&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,cb?5000:300); } // 5 s para recoger orbes y vender
 }
@@ -2988,12 +2993,10 @@ function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) ret
 // Iconos de las rondas: salvajes (garra), PvP (espadas cruzadas) y carrusel
 const ROUND_SVG={pve:'<svg viewBox="0 0 24 24"><path d="M6 3l2.2 7.6L4 9l3.4 6.6L5 21l5-4 2 5 2-5 5 4-2.4-5.4L20 9l-4.2 1.6L18 3l-6 5z"/></svg>',pvp:'<svg viewBox="0 0 24 24"><path d="M3 3l7.5 7.5-1.4 1.4L2 4.8V3zm18 0v1.8l-7.1 7.1-1.4-1.4L20 3zM5 14l5 5-2 2-1.5-1.5L4 22l-2-2 2.5-2.5L3 16zm14 0l2 2-1.5 1.5L22 20l-2 2-2.5-2.5L16 21l-2-2z"/></svg>',carousel:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 8.5 6h-3a6.2 6.2 0 0 0-11 0h-3A9 9 0 0 1 12 3zm0 18a9 9 0 0 1-8.5-6h3a6.2 6.2 0 0 0 11 0h3A9 9 0 0 1 12 21zm0-12a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>'};
 let lastBeep=-1;
-// Cartel «¡Combate!» al empezar cada combate (no al volver a una partida ya en combate: G._bph nace vacío)
+// Cartel «¡Combate!» cuando acaba la preparación y empieza a pelear (stepVisual)
 function combatBanner(){ const el=$('cbBanner'); if(!el) return; el.innerHTML=(G.round&&G.round.type==='pve'?ROUND_SVG.pve:ROUND_SVG.pvp)+'<span>¡Combate!</span>'; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(combatBanner.t); combatBanner.t=setTimeout(()=>el.classList.remove('on'),1600); }
 function updatePhase(){
- let t='';
- if(G.phase!==G._bph){ if(G.phase==='combat'&&G._bph) combatBanner(); G._bph=G.phase; }
- // Temporizador y barra de la planificación; en los últimos 5 s suena un aviso cada segundo
+ let t=''; // Temporizador y barra de la planificación; en los últimos 5 s suena un aviso cada segundo
  const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=S.timer||30;
  // En combate, cuenta atrás del combate que se está viendo (el tuyo o el que miras), como la barra de TFT
  const vc=G.phase==='combat'&&viewCombat(), left=vc&&!vc.done?Math.max(0,COMBAT_T-vc.t):-1, csec=left>=0?Math.ceil(left):-1;
