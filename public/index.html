@@ -946,7 +946,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .rkPips{display:flex;gap:5px}.rkPips i{width:16px;height:8px;background:#0f1122;box-shadow:inset 0 0 0 2px var(--pxLine)}.rkPips i.on{background:var(--pxGold);box-shadow:inset 0 0 0 2px var(--pxGold2)}
 .candyRow{display:flex;align-items:center;gap:6px;align-self:stretch;justify-content:center;font-family:var(--pxFont);font-size:13px;color:var(--pxMut);margin:-2px 0 2px}
 .candyRow b{color:#9cd3ff;font-size:17px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}
-.mnRow{grid-template-columns:repeat(5,1fr)}
+.mnRow{grid-template-columns:repeat(4,1fr)}
 .pxb-sq{font-size:13px}
 /* Eevee del gacha (menú): la ilustración de Eevee dentro de un halo dorado de energía (img/menu/halo-oro*.webp, hechos con halo-oro.js: anillo
    inclinado con resplandor, vetas, rayos y destellos; la parte baja del anillo va por delante del sprite). Abajo a la izquierda; al pasar el ratón su
@@ -1372,10 +1372,10 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-filter:none}
 .top #fsBtn{margin-left:auto}
 /* Botones redondos (pantalla completa y configuración): negro, borde dorado hacia el interior e icono en dorado opaco */
-.top .btn.icon{width:44px;height:44px;min-width:0;padding:0;border-radius:50%;border:0;clip-path:none;display:grid;place-items:center;text-shadow:none;color:#c9a24a;
+.top .btn.icon,.mnGear{width:44px;height:44px;min-width:0;padding:0;border-radius:50%;border:0;clip-path:none;display:grid;place-items:center;text-shadow:none;color:#c9a24a;
   background:radial-gradient(circle at 50% 35%,#15161f,#05060b 70%);box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 3px 8px rgba(0,0,0,.6)}
-.top .btn.icon:hover{color:#f0d078;background:radial-gradient(circle at 50% 35%,#1b1c28,#05060b 70%);box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
-.top .btn.icon svg{width:22px;height:22px;display:block;fill:currentColor;stroke:currentColor;stroke-width:.8;stroke-linejoin:round}
+.top .btn.icon:hover,.mnGear:hover{color:#f0d078;background:radial-gradient(circle at 50% 35%,#1b1c28,#05060b 70%);box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
+.top .btn.icon svg,.mnGear svg{width:22px;height:22px;display:block;fill:currentColor;stroke:currentColor;stroke-width:.8;stroke-linejoin:round}
 /* Barra de fases: más ancha, con marco dorado (el fondo dorado asoma 3 px alrededor del azul, ::before) y las rondas repartidas a lo ancho */
 .roundBar{min-width:min(900px,66vw);gap:22px;padding:7px 46px 10px;background:linear-gradient(180deg,#f6dc8a,#b8862e 55%,#7a5214);isolation:isolate;box-shadow:none}
 .roundBar::before{content:'';position:absolute;inset:0 3px 3px;z-index:-1;clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);
@@ -1479,6 +1479,18 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
   .mnEevee .ev{width:345px;height:345px;top:47%}
   .mnEevee span{font-size:22px;bottom:16px}
 }
+/* Fondo del menú y del acceso: la ilustración de Eevee en la roca mirando al cielo (img/menu/fondo.webp, 2000×1125, del autor), a pantalla completa anclada abajo */
+body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{display:block}
+#menuScene{background:#9cb8d6 url(img/menu/fondo.webp) center bottom/cover no-repeat}
+/* Logo suavizado para ir con el fondo: sombra difusa en vez de la dura, algo menos saturado */
+.mnLogo img{filter:drop-shadow(0 6px 12px rgba(20,30,60,.38)) saturate(.9) brightness(1.03)}
+/* Engranaje de configuración: arriba a la izquierda, redondo y sin texto (igual que el de la partida) */
+.mnGear{position:fixed;left:16px;top:14px;z-index:17}
+/* Pokédex: botón redondo con el aparato (img/menu/pokedex.webp) y sin texto */
+.pxb.mnDex{border-radius:50%;width:78px;height:78px;padding:0;justify-self:center;align-self:center;--fill:radial-gradient(circle at 50% 35%,#15161f,#05060b 70%);box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 3px 8px rgba(0,0,0,.6)}
+.pxb.mnDex:hover,.pxb.mnDex:focus-visible{box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
+.pxb.mnDex img{width:36px;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+@media (min-width:1100px) and (min-height:760px){ .mnEevee{height:680px} .mnEevee .halo,.mnEevee .haloF{top:54%} .mnEevee .ev{top:50%} }
 </style>
 </head>
 <body>
@@ -1557,7 +1569,8 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
 </div>
 
 <div id="menu" class="screen hidden">
-  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee.webp" alt="" width="400" height="400" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"><span>Gacha</span></button>
+  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee-home.webp" alt="" width="400" height="400" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"><span>Gacha</span></button>
+  <button class="btn ghost icon mnGear" id="optBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
   <div class="mnLayout">
     <h1 class="logo mnLogo"><img src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></h1>
     <nav class="mnNav" aria-label="Menú principal">
@@ -1565,10 +1578,9 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
       <button class="pxb pxb-alt" id="rankedBtn"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Clasificatoria</b><small>Rango, divisiones y LP</small></span><i class="pxCaret" aria-hidden="true"></i></button>
       <div class="mnRow">
         <button class="pxb pxb-sq" id="histBtn"><i data-i="hourglass" data-s="32"></i><span>Historial</span></button>
-        <button class="pxb pxb-sq" id="dexMenuBtn"><i data-i="dex" data-s="32"></i><span>Pokédex</span></button>
+        <button class="pxb pxb-sq mnDex" id="dexMenuBtn" title="Pokédex" aria-label="Pokédex"><img src="img/menu/pokedex.webp" alt="" width="200" height="266" decoding="async"></button>
         <button class="pxb pxb-sq" id="recMenuBtn"><i data-i="bag" data-s="32"></i><span>Objetos</span></button>
         <button class="pxb pxb-sq" id="howBtn"><i data-i="book" data-s="32"></i><span>Guía</span></button>
-        <button class="pxb pxb-sq" id="optBtn"><i data-i="gear" data-s="32"></i><span>Opciones</span></button>
       </div>
     </nav>
     <aside class="tcard pxpanel" id="menuWho" aria-label="Tu entrenador"></aside>

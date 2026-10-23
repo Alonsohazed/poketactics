@@ -7,7 +7,8 @@ test('la página carga en la pantalla de acceso sin errores @rapido', async ({ p
   await expect(page.locator('#auth .logo')).toBeVisible();
   await expect(page.locator('#auGo')).toHaveText('Entrar');
   await expect(page.locator('#auPass2Wrap')).toBeHidden(); // solo aparece al crear cuenta
-  await expect(page.locator('#menuScene')).toBeHidden(); // la escena pixel ya no se dibuja ni se arranca: fondo azul liso (el 3D queda oculto)
+  await expect(page.locator('#menuScene')).toBeVisible(); // de fondo, la ilustración (img/menu/fondo.webp); la escena pixel ya no se dibuja ni se arranca (el 3D queda oculto)
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('menuScene')).backgroundImage)).toContain('fondo.webp');
   expect(await page.evaluate(() => !!(window.MenuScene && MenuScene.on))).toBe(false);
 });
 
