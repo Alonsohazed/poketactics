@@ -673,7 +673,7 @@ function note(p,msg,toastIt){
 }
 
 /* ============================== [COMBAT] ============================== */
-const DT=0.05;
+const DT=0.05, COMBAT_T=40; // duración máxima del combate (luego empate)
 function hexDist(c1,r1,c2,r2){ const x1=c1-(r1-(r1&1))/2, x2=c2-(r2-(r2&1))/2; const y1=-x1-r1,y2=-x2-r2; return Math.max(Math.abs(x1-x2),Math.abs(y1-y2),Math.abs(r1-r2)); }
 const dU=(a,b)=>hexDist(a.c,a.r,b.c,b.r);
 function neighbors(c,r){ const d=(r&1)?[[1,0],[-1,0],[1,-1],[0,-1],[1,1],[0,1]]:[[1,0],[-1,0],[0,-1],[-1,-1],[0,1],[-1,1]]; return d.map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<7&&b>=0&&b<8); }
@@ -1156,7 +1156,7 @@ function stepCombat(cb){
  }
  const a0=cb.units.some(u=>!u.dead&&u.side===0), a1=cb.units.some(u=>!u.dead&&u.side===1);
  if(!a0||!a1){ cb.done=true; cb.winner=a0?0:a1?1:null; }
- else if(cb.t>40){ cb.done=true; cb.winner=null; }
+ else if(cb.t>COMBAT_T){ cb.done=true; cb.winner=null; }
  // Oro ganado en combate (Día de Pago, Gholdengo, Team Rocket, aumentos…): se apunta con su segundo para cobrarlo en ese momento
  if(cb.gold){ const gl=cb.gl||(cb.gl=[0,0]); for(let sd=0;sd<2;sd++) if(cb.gold[sd]>gl[sd]){ (cb.goldEv=cb.goldEv||[]).push([cb.t,sd,cb.gold[sd]-gl[sd]]); gl[sd]=cb.gold[sd]; } }
 }
@@ -2719,12 +2719,14 @@ function drawHud(a){
    const w=rowW-3, bx=hx-w/2, hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+1.5+2*bbw:0));
    itemsY=by+hh+(hasM?mh+1:0)+1.5+bbw;
    ctx.fillStyle='rgba(10,12,24,.85)'; ctx.fillRect(bx-1.5,by-1.5,w+3,hh+(hasM?mh+1:0)+3);
-   const hpK=clamp(o.hp/o.maxHp,0,1); if(a.cu){ let tr=HP_TRAIL.get(a.cu); if(tr==null||tr<hpK) tr=hpK; else tr=Math.max(hpK,tr-(tr-hpK)*.06-.003); HP_TRAIL.set(a.cu,tr); if(tr>hpK){ ctx.fillStyle='rgba(255,236,200,.9)'; ctx.fillRect(bx+w*hpK,by,w*(tr-hpK),hh); } }
-   ctx.fillStyle=o.mine?'#3fd27a':'#ff5a5f'; ctx.fillRect(bx,by,w*hpK,hh);
+   // Como en TFT, el escudo es un tramo blanco a continuación de la vida; si vida + escudo pasan del máximo, la barra se comprime para que quepa (wh = ancho de la vida máxima)
+   const hpK=clamp(o.hp/o.maxHp,0,1), shv=Math.max(0,o.shield||0), tot=Math.max(o.maxHp,o.hp+shv), wh=w*o.maxHp/tot;
+   if(a.cu){ let tr=HP_TRAIL.get(a.cu); if(tr==null||tr<hpK) tr=hpK; else tr=Math.max(hpK,tr-(tr-hpK)*.06-.003); HP_TRAIL.set(a.cu,tr); if(tr>hpK){ ctx.fillStyle='rgba(255,236,200,.9)'; ctx.fillRect(bx+wh*hpK,by,wh*(tr-hpK),hh); } }
+   ctx.fillStyle=o.mine?'#3fd27a':'#ff5a5f'; ctx.fillRect(bx,by,wh*hpK,hh);
    if(a.cu&&hpK<.25&&hpK>0){ ctx.strokeStyle=`rgba(255,70,70,${.55+.45*Math.sin(performance.now()/110)})`; ctx.lineWidth=2; ctx.strokeRect(bx-2.5,by-2.5,w+5,hh+5); }
-   ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(bx,by,w*clamp(o.hp/o.maxHp,0,1),hh*.35);
-   if(o.shield>0){ ctx.fillStyle='rgba(240,240,240,.9)'; ctx.fillRect(bx,by,w*clamp(o.shield/o.maxHp,0,1),hh*.45); }
-   ctx.fillStyle='rgba(10,12,24,.7)'; for(let k=300;k<o.maxHp;k+=300){ const tx=bx+w*k/o.maxHp; ctx.fillRect(tx,by,1,k%1500?hh*.55:hh); }
+   ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(bx,by,wh*hpK,hh*.35);
+   if(shv>0){ ctx.fillStyle='rgba(245,245,245,.95)'; ctx.fillRect(bx+wh*hpK,by,w*shv/tot,hh); }
+   ctx.fillStyle='rgba(10,12,24,.7)'; for(let k=300;k<tot;k+=300){ const tx=bx+w*k/tot; ctx.fillRect(tx,by,1,k%1500?hh*.55:hh); }
    if(hasM){ const full=o.mana>=o.maxMana*.9; ctx.fillStyle='#1b2a48'; ctx.fillRect(bx,by+hh+1,w,mh); ctx.fillStyle=full?`hsl(205,100%,${70+15*Math.sin(performance.now()/90)}%)`:'#4aa3ff'; ctx.fillRect(bx,by+hh+1,w*clamp(o.mana/o.maxMana,0,1),mh); }
    hy=by;
  } else if(isz) hy=itemsY;
@@ -2992,13 +2994,18 @@ function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) ret
 // Iconos de las rondas: salvajes (garra), PvP (espadas cruzadas) y carrusel
 const ROUND_SVG={pve:'<svg viewBox="0 0 24 24"><path d="M6 3l2.2 7.6L4 9l3.4 6.6L5 21l5-4 2 5 2-5 5 4-2.4-5.4L20 9l-4.2 1.6L18 3l-6 5z"/></svg>',pvp:'<svg viewBox="0 0 24 24"><path d="M3 3l7.5 7.5-1.4 1.4L2 4.8V3zm18 0v1.8l-7.1 7.1-1.4-1.4L20 3zM5 14l5 5-2 2-1.5-1.5L4 22l-2-2 2.5-2.5L3 16zm14 0l2 2-1.5 1.5L22 20l-2 2-2.5-2.5L16 21l-2-2z"/></svg>',carousel:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 8.5 6h-3a6.2 6.2 0 0 0-11 0h-3A9 9 0 0 1 12 3zm0 18a9 9 0 0 1-8.5-6h3a6.2 6.2 0 0 0 11 0h3A9 9 0 0 1 12 21zm0-12a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>'};
 let lastBeep=-1;
+// Cartel «¡Combate!» al empezar cada combate (no al volver a una partida ya en combate: G._bph nace vacío)
+function combatBanner(){ const el=$('cbBanner'); if(!el) return; el.innerHTML=(G.round&&G.round.type==='pve'?ROUND_SVG.pve:ROUND_SVG.pvp)+'<span>¡Combate!</span>'; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(combatBanner.t); combatBanner.t=setTimeout(()=>el.classList.remove('on'),1600); }
 function updatePhase(){
  let t='';
+ if(G.phase!==G._bph){ if(G.phase==='combat'&&G._bph) combatBanner(); G._bph=G.phase; }
  // Temporizador y barra de la planificación; en los últimos 5 s suena un aviso cada segundo
  const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=S.timer||30;
- $('rbTimer').textContent=plan?sec:G.phase==='combat'?'⚔':'·';
- // Reloj circular: se vacía durante la planificación; en combate se queda lleno
- const frac=plan?clamp(G.timer/tot,0,1):G.phase==='combat'?1:0; $('rbRing').setAttribute('stroke-dashoffset',(100.5*(1-frac)).toFixed(1)); $('roundBar').classList.toggle('hurry',plan&&sec<=5);
+ // En combate, cuenta atrás del combate que se está viendo (el tuyo o el que miras), como la barra de TFT
+ const vc=G.phase==='combat'&&viewCombat(), left=vc&&!vc.done?Math.max(0,COMBAT_T-vc.t):-1, csec=left>=0?Math.ceil(left):-1;
+ $('rbTimer').textContent=plan?sec:csec>=0?csec:G.phase==='combat'?'⚔':'·';
+ // Reloj circular: se vacía durante la planificación y durante el combate
+ const frac=plan?clamp(G.timer/tot,0,1):left>=0?clamp(left/COMBAT_T,0,1):G.phase==='combat'?1:0; $('rbRing').setAttribute('stroke-dashoffset',(100.5*(1-frac)).toFixed(1)); $('roundBar').classList.toggle('hurry',plan&&sec<=5||csec>=0&&csec<=5);
  $('rbPhase').textContent=PHASE_TAG[G.phase]||'Esperando'; const alive=G.players.filter(p=>p.alive).length; $('rbAlive').textContent=`👤 ${alive}/${G.players.length}`;
  if(plan&&sec<=5&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.hurry(sec); } if(!plan) lastBeep=-1;
  switch(G.phase){

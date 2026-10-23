@@ -1347,6 +1347,15 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 .ucSt:hover{filter:brightness(1.3);transform:translateY(-1px)}
 .ucNotes{margin-top:10px;font-size:11.5px;color:#b9c6cf}.ucNotes p{margin:3px 0}
 #ucSell{margin-top:10px;width:100%}
+/* Cartel «¡Combate!» al empezar cada combate (combatBanner), como el «Combat» de TFT */
+#cbBanner{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;display:none;align-items:center;gap:.35em;padding:.12em 2.2em;white-space:nowrap;
+ font-family:var(--display);font-size:clamp(28px,4vw,52px);letter-spacing:.04em;color:#f4fbff;text-shadow:0 3px 0 #000,0 0 18px rgba(127,232,255,.55);
+ background:linear-gradient(90deg,transparent,rgba(6,14,26,.78) 22%,rgba(6,14,26,.78) 78%,transparent)}
+#cbBanner::before,#cbBanner::after{content:'';position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#7fe8ff 30%,#7fe8ff 70%,transparent)}
+#cbBanner::before{top:0}#cbBanner::after{bottom:0}
+#cbBanner svg{width:.9em;height:.9em;fill:currentColor;filter:drop-shadow(0 2px 0 #000)}
+#cbBanner.on{display:flex;animation:cbBan 1.6s ease-out forwards}
+@keyframes cbBan{0%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.97)}}
 </style>
 </head>
 <body>
@@ -1372,7 +1381,7 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
   <section class="center">
     <div class="viewInfo" id="viewInfo" hidden></div>
     <div class="boardInfo"><span id="streakInfo"></span></div>
-    <div id="boardWrap"><div class="items" id="items" aria-label="Objetos"></div><div class="augBar" id="augBar" title="Clic derecho: ver la lista de aumentos" hidden></div><div class="augList" id="augList" hidden></div><div id="boardStack"><canvas id="gl" aria-hidden="true"></canvas><canvas id="cv" aria-label="Tablero de combate"></canvas></div></div>
+    <div id="boardWrap"><div class="items" id="items" aria-label="Objetos"></div><div class="augBar" id="augBar" title="Clic derecho: ver la lista de aumentos" hidden></div><div class="augList" id="augList" hidden></div><div id="boardStack"><canvas id="gl" aria-hidden="true"></canvas><canvas id="cv" aria-label="Tablero de combate"></canvas><div id="cbBanner" aria-hidden="true"></div></div></div>
   </section>
   <aside class="right">
     <div class="ucard hidden" id="ucard" aria-live="polite"></div>
