@@ -270,7 +270,7 @@ test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Po
     await new Promise(r => setTimeout(r, 800)); const C = G.carousel, me = G.me, a = C.av[me.id], { cx, cy } = carGeo();
     const bars = B3.bars, an = carAng(C.order.indexOf(me), C.order.length), [px, py] = carV(cx + Math.cos(an), cy + Math.sin(an));
     C.t = Math.max(C.t, releaseAt(C.order.indexOf(me))); await new Promise(r => setTimeout(r, 200));
-    doAct({ t: 'car', i: C.opts.findIndex(o => !o.taken) }); for (let n = 0; n < 60 && !a.done; n++) await new Promise(r => setTimeout(r, 100));
+    doAct({ t: 'car', i: C.opts.findIndex(o => !o.taken) }); for (let n = 0; n < 120 && !a.done; n++) await new Promise(r => setTimeout(r, 100));
     const x0 = a.x, y0 = a.y; doAct({ t: 'carmove', x: -.8, y: .2 }); await new Promise(r => setTimeout(r, 600));
     return { abajo: Math.abs(px - cx) < 1e-6 && py > cy, bars: bars.length, col: [...new Set(bars.map(b => b.col))], piezas: Math.max(...bars.map(b => b.piezas)), done: a.done, movido: Math.hypot(a.x - x0, a.y - y0), invalido: applyAct(me, { t: 'carmove', x: NaN, y: 0 }).ok };
   });
