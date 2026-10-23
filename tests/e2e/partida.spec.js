@@ -178,7 +178,7 @@ test('con intereses, el carrusel no rompe el dibujo y el escenario por capas sig
   await page.evaluate(() => { G.carousel.t = 40; });
   await expect.poll(() => page.evaluate(() => G.phase), { timeout: 30_000 }).not.toBe('carousel');
   await page.waitForTimeout(2500);
-  const r = await page.evaluate(() => { const d = [...document.querySelectorAll('#boardStack > div')].find(e => e.querySelector('video')); return { capas: !!d && !d.hidden, encaje: !!d && !!d.style.transform, mallas3D: B3.debugInfo().escenario, errores: frameErr.n || 0 }; });
+  const r = await page.evaluate(() => { const d = document.getElementById('flatBg'); return { capas: !!d && !d.hidden, encaje: !!d && !!d.style.transform, mallas3D: B3.debugInfo().escenario, errores: frameErr.n || 0 }; });
   expect(r.capas, 'escenario por capas visible tras el carrusel').toBe(true);
   expect(r.encaje).toBe(true);
   expect(r.mallas3D, 'solo la plaza del carrusel (≈30 mallas); con el decorado 3D antiguo serían más de 55').toBeLessThan(45);
@@ -192,7 +192,7 @@ test('en combate nada tiembla: bloque, 3D, imagen, torre y cristales quedan quie
     [['rhyhorn', '3,2'], ['geodude', '2,3'], ['golem', '4,3'], ['onix', '1,3'], ['machop', '5,3']].forEach(([k, c]) => { if (DEF[k]) put(k, c); }); renderUI(); });
   await page.waitForTimeout(2000);
   const r = await page.evaluate(async () => {
-    const st = document.getElementById('boardStack'), img = [...st.children].find(e => e.querySelector && e.querySelector('video')), gl = document.getElementById('gl'), cv = document.getElementById('cv');
+    const st = document.getElementById('boardStack'), img = document.getElementById('flatBg'), gl = document.getElementById('gl'), cv = document.getElementById('cv');
     const pos = () => { const b = e => { const q = e.getBoundingClientRect(); return [q.left, q.top, q.width, q.height].map(v => +v.toFixed(2)).join(','); }; return b(st) + '|' + b(img) + '|' + b(gl) + '|' + b(cv) + '|' + st.style.transform + '|' + (B3.flatInfo.t || '') + '|' + JSON.stringify(B3.flatInfo.totem) + JSON.stringify(B3.flatInfo.crys); };
     const base = pos(); const vistos = new Set([base]); G.speed = 4; G.timer = .2;
     const t0 = performance.now(); let combate = 0;

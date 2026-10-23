@@ -158,7 +158,13 @@ const flatSeen=new Set(); function flatFail(e){ const k=String(e&&e.message||e);
 // vídeos en bucle del agua (opacos: se recortan con mask-image, la alfa del fondo en su rectángulo) y tiras de sprites del fuego (capas.json).
 // Se sirven por jsDelivr fijadas al commit (como los modelos: ANIM_BASE) y, si falla, desde nuestro servidor.
 // back: esquinas del fondo del campo; bench: extremos del banquillo (sus 9 losas = nuestras 9 casillas); holes: huecos de la izquierda; totem: esquina superior izquierda
-const FLAT_IMG={dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:{row:3,dx:1.3,dy:.25}}; // totem: junto al borde izquierdo del tablero, a la altura de la fila `row`, `dx` radios de casilla hacia fuera y `dy` hacia abajo
+// Escenarios del tablero (imágenes con su perspectiva y sus puntos de encaje): «rio» es el de capas con agua y fuegos (arena_tft_capas_1080);
+// «coliseo» es la arena de baldosas con piedras negras y brillo morado renderizada en Blender con la cámara del juego (arena-coliseo.py de la skill de recursos)
+const FLAT_SETS={
+ rio:{dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:{row:3,dx:1.3,dy:.25},bg:'radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'},
+ coliseo:{dir:'arena/coliseo/',w:2880,h:1620,back:[[968,472.4],[1912,472.4]],bench:[805.6,2074.4,1168.8],holes:[[917,562.1],[896.2,630.2],[874.7,705.8],[853.1,778.2],[831,856.2]],totem:{row:3,dx:1.3,dy:.25},bg:'#000'},
+};
+const FLAT_IMG=FLAT_SETS.coliseo; // totem: junto al borde izquierdo del tablero, a la altura de la fila `row`, `dx` radios de casilla hacia fuera y `dy` hacia abajo
 // Carrusel: plataforma Poké Ball sobre suelo rojo, renderizada en Blender con la misma perspectiva que la cámara del carrusel (carrusel-pokeball.py de la skill de recursos);
 // N/S/W/E = extremos del borde de la plataforma en la imagen (los da el script) y k = a qué radio del carrusel (en radios rr) corresponde ese borde
 const PLAZA_IMG={w:3400,h:2100,N:[1700,529.5],S:[1700,1523.2],W:[950.3,933.3],E:[2449.7,933.3],k:1.3,f:'carrusel_pb'};
@@ -184,7 +190,7 @@ const _rv=new THREE.Vector3(), _rd=new THREE.Vector3();
 function flatWorld(pt,y=0){ if(!flatH) return null; const cvs=renderer.domElement, [sx,sy]=hApply(flatH,pt); _rv.set(sx/cvs.clientWidth*2-1,1-sy/cvs.clientHeight*2,.5).unproject(camera);
  _rd.copy(_rv).sub(camera.position).normalize(); const t=(y-camera.position.y)/_rd.y; return new THREE.Vector3().copy(camera.position).addScaledVector(_rd,t); }
 function buildFlat(cvs){
- const L=FLAT_IMG.dir, D=L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
+ const L=FLAT_IMG.dir, D=L, el=document.createElement('div'); el.id='flatBg'; el.style.cssText=`position:absolute;width:${FLAT_IMG.w}px;height:${FLAT_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0;overflow:hidden`;
  const st=document.createElement('style'); st.textContent='@keyframes ptFire{to{background-position:var(--fw) 0}}'; el.appendChild(st);
  // en pantallas pequeñas (menos de 1400 px reales de ancho de lienzo) basta el fondo a 1×: un tercio del peso y de la memoria
  const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?'base1x.webp':'base.webp';
@@ -196,9 +202,9 @@ function buildFlat(cvs){
      srcs(D); el.appendChild(v); v.play().catch(()=>{}); }
    else { const d=document.createElement('div'), im=new Image(); d.style.cssText=box+`;--fw:-${c.ancho*c.frames}px;animation:ptFire ${(c.frames/c.fps).toFixed(3)}s steps(${c.frames}) infinite`;
      const use=u=>{ d.style.background=`url(${u}) 0 0/${c.ancho*c.frames}px ${c.alto}px no-repeat`; }; im.onload=()=>use(im.src); im.onerror=()=>{ if(im.src.indexOf(L)!==0){ im.src=L+c.nombre+'.webp'; } }; im.src=D+c.nombre+'.webp'; el.appendChild(d); } }
- cvs.parentElement.insertBefore(el,cvs); cvs.parentElement.style.background='radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'; return el; }
+ cvs.parentElement.insertBefore(el,cvs); cvs.parentElement.style.background=FLAT_IMG.bg; return el; }
 function buildPlaza(cvs){
- const L=FLAT_IMG.dir, D=L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${PLAZA_IMG.w}px;height:${PLAZA_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
+ const L='arena/', D=L, el=document.createElement('div'); el.style.cssText=`position:absolute;width:${PLAZA_IMG.w}px;height:${PLAZA_IMG.h}px;transform-origin:0 0;pointer-events:none;z-index:0`;
  const bn=cvs.clientWidth*(window.devicePixelRatio||1)<1400?PLAZA_IMG.f+'1x.webp':PLAZA_IMG.f+'.webp';
  const im=document.createElement('img'); im.src=D+bn; im.alt=''; im.style.cssText='position:absolute;inset:0;width:100%;height:100%'; im.onerror=()=>{ if(im.src.indexOf(L)!==0) im.src=L+bn; }; el.appendChild(im);
  cvs.parentElement.insertBefore(el,cvs); return el; }
