@@ -27,7 +27,8 @@ when_to_use: Al tocar server.js, auth.js, la sección [NET] o applyAct de public
   - Socket.io exige sesión (`auth.socketGuard`) y mismo origen;
   - el nombre y el entrenador salen de la cuenta (`seatFor`);
   - `normLoc` e `idx` validan índices, y `applyAct` comprueba la fase.
-- Desconexión: el asiento queda como desconectado y **un bot sigue jugando** (`serverLeave`). **No hay reconexión al mismo asiento**: es una limitación conocida; no la documentes como hecha.
+- Desconexión (actualizado el 2026-10-22): el asiento queda **ausente** (`p.away` en `serverLeave`) y **nadie juega por esa persona** (ni bot); la partida nunca se pausa. Se vuelve al mismo asiento con `rejoin` (`serverRejoin`/`serverResend`); pasados `REJOIN_MS` sin nadie conectado, `serverForfeit` elimina a los ausentes. Pruebas: `npm run test:desc` y el bloque de desconexión de `test/smoke.js`.
+- **Amigos** (`friends.js`, rutas `/api/friends` en `auth.js`, estado en directo en `server.js`): las acciones van por REST con sesión, JSON y mismo origen; límites de 40 acciones y 10 solicitudes enviadas por minuto, 100 amigos y 20 solicitudes sin respuesta; caducan a los 14 días. Añadir por nombre responde **igual** exista o no la cuenta (solicitud «fantasma»), así no se distingue a una persona de un rival generado ni se sabe quién te bloqueó; solo se bloquea a amigos o a quien te pidió. El perfil (`/api/profile/:name`) solo se ve si es el tuyo o de un amigo: cualquier otro nombre da el mismo 404. El estado (`friendUpd`) solo lleva nombre, estado y ronda, nunca ids.
 
 ## Lista de comprobación al cambiar algo del multijugador
 1. ¿Cada acción nueva está en `applyAct` con validación de fase, índices, oro y espacio? ¿Responde `{ok:false}` sin efectos secundarios cuando no es válida?
@@ -35,6 +36,7 @@ when_to_use: Al tocar server.js, auth.js, la sección [NET] o applyAct de public
 3. ¿Los datos nuevos que viajan al cliente están en `makePub`/`makePriv` y se **sanean** en `applyPub`/`applyPriv` (tipos, longitudes, claves que existen en `DEF`/`ITEMS`)?
 4. Si un cambio afecta al combate, ¿el cliente y el servidor calculan lo mismo? Prueba con la misma semilla con `visual:true` y `visual:false`, y comprueba que `spectate()` muestra el mismo ganador.
 5. ¿Las estadísticas se apuntan una sola vez por asiento (`recordPlaces`, `seat.recorded`)?
+7. ¿Algo nuevo permite distinguir a un bot de una persona (nombre igual a una cuenta, respuesta distinta en amigos o perfil, marca en `pub`)? No debe.
 6. ¿`priv` sigue por debajo de unos 3,9 KB? (`makePriv` recorta el registro).
 
 ## Pruebas existentes (ejecútalas siempre)

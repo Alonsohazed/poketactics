@@ -1732,6 +1732,8 @@ function sock(){
  s.on('start',d=>{ if(NET.mode!=='joining') return; const seats=(d&&d.seats)||[]; if(seats.find(x=>x.peer===NET.myPeer)){ NET.queue=null; renderQueue(); NET.result=null; NET.lost=null; NET.resume=null; hideLostBar(); startClient(); } });
  s.on('queue',onQueue);
  s.on('result',onResult);
+ s.on('friends',()=>loadFriends()); // mi lista cambió (solicitud, aceptar, eliminar…)
+ s.on('friendUpd',onFriendUpd);     // un amigo cambió de estado (menú, cola, partida…)
  s.on('pub',d=>{ if(NET.mode==='client') applyPub(d); });
  s.on('priv',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyPriv(d); });
  s.on('cmb',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyCmb(d); });
@@ -2536,7 +2538,7 @@ function bindEvents(){
  $('menuBtn').addEventListener('click',confirmQuit);
  $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
- $('histBtn').addEventListener('click',showHistory);
+ $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends());
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
@@ -3653,7 +3655,7 @@ function pfRow(m){ const c=m.comp||{}, pl=m.place||8;
   <div class="hMid"><div class="hComp">${(c.units||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon en el tablero</span>'}</div><div class="hTraits">${(c.traits||[]).map(histTrait).join('')}${(c.augs||[]).map(id=>AUG_BY[id]?`<span class="hA" title="${esc(AUG_BY[id].name)}">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div></div>
   <div class="hRight">${lp}<span class="rChip candy"><i data-i="candy" data-s="16"></i>+${m.candies||0}</span></div></div></div>`; }
 function pfStatsHTML(s){ return `<div class="stats pfStats"><div><b>${s.games}</b><span>Partidas</span></div><div><b>${s.wins}</b><span>Victorias</span></div><div><b>${s.top4}</b><span>Top 4</span></div><div><b>${s.avg==null?'—':String(s.avg).replace('.',',')}</b><span>Puesto medio</span></div><div><b>${s.candies}</b><span>Caramelos</span></div></div>`; }
-function profileHTML(P){
+function profileHTML(P,ctx={}){
  const t=TACS[P.trainer]||TACS.charmander, tk=TACS[P.trainer]?P.trainer:'charmander', rk=P.ranked, a=P.account, unranked=rk.placing&&!rk.done;
  const mode0=P.byMode.ranked.games?'ranked':P.byMode.normal.games||!P.byMode.custom.games?'normal':'custom';
  // Pokémon más usados en las partidas del historial (por línea, la forma de la ficha más reciente)
@@ -3664,8 +3666,8 @@ function profileHTML(P){
  return `<div class="pfHero"><div class="pfBg" style="background-image:url('${CARD_ART[tk]||''}')"></div>
  <aside class="pfBanner lg-${lg}"><span class="pfLvlChip" title="Nivel de cuenta">${a.level}</span>
   <div class="pfAvatar"><span class="pfRing">${artImg(tk)}</span><span class="pfCrest">${rankBadge(rk,54)}</span></div>
-  <b class="pfName">${esc(P.name)}</b><small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>
-  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div><i class="pfTail" aria-hidden="true"></i></aside>
+  <b class="pfName">${esc(P.name)}</b><small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>${ctx.presence?`<small class="frSt st-${esc(ctx.presence.st)}"><i></i>${esc(frStatus(ctx.presence))}</small>`:''}
+  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div>${ctx.friend?`<button class="pxb pfAct" id="pfRemove" type="button"><i data-i="close" data-s="14"></i><span>Eliminar amigo</span></button>`:ctx.self?`<button class="pxb pfAct" id="pfFriends" type="button"><i data-i="people" data-s="16"></i><span>Amigos</span></button>`:''}<i class="pfTail" aria-hidden="true"></i></aside>
  <div class="pfShow">
   <div class="pfCase"><span class="pfCap">Clasificatoria</span><small>${unranked?'Sin clasificar':esc(rankText(rk))}</small><div class="pfBig">${rankBadge(rk,76)}</div><small class="muted">${rk.placing?`Posicionamiento ${rk.done}/${rk.of}`:rk.lp+' LP'}</small>${lpBar(rk)}</div>
   <div class="pfCase"><span class="pfCap">Mejor rango</span><small>${P.peak?esc(rankText(P.peak)):'—'}</small><div class="pfBig">${P.peak?rankBadge(P.peak,64):rankBadge(null,64)}</div></div>
@@ -3679,15 +3681,64 @@ function profileHTML(P){
  <div class="hList">${P.history.length?P.history.map(pfRow).join(''):'<div class="hEmpty"><i data-i="ball" data-s="40"></i><p>Aún no hay partidas de Normal, Clasificatoria o sala informal.</p></div>'}</div>`; }
 async function showProfile(name){
  openModal('<div class="pfWrap" id="pfWrap"><p class="muted">Cargando el perfil…</p></div>',{closable:true,kind:'profile'});
- let P; try{ P=(await api('/api/profile/'+encodeURIComponent(name))).profile; }catch(e){ const el=$('pfWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; }
+ let P, D; try{ D=await api('/api/profile/'+encodeURIComponent(name)); P=D.profile; }catch(e){ const el=$('pfWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; }
  const el=$('pfWrap'); if(!el||NET.modal!=='profile') return;
- el.innerHTML=profileHTML(P); hydrate(el); window.PX&&PX.hydrate(el);
+ el.innerHTML=profileHTML(P,D); hydrate(el); window.PX&&PX.hydrate(el);
+ if($('pfFriends')) $('pfFriends').onclick=()=>{ closeModal(); openFriends(true); };
+ if($('pfRemove')) $('pfRemove').onclick=e=>{ const b=e.currentTarget; if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('span').textContent='¿Seguro? Pulsa otra vez'; return; } closeModal(); friendOp('remove',P.name); };
  el.querySelectorAll('.pfTabs .pxb').forEach(b=>b.onclick=()=>{ el.querySelectorAll('.pfTabs .pxb').forEach(x=>{ x.classList.toggle('on',x===b); x.setAttribute('aria-selected',x===b); }); $('pfStats').innerHTML=pfStatsHTML(P.byMode[b.dataset.m]); });
+}
+/* ---------- amigos: panel lateral del menú (estilo LoL) ----------
+   Grupos En partida / En línea / Desconectados, solicitudes recibidas y enviadas y bloqueados. Todo lo valida el servidor
+   (/api/friends); el estado de cada amigo llega en directo por Socket.io (friendUpd). Añadir por nombre responde siempre igual. */
+const FR={list:null,open:false,sel:'',fold:{off:true,blocked:true},msg:null};
+const FR_ST={game:'En partida',lobby:'En una sala',queue:'Buscando partida',menu:'En línea',off:'Desconectado'};
+const frStatus=f=>f.st==='game'?`En partida${f.r?' · Ronda '+f.r:''}`:FR_ST[f.st]||'Desconectado';
+async function loadFriends(){ if(!ACC) return; let d; try{ d=await api('/api/friends'); }catch(e){ return; }
+ const prev=FR.list?new Set(FR.list.incoming.map(x=>x.name)):null; FR.list=d;
+ if(prev) for(const x of d.incoming) if(!prev.has(x.name)) toast(`${x.name} quiere ser tu amigo`);
+ renderFriends(); }
+function onFriendUpd(d){ if(!FR.list||!d||typeof d.name!=='string') return; const f=FR.list.friends.find(x=>x.name===d.name); if(!f) return;
+ f.st=FR_ST[d.st]?d.st:'off'; f.r=String(d.r||'').slice(0,6); f.mode=String(d.mode||'').slice(0,10); renderFriends(); }
+async function friendOp(op,name){ try{ const d=await api('/api/friends/'+op,{name}); FR.list=d; FR.msg={ok:true,t:d.msg}; if(op!=='request') toast(d.msg); }catch(e){ FR.msg={ok:false,t:e.message}; if(op!=='request') toast(e.message); } FR.sel=''; renderFriends(); }
+function openFriends(on){ FR.open=on===undefined?!FR.open:!!on; if(FR.open&&!FR.list) loadFriends(); renderFriends(); if(FR.open) setTimeout(()=>$('frName')&&$('frName').focus(),30); }
+function frRow(f,kind){ const tk=TACS[f.trainer]?f.trainer:'', av=tk?artImg(tk):'<span class="frNone"></span>', n=esc(f.name);
+ let acts='', sub='';
+ if(kind==='friend'){ sub=`<small class="frSt st-${f.st}"><i></i>${esc(frStatus(f))}</small>`;
+   if(FR.sel===f.name) acts=`<div class="frActs"><button class="pxb" data-op="profile" data-n="${n}" type="button"><span>Perfil</span></button><button class="pxb" data-op="remove" data-n="${n}" type="button"><span>Eliminar</span></button><button class="pxb" data-op="block" data-n="${n}" type="button"><span>Bloquear</span></button></div>`; }
+ else if(kind==='in'){ sub='<small class="frSt">Quiere ser tu amigo</small>'; acts=`<div class="frBtns"><button class="pxb pxb-sq frIc" data-op="accept" data-n="${n}" aria-label="Aceptar a ${n}" title="Aceptar" type="button"><i data-i="check" data-s="16"></i></button><button class="pxb pxb-sq frIc" data-op="decline" data-n="${n}" aria-label="Rechazar a ${n}" title="Rechazar" type="button"><i data-i="close" data-s="14"></i></button></div>`; }
+ else if(kind==='out'){ sub='<small class="frSt">Solicitud enviada</small>'; acts=`<div class="frBtns"><button class="pxb pxb-sq frIc" data-op="cancel" data-n="${n}" aria-label="Cancelar la solicitud a ${n}" title="Cancelar" type="button"><i data-i="close" data-s="14"></i></button></div>`; }
+ else if(kind==='blk'){ acts=`<div class="frBtns"><button class="pxb frTxtBtn" data-op="unblock" data-n="${n}" type="button"><span>Desbloquear</span></button></div>`; }
+ return `<div class="frRow k-${kind}${kind==='friend'?' st-'+f.st:''}${FR.sel===f.name?' sel':''}" ${kind==='friend'?`data-pick="${n}" role="button" tabindex="0"`:''}><span class="frAv">${av}</span><span class="frTxt"><b>${n}</b>${sub}</span>${kind!=='friend'?acts:''}</div>${kind==='friend'?acts:''}`; }
+function frGroup(key,title,rows,kind){ if(!rows.length&&key!=='online') return ''; const fold=FR.fold[key];
+ return `<section class="frGrp"><button class="frGrpH" data-fold="${key}" type="button" aria-expanded="${!fold}"><i class="frCar${fold?'':' open'}" aria-hidden="true"></i><span>${title}</span><b>${rows.length}</b></button>${fold?'':rows.map(f=>frRow(f,kind)).join('')||'<p class="frEmpty">Nadie por aquí ahora mismo.</p>'}</section>`; }
+function renderFriends(){
+ const btn=$('frBtn'), L=FR.list; if(!btn) return;
+ const on=L?L.friends.filter(f=>f.st!=='off').length:0, inc=L?L.incoming.length:0;
+ btn.innerHTML=`<i data-i="people" data-s="24"></i><span>Amigos</span><b class="frOn">${on}</b>${inc?`<em class="frBadge" aria-label="${inc} solicitudes">${inc}</em>`:''}`; btn.setAttribute('aria-expanded',FR.open); window.PX&&PX.hydrate(btn);
+ const P=$('frPanel'); P.classList.toggle('hidden',!FR.open); if(!FR.open) return;
+ const game=L?L.friends.filter(f=>f.st==='game'):[], online=L?L.friends.filter(f=>f.st!=='game'&&f.st!=='off'):[], off=L?L.friends.filter(f=>f.st==='off'):[];
+ const keep=$('frName')?$('frName').value:'';
+ P.innerHTML=`<div class="frHead"><b>Amigos</b><span>${L?L.friends.length:0}/${L?L.max:100}</span><button class="mclose" id="frClose" aria-label="Cerrar amigos" type="button"><i data-i="close" data-s="16"></i></button></div>
+  <form class="frAdd" id="frAdd" autocomplete="off"><input id="frName" maxlength="16" placeholder="Nombre exacto del jugador" aria-label="Nombre del jugador"><button class="pxb pxb-sq frIc" type="submit" aria-label="Enviar solicitud" title="Enviar solicitud"><i data-i="addfriend" data-s="20"></i></button></form>
+  ${FR.msg?`<p class="frMsg ${FR.msg.ok?'ok':'bad'}" role="status">${esc(FR.msg.t)}</p>`:''}
+  <div class="frList">${!L?'<p class="frEmpty">Cargando…</p>':
+   (L.incoming.length?frGroup('in','Solicitudes',L.incoming,'in'):'')+frGroup('game','En partida',game,'friend')+frGroup('online','En línea',online,'friend')+frGroup('off','Desconectados',off,'friend')
+   +(L.outgoing.length?frGroup('out','Enviadas',L.outgoing,'out'):'')+(L.blocked.length?frGroup('blocked','Bloqueados',L.blocked,'blk'):'')}</div>`;
+ hydrate(P); window.PX&&PX.hydrate(P); if(keep&&!(FR.msg&&FR.msg.ok)) $('frName').value=keep;
+ $('frClose').onclick=()=>openFriends(false);
+ $('frAdd').onsubmit=e=>{ e.preventDefault(); const n=$('frName').value.trim(); if(!/^[A-Za-z0-9_]{3,16}$/.test(n)){ FR.msg={ok:false,t:'Escribe un nombre de 3 a 16 letras, números o _'}; renderFriends(); return; } friendOp('request',n); };
+ P.querySelectorAll('[data-fold]').forEach(b=>b.onclick=()=>{ FR.fold[b.dataset.fold]=!FR.fold[b.dataset.fold]; renderFriends(); });
+ P.querySelectorAll('[data-pick]').forEach(r=>{ const f=()=>{ FR.sel=FR.sel===r.dataset.pick?'':r.dataset.pick; renderFriends(); }; r.onclick=f; r.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); f(); } }; });
+ P.querySelectorAll('[data-op]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const op=b.dataset.op, n=b.dataset.n;
+   if(op==='profile'){ FR.sel=''; renderFriends(); return showProfile(n); }
+   if((op==='remove'||op==='block')&&!b.dataset.sure){ b.dataset.sure=1; b.querySelector('span').textContent='¿Seguro?'; return; }
+   friendOp(op,n); });
 }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }
-function showMenu(){ setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
+function showMenu(){ loadFriends(); setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
  // tras una partida con ascenso, descenso o rango revelado, se celebra al volver al menú
  if(NET.rankFx){ const d=NET.rankFx; NET.rankFx=null; setTimeout(()=>showRankChange(d),250); } }
 // Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
@@ -3803,7 +3854,7 @@ function authError(msg,field){
  if(field==='user') $('auUser').focus(); else if(field==='pass') $('auPass').focus(); else if(field==='pass2') $('auPass2').focus();
 }
 function showAuth(msg){ setTimeout(()=>{ layout.key=''; layout(); },0);
- ACC=null; closeModal(); $('menu').classList.add('hidden'); $('auth').classList.remove('hidden'); pxArt();
+ ACC=null; FR.list=null; FR.open=false; FR.msg=null; closeModal(); $('menu').classList.add('hidden'); $('auth').classList.remove('hidden'); pxArt();
  $('auPass').value=''; $('auPass2').value=''; setAuthMode(authMode); if(msg) authError(msg);
  setTimeout(()=>($('auUser').value?$('auPass'):$('auUser')).focus(),50);
 }

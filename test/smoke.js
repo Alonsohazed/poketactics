@@ -6,6 +6,7 @@ const path = require('path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'poke-tactics-'));
 process.env.DB_FILE = path.join(tmp, 'db.json');
 delete process.env.DATABASE_URL;
+process.env.PRESENCE_MS = '250'; // el estado de los amigos se revisa cada 250 ms en la prueba
 
 const { server, ready } = require('../server');
 const { io } = require('socket.io-client');
@@ -60,6 +61,73 @@ ready.then(() => server.listen(0, async () => {
     const other = await prof('Beto', cookieA), none = await prof('NoExisteNadie', cookieA), bad = await prof('x<y>', cookieA);
     assert(other.status === 404 && none.status === 404 && bad.status === 404, 'perfil ajeno, inexistente o con nombre raro: el mismo 404');
     assert.strictEqual(JSON.stringify(await other.json()), JSON.stringify(await none.json()), 'una cuenta real y un nombre inventado responden igual');
+  }
+
+  // ---- amigos: validación, solicitudes indistinguibles, aceptar, bloquear, límites y estado en directo ----
+  {
+    const fr = async ck => (await (await fetch(url + '/api/friends', { headers: { Cookie: ck } })).json());
+    const op = async (o, name, ck) => { const r = await post('/api/friends/' + o, { name }, ck); return { s: r.status, b: await r.json() }; };
+    assert.strictEqual((await fetch(url + '/api/friends')).status, 401, 'amigos sin sesión');
+    assert.strictEqual((await op('request', 'Ana', cookieA)).s, 400, 'no puedes agregarte a ti mismo');
+    assert.strictEqual((await op('request', 'a<b', cookieA)).s, 400, 'nombre no válido');
+    assert.strictEqual((await op('request', 7, cookieA)).s, 400, 'nombre que no es texto');
+    assert.strictEqual((await op('hack', 'Beto', cookieA)).s, 404, 'acción inexistente');
+    assert.strictEqual((await post('/api/friends/request', { name: 'Beto' }, cookieA, { Origin: 'https://malo.example' })).status, 403, 'solicitud desde otro origen');
+    // a una cuenta real y a un nombre sin cuenta (o de un rival generado) se responde exactamente igual
+    const real = await op('request', 'Beto', cookieA), ghost = await op('request', 'NoExiste_9', cookieA);
+    assert(real.s === 200 && ghost.s === 200, 'solicitudes enviadas');
+    assert.deepStrictEqual(Object.keys(real.b).sort(), Object.keys(ghost.b).sort(), 'misma forma de respuesta');
+    assert.strictEqual(real.b.msg.replace('Beto', 'X'), ghost.b.msg.replace('NoExiste_9', 'X'), 'mismo mensaje');
+    assert.deepStrictEqual(ghost.b.outgoing.map(o => o.name).sort(), ['Beto', 'NoExiste_9'], 'las dos se ven como enviadas');
+    assert.strictEqual((await op('request', 'beto', cookieA)).s, 409, 'solicitud repetida (sin distinguir mayúsculas)');
+    assert.strictEqual((await op('request', 'noexiste_9', cookieA)).s, 409, 'solicitud fantasma repetida');
+    let B = await fr(cookieB); assert.deepStrictEqual(B.incoming.map(x => x.name), ['Ana'], 'Beto recibe la solicitud');
+    assert(!/pass|settings|mmr|"id"/i.test(JSON.stringify(B)), 'la lista de amigos no lleva datos privados');
+    assert.strictEqual((await fetch(url + '/api/profile/Ana', { headers: { Cookie: cookieB } })).status, 404, 'sin ser amigos no se ve el perfil');
+    assert.strictEqual((await op('accept', 'NoExiste_9', cookieB)).s, 404, 'aceptar una solicitud que no existe');
+    const acc = await op('accept', 'Ana', cookieB); assert(acc.s === 200 && acc.b.friends.some(f => f.name === 'Ana' && f.st), 'aceptar');
+    let A = await fr(cookieA); assert(A.friends.some(f => f.name === 'Beto') && !A.outgoing.some(o => o.name === 'Beto'), 'amistad en las dos direcciones');
+    const pB = await fetch(url + '/api/profile/beto', { headers: { Cookie: cookieA } }); const pj = await pB.json();
+    assert(pB.status === 200 && pj.friend && pj.profile.name === 'Beto' && pj.presence && !/pass|settings|mmr/i.test(JSON.stringify(pj)), 'perfil de un amigo, sin datos privados');
+    assert.strictEqual((await op('request', 'Beto', cookieA)).s, 409, 'ya sois amigos');
+    assert.strictEqual((await op('cancel', 'NoExiste_9', cookieA)).s, 200, 'cancelar la fantasma'); assert.strictEqual((await op('cancel', 'NoExiste_9', cookieA)).s, 404, 'cancelar dos veces');
+    assert.strictEqual((await op('block', 'NoExiste_9', cookieA)).s, 404, 'solo se bloquea a amigos o a quien te pide');
+    // bloquear: la otra persona deja de verte como amigo; si te vuelve a pedir, para ella queda pendiente y tú no recibes nada
+    assert.strictEqual((await op('block', 'Ana', cookieB)).s, 200, 'Beto bloquea a Ana');
+    A = await fr(cookieA); assert(!A.friends.length, 'al bloquear se rompe la amistad');
+    const again = await op('request', 'Beto', cookieA); assert(again.s === 200 && again.b.outgoing.some(o => o.name === 'Beto'), 'a quien te bloqueó le «envías» la solicitud igual');
+    B = await fr(cookieB); assert(!B.incoming.length && B.blocked.some(x => x.name === 'Ana'), 'el que bloquea no recibe nada');
+    assert.strictEqual((await op('request', 'Ana', cookieB)).s, 400, 'no puedes pedir amistad a quien tienes bloqueado');
+    assert.strictEqual((await op('unblock', 'Ana', cookieB)).s, 200, 'desbloquear'); assert.strictEqual((await op('cancel', 'Beto', cookieA)).s, 200, 'cancelar');
+    // rechazar: quien pidió no se entera (sigue viendo la solicitud pendiente)
+    await op('request', 'Beto', cookieA); assert.strictEqual((await op('decline', 'Ana', cookieB)).s, 200, 'rechazar');
+    A = await fr(cookieA); assert(A.outgoing.some(o => o.name === 'Beto') && !A.friends.length, 'tras rechazar, para Ana sigue pendiente');
+    B = await fr(cookieB); assert(!B.incoming.length, 'y Beto ya no la tiene');
+    await op('cancel', 'Beto', cookieA);
+    // si los dos se piden amistad, se aceptan solos
+    await op('request', 'Ana', cookieB); const both = await op('request', 'Beto', cookieA); assert(both.s === 200 && both.b.friends.some(f => f.name === 'Beto'), 'solicitud cruzada: amigos ' + JSON.stringify(both));
+    // límite de 10 solicitudes por minuto
+    const ckC = cookieOf(await post('/api/register', { user: 'Carla', pass: 'secreta3' })); let last;
+    for (let i = 0; i < 11; i++) last = await op('request', 'Nadie_' + i, ckC);
+    assert.strictEqual(last.s, 429, 'límite de solicitudes por minuto');
+    // máximo de 20 enviadas sin respuesta y caducidad a los 14 días (directamente con la base)
+    const db = require('../db'), FRM = require('../friends'), C = await db.userByName('Carla');
+    for (let i = 10; i < 20; i++) await FRM.act(db, C, 'request', 'Nadie_' + i);
+    const over = await FRM.act(db, C, 'request', 'Nadie_99'); assert(over.code === 400 && /20/.test(over.error), 'máximo de 20 solicitudes sin respuesta');
+    const fdb = JSON.parse(fs.readFileSync(process.env.DB_FILE, 'utf8')); assert(fdb.ghosts.length >= 20, 'fantasmas guardadas');
+    await db.purgeFriends(-1); assert.strictEqual((await FRM.view(db, C)).outgoing.length, 0, 'las solicitudes caducan');
+    // estado en directo: al conectarse Beto, Ana recibe «En línea»; al desconectarse, «Desconectado»
+    const sA = io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookieA } }); const ups = []; sA.on('friendUpd', d => ups.push(d));
+    await new Promise(r => sA.on('connect', r)); await sleep(400);
+    const sB = io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookieB } }); await new Promise(r => sB.on('connect', r)); await sleep(700);
+    assert(ups.some(d => d.name === 'Beto' && d.st === 'menu'), 'Ana ve a Beto en línea');
+    assert((await fr(cookieA)).friends.find(f => f.name === 'Beto').st === 'menu', 'la lista también lo dice');
+    sB.emit('queue', { mode: 'normal' }); await sleep(600); assert(ups.some(d => d.name === 'Beto' && d.st === 'queue'), 'Ana ve a Beto en cola');
+    sB.emit('unqueue'); sB.close(); await sleep(700); assert(ups[ups.length - 1].name === 'Beto' && ups[ups.length - 1].st === 'off', 'Ana ve a Beto desconectado');
+    assert(!ups.some(d => 'id' in d || 'uid' in d), 'el estado no lleva ids');
+    // avisos: si alguien te pide amistad, tu navegador recibe «friends» para recargar la lista
+    let pinged = 0; sA.on('friends', () => pinged++); const ckD = cookieOf(await post('/api/register', { user: 'Dani', pass: 'secreta4' })); await op('request', 'Ana', ckD); await sleep(200); assert(pinged >= 1, 'aviso de solicitud nueva');
+    sA.close();
   }
 
   // socket sin sesión: rechazado

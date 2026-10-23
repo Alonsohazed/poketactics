@@ -57,6 +57,7 @@ function limiter(max, windowMs) {
 }
 
 const { publicComp, profileView } = require('./competitive');
+const FR = require('./friends');
 // Lo que ve el navegador de su cuenta: nunca el MMR, solo su rango (o el posicionamiento) y sus caramelos
 function publicUser(u) {
   return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp) };
@@ -69,7 +70,7 @@ function cleanSettings(s) {
   return out;
 }
 
-function createAuth(db, { trainers }) {
+function createAuth(db, { trainers, presence, onFriends }) {
   const ipLimit = limiter(+process.env.AUTH_IP_LIMIT || 30, 15 * 60 * 1000);      // 30 intentos de login/registro cada 15 min por IP
   const accountLimit = limiter(10, 15 * 60 * 1000); // 10 contraseñas fallidas cada 15 min por cuenta
   const validTrainer = t => typeof t === 'string' && trainers.includes(t);
@@ -173,17 +174,35 @@ function createAuth(db, { trainers }) {
   // Historial: las 6 partidas más recientes (en la base se guardan todas)
   router.get('/history', needUser(async (req, res, user) => res.json({ matches: await db.matches(user.id, 6) })));
 
-  // Perfil: el propio (y, cuando haya amigos, el de un amigo). Para cualquier otro nombre, 404, exista o no la cuenta:
+  // Perfil: el propio o el de un amigo. Para cualquier otro nombre, 404, exista o no la cuenta:
   // así no se puede comprobar qué nombres son personas (ni distinguir a los rivales generados).
   const profileLimit = limiter(60, 60 * 1000);
   router.get('/profile/:name', needUser(async (req, res, user) => {
     if (profileLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiadas peticiones. Espera un momento.' });
     profileLimit.hit(user.id);
-    const name = String(req.params.name || '');
-    if (!NAME_RE.test(name) || name.toLowerCase() !== user.name.toLowerCase()) return res.status(404).json({ error: 'Perfil no disponible' });
-    const [agg, list] = await Promise.all([db.modeStats(user.id), db.matches(user.id, 10)]);
-    res.json({ profile: profileView(user, agg, list), self: true });
+    const name = String(req.params.name || ''), self = name.toLowerCase() === user.name.toLowerCase();
+    const who = !NAME_RE.test(name) ? null : self ? user : await db.userByName(name);
+    if (!who || (!self && !(await FR.areFriends(db, user.id, who.id)))) return res.status(404).json({ error: 'Perfil no disponible' });
+    const [agg, list] = await Promise.all([db.modeStats(who.id), db.matches(who.id, 10)]);
+    res.json({ profile: profileView(who, agg, list), self, friend: !self, presence: !self && presence ? presence(who.id) : null });
   }));
+
+  // Amigos: lista (con su estado en directo) y acciones por nombre. Cada cambio avisa a los afectados (onFriends)
+  const friendLimit = limiter(10, 60 * 1000), friendOpLimit = limiter(40, 60 * 1000);
+  router.get('/friends', needUser(async (req, res, user) => res.json(await FR.view(db, user, presence))));
+  router.post('/friends/:op', needUser(async (req, res, user) => {
+    // 40 acciones por minuto en total y 10 solicitudes enviadas de verdad (las rechazadas por nombre no válido o repetidas no cuentan)
+    const op = req.params.op;
+    if (friendOpLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiadas acciones seguidas: espera un momento' });
+    if (op === 'request' && friendLimit.blocked(user.id)) return res.status(429).json({ error: 'Has enviado muchas solicitudes: espera un minuto' });
+    friendOpLimit.hit(user.id);
+    const r = await FR.act(db, user, op, (req.body || {}).name);
+    if (r.error) return res.status(r.code).json({ error: r.error });
+    if (op === 'request') friendLimit.hit(user.id);
+    if (onFriends && r.notify) onFriends(r.notify);
+    res.json(Object.assign({ ok: true, msg: r.msg }, await FR.view(db, user, presence)));
+  }));
+  setInterval(() => db.purgeFriends(FR.EXPIRE_MS).catch(() => {}), 3600 * 1000).unref();
 
   // Socket.io: solo entran jugadores con sesión
   function socketGuard(socket, next) {

@@ -37,7 +37,7 @@ app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin' });
   next();
 });
-const auth = createAuth(db, { trainers: TRAINER_KEYS });
+const auth = createAuth(db, { trainers: TRAINER_KEYS, presence: presenceOf, onFriends });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rooms.size }));
 // Commit desplegado: el navegador pide los modelos animados (public/anims) a jsDelivr fijados a este commit, así no gastan
 // el ancho de banda de Render. En local no hay commit y se sirven desde aquí.
@@ -217,9 +217,34 @@ function leave(socket) {
   }
 }
 
+// ---------- amigos: estado en directo ----------
+// online: conexiones de cada usuario. Cada 2 s se calcula el estado de los usuarios conocidos y, si cambia, se avisa a
+// sus amigos conectados (sala de Socket.io «u:<id>»). Las listas de amigos se guardan en memoria hasta que cambian.
+const online = new Map(), userNames = new Map(), lastPres = new Map(), friendCache = new Map();
+function presenceOf(uid) {
+  for (const r of rooms.values()) { const s = r.seats.find(x => x.uid === uid); if (!s) continue;
+    if (r.state === 'lobby') return { st: 'lobby' };
+    if (r.state === 'game' && !s.recorded) { let round = ''; try { round = (r.game.serverInfo() || {}).round || ''; } catch (e) { /* noop */ } return { st: 'game', r: round, mode: r.mode || 'custom' }; } }
+  if (inQueue(uid)) return { st: 'queue' };
+  return online.has(uid) ? { st: 'menu' } : { st: 'off' };
+}
+const friendsOf = uid => { if (!friendCache.has(uid)) friendCache.set(uid, db.friendIds(uid).then(a => new Set(a), () => (friendCache.delete(uid), new Set()))); return friendCache.get(uid); };
+// La lista de alguien cambió (solicitud, aceptar, eliminar…): se olvida su caché y se le pide al navegador que la recargue
+function onFriends(uids) { for (const u of new Set(uids)) { friendCache.delete(u); io.to('u:' + u).emit('friends'); } }
+setInterval(async () => {
+  for (const uid of new Set([...online.keys(), ...lastPres.keys()])) {
+    const p = presenceOf(uid), k = JSON.stringify(p); if (lastPres.get(uid) === k) continue;
+    if (p.st === 'off') lastPres.delete(uid); else lastPres.set(uid, k);
+    const name = userNames.get(uid); if (!name) continue;
+    for (const f of await friendsOf(uid)) if (online.has(f)) io.to('u:' + f).emit('friendUpd', Object.assign({ name }, p));
+  }
+}, +process.env.PRESENCE_MS || 2000).unref();
+
 // ---------- conexiones ----------
 io.on('connection', socket => {
   socket.data.room = null;
+  const me = socket.data.user; socket.join('u:' + me.id); userNames.set(me.id, me.name);
+  if (!online.has(me.id)) online.set(me.id, new Set()); online.get(me.id).add(socket.id);
   let bucket = 0, bucketAt = Date.now();
   const limited = () => { // máx. ~40 mensajes por segundo por jugador
     const now = Date.now();
@@ -319,6 +344,7 @@ io.on('connection', socket => {
     // Registro de cortes en partida (se ve en los logs de Render) para saber por qué se cae la gente: ping timeout, transport close…
     const room = rooms.get(socket.data.room); if (room && room.state === 'game') console.log(`[${room.code}] ${socket.data.user.name} se desconecta: ${reason}`);
     unqueue(socket); leave(socket);
+    const set = online.get(me.id); if (set) { set.delete(socket.id); if (!set.size) online.delete(me.id); }
   });
 });
 

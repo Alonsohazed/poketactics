@@ -1043,6 +1043,43 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .pfTabs{display:flex;gap:8px;margin-bottom:8px}.pfTabs .pxb{flex:1;justify-content:center;padding:9px 8px;font-size:14px;font-weight:600;opacity:.65}.pfTabs .pxb.on{opacity:1;color:var(--pxGold)}
 .pfStats{grid-template-columns:repeat(5,1fr);margin-top:0}
 .pfRow .hMain{cursor:default}.pfRow .hMain:hover{background:none}
+.pfAct{margin-top:8px;padding:7px 10px;gap:6px;font-size:12px;font-weight:600;justify-content:center}
+/* ---------- amigos (panel lateral del menú) ---------- */
+.frBtn{position:fixed;top:14px;right:16px;z-index:17;padding:8px 14px 8px 10px;gap:8px;font-size:15px;font-weight:700}
+.frBtn .frOn{min-width:22px;padding:1px 6px;font-size:13px;color:#7dffa8;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #2b7c36}
+.frBadge{min-width:22px;padding:1px 6px;font-style:normal;font-size:13px;font-weight:700;color:#fff;background:var(--pxRed);clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--pxRed2);animation:frPulse 1.4s steps(4) infinite}
+@keyframes frPulse{50%{transform:scale(1.15)}}
+.frPanel{background:linear-gradient(180deg,#171a2e,#0f1120);position:fixed;top:64px;right:16px;bottom:16px;z-index:18;width:min(340px,calc(100vw - 32px));display:flex;flex-direction:column;padding:14px 14px 12px;color:var(--pxInk);animation:pxIn .25s steps(4) both}
+.frPanel.hidden{display:none}
+.frHead{display:flex;align-items:center;gap:8px;padding:0 2px 8px}.frHead b{font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pxGold);text-shadow:1px 1px 0 var(--pxK)}
+.frHead span{font-size:13px;color:var(--pxMut)}.frHead .mclose{margin-left:auto}
+.frAdd{display:flex;gap:6px}.frAdd input{flex:1;min-width:0;padding:8px 10px;font-family:var(--pxFont);font-size:14px;color:var(--pxInk);background:#0f1122;border:0;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--pxLine)}
+.frAdd input:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--pxGold)}
+.frIc{width:36px;height:36px;padding:0;display:grid;place-items:center}
+.frMsg{margin:6px 2px 0;font-size:12px}.frMsg.ok{color:#7dffa8}.frMsg.bad{color:#ff8a8a}
+.frList{flex:1;overflow:auto;margin-top:8px;padding-right:2px;scrollbar-width:thin}
+.frGrp{margin-bottom:6px}
+.frGrpH{display:flex;align-items:center;gap:8px;width:100%;padding:6px 4px;border:0;background:none;font-family:var(--pxFont);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--pxMut);cursor:pointer;text-align:left}
+.frGrpH b{margin-left:auto;color:var(--pxInk);letter-spacing:0}.frGrpH:hover{color:var(--pxInk)}
+.frCar{width:8px;height:8px;background:currentColor;clip-path:polygon(0 0,100% 50%,0 100%)}.frCar.open{transform:rotate(90deg)}
+.frRow{display:flex;align-items:center;gap:10px;padding:6px 8px;cursor:default}
+.frRow[data-pick]{cursor:pointer}.frRow[data-pick]:hover,.frRow.sel{background:rgba(255,255,255,.05)}
+.frRow[data-pick]:focus-visible{outline:2px solid var(--pxGold);outline-offset:-2px}
+.frRow.st-off{opacity:.55}
+.frAv{flex:none;width:38px;height:38px;border-radius:50%;overflow:hidden;background:#0f1122;box-shadow:0 0 0 2px var(--pxK),0 0 0 3px #3a3456}
+.frAv img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;transform:scale(1.35)}
+.frRow.st-game .frAv{box-shadow:0 0 0 2px var(--pxK),0 0 0 3px #4f8dff}.frRow.st-menu .frAv,.frRow.st-queue .frAv,.frRow.st-lobby .frAv{box-shadow:0 0 0 2px var(--pxK),0 0 0 3px #3fbf5a}
+.frTxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.frTxt b{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frSt{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--pxMut)}.frSt i{width:7px;height:7px;background:#6f6a88}
+.frSt.st-menu,.frSt.st-queue,.frSt.st-lobby{color:#7dffa8}.frSt.st-menu i,.frSt.st-queue i,.frSt.st-lobby i{background:#3fbf5a}
+.frSt.st-game{color:#9cc4ff}.frSt.st-game i{background:#4f8dff}
+.pfBanner .frSt{justify-content:center}
+.frBtns{display:flex;gap:4px}.frBtns .frIc{width:30px;height:30px}
+.frTxtBtn{padding:6px 9px;font-size:12px;font-weight:600}
+.frActs{display:flex;gap:4px;padding:2px 8px 8px 56px}.frActs .pxb{flex:1;justify-content:center;padding:6px 4px;font-size:12px;font-weight:600}
+.frEmpty{margin:4px 8px 8px;font-size:12px;color:var(--pxMut)}
+@media (max-width:720px){ .frBtn{top:auto;bottom:14px;right:14px} .frPanel{top:16px;bottom:70px} }
+@media (prefers-reduced-motion:reduce){ .frBadge,.frPanel{animation:none} }
 @media (max-width:720px){ .pfHero{grid-template-columns:1fr;min-height:0} .pfBanner{margin:0 auto;padding-bottom:40px} .pfShow{grid-template-columns:repeat(3,minmax(0,1fr));padding-top:14px;row-gap:14px} .pfStats{grid-template-columns:repeat(3,1fr)} }
 
 @media (max-width:720px){ .hMain{grid-template-columns:1fr auto;grid-template-areas:"pl right" "mid mid"} .hPlace{grid-area:pl} .hLvl{display:none} .hMid{grid-area:mid} .hRight{grid-area:right}
@@ -1302,6 +1339,8 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
     </nav>
     <aside class="tcard pxpanel" id="menuWho" aria-label="Tu entrenador"></aside>
   </div>
+  <button class="pxb frBtn" id="frBtn" type="button" aria-controls="frPanel" aria-expanded="false"><span>Amigos</span></button>
+  <aside class="pxpanel frPanel hidden" id="frPanel" aria-label="Amigos"></aside>
   <span class="ver">v1.1</span>
 </div>
 

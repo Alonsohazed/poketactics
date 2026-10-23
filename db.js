@@ -40,7 +40,7 @@ function fileStore(file) {
     async init() {
       await fs.promises.mkdir(path.dirname(file), { recursive: true });
       try { db = JSON.parse(await fs.promises.readFile(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-      db.matches = db.matches || []; for (const u of db.users) u.comp = u.comp || {};
+      db.matches = db.matches || []; db.friends = db.friends || []; db.ghosts = db.ghosts || []; for (const u of db.users) u.comp = u.comp || {};
     },
     async createUser({ name, pass, trainer }) {
       if (db.users.some(u => keyOf(u.name) === keyOf(name))) return null;
@@ -69,6 +69,19 @@ function fileStore(file) {
         a.g++; a.w += pl === 1; a.t4 += pl <= 4; a.sp += pl; a.cd += +r.candies || 0; if (Number.isFinite(L) && (a.pk == null || L > a.pk)) a.pk = L; }
       return o; },
     nameTaken: name => db.users.some(u => keyOf(u.name) === keyOf(name)),
+    // Amigos: filas dirigidas {a, b, status: pending|accepted|blocked, label (nombre tal como se escribió), created}
+    async links(userId) { return db.friends.filter(l => l.a === userId || l.b === userId).map(l => { const A = byId(l.a), B = byId(l.b); return A && B ? { a: l.a, b: l.b, status: l.status, label: l.label || '', created: l.created, aName: A.name, aTrainer: A.trainer || '', bName: B.name, bTrainer: B.trainer || '' } : null; }).filter(Boolean); },
+    async setLink(a, b, status, label) { const l = db.friends.find(x => x.a === a && x.b === b), now = new Date().toISOString();
+      if (l) Object.assign(l, { status, label: label != null ? label : l.label, created: now }); else db.friends.push({ a, b, status, label: label || '', created: now }); await save(); },
+    async delLink(a, b) { const n = db.friends.length; db.friends = db.friends.filter(x => !(x.a === a && x.b === b)); if (db.friends.length !== n) await save(); return n - db.friends.length; },
+    async friendIds(userId) { return db.friends.filter(l => l.a === userId && l.status === 'accepted').map(l => l.b); },
+    // Solicitudes a nombres sin cuenta (o a quien te bloqueó): se ven como pendientes y caducan igual que las demás
+    async ghosts(userId) { return db.ghosts.filter(g => g.u === userId).map(g => ({ name: g.name, created: g.created })); },
+    async addGhost(userId, name) { if (!db.ghosts.some(g => g.u === userId && g.key === keyOf(name))) { db.ghosts.push({ u: userId, name, key: keyOf(name), created: new Date().toISOString() }); await save(); } },
+    async delGhost(userId, name) { const n = db.ghosts.length; db.ghosts = db.ghosts.filter(g => !(g.u === userId && g.key === keyOf(name))); if (db.ghosts.length !== n) await save(); return n - db.ghosts.length; },
+    async purgeFriends(ms) { const lim = Date.now() - ms, n = db.friends.length + db.ghosts.length;
+      db.friends = db.friends.filter(l => l.status !== 'pending' || Date.parse(l.created) > lim); db.ghosts = db.ghosts.filter(g => Date.parse(g.created) > lim);
+      if (db.friends.length + db.ghosts.length !== n) await save(); },
     async matches(userId, limit = 6) { return db.matches.filter(m => m.userId === userId).sort((a, b) => b.id - a.id).slice(0, limit).map(m => ({ matchId: m.matchId, mode: m.mode, created: m.created, data: m.data })); },
     async createSession(token, userId, expires) { db.sessions[token] = { userId, expires: +expires }; await save(); },
     async sessionUser(token) {
@@ -123,7 +136,23 @@ function pgStore(url) {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           UNIQUE (match_id, user_id)
         );
-        CREATE INDEX IF NOT EXISTS matches_user_idx ON matches(user_id, id DESC);`);
+        CREATE INDEX IF NOT EXISTS matches_user_idx ON matches(user_id, id DESC);
+        CREATE TABLE IF NOT EXISTS friends (
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status TEXT NOT NULL,
+          label TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (user_id, friend_id)
+        );
+        CREATE INDEX IF NOT EXISTS friends_rev_idx ON friends(friend_id);
+        CREATE TABLE IF NOT EXISTS friend_ghosts (
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          name_key TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (user_id, name_key)
+        );`);
       for (const r of (await pool.query('SELECT name_key FROM users')).rows) names.add(r.name_key);
     },
     async createUser({ name, pass, trainer }) {
@@ -132,6 +161,25 @@ function pgStore(url) {
       if (u) names.add(keyOf(name)); return u;
     },
     nameTaken: name => names.has(keyOf(name)),
+    async links(userId) {
+      const r = await pool.query(`SELECT f.user_id AS a, f.friend_id AS b, f.status, f.label, f.created_at AS created, ua.name AS "aName", ua.trainer AS "aTrainer", ub.name AS "bName", ub.trainer AS "bTrainer"
+        FROM friends f JOIN users ua ON ua.id = f.user_id JOIN users ub ON ub.id = f.friend_id WHERE f.user_id = $1 OR f.friend_id = $1`, [userId]);
+      return r.rows;
+    },
+    async setLink(a, b, status, label) {
+      await pool.query(`INSERT INTO friends (user_id, friend_id, status, label) VALUES ($1, $2, $3, COALESCE($4, ''))
+        ON CONFLICT (user_id, friend_id) DO UPDATE SET status = EXCLUDED.status, label = COALESCE($4, friends.label), created_at = now()`, [a, b, status, label == null ? null : label]);
+    },
+    async delLink(a, b) { return (await pool.query('DELETE FROM friends WHERE user_id = $1 AND friend_id = $2', [a, b])).rowCount; },
+    async friendIds(userId) { return (await pool.query(`SELECT friend_id FROM friends WHERE user_id = $1 AND status = 'accepted'`, [userId])).rows.map(r => r.friend_id); },
+    async ghosts(userId) { return (await pool.query('SELECT name, created_at AS created FROM friend_ghosts WHERE user_id = $1', [userId])).rows; },
+    async addGhost(userId, name) { await pool.query('INSERT INTO friend_ghosts (user_id, name, name_key) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [userId, name, keyOf(name)]); },
+    async delGhost(userId, name) { return (await pool.query('DELETE FROM friend_ghosts WHERE user_id = $1 AND name_key = $2', [userId, keyOf(name)])).rowCount; },
+    async purgeFriends(ms) {
+      const lim = new Date(Date.now() - ms);
+      await pool.query(`DELETE FROM friends WHERE status = 'pending' AND created_at < $1`, [lim]);
+      await pool.query('DELETE FROM friend_ghosts WHERE created_at < $1', [lim]);
+    },
     // Estadísticas por modo calculadas de la tabla de partidas: partidas, victorias, top 4, suma de puestos, caramelos y mejor escalera
     async modeStats(userId) {
       const r = await pool.query(`SELECT mode, count(*)::int AS g,

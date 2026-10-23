@@ -42,6 +42,9 @@
       if (x > 9.6 && (seg(x, y, 10.6, 5.4, 14.4, 10.6) < .8 || seg(x, y, 10.6, 10.6, 14.4, 5.4) < .8)) return 'r'; },
     // Cerrar y volver
     close: (x, y) => (seg(x, y, 3.6, 3.6, 12.4, 12.4) < 1.3 || seg(x, y, 12.4, 3.6, 3.6, 12.4) < 1.3) ? 'w' : null,
+    check: (x, y) => (seg(x, y, 2.6, 8.4, 6.4, 12.2) < 1.3 || seg(x, y, 6.4, 12.2, 13.6, 4) < 1.3) ? 'G' : null,
+    // Añadir amigo: silueta con un «+»
+    addfriend: (x, y) => { if ((Math.abs(x - 12.6) < .9 && y > 2 && y < 9) || (Math.abs(y - 5.5) < .9 && x > 9.1 && x < 16)) return 'G'; if (len(x - 6, y - 5.4) < 2.8) return 'w'; if (y > 9.2 && y < 14.6 && len(x - 6, y - 15.4) < 5.6) return 'w'; },
     back: (x, y) => inPoly(x, y, [[2, 8], [7.6, 2.6], [7.6, 5.8], [14, 5.8], [14, 10.2], [7.6, 10.2], [7.6, 13.4]]) ? 'w' : null,
     // Economía: moneda
     coin: (x, y) => { const d = len(x - 8, y - 8); if (d > 6.2) return; if (d > 5) return 'g'; if (Math.abs(x - 8) < .9 && y > 4.4 && y < 11.6) return 'g'; return len(x - 6, y - 5.6) < 1.2 ? 'w' : 'y'; },
