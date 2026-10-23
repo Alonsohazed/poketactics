@@ -1664,9 +1664,13 @@ function randomCode(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let s=''; for(
 function myPeerOf(room){ const me=room.peers().find(p=>p.sameTab); return me?me.peer:''; }
 function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0]; }
 function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined}; }
+// Cristales de intereses de un jugador (1 por cada 10 de oro, hasta su máximo y 5): el propio se calcula; el de los demás llega en pub.pl[i][18]
+const interestOf=p=>p.mods&&p!==G.me&&p.icn!=null&&NET.mode==='client'?p.icn:Math.min(p.mods?p.mods.maxInterest:5,5,Math.floor((p.gold||0)/10));
+// Rival del combate que se está viendo (null en salvajes): su banca y sus cristales se ven en su lado del campo
+function combatOpp(){ const me=G.me, v=G.view; if(G.phase!=='combat'||!G.round||G.round.type==='pve') return null; const o=v?v.opp:G.players.find(p=>p!==me&&G.myOpp&&G.myOpp.replace(' (fantasma)','')===p.name); return o&&o!==me?o:null; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,interestOf(p)]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
@@ -1816,9 +1820,11 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn,icn]=r;
+   if(Number.isFinite(+icn)) r.icn=clamp(+icn|0,0,5);
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
    Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000});
+   if(r.icn!=null&&p!==G.me) p.icn=r.icn;
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
@@ -2811,6 +2817,8 @@ function sceneActors(){
  else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
+ // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
+ const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star,still:true,dex:dexOf(d,u.star),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); }); }
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:drag.loc&&drag.loc.i!==undefined?0:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
@@ -2829,7 +2837,7 @@ function draw(){
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
-   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
+   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n2:(()=>{ const o=inCombat&&combatOpp(); return o?interestOf(o):0; })(),n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
  if(inCar) drawCarouselHud(); else { drawBoardTrainers(); drawTotemIcons(); }

@@ -20,6 +20,8 @@ FX0, FX1, FZ0, FZ1 = -6.995, 6.995, -7.285, 5.374
 BENCH_Z, BENCH_X, BENCH_DX, TOP = 6.4545, -5.7735, 1.4434, .2
 HOLES = [(-7.343, -4.915), (-7.342, -3.277), (-7.319, -1.599), (-7.312, -.117), (-7.292, 1.36)]
 MID_Z = -.93  # línea entre las filas 3 y 4 (mitad del campo)
+MIR = lambda x, z: (-x, 2 * MID_Z - z)  # reflejo respecto al centro del campo: el lado del rival
+HOLES2 = [MIR(x, z) for x, z in HOLES]
 rnd = random.Random(11)
 W = lambda x, y, z: (x, -z, y)  # mundo del juego (y arriba, z hacia la cámara) → Blender (z arriba)
 
@@ -62,8 +64,9 @@ L(tcol.outputs['Color'], mul.inputs[7])
 fine = N('ShaderNodeMix'); fine.data_type = 'RGBA'; fine.blend_type = 'OVERLAY'; fine.inputs['Factor'].default_value = .12; L(mul.outputs[2], fine.inputs[6]); L(nf.outputs['Color'], fine.inputs[7])
 L(fine.outputs[2], bs.inputs['Base Color']); bs.inputs['Roughness'].default_value = .7
 bump = N('ShaderNodeBump'); bump.inputs['Strength'].default_value = .35; bump.inputs['Distance'].default_value = .015; L(edge.outputs['Result'], bump.inputs['Height']); L(bump.outputs['Normal'], bs.inputs['Normal'])
-bpy.ops.mesh.primitive_plane_add(size=1, location=W(0, 0, (FZ0 + 5.75) / 2)); fl = bpy.context.object; fl.name = 'suelo'
-fl.scale = (FX1 - FX0 + .6, 5.75 - FZ0 + .3, 1); bpy.ops.object.transform_apply(scale=True); fl.data.materials.append(mf)
+FB0 = 2 * MID_Z - 5.75  # el suelo llega hasta la banca del rival
+bpy.ops.mesh.primitive_plane_add(size=1, location=W(0, 0, (FB0 + 5.75) / 2)); fl = bpy.context.object; fl.name = 'suelo'
+fl.scale = (FX1 - FX0 + .6, 5.75 - FB0, 1); bpy.ops.object.transform_apply(scale=True); fl.data.materials.append(mf)
 # sombra suave junto a los bordes del campo (oclusión pintada): un marco negro que se difumina hacia dentro
 M_AO = bpy.data.materials.new('oclusion'); M_AO.use_nodes = True; an = M_AO.node_tree; ab = an.nodes['Principled BSDF']; ab.inputs['Base Color'].default_value = (0, 0, 0, 1)
 ag = an.nodes.new('ShaderNodeTexCoord'); asep = an.nodes.new('ShaderNodeSeparateXYZ'); an.links.new(ag.outputs['Generated'], asep.inputs[0])
@@ -73,7 +76,7 @@ def dist_edge(c):  # 0 en el borde → 0,5 en el centro
 mx = dist_edge(asep.outputs['X']); my = dist_edge(asep.outputs['Y']); mm = an.nodes.new('ShaderNodeMath'); mm.operation = 'MINIMUM'; an.links.new(mx.outputs[0], mm.inputs[0]); an.links.new(my.outputs[0], mm.inputs[1])
 ar2 = an.nodes.new('ShaderNodeMapRange'); ar2.inputs['From Max'].default_value = .09; ar2.inputs['To Min'].default_value = .55; ar2.inputs['To Max'].default_value = 0
 an.links.new(mm.outputs[0], ar2.inputs['Value']); an.links.new(ar2.outputs['Result'], ab.inputs['Alpha'])
-bpy.ops.mesh.primitive_plane_add(size=1, location=W(0, .004, (FZ0 + 5.75) / 2)); ao = bpy.context.object; ao.scale = (FX1 - FX0 + .6, 5.75 - FZ0 + .3, 1); bpy.ops.object.transform_apply(scale=True); ao.data.materials.append(M_AO)
+bpy.ops.mesh.primitive_plane_add(size=1, location=W(0, .004, (FB0 + 5.75) / 2)); ao = bpy.context.object; ao.scale = (FX1 - FX0 + .6, 5.75 - FB0, 1); bpy.ops.object.transform_apply(scale=True); ao.data.materials.append(M_AO)
 # piedrecitas sueltas junto a los bordes, para que el campo no se vea vacío (lejos de los rombos y del centro)
 M_PEB = mat('piedrecita', '#4a4656', .8)
 for k in range(26):
@@ -94,7 +97,7 @@ g.links.new(gc.outputs['Generated'], sep.inputs[0]); g.links.new(sep.outputs['Y'
 def rock(x, z, s, h):
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=1, location=W(x, h * .45, z)); o = bpy.context.object
     for v in o.data.vertices: v.co *= 1 + rnd.uniform(-.3, .3); v.co.z = max(v.co.z, -.55)
-    sd = o.modifiers.new('suave', 'SUBSURF'); sd.levels = sd.render_levels = 1; bpy.ops.object.shade_smooth()
+    o.data.polygons.foreach_set('use_smooth', [False] * len(o.data.polygons))  # toscas: facetas planas
     o.scale = (s * rnd.uniform(.85, 1.15), s * rnd.uniform(.7, 1.0), h); o.rotation_euler = (rnd.uniform(-.12, .12), rnd.uniform(-.12, .12), rnd.uniform(0, math.tau))
     o.data.materials.append(M_ROCK); return o
 def flame(x0, z0, x1, z1, h=.55):
@@ -113,36 +116,39 @@ def wall(x0, z0, x1, z1, n, inner):
         t = (i + .5) / max(1, int(L / 2.5)); bpy.ops.object.light_add(type='POINT', location=W(x0 + (x1 - x0) * t + inner[0] * 1.6, .35, z0 + (z1 - z0) * t + inner[1] * 1.6))
         lt = bpy.context.object; lt.data.color = lin(hexc('#a35bff')); lt.data.energy = 35; lt.data.shadow_soft_size = .6
 RB = FZ0 - .75; RR = FX1 + .75; RL = -8.55
-wall(FX0 - .4, RB, FX1 + .4, RB, 30, (0, .62))                 # detrás
-wall(RR, RB + .4, RR, 5.2, 24, (-.62, 0))                         # derecha
-wall(RL, RB + .4, RL, 3.4, 19, (.55, 0))                           # izquierda, por fuera de la repisa de los rombos
+wall(RL, FZ0 - .3, RL, 3.4, 22, (.55, 0))                                   # izquierda, por fuera de mi repisa
+wall(-RL, MIR(0, 3.4)[1], -RL, MIR(0, FZ0 - .3)[1], 22, (-.55, 0))          # derecha, por fuera de la repisa del rival (su reflejo)
 
 # ---------- repisa izquierda con los 5 rombos (cristales de intereses) ----------
 M_LEDGE = mat('repisa', '#26252e', .8); M_SOCK = mat('rombo', '#0d0c12', .6); M_SOCKR = mat('rombo_borde', '#2f2d3a', .5, '#8a45ff', .5)
-box('repisa', -8.05, FX0 - .02, RB + .55, 3.0, -.05, .04, M_LEDGE, .04)
-for (hx, hz) in HOLES:
-    for (r, m, y) in ((.62, M_SOCKR, .045), (.5, M_SOCK, .05)):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=4, radius=r, depth=.02, location=W(hx, y, hz)); o = bpy.context.object; o.data.materials.append(m)
-        bv = o.modifiers.new('bisel', 'BEVEL'); bv.width = .06; bv.segments = 4; bv.affect = 'VERTICES'  # rombos con las puntas redondeadas
-        o.scale = (.8, 1, 1)  # rombo un poco más alto que ancho (en perspectiva queda como el del modelo)
+def ledge(sign, holes):
+    z0, z1 = (RB + .55, 3.0) if sign < 0 else (MIR(0, 3.0)[1], MIR(0, RB + .55)[1])
+    box('repisa', min(sign * 8.05, sign * (FX1 + .02)), max(sign * 8.05, sign * (FX1 + .02)), z0, z1, -.05, .04, M_LEDGE, .035)
+    for (hx, hz) in holes:
+        for (r, m, y) in ((.62, M_SOCKR, .045), (.5, M_SOCK, .05)):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=4, radius=r, depth=.02, location=W(hx, y, hz)); o = bpy.context.object; o.data.materials.append(m)
+            bv = o.modifiers.new('bisel', 'BEVEL'); bv.width = .06; bv.segments = 4; bv.affect = 'VERTICES'  # rombos con las puntas redondeadas
+            o.scale = (.8, 1, 1)  # rombo un poco más alto que ancho (en perspectiva queda como el del modelo)
+ledge(-1, HOLES); ledge(1, HOLES2)
 
 # ---------- banca (9 losas) sobre una base de piedra negra; sin piedras levantadas delante ----------
 M_BASE = mat('base_banca', '#1d1c23', .85); M_SLAB = mat('losa', '#3a3846', .75); M_SEAM = mat('junta', '#120f18', .5, '#9b4dff', .9)
-box('base_banca', BENCH_X - .95, -BENCH_X + .95, 5.62, 7.3, -.3, .1, M_BASE, .12)
-box('junta_banca', BENCH_X - .78, -BENCH_X + .78, 5.78, 7.13, .1, .115, M_SEAM)
-for i in range(9):
-    x = BENCH_X + BENCH_DX * i; box(f'losa{i}', x - .66, x + .66, BENCH_Z - .6, BENCH_Z + .6, .1, TOP, M_SLAB, .05)
+for (bz, z0, z1, z2, z3) in ((BENCH_Z, 5.62, 7.3, 5.78, 7.13), (MIR(0, BENCH_Z)[1], MIR(0, 7.3)[1], MIR(0, 5.62)[1], MIR(0, 7.13)[1], MIR(0, 5.78)[1])):
+    box('base_banca', BENCH_X - .95, -BENCH_X + .95, z0, z1, -.3, .1, M_BASE, .12)
+    box('junta_banca', BENCH_X - .78, -BENCH_X + .78, z2, z3, .1, .115, M_SEAM)
+    for i in range(9):
+        x = BENCH_X + BENCH_DX * i; box(f'losa{i}', x - .66, x + .66, bz - .6, bz + .6, .1, TOP, M_SLAB, .045)
 
 # ---------- isla flotante: borde de piedra oscura redondeado y, debajo, la roca que cuelga ----------
 M_RIM = mat('borde', '#1f1e26', .85)
-box('borde', -9.7, 9.7, RB - 1.05, 7.55, -.6, -.03, M_RIM, .5)  # justo por debajo del suelo (si coinciden, el borde lo tapa)
+box('borde', -9.7, 9.7, MIR(0, 7.55)[1], 7.55, -.6, -.03, M_RIM, .5)  # justo por debajo del suelo (si coinciden, el borde lo tapa)
 M_ISLA = mat('isla', '#1c1924', .9)
 # contorno azulado según el ángulo (Fresnel): la roca de debajo se lee contra el espacio
 in_ = M_ISLA.node_tree; ib = in_.nodes['Principled BSDF']; lw = in_.nodes.new('ShaderNodeLayerWeight'); lw.inputs['Blend'].default_value = .18; ir = in_.nodes.new('ShaderNodeMath'); ir.operation = 'MULTIPLY'; ir.inputs[1].default_value = .5
 in_.links.new(lw.outputs['Facing'], ir.inputs[0]); ib.inputs['Emission Color'].default_value = (*lin(hexc('#5b8cff')), 1); in_.links.new(ir.outputs[0], ib.inputs['Emission Strength'])
 # roca que cuelga bajo la arena: esfera achatada con el centro bajo, cortada arriba (queda escondida bajo el borde) y más ancha por debajo, con relieve
 from mathutils import noise
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=5, radius=1, location=W(0, -4.6, -1.0)); isla = bpy.context.object; isla.name = 'isla'
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=5, radius=1, location=W(0, -4.6, MID_Z)); isla = bpy.context.object; isla.name = 'isla'
 for v in isla.data.vertices:
     c = v.co
     if c.z > .61: c.z = .61
@@ -159,13 +165,47 @@ for k in range(22):
     for v in o.data.vertices: v.co *= 1 + rnd.uniform(-.18, .18)
     o.scale = (1, rnd.uniform(.7, 1.1), rnd.uniform(.6, .9)); o.rotation_euler = (rnd.uniform(0, 3), rnd.uniform(0, 3), rnd.uniform(0, 3)); o.data.materials.append(M_FL); bpy.ops.object.shade_smooth()
 
-# ---------- pedestal del trofeo (el trofeo del juego se apoya en su cara: FLAT_SETS.coliseo.totemY = TH) ----------
+# ---------- pedestales con el trofeo modelado encima (ya no es una imagen aparte): el mío a la izquierda y el del rival, reflejado, a la derecha ----------
+# Mismo diseño que img/trofeo.webp: base octogonal azul marino con ribete dorado, escalón turquesa, tallo azul, anillo dorado,
+# esfera morada con la estrella dorada, una luna, un cristal rosa arriba, un aro dorado inclinado y dos alas lavanda
 TX, TZT, TH = -6.063, -1.426, .22
 M_PED = mat('pedestal', '#2a2833', .7); M_PEDT = mat('pedestal_cara', '#3a3747', .6); M_PEDG = mat('pedestal_brillo', '#120f18', .5, '#9b4dff', 2.5)
-for (r, y0, y1, m) in ((.82, 0, .06, M_PEDG), (.78, 0, .12, M_PED), (.66, .12, TH, M_PEDT)):
-    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=r, depth=y1 - y0, location=W(TX, (y0 + y1) / 2, TZT)); o = bpy.context.object; o.data.materials.append(m)
-    bv = o.modifiers.new('bisel', 'BEVEL'); bv.width = .03; bv.segments = 4; bpy.ops.object.shade_smooth()
-bpy.ops.object.light_add(type='POINT', location=W(TX, .5, TZT + .4)); lt = bpy.context.object; lt.data.color = lin(hexc('#b07bff')); lt.data.energy = 25; lt.data.shadow_soft_size = .5
+M_NAVY = mat('trofeo_base', '#2b2f6e', .55); M_TEAL = mat('trofeo_turquesa', '#3aa59e', .5); M_GOLD = mat('trofeo_oro', '#d9b25a', .3); M_GOLD.node_tree.nodes['Principled BSDF'].inputs['Metallic'].default_value = .8
+M_STEM = mat('trofeo_tallo', '#3c5aa6', .45); M_ORB = mat('trofeo_esfera', '#6b2fb2', .35, '#4a1a8c', .4); M_MOON = mat('trofeo_luna', '#efe6c8', .6)
+M_GEM = mat('trofeo_gema', '#f4a6c0', .25, '#ff9cc4', .6); M_WING = mat('trofeo_ala', '#b9a6e6', .4); M_WING.node_tree.nodes['Principled BSDF'].inputs['Alpha'].default_value = .82
+def cyl(r0, r1, y0, y1, m, cx, cz, n=8, rot=math.pi / 8, bev=.02):
+    bpy.ops.mesh.primitive_cone_add(vertices=n, radius1=r0, radius2=r1, depth=y1 - y0, location=W(cx, (y0 + y1) / 2, cz)); o = bpy.context.object; o.rotation_euler.z = rot; o.data.materials.append(m)
+    if bev: bv = o.modifiers.new('bisel', 'BEVEL'); bv.width = bev; bv.segments = 3
+    bpy.ops.object.shade_smooth() if n > 12 else None; return o
+def trofeo(cx, cz, face):
+    # pedestal de piedra con el aro morado
+    for (r, y0, y1, m) in ((.82, 0, .06, M_PEDG), (.78, 0, .12, M_PED), (.66, .12, TH, M_PEDT)):
+        cyl(r, r, y0, y1, m, cx, cz, n=64, rot=0, bev=.03)
+    y = TH; antes = set(bpy.data.objects)
+    cyl(.5, .5, y, y + .2, M_NAVY, cx, cz); cyl(.51, .51, y + .2, y + .225, M_GOLD, cx, cz, bev=0)          # base octogonal y ribete
+    cyl(.42, .4, y + .225, y + .34, M_TEAL, cx, cz); cyl(.41, .41, y + .34, y + .355, M_GOLD, cx, cz, bev=0) # escalón turquesa
+    cyl(.3, .29, y + .355, y + .45, M_NAVY, cx, cz)
+    cyl(.17, .11, y + .45, y + 1.05, M_STEM, cx, cz, n=32, rot=0, bev=0)                                   # tallo
+    bpy.ops.mesh.primitive_torus_add(major_radius=.15, minor_radius=.035, location=W(cx, y + 1.06, cz)); o = bpy.context.object; o.data.materials.append(M_GOLD); bpy.ops.object.shade_smooth()
+    cyl(.12, .2, y + 1.06, y + 1.2, M_STEM, cx, cz, n=32, rot=0, bev=0)
+    oy = y + 1.62; bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, radius=.48, location=W(cx, oy, cz)); o = bpy.context.object; o.data.materials.append(M_ORB); bpy.ops.object.shade_smooth()
+    # estrella dorada de 4 puntas en la cara de la esfera que mira a la cámara
+    bpy.ops.mesh.primitive_circle_add(vertices=8, radius=.24, fill_type='NGON', location=W(cx, oy + .31, cz + .37)); st = bpy.context.object  # en la cara de la esfera que ve la cámara (elevación 40°)
+    for i, v in enumerate(st.data.vertices): v.co *= 1.0 if i % 2 == 0 else .3
+    st.rotation_euler = (math.radians(50), 0, 0); st.data.materials.append(M_GOLD); so = st.modifiers.new('grosor', 'SOLIDIFY'); so.thickness = .03
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=.09, location=W(cx + .28 * face, oy + .26, cz + .3)); o = bpy.context.object; o.data.materials.append(M_MOON); bpy.ops.object.shade_smooth()
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=.08, radius2=0, depth=.18, location=W(cx, oy + .56, cz)); o = bpy.context.object; o.data.materials.append(M_GEM)
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=.08, radius2=0, depth=.1, location=W(cx, oy + .42, cz)); o = bpy.context.object; o.rotation_euler.x = math.pi; o.data.materials.append(M_GEM)
+    bpy.ops.mesh.primitive_torus_add(major_radius=.62, minor_radius=.022, major_segments=96, location=W(cx, oy + .05, cz)); o = bpy.context.object; o.rotation_euler = (math.radians(70), math.radians(18 * face), 0); o.data.materials.append(M_GOLD); bpy.ops.object.shade_smooth()
+    for sx in (-1, 1):  # alas: pétalos curvos a los lados de la esfera
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1, location=W(cx + sx * .52, oy + .12, cz - .05)); w = bpy.context.object
+        w.scale = (.1, .26, .62); w.rotation_euler = (0, math.radians(-14 * sx), 0); w.data.materials.append(M_WING); bpy.ops.object.shade_smooth()
+    # el trofeo, ×1,3 desde el centro de su base (visto desde arriba lo vertical se acorta)
+    piv = Vector(W(cx, TH, cz))
+    for o in set(bpy.data.objects) - antes: o.location = piv + (o.location - piv) * 1.3; o.scale = o.scale * 1.3
+    bpy.ops.object.light_add(type='POINT', location=W(cx, .5, cz + .4)); lt = bpy.context.object; lt.data.color = lin(hexc('#b07bff')); lt.data.energy = 25; lt.data.shadow_soft_size = .5
+    bpy.ops.object.light_add(type='POINT', location=W(cx + .3, oy + .6, cz + 1.2)); lt = bpy.context.object; lt.data.color = lin(hexc('#fff2dc')); lt.data.energy = 18; lt.data.shadow_soft_size = .4  # luz de relleno: se ve el trofeo
+trofeo(TX, TZT, 1); trofeo(*MIR(TX, TZT), -1)
 
 # ---------- luz: sin lámpara visible; luz suave de arriba y algo de ambiente frío ----------
 wd = bpy.data.worlds.new('espacio'); sc.world = wd; wd.use_nodes = True; wn = wd.node_tree; bgn = wn.nodes['Background']; WN = wn.nodes.new; WL = wn.links.new
@@ -202,6 +242,6 @@ sc.render.engine = 'CYCLES'; sc.cycles.samples = SAMPLES; sc.cycles.use_denoisin
 sc.view_settings.view_transform = 'Standard'; sc.render.image_settings.file_format = 'PNG'; sc.render.filepath = OUT
 bpy.context.view_layer.update()
 px = lambda x, y, z: (lambda v: [round(v.x * WR, 1), round((1 - v.y) * HR, 1)])(world_to_camera_view(sc, cam, Vector(W(x, y, z))))
-out = {'w': WR, 'h': HR, 'back': [px(FX0, 0, FZ0), px(FX1, 0, FZ0)], 'bench': [px(BENCH_X + BENCH_DX * i, TOP, BENCH_Z) for i in range(9)], 'holes': [px(x, 0, z) for x, z in HOLES]}
+out = {'w': WR, 'h': HR, 'back': [px(FX0, 0, FZ0), px(FX1, 0, FZ0)], 'bench': [px(BENCH_X + BENCH_DX * i, TOP, BENCH_Z) for i in range(9)], 'holes': [px(x, 0, z) for x, z in HOLES], 'holes2': [px(x, 0, z) for x, z in HOLES2]}
 json.dump(out, open(bpy.path.abspath(OUT).rsplit('.', 1)[0] + '.json', 'w'))
 bpy.ops.render.render(write_still=True); print('PUNTOS', json.dumps(out))

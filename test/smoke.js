@@ -251,6 +251,8 @@ ready.then(() => server.listen(0, async () => {
       const tn = nick => lastPub.pl.find(p => p[1] === nick)[17];
       assert.strictEqual(tn('Beto'), 1, 'la burla de Charmander llega a todos (y la segunda seguida se ignora)');
       assert.strictEqual(tn('Ana'), 0, 'quien no lleva Charmander no puede burlarse');
+      // Cristales de intereses de cada jugador (para encender los rombos del rival en combate): un entero de 0 a 5 en pub.pl[i][18], nunca el oro exacto
+      assert(lastPub.pl.every(p => Number.isInteger(p[18]) && p[18] >= 0 && p[18] <= 5 && p.length === 19), 'pub.pl[i][18] trae los cristales de intereses (0-5) y nada más');
       // sin partida a medias no se puede «volver»: el usuario A tiene su asiento conectado, así que rejoin le cede el asiento solo a una ventana nueva (no se prueba aquí)
     }
     // Minileyenda de B en el tablero de A: entradas inválidas (jugador inexistente, tipos raros, fuera de rango) y luego una válida

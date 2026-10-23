@@ -256,6 +256,19 @@ test('ficha con el retrato de su forma y recetas de objetos con clic derecho', a
   await page.mouse.click(800, 300); await expect(page.locator('#recipeBox')).toHaveCount(0);
 });
 
+// Arena espejo: en un combate PvP la banca del rival se ve en sus losas y sus cristales de intereses se encienden en sus rombos (misma regla: 1 por cada 10 de oro)
+test('en combate se ven la banca y los cristales de intereses del rival', async ({ page }) => {
+  await page.evaluate(() => { G.me.gold = 55; renderUI(); });
+  await expect.poll(() => page.evaluate(() => B3.flatInfo.crys.length), { timeout: 10_000 }).toBe(5); // en planificación, solo los tuyos
+  await jumpToRound(page, 5); // 2-3: PvP
+  await page.evaluate(() => { closeModal(); G.timer = .1; });
+  await expect.poll(() => page.evaluate(() => G.phase), { timeout: 20_000 }).toBe('combat');
+  const r = await page.evaluate(async () => { const o = combatOpp(); o.gold = 38; o.bench = Array(BENCH).fill(null); o.bench[0] = makeInst('gastly'); o.bench[8] = makeInst('meowth'); G.me.gold = 55;
+    await new Promise(r => setTimeout(r, 1500)); return { cris: B3.flatInfo.crys.length, banca: sceneActors().filter(a => String(a.key).startsWith('ob' + o.id + ':')).map(a => a.x > geo.W / 2 ? 'der' : 'izq') }; });
+  expect(r.cris, 'tus 5 cristales y 3 del rival (38 de oro)').toBe(8);
+  expect(r.banca, 'la casilla 0 del rival queda a su izquierda (a tu derecha) y la 8 al otro lado').toEqual(['der', 'izq']);
+});
+
 // El carrusel espera 8 s antes de soltar a la primera pareja: tiempo para ver todos los Pokémon y objetos
 test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
   await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
