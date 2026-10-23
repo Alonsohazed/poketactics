@@ -1473,7 +1473,7 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
 @media (min-width:1100px) and (min-height:760px){
   .mnLayout{grid-template-columns:1fr;grid-template-areas:"logo";max-width:none;margin:1vh auto 0}
   .mnNav{position:fixed;right:28px;bottom:28px;width:440px;z-index:16} .mnNav .mnRow{order:-1;margin:0 0 2px} /* la fila de botones encima de Normal y Clasificatoria, que quedan abajo del todo */
-  #menuWho{position:fixed;right:28px;top:auto;bottom:296px;width:300px;max-height:calc(100vh - 372px);overflow:auto;z-index:16} /* encima de la columna de botones (250 px + márgenes), nunca encima de ellos; si no cabe, hace scroll */
+  #menuWho{position:fixed;left:calc(50% - 160px);top:calc(2vh + 236px);width:320px;overflow:visible;z-index:16} /* centrada bajo el logo sin transform (la animación de entrada pxIn lo pisaría); la copa del rango sobresale por arriba */
   .mnEevee{left:24px;bottom:0;width:510px;height:600px}
   .mnEevee .halo,.mnEevee .haloF{width:495px;height:495px}
   .mnEevee .ev{width:345px;height:345px;top:47%}
@@ -1491,6 +1491,66 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .pxb.mnDex:hover,.pxb.mnDex:focus-visible{box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
 .pxb.mnDex img{width:36px;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 @media (min-width:1100px) and (min-height:760px){ .mnEevee{height:680px} .mnEevee .halo,.mnEevee .haloF{top:54%} .mnEevee .ev{top:50%} }
+/* Ficha del menú (mnCard): copa del rango arriba, retrato redondo con marco dorado, nombre, dos recuadros (minileyenda → selector, arena) y el rango compacto */
+.tcard.mnCard{padding:30px 18px 16px;gap:6px;overflow:visible}
+.tcard.mnCard .mnTag{display:none}
+.mcRank{position:absolute;top:-20px;left:50%;transform:translateX(-50%);filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));line-height:0}
+.mcAvatar{width:120px;height:120px;border-radius:50%;padding:0;border:0;cursor:pointer;background:#101522;overflow:hidden;margin-top:4px;box-shadow:0 0 0 4px #c9a24a,0 0 0 6px #3a2a0e,0 8px 18px rgba(0,0,0,.45);transition:box-shadow .15s,transform .15s}
+.mcAvatar img{width:100%;height:100%;object-fit:cover;display:block}
+.mcAvatar:hover,.mcAvatar:focus-visible{outline:none;transform:translateY(-2px);box-shadow:0 0 0 4px #f0d078,0 0 0 6px #5a3f12,0 0 16px rgba(240,208,120,.5)}
+.tcard.mnCard .tname{margin-top:8px;font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.02em;text-shadow:0 2px 0 rgba(0,0,0,.5)}
+.mcSep{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);margin:8px 0 6px}
+.mcEq{display:flex;gap:16px;justify-content:center;width:100%}
+.mcBox{width:124px;display:flex;flex-direction:column;align-items:center;gap:7px;border:0;background:none;padding:0;cursor:pointer;color:var(--pxInk);font:inherit}
+.mcBox .mcImg{display:block;width:124px;height:86px;border-radius:12px;overflow:hidden;background:#101522;box-shadow:0 0 0 3px #c9a24a,0 0 0 5px #2a1a05,0 6px 14px rgba(0,0,0,.4);transition:box-shadow .15s,transform .15s}
+.mcBox .mcImg img{width:100%;height:100%;object-fit:cover;display:block}
+.mcBox.static .mcImg img{transform:scale(2.3);transform-origin:50% 47%} /* la imagen del coliseo es casi toda espacio: se amplía al centro, donde está la arena */
+.mcBox:not(.static):hover .mcImg,.mcBox:focus-visible .mcImg{transform:translateY(-2px);box-shadow:0 0 0 3px #f0d078,0 0 0 5px #5a3f12,0 0 14px rgba(240,208,120,.5)}
+.mcBox:focus-visible{outline:none}
+.mcBox.static{cursor:default}
+.mcBox span:not(.mcImg),.tcard.mnCard .tfrom{font-size:11px;color:var(--pxMut);font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:center}
+.mcFoot{width:100%;margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.tcard.mnCard .rkMini{border-radius:12px;clip-path:none}
+.tcard.mnCard .row .pxb{width:auto;border-radius:999px;padding:8px 16px;font-size:13px}
+/* Selector de minileyenda (ventana clara): «?» junto al título, lista por rarezas, retratos circulares con marco dorado, Confirmar redondeado y X negra sin recuadro */
+.mbox.tp{background:#f4f6fb;color:#1b2235;max-width:760px;border-radius:18px;clip-path:none;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.mbox.tp h1{color:#1b2235;font-family:var(--display);font-weight:400;font-size:26px;margin:0;padding:0}
+.tpHead{display:flex;align-items:center;gap:12px;padding-right:40px;margin-bottom:10px}
+.tpHelp{width:28px;height:28px;border-radius:50%;border:2px solid #1b2235;background:none;color:#1b2235;font-family:var(--display);font-size:16px;cursor:pointer;display:grid;place-items:center;flex:none;padding:0;line-height:1}
+.tpHelp:hover,.tpHelp[aria-expanded="true"]{background:#1b2235;color:#fff}
+.tpInfo{background:#e6ebf5;border-radius:12px;padding:10px 14px;color:#2c3550;font-size:14px;margin:0 0 8px;line-height:1.45}
+.tpInfo.hidden{display:none}
+.mbox.tp .tacPick{display:block;margin-top:4px}
+.tpTier{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #dde3ee;--tc:#5a6480}
+.tpTier:last-child{border-bottom:0}
+.tpTier h4{margin:0;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
+.tpTier.pococomun{--tc:#2e9b57}.tpTier.raro{--tc:#2f6fd8}.tpTier.epico{--tc:#8a3fd1}.tpTier.legendario{--tc:#c98a12}
+.tpList{display:flex;flex-wrap:wrap;gap:14px 16px;align-items:flex-start}
+.tpSoon{font-size:13px;color:#8a93a8;font-weight:700}
+.mbox.tp .tacOpt{all:unset;position:relative;display:flex;flex-direction:column;align-items:center;width:100px;cursor:pointer;transition:transform .12s}
+.mbox.tp .tacOpt::after{display:none}
+.mbox.tp .tacOpt:hover{transform:translateY(-3px)}
+.mbox.tp .tacOpt:focus-visible .tpRing{box-shadow:0 0 0 4px #ffd75e,0 0 0 6px #2a1a05}
+.tpRing{display:block;position:relative;width:94px;height:94px;border-radius:50%;overflow:hidden;background:#101522;box-shadow:0 0 0 3px #c9a24a,0 0 0 5px #2a1a05,0 6px 14px rgba(0,0,0,.25);transition:box-shadow .12s}
+.tpRing img{position:static;inset:auto;width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block;z-index:auto} /* anula el img absoluto del selector antiguo */
+.mbox.tp .tacOpt.on .tpRing{box-shadow:0 0 0 4px #ffd75e,0 0 0 6px #2a1a05,0 0 18px rgba(255,215,94,.8)}
+.mbox.tp .tacOpt.on::before{content:'✓';position:absolute;right:-2px;top:-2px;width:26px;height:26px;border-radius:50%;background:#ffd75e;color:#2a1a05;font-weight:900;font-size:15px;display:grid;place-items:center;z-index:2;box-shadow:0 2px 4px rgba(0,0,0,.35)}
+.mbox.tp .tacOpt.locked{cursor:not-allowed}.mbox.tp .tacOpt.locked:hover{transform:none}
+.mbox.tp .tacOpt.locked .tpRing img{filter:grayscale(1) brightness(.5)}
+.mbox.tp .tacLock{position:absolute;left:50%;top:38px;transform:translate(-50%,0);display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.mbox.tp .tpPity{display:block;width:120px;margin-top:6px;font-size:10.5px;line-height:1.25;color:#5a6480;text-align:center;font-weight:700}
+.mbox.tp .btn.gold{border-radius:999px;padding:11px 28px;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.04em;box-shadow:0 2px 0 #5a3f12,0 4px 10px rgba(0,0,0,.25)}
+.mbox.tp .mtop{position:absolute;top:0;right:0;height:0}
+.mbox.tp .mclose{position:absolute;top:12px;right:12px;margin:0;width:34px;height:34px;background:none;box-shadow:none;border:0;border-radius:8px;opacity:.85}
+.mbox.tp .mclose:hover{opacity:1;background:rgba(0,0,0,.06)}
+.mbox.tp .mclose svg{display:none} .mbox.tp .mclose::after{content:'';display:block;width:100%;height:100%;background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 5L19 19M19 5L5 19' stroke='%23111' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/20px 20px no-repeat}
+@media (max-width:620px){ .tpTier{grid-template-columns:1fr;gap:6px} }
+/* Normal y Clasificatoria: ovalados, del mismo tamaño y con el texto a la izquierda; Clasificatoria arriba con la copa de Retador y Normal con la Poké Ball con profundidad (img/menu/pokeball.webp, de la foto que aportó el autor) */
+.pxb-main,.pxb-alt{border-radius:999px;min-height:78px;height:78px;padding:0 26px 0 16px;gap:16px;justify-content:flex-start}
+.pxb-main b,.pxb-alt b{font-size:27px;text-transform:uppercase}
+.pxb-main small,.pxb-alt small{font-size:12.5px}
+.pxbIc{width:54px;height:54px;object-fit:contain;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
+.pxb-main .pxbIc{width:50px;height:50px}
 </style>
 </head>
 <body>
@@ -1574,8 +1634,8 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
   <div class="mnLayout">
     <h1 class="logo mnLogo"><img src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></h1>
     <nav class="mnNav" aria-label="Menú principal">
-      <button class="pxb pxb-main" id="playBtn"><i data-i="ball" data-s="44"></i><span class="pxbT"><b>Normal</b><small>Dificultad adaptativa · salas con amigos</small></span><i class="pxCaret" aria-hidden="true"></i></button>
-      <button class="pxb pxb-alt" id="rankedBtn"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Clasificatoria</b><small>Rango, divisiones y LP</small></span><i class="pxCaret" aria-hidden="true"></i></button>
+      <button class="pxb pxb-alt" id="rankedBtn"><img class="pxbIc" src="img/rank/challenger.webp" alt="" width="256" height="256" decoding="async"><span class="pxbT"><b>Clasificatoria</b><small>Rango, divisiones y LP</small></span><i class="pxCaret" aria-hidden="true"></i></button>
+      <button class="pxb pxb-main" id="playBtn"><img class="pxbIc" src="img/menu/pokeball.webp" alt="" width="256" height="256" decoding="async"><span class="pxbT"><b>Normal</b><small>Dificultad adaptativa · salas con amigos</small></span><i class="pxCaret" aria-hidden="true"></i></button>
       <div class="mnRow">
         <button class="pxb pxb-sq" id="histBtn"><i data-i="hourglass" data-s="32"></i><span>Historial</span></button>
         <button class="pxb pxb-sq mnDex" id="dexMenuBtn" title="Pokédex" aria-label="Pokédex"><img src="img/menu/pokedex.webp" alt="" width="200" height="266" decoding="async"></button>

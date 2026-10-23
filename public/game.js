@@ -236,6 +236,8 @@ const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 const TAC_KEYS=Object.keys(TACS);
 // Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
 const FREE_TACS=TAC_KEYS.filter(k=>!TACS[k].locked);
+// Rarezas del selector de minileyendas (lista seccionada; las vacías salen como «Próximamente»)
+const TAC_TIERS=[['Común','comun',['charmander','bulbasaur','squirtle','pichu','chikorita']],['Poco común','pococomun',['dratini','abra']],['Raro','raro',[]],['Épico','epico',[]],['Legendario','legendario',['eevee']]];
 const tacOwned=k=>!!TACS[k]&&(!TACS[k].locked||!!(typeof ACC!=='undefined'&&ACC&&ACC.cosm&&Array.isArray(ACC.cosm.inv)&&ACC.cosm.inv.includes('tac:'+k)));
 // Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
@@ -3409,20 +3411,24 @@ function renderCard(){
 }
 
 /* ---------- modales ---------- */
-function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
+function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').classList.toggle('tp',!!opt.tp); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
 function savedTac(){ if(ACC&&TACS[ACC.trainer]&&tacOwned(ACC.trainer)) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]&&tacOwned(k)?k:''; }catch(e){ return ''; } }
 // La minileyenda se elige en el menú (una vez) y se guarda en la cuenta: el campo «trainer» de la base de datos guarda su clave
+// Selector de minileyenda: ventana clara con el título y un «?» que despliega la explicación, lista seccionada por rareza (TAC_TIERS) con
+// retratos circulares de marco dorado (sin nombre ni etapas; la elegida lleva una marca), Eevee bloqueada con «Gacha» y la garantía, y «Confirmar»
 function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
- openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p>
-  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k], own=tacOwned(k);
-    // Eevee sin conseguir: bloqueada, con «Gacha» y lo que falta para la garantía (el registro y el menú usan este mismo selector)
-    if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="Solo se consigue en el gacha"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><span class="tacLock"><i data-i="crystal" data-s="22"></i>Gacha</span><b>${t.name}</b><small>Mítica · ${typeof COSM!=='undefined'?`Eevee garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:'Solo en el gacha'}</small></button>`;
-    return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
-  <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn gold" id="tacOk">Confirmar</button></div>`,{closable:!first,onClose:()=>{ if(ACC) showMenu(); }});
+ const opt=k=>{ const t=TACS[k], own=tacOwned(k);
+   if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="${t.name}: solo se consigue en el gacha" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span><span class="tacLock"><i data-i="crystal" data-s="14"></i>Gacha</span><small class="tpPity">Mítica · ${typeof COSM!=='undefined'?`Eevee garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:'Solo en el gacha'}</small></button>`;
+   return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}" type="button" title="${t.name}" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span></button>`; };
+ openModal(`<div class="tpHead"><h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><button class="tpHelp" id="tpHelp" type="button" aria-label="Qué es la minileyenda" aria-expanded="false">?</button></div>
+  <p class="tpInfo hidden" id="tpInfo">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p>
+  <div class="tacPick">${TAC_TIERS.map(([name,cls,keys])=>`<section class="tpTier ${cls}"><h4>${name}</h4><div class="tpList">${keys.length?keys.map(opt).join(''):'<span class="tpSoon">Próximamente</span>'}</div></section>`).join('')}</div>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="tacOk">Confirmar</button></div>`,{closable:!first,tp:true,onClose:()=>{ if(ACC) showMenu(); }});
+ $('tpHelp').onclick=()=>{ const i=$('tpInfo'); i.classList.toggle('hidden'); $('tpHelp').setAttribute('aria-expanded',String(!i.classList.contains('hidden'))); };
  $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast('Eevee solo se consigue en el gacha'); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
    $('tacOk').disabled=true;
@@ -3613,15 +3619,19 @@ function showGameOver(late){
  $('rsGo').onclick=()=>{ closeModal(); if(!sp&&!late) leaveRoom(); showMenu(); };
  if(window.PX) PX.hydrate($('mbox'));
 }
+// Ficha del menú (centrada bajo el logo): copa del rango, retrato redondo con marco dorado, nombre, y dos recuadros con marco dorado
+// (la minileyenda, que abre el selector, y la arena); debajo, el rango compacto, los caramelos y «Ver perfil»
 function renderMenu(){
- if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], st=ACC.stats||{};
- $('menuWho').innerHTML=`<div class="stand artStand">${artImg(tk)}</div>
-  <div class="tname">${nameHTML(ACC.name,myCs())}</div>${titleOf(myCs())?`<div class="tTitle">«${esc(titleOf(myCs()))}»</div>`:''}<div class="tfrom">Minileyenda: ${esc(t.name)}</div>
-  ${rankMiniHTML()}
-  <div class="stats"><div><i data-i="ball" data-s="20"></i><b>${st.games||0}</b><span>Partidas</span></div><div><i data-i="trophy" data-s="20"></i><b>${st.wins||0}</b><span>Victorias</span></div><div><i data-i="medal" data-s="20"></i><b>${st.top4||0}</b><span>Top 4</span></div><div><i data-i="star" data-s="20"></i><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
-  <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="20"></i><span>Ver perfil</span></button><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
- $('menuWho').insertAdjacentHTML('afterbegin','<div class="mnTag">Entrenador</div>');
- $('pickTr').onclick=()=>showTacPick(false); $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
+ if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], rk=COMP().ranked;
+ $('menuWho').classList.add('mnCard');
+ $('menuWho').innerHTML=`<div class="mcRank" title="${esc(rankText(rk))}">${rankBadge(rk,44)}</div>
+  <button class="mcAvatar" id="mcAvatar" type="button" aria-label="Cambiar minileyenda">${artImg(tk)}</button>
+  <div class="tname">${nameHTML(ACC.name,myCs())}</div>${titleOf(myCs())?`<div class="tTitle">«${esc(titleOf(myCs()))}»</div>`:''}
+  <div class="mcSep"></div>
+  <div class="mcEq"><button class="mcBox" id="pickTr" type="button" title="Cambiar minileyenda"><span class="mcImg">${artImg(tk)}</span><span class="tfrom">Minileyenda: ${esc(t.name)}</span></button><div class="mcBox static" title="Arena"><span class="mcImg"><img src="arena/coliseo/base1x.webp" alt="" decoding="async"></span><span>Arena</span></div></div>
+  <div class="mcFoot">${rankMiniHTML()}</div>
+  <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="18"></i><span>Ver perfil</span></button></div>`;
+ $('pickTr').onclick=()=>showTacPick(false); $('mcAvatar').onclick=()=>showTacPick(false); $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
 }
 /* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
 const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
