@@ -571,7 +571,9 @@ class Actor{
    if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star,!!spec.tac); this.star=spec.star; }
    const p=W3(spec.x,spec.y,0);
    // Solo se gira al caminar: los quietos (tablero y banquillo) miran siempre al frente y un salto grande (soltar una ficha, reajuste del tablero) es un teletransporte
-   const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0; this.lastSpeed=dt>0?(this.lastSpeed||0)*.7+.3*(dd/dt):0; const _=0, jump=dd>1.2, moving=!spec.still&&!jump&&dd>.004; this.moveT=moving?(spec.hold||.15):(spec.still||jump)?0:Math.max(0,this.moveT-dt); // hold: cuánto sigue «corriendo» tras el último paso (carrusel en red: los pasos llegan con retraso)
+   const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0; this.lastSpeed=dt>0?(this.lastSpeed||0)*.7+.3*(dd/dt):0; const _=0, jump=dd>1.2||this.dragged, moving=!spec.still&&!spec.drag&&!jump&&dd>.004; this.moveT=moving?(spec.hold||.15):(spec.still||spec.drag||jump)?0:Math.max(0,this.moveT-dt);
+   // La ficha agarrada va quieta, sin correr ni respirar (se congela su pose), y al soltarla aparece en su casilla sin carrera (cuenta como salto)
+   this.dragged=!!spec.drag; // hold: cuánto sigue «corriendo» tras el último paso (carrusel en red: los pasos llegan con retraso)
    if(moving&&!spec.drag){ const dx=p.x-this.lastPos.x, dz=p.z-this.lastPos.z; this.face=Math.atan2(dx,dz); if(spec.tac) this.walked=true; }
    else if(spec.tx!=null&&!this.moveT){ const q=W3(spec.tx,spec.ty); this.face=Math.atan2(q.x-p.x,q.z-p.z); }
    // La minileyenda, una vez que ha caminado, se queda mirando hacia donde iba (no vuelve a la diagonal de partida al llegar)
@@ -605,7 +607,7 @@ class Actor{
      // Cuerpo a cuerpo: se echa atrás (anticipación), embiste y vuelve. A distancia: pequeño culatazo hacia atrás.
      if(this.atkT<.32){ const a=this.atkT; fwd=spec.ranged?(a<.06?-a/.06*.1:-.1*(1-(a-.06)/.26)):(a<.07?-a/.07*.12:a<.17?lerp(-.12,.42,(a-.07)/.1):.42*(1-(a-.17)/.15)); }
      if(this.castT<.5){ lift+=Math.sin(this.castT/.5*Math.PI)*.35; }
-     if(!this.acts||!this.acts.idle){ const ph=t+this.root.id; lift+=(Math.sin(ph*2.2)*.5+.5)*(this.proc?.04:.07); breath=Math.sin(ph*2.6)*(this.proc?.03:.05); lean=Math.sin(ph*1.3)*(this.proc?.02:.05); }
+     if(!spec.drag&&(!this.acts||!this.acts.idle)){ const ph=t+this.root.id; lift+=(Math.sin(ph*2.2)*.5+.5)*(this.proc?.04:.07); breath=Math.sin(ph*2.6)*(this.proc?.03:.05); lean=Math.sin(ph*1.3)*(this.proc?.02:.05); }
      if(this.moveT>0&&!(this.acts&&this.acts.walk)) lift+=Math.abs(Math.sin(t*13.2))*(this.proc?.07:.12);
      if(spec.drag) lift+=.5;
      this.setAlpha(spec.alpha!=null?spec.alpha:1);
@@ -621,7 +623,7 @@ class Actor{
    const eW=Math.max(fl*.12,hf,evoGlow*.9), eC=Math.max(gl*.3,ch), e=Math.max(eW,eC), w=eW>=eC;
    if(this.mats&&(e>0||this.eOn)){ this.eOn=e>0; for(const mt of this.mats) if(mt.emissive){ const e0=mt.userData.e0; mt.emissive.setRGB(e0.r+e*(w?1:spec.glowCol.r),e0.g+e*(w?1:spec.glowCol.g),e0.b+e*(w?1:spec.glowCol.b)); } }
    if(this.model&&sq) this.model.scale.set(this.model.userData.k*(1+sq*.5),this.model.userData.k*(1-sq),this.model.userData.k*(1+sq*.5));
-   if(this.mixer) this.mixer.update(dt*(this.sm?(spec.spd||1):1)*(spec.stun>0&&!spec.dead?.15:1));
+   if(this.mixer&&!spec.drag) this.mixer.update(dt*(this.sm?(spec.spd||1):1)*(spec.stun>0&&!spec.dead?.15:1));
    // Peso de la animación de andar: sube al moverse y baja al pararse, sin saltos
    this.wf=lerp(this.wf||0,this.moveT>0&&!spec.dead?1:0,Math.min(1,dt*8));
    if(this.proc&&!spec.dead){ const k=spec.stun>0?.2:1, wf=this.wf; for(const p of this.proc){ const a=p.w?p.amp*wf*Math.sin(t*p.f*Math.PI+p.ph):p.amp*k*(1-wf*.6)*Math.sin(t*p.f*Math.PI+p.ph+this.root.id); p.b.quaternion.copy(p.rest).multiply(_q.setFromAxisAngle(p.ax,a)); } }

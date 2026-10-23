@@ -582,6 +582,20 @@ test('banca: las fichas miran a la cámara (hacia atrás) y en el tablero miran 
   expect(r.banca).toEqual([0, 0]); expect(r.tablero).toEqual([3.14]);
 });
 
+test('arrastrar una ficha: va quieta (sin correr ni moverse su pose) y al soltarla tampoco corre', async ({ page }) => {
+  await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); addUnitToBench(me, makeInst('charmander')); renderUI(); });
+  await expect.poll(() => page.evaluate(() => { const s = B3.smInfo[4]; return !!(s && s[0] && s[0].estado); }), { timeout: 30000 }).toBe(true);
+  const st = () => page.evaluate(() => { const s = B3.smInfo[4][0]; return { estado: s.estado, t: s.t }; });
+  const a = await benchPoint(page, 0), b = await cellPoint(page, 5, 4);
+  await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(a.x + 20, a.y - 20, { steps: 3 });
+  const vistos = [];
+  for (let i = 1; i <= 6; i++) { await page.mouse.move(a.x + (b.x - a.x) * i / 6, a.y + (b.y - a.y) * i / 6, { steps: 3 }); await page.waitForTimeout(120); vistos.push(await st()); }
+  expect(vistos.every(v => v.estado !== 'run')).toBe(true);           // no corre mientras se arrastra
+  expect(new Set(vistos.map(v => v.t)).size).toBe(1);                 // y su pose no avanza: quieta
+  await page.mouse.up(); await page.waitForTimeout(100);
+  expect((await st()).estado).not.toBe('run');                        // al soltarla aparece en su casilla sin carrera
+});
+
 test('ficha del Pokémon: estrellas, carta, barras, habilidad/posición/alcance, 3 objetos, rol y estadísticas solo con icono; con clic salen las descripciones', async ({ page }) => {
   await page.evaluate(() => { const u = makeInst('machop'); u.star = 2; u.items = ['claw', 'zoom']; G.me.board = { '3,2': u }; G.me.bench = Array(BENCH).fill(null); selected = u; renderUI(); });
   const c = page.locator('#ucard');
