@@ -30,7 +30,7 @@ La lógica vive en dos scripts que se ejecutan **en el navegador y en el servido
 - Tick fijo `DT=0.05` s. `stepCombat(cb)` avanza un tick. `simulate(cb)` llega hasta el final (máx. 40 s: luego empate).
 - Rejilla de 7×8 hexágonos, con filas impares desplazadas. `hexDist`, `neighbors`, `toGrid(side,c,r)` (el lado 0 ocupa las filas 4-7 y el lado 1, espejado, las filas 0-3).
 - Unidad: `baseCombatUnit` (stats de `ROLE[d.role]` × `HPM/ADM[coste-1]` × `STAR[estrellas-1]` = 1 / 1,8 / 3,24) → `makeCombatUnit` (stack permanente, `applyTraits`, mods del jugador, objetos con `applyStats` y `sp`). La velocidad de ataque está limitada a 3.
-- Objetivo: `nearestEnemy` (el más cercano, con un poco de ruido de `cb.rng`, e ignorando a los que están en sigilo). Movimiento: un paso cada 0,35 s (`nextStep`). Los asesinos saltan al enemigo más lejano al empezar (`teleportNear`).
+- Objetivo: `nearestEnemy` (el más cercano, con un poco de ruido de `cb.rng`, e ignorando a los que están en sigilo); en el primer tick, un tanque enemigo a su alcance (`pickInitialTarget`). Se mantiene mientras está a su alcance; si no, pasa a un enemigo que sí lo esté (`closerFoe`) o, al caminar, al que alcanza en menos pasos (`nextStep(cb,u,t,any)`). Los provocados (`u.taunt`) no cambian. Movimiento: un paso cada 0,35 s. Los saltos de habilidad usan `teleportNear`.
 - Ataque (`attack`): crítico con `critC` (base 25 %) × `critM` (base 1,4) y **+10 de maná por ataque** (+`manaPerAtk`).
 - Daño (`dealDamage`):
   - físico × 100/(100+df); mágico × 100/(100+mr); `true` sin reducción;

@@ -840,14 +840,22 @@ function nearestEnemy(cb,u,except,ok){
 // colocado protege a los aliados que tiene al lado. Si no hay ninguno, devuelve null y la ficha elige como siempre (el más cercano, en su turno).
 // No se vuelve a aplicar en ese combate: al cambiar de objetivo manda la cercanía, y Guardianes y provocar lo siguen sobrescribiendo.
 function pickInitialTarget(cb,u){ return nearestEnemy(cb,u,null,e=>e.role==='t'&&dU(u,e)<=u.range); }
+// Enemigo más cercano que el objetivo actual (a menos de d casillas); sin azar: en empate, el primero de cb.units
+function closerFoe(cb,u,d){ let best=null,bd=d; for(const e of cb.units){ if(e.dead||e.side===u.side||e.stealth>0) continue; const x=dU(u,e); if(x<bd){bd=x;best=e;} } return best; }
 function freeCell(cb,c,r,except){ return !cb.units.some(x=>!x.dead&&x!==except&&x.c===c&&x.r===r); }
-function nextStep(cb,u,t){
- const occ=new Set(cb.units.filter(x=>!x.dead&&x!==u).map(x=>x.c+','+x.r));
- const start=u.c+','+u.r, prev={[start]:null}, q=[[u.c,u.r]];
- while(q.length){
-   const [c,r]=q.shift();
-   if(!(c===u.c&&r===u.r)&&hexDist(c,r,t.c,t.r)<=u.range){ let k=c+','+r; while(prev[k]!==start) k=prev[k]; return k.split(',').map(Number); }
-   for(const [nc,nr] of neighbors(c,r)){ const k=nc+','+nr; if(k in prev||occ.has(k)) continue; prev[k]=c+','+r; q.push([nc,nr]); }
+// Primer paso del camino más corto (por anchura, nivel a nivel) hasta quedar a su alcance: devuelve [c, r, enemigo].
+// Con any, si otro enemigo queda a su alcance en menos pasos que el objetivo, va a por ese (no rodea un atasco teniendo a otro más a mano); en empate, su objetivo
+function nextStep(cb,u,t,any){
+ const occ=new Set(cb.units.filter(x=>!x.dead&&x!==u).map(x=>x.c+','+x.r)), foes=any?cb.units.filter(e=>!e.dead&&e.side!==u.side&&!(e.stealth>0)&&e!==t):[];
+ const start=u.c+','+u.r, prev={[start]:null}, first=k=>{ while(prev[k]!==start) k=prev[k]; return k.split(',').map(Number); };
+ let lvl=[[u.c,u.r]];
+ while(lvl.length){ let alt=null; const nx=[];
+   for(const [c,r] of lvl){ if(c===u.c&&r===u.r) continue; const k=c+','+r;
+     if(hexDist(c,r,t.c,t.r)<=u.range) return [...first(k),t];
+     if(!alt) for(const e of foes) if(hexDist(c,r,e.c,e.r)<=u.range){ alt=[...first(k),e]; break; } }
+   if(alt) return alt;
+   for(const [c,r] of lvl) for(const [nc,nr] of neighbors(c,r)){ const k=nc+','+nr; if(k in prev||occ.has(k)) continue; prev[k]=c+','+r; nx.push([nc,nr]); }
+   lvl=nx;
  }
  return null;
 }
@@ -1035,7 +1043,7 @@ function castAbility(cb,u,ab,depth=0){
     if(p.healAll) for(const a of allies) H(a,P*p.healAll); FX({type:'flash',color:'#ffb347',life:.35});
     if(p.rebirth&&(u.rbN=(u.rbN||0)+1)>=p.rebirth){ u.rbN=0; rebirthAlly(cb,u,p.phoenix||.4); } else if(p.rebirth) cb.cExtra+=` · renacer ${u.rbN}/${p.rebirth}`; break;
   case 'shield': SH(u,P*p.m,4); break;
-  case 'taunt': SH(u,P*p.m*.6,4); u.tdr=.3; u.tdrT=3; for(const e of foes) if(dU(u,e)<=3) e.target=u; if(p.heal) H(u,P*p.heal); if(p.teamShield) for(const a of allies) SH(a,P*p.teamShield,4); FX({type:'area',c:u.c,r:u.r,rad:3.2,color:'#ff5a5a',life:.6,thin:true}); cb.cExtra=' · provoca'; break;
+  case 'taunt': SH(u,P*p.m*.6,4); u.tdr=.3; u.tdrT=3; for(const e of foes) if(dU(u,e)<=3) e.target=e.taunt=u; if(p.heal) H(u,P*p.heal); if(p.teamShield) for(const a of allies) SH(a,P*p.teamShield,4); FX({type:'area',c:u.c,r:u.r,rad:3.2,color:'#ff5a5a',life:.6,thin:true}); cb.cExtra=' · provoca'; break;
   case 'reflect': SH(u,P*p.m*.6,4); u.reflT=4; u.reflPct=p.pct||.4; if(p.heal) H(u,P*p.heal); FX({type:'aura',u,life:4,color:'#e6f0ff'}); cb.cExtra=` · refleja ${R0((p.pct||.4)*100)}%`; break;
   case 'harden': u.df+=p.df*u.star; u.mr+=p.df*u.star; H(u,P*p.heal); FX({type:'aura',u,life:1,color:'#c9c9c9'}); cb.cExtra=` · +${p.df*u.star} def/res`; break;
   case 'rest': H(u,P*p.m); if(p.sleep){ u.stun=Math.max(u.stun,p.sleep); u.sleepT=p.sleep; } break;
@@ -1126,7 +1134,7 @@ function stepCombat(cb){
  }
  cb.t+=DT;
  // Guardianes: a los 1,5 s provocan a los enemigos cercanos y se cubren con un escudo
- if(!cb.bgDone&&cb.t>=1.5){ cb.bgDone=true; for(const g of cb.units) if(g.bodyguard&&!g.dead){ const amt=g.maxHp*g.bodyguard; g.shield+=amt; g.shieldT=Math.max(g.shieldT,4); for(const e of cb.units) if(!e.dead&&e.side!==g.side&&dU(g,e)<=2) e.target=g; fxText(cb,g,'¡Provoca!','#9fd0ff'); fx(cb,{type:'area',c:g.c,r:g.r,rad:2.2,color:'#9fd0ff',life:.6,thin:true}); } }
+ if(!cb.bgDone&&cb.t>=1.5){ cb.bgDone=true; for(const g of cb.units) if(g.bodyguard&&!g.dead){ const amt=g.maxHp*g.bodyguard; g.shield+=amt; g.shieldT=Math.max(g.shieldT,4); for(const e of cb.units) if(!e.dead&&e.side!==g.side&&dU(g,e)<=2) e.target=e.taunt=g; fxText(cb,g,'¡Provoca!','#9fd0ff'); fx(cb,{type:'area',c:g.c,r:g.r,rad:2.2,color:'#9fd0ff',life:.6,thin:true}); } }
  if(cb.pend&&cb.pend.length){ const due=cb.pend.filter(q=>q.at<=cb.t+1e-9); if(due.length){ cb.pend=cb.pend.filter(q=>q.at>cb.t+1e-9); for(const q of due) q.run(); } }
  for(const u of cb.units){
    if(u.dead) continue;
@@ -1150,9 +1158,13 @@ function stepCombat(cb){
    if(!u.target||u.target.dead||u.target.stealth>0) u.target=nearestEnemy(cb,u);
    if(!u.target) continue;
    if(u.mana>=u.maxMana){ u.mana=u.sp.refund||0; castAbility(cb,u,u.ab); continue; }
-   const d=dU(u,u.target);
+   let d=dU(u,u.target);
+   // Como en TFT: el objetivo se mantiene mientras está a su alcance; si no lo está y otro enemigo sí, pasa a ese (no ignora al que tiene delante),
+   // y al caminar va a por el enemigo al que llega antes (nextStep con any: sin rodeos). Quien fue provocado (Guardián, Provocar) sigue yendo a por quien lo provocó.
+   const free=u.target!==u.taunt;
+   if(d>u.range&&free){ const n=closerFoe(cb,u,u.range+1); if(n){ u.target=n; d=dU(u,n); } }
    if(d<=u.range){ u.atkCd-=DT; if(u.atkCd<=0){ u.atkCd=1/(u.as*(u.chillT>0?.65:1)*(u.rushT>0?u.rushMul:1)); attack(cb,u,u.target); } }
-   else { u.moveCd-=DT; if(u.moveCd<=0){ const s=nextStep(cb,u,u.target); if(s){ u.pc=u.c;u.pr=u.r;u.c=s[0];u.r=s[1];u.mt=0; } else u.target=nearestEnemy(cb,u); u.moveCd=.35; } }
+   else { u.moveCd-=DT; if(u.moveCd<=0){ const s=nextStep(cb,u,u.target,free); if(s){ u.target=s[2]; u.pc=u.c;u.pr=u.r;u.c=s[0];u.r=s[1];u.mt=0; } else u.target=nearestEnemy(cb,u); u.moveCd=.35; } }
  }
  const a0=cb.units.some(u=>!u.dead&&u.side===0), a1=cb.units.some(u=>!u.dead&&u.side===1);
  if(!a0||!a1){ cb.done=true; cb.winner=a0?0:a1?1:null; }

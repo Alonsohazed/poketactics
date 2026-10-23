@@ -263,12 +263,14 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   { let n = 0; for (let s = 1; s <= 20; s++) { const cb = fight([K.t, K.a], [K.b], s), [T, A] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
       at(B, 3, 3); at(T, 6, 7); at(A, 0, 7); at(T, 3, 4); at(A, 2, 3); if (hexD(3, 3, 3, 4) === 1 && hexD(3, 3, 2, 3) === 1) { vmStep(cb); if (B.target === T) n++; } }
     ok(n === 20, `agro: el cuerpo a cuerpo pegado a un tanque y a un asesino empieza con el tanque (${n}/20 semillas)`); }
-  // 3) Sin tanque a su alcance al empezar: va al más cercano y no cambia al tanque aunque pase junto a él
+  // 3) Sin tanque a su alcance al empezar: va al más cercano; si por el camino otro enemigo (aquí el tanque) le queda a su alcance, pasa a él por cercanía
   { const cb = fight([K.m, K.t], [K.b]), [M, T] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
     at(B, 3, 0); at(M, 3, 5); at(T, 6, 7); const ct = cellAt(cb, B, hexD(3, 0, 3, 5) + 1, (c, r) => hexD(c, r, 3, 5) <= 2); at(T, ...ct);
     ok(hexD(B.c, B.r, M.c, M.r) < hexD(B.c, B.r, T.c, T.r) && hexD(B.c, B.r, T.c, T.r) > B.range, 'agro: montaje (sin tanque a su alcance, el mago es el más cercano)');
-    let siempre = true, junto = false; for (let i = 0; i < 80; i++) { vmStep(cb); if (B.target !== M) siempre = false; if (hexD(B.c, B.r, T.c, T.r) <= 1) junto = true; }
-    ok(siempre && junto, `agro: va al más cercano y no cambia al tanque aunque pase junto a él (objetivo fijo: ${siempre}, pasó junto al tanque: ${junto})`); }
+    M.moveCd = T.moveCd = 99; vmStep(cb); ok(B.target === M, 'agro: sin tanque a su alcance empieza con el más cercano (el mago)');
+    let i = 0; while (i++ < 80 && hexD(B.c, B.r, T.c, T.r) > 1 && hexD(B.c, B.r, M.c, M.r) > 1) { M.moveCd = T.moveCd = 99; vmStep(cb); }
+    if (hexD(B.c, B.r, T.c, T.r) <= 1) { vmStep(cb); ok(B.target === T, 'foco: al pasar junto al tanque (a su alcance) lo ataca en vez de seguir hacia el mago'); }
+    else ok(B.target === M, 'foco: llegó antes al mago, sigue con él'); }
   // 4) Si muere su objetivo a mitad de combate, elige al más cercano, sea tanque o no (la regla ya no se aplica)
   { const cb = fight([K.m, K.m, K.t], [K.r]), [X, M2, T] = cb.units.filter(u => u.side === 0), R = cb.units.find(u => u.side === 1);
     at(R, 3, 0); at(X, 3, 1); at(M2, 0, 7); at(T, 6, 7); for (let i = 0; i < 10; i++) vmStep(cb); ok(R.target === X, 'agro: sin tanque a tiro al empezar, el tirador va al más cercano');
@@ -287,7 +289,31 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     for (let i = 0; i < Math.ceil(1.5 / DTc) + 1; i++) vmStep(cb); ok(B.target === G, 'agro: a los 1,5 s un Guardián lo provoca y cambia de objetivo'); }
   { const cb = fight([K.t, K.m], [K.b]), [T, P] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
     at(B, 3, 3); at(T, 3, 4); at(P, 6, 7); at(P, 4, 5); vmStep(cb); ok(B.target === T, 'agro: empieza con el tanque (provocar)');
-    E.castAbility(cb, P, ['taunt', 'Provocar', { m: 1 }]); ok(B.target === P, 'agro: una habilidad de provocar (como Duskull o Vaporeon) le cambia el objetivo'); }
+    E.castAbility(cb, P, ['taunt', 'Provocar', { m: 1 }]); ok(B.target === P, 'agro: una habilidad de provocar (como Duskull o Vaporeon) le cambia el objetivo');
+    const c0 = [B.c, B.r]; T.moveCd = P.moveCd = 99; vmStep(cb); ok(B.target === P && hexD(B.c, B.r, T.c, T.r) <= 1 + hexD(c0[0], c0[1], T.c, T.r), 'foco: el provocado sigue yendo a por quien lo provocó aunque tenga otro enemigo a su alcance'); }
+  // 9) Foco como en TFT (los dos casos que se vieron en partida): «Charmander» camina hacia un objetivo lejano y se cruza con un «Rattata»: lo ataca a él
+  { const cb = fight([K.m, K.m], [K.b]), [M, Rt] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+    at(B, 3, 0); at(M, 3, 6); at(Rt, 6, 7); at(Rt, 3, 3); B.target = M; M.moveCd = Rt.moveCd = 99;
+    let i = 0; while (i++ < 60 && hexD(B.c, B.r, Rt.c, Rt.r) > 1) { M.moveCd = Rt.moveCd = 99; vmStep(cb); }
+    const pos = [B.c, B.r], hp0 = Rt.hp; for (let k = 0; k < 40; k++) { M.moveCd = Rt.moveCd = 99; vmStep(cb); }
+    ok(B.target === Rt && B.c === pos[0] && B.r === pos[1] && Rt.hp < hp0, 'foco: al cruzarse con un enemigo a su alcance lo ataca y deja de caminar hacia el lejano'); }
+  // 10) «Eevee» pegado a su objetivo: si este se aleja y tiene otro enemigo pegado, ataca a ese sin moverse (no da vueltas)
+  { const cb = fight([K.m, K.m], [K.b]), [Bb, O] = cb.units.filter(u => u.side === 0), Ev = cb.units.find(u => u.side === 1);
+    at(Ev, 3, 3); at(Bb, 6, 7); at(O, 0, 7); at(Bb, 3, 4); at(O, 2, 3); Bb.moveCd = O.moveCd = 99; vmStep(cb); ok(Ev.target === Bb || Ev.target === O, 'foco: montaje (dos enemigos pegados)');
+    Ev.target = Bb; at(Bb, 6, 7); const pos = [Ev.c, Ev.r]; Bb.moveCd = O.moveCd = 99; vmStep(cb);
+    ok(Ev.target === O && Ev.c === pos[0] && Ev.r === pos[1], 'foco: su objetivo se aleja y ataca al que tiene pegado, sin moverse'); }
+  // 11) A distancia: con su objetivo a su alcance no cambia aunque otro enemigo se le pegue (el objetivo se mantiene mientras esté a su alcance)
+  { const cb = fight([K.m, K.b], [K.r]), [M, X] = cb.units.filter(u => u.side === 0), R = cb.units.find(u => u.side === 1);
+    at(R, 3, 0); at(M, 6, 7); at(X, 0, 7); at(M, ...cellAt(cb, R, 3)); at(X, ...cellAt(cb, R, 5)); M.moveCd = X.moveCd = 99; vmStep(cb); ok(R.target === M, 'foco: el tirador empieza con el que tiene a su alcance');
+    at(X, ...cellAt(cb, R, 1)); X.moveCd = M.moveCd = 99; vmStep(cb); ok(R.target === M, 'foco: con su objetivo a su alcance no cambia aunque otro enemigo se le pegue'); }
+  // 12) Sin rodeos: si su objetivo está detrás de un atasco y otro enemigo queda a su alcance en menos pasos, va a por ese
+  { const cb = fight([K.m, K.m], [K.b, K.t, K.t]), [M, X] = cb.units.filter(u => u.side === 0), [B, W1, W2] = cb.units.filter(u => u.side === 1);
+    const steps = (from, t) => { const occ = new Set(cb.units.filter(x => !x.dead && x !== from).map(x => x.c + ',' + x.r)), seen = new Set([from.c + ',' + from.r]); let q = [[from.c, from.r]], d = 0, nb = vm.runInContext('neighbors', ctx);
+      while (q.length) { const nq = []; for (const [c, r] of q) { if (d > 0 && hexD(c, r, t.c, t.r) <= from.range) return d; for (const [nc, nr] of nb(c, r)) { const k = nc + ',' + nr; if (seen.has(k) || occ.has(k)) continue; seen.add(k); nq.push([nc, nr]); } } q = nq; d++; } return 99; };
+    at(B, 3, 0); at(M, 6, 7); at(X, 0, 7); at(M, 3, 2); const nb = vm.runInContext('neighbors', ctx)(3, 0).filter(([c, r]) => r === 1); at(W1, ...nb[0]); at(W2, ...nb[1]);
+    let hecho = false; for (let r = 0; r < 8 && !hecho; r++) for (let c = 0; c < 7 && !hecho; c++) { if (!free(cb, c, r)) continue; at(X, c, r); if (hexD(3, 0, c, r) > hexD(3, 0, 3, 2) && steps(B, X) < steps(B, M)) hecho = true; }
+    ok(hecho, 'foco: montaje (objetivo más cerca en línea recta pero detrás de dos aliados; otro enemigo más lejos pero a menos pasos)');
+    for (const u of cb.units) if (u !== B) u.moveCd = 99; B.target = M; B.moveCd = 0; vmStep(cb); ok(B.target === X, 'foco: no rodea el atasco: va a por el enemigo al que llega antes'); }
   // 7) El daño no cambia: cuerpo a cuerpo de coste 3 a 2★ contra tanque de coste 3 a 2★ ≈ 89 por golpe
   { const bk = E.UNIT_LIST.find(u => u.role === 'b' && u.cost === 3).key, tk = E.UNIT_LIST.find(u => u.role === 't' && u.cost === 3).key;
     const src = E.baseCombatUnit(E.DEF[bk], 1, 2), tgt = E.baseCombatUnit(E.DEF[tk], 0, 2); tgt.hp = tgt.maxHp;
