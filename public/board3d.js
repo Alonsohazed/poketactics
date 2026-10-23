@@ -120,19 +120,21 @@ const elOf=f=>EL[f.el]||{c:[f.color||'#ffffff',f.color||'#ffffff','#ffffff'],g:0
 function elBurst(el,p,n,speed,o={}){ burst(p,el.c,n,speed,{g:el.g,drag:el.drag,life:el.life,add:el.add,...o}); }
 
 /* ---------- tablero y escenario (el fondo son imágenes: ver «escenario por capas») ---------- */
-let board={}, hexMesh=null, hexRing=null, benchPads=null, curArena='';
+let board={}, hexMesh=null, hexRing=null, hexHover=null, benchPads=null, curArena='';
 function buildBoard(G){
  if(board.group){ scene.remove(board.group); board.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
  const grp=new THREE.Group(); board={group:grp,G};
- // casillas: prismas hexagonales con colores por instancia (tu mitad azul, la rival roja)
+ // casillas: los prismas (hexMesh) ya no se pintan, solo guardan las 56 posiciones (las casillas cosméticas, stepTiles, las leen). Al arrastrar una ficha se ve
+ // únicamente el contorno de las 28 casillas de tu mitad (hexRing, sin relleno: el campo se ve a través) y, bajo el puntero, un relleno tenue (hexHover)
  const hg=new THREE.CylinderGeometry(.9,.94,.16,6,1); hg.translate(0,TOP-.08,0);
- hexMesh=new THREE.InstancedMesh(hg,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85,transparent:true,opacity:.4,flatShading:true}),56);
+ hexMesh=new THREE.InstancedMesh(hg,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85,transparent:true,opacity:.4,flatShading:true}),56); hexMesh.visible=false;
  // el anillo de 6 lados empieza con un vértice en +X; girado 90° coincide con el prisma (vértice hacia +Z)
- const rg=new THREE.RingGeometry(.84,.93,6,1); rg.rotateX(-Math.PI/2); rg.rotateY(Math.PI/2);
- hexRing=new THREE.InstancedMesh(rg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.75,depthWrite:false}),56);
+ const rg=new THREE.RingGeometry(.80,.93,6,1); rg.rotateX(-Math.PI/2); rg.rotateY(Math.PI/2);
+ hexRing=new THREE.InstancedMesh(rg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.85,depthWrite:false}),28);
+ hexHover=new THREE.Mesh(hg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.22,depthWrite:false})); hexHover.visible=false;
  const m4=new THREE.Matrix4();
- G.cells.forEach(([x,y],i)=>{ const p=W3(x,y); m4.makeTranslation(p.x,0,p.z); hexMesh.setMatrixAt(i,m4); m4.makeTranslation(p.x,TOP+.012,p.z); hexRing.setMatrixAt(i,m4); hexMesh.setColorAt(i,col(i>=28?'#cfe2ff':'#ffd9cf')); });
- hexMesh.receiveShadow=true; grp.add(hexMesh,hexRing);
+ G.cells.forEach(([x,y],i)=>{ const p=W3(x,y); m4.makeTranslation(p.x,0,p.z); hexMesh.setMatrixAt(i,m4); if(i>=28){ m4.makeTranslation(p.x,TOP+.012,p.z); hexRing.setMatrixAt(i-28,m4); hexRing.setColorAt(i-28,col('#bfe0ff')); } });
+ grp.add(hexRing,hexHover);
  // ranuras del banquillo
  const bg=new THREE.BoxGeometry(1,.1,1); benchPads=new THREE.InstancedMesh(bg,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.8}),9);
  const s=G.bs/M.R*.82;
@@ -1092,7 +1094,7 @@ function stepCount(c,now){
  const p=W3(c.x,c.y,0); cntMesh.position.set(p.x,TOP+.04,p.z); cntMesh.visible=true; cntMesh.material.opacity=c.full?.7:.82+.18*Math.sin(now*3);
 }
 // Casillas cosméticas: el lado del dueño del tablero, sutil y quieto, con sus dos colores alternos
-let tileMesh=null, tileKey='';
+let tileMesh=null, tileKey='', m4h=new THREE.Matrix4();
 function stepTiles(c,now,drop){
  if(!c||drop||!hexMesh){ if(tileMesh) tileMesh.visible=false; return; }
  if(!tileMesh){ tileMesh=new THREE.InstancedMesh(hexMesh.geometry,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.2,depthWrite:false}),28); tileMesh.renderOrder=1; scene.add(tileMesh); tileKey=''; }
@@ -1104,12 +1106,13 @@ function render(F){
  const now=performance.now()/1000, raw=lastT?now-lastT:0, dt=Math.min(.1,raw); lastT=now;
  watchPerf(raw); if(F.car) M.car=F.car; setArena(F.arena); try{ stepFlat(); }catch(e){ flatFail(e); }
  // casillas resaltadas al arrastrar
- for(let i=0;i<56;i++){ const mine=i>=28, hi=F.cells&&F.cells.drop&&mine, on=F.cells&&F.cells.hover===i; hexMesh.setColorAt(i,ccol(on?'#ffffff':hi?(Math.sin(now*6)>0?'#9cc8ff':'#b8d8ff'):mine?'#cfe2ff':'#ffd9cf')); }
- hexMesh.instanceColor.needsUpdate=true; hexMesh.material.opacity=F.cells&&F.cells.drop?.7:.38;
+ const drop=!!(F.cells&&F.cells.drop), hov=F.cells&&F.cells.hover!=null?F.cells.hover:-1;
+ if(drop){ for(let i=0;i<28;i++) hexRing.setColorAt(i,ccol(hov===28+i?'#ffffff':'#bfe0ff')); hexRing.instanceColor.needsUpdate=true; }
+ const hovOn=drop&&hov>=28&&F.arena!=='plaza'; hexHover.visible=hovOn; if(hovOn){ hexMesh.getMatrixAt(hov,m4h); hexHover.position.setFromMatrixPosition(m4h); }
  for(let i=0;i<9;i++) benchPads.setColorAt(i,ccol(F.benchHover===i?'#c8d8ff':F.pandora&&F.pandora.includes(i)?(Math.sin(now*4)>0?'#ffd65a':'#ffae3a'):'#dfe8ff')); // Banco de Pandora: los 3 huecos que se transforman, en dorado benchPads.instanceColor.needsUpdate=true;
  // escenario plano: las casillas del banquillo son las losas de la imagen; las 3D solo se intuyen al arrastrar una ficha
  if(FLAT&&curArena==='glade'){ benchPads.visible=!!(F.cells&&F.cells.drop)||!!(F.pandora&&F.pandora.length); benchPads.material.transparent=true; benchPads.material.opacity=F.pandora&&!(F.cells&&F.cells.drop)?.5:.3; benchPads.material.depthWrite=false; }
- hexMesh.visible=hexRing.visible=F.arena!=='plaza'&&!!(F.cells&&F.cells.drop);
+ hexRing.visible=F.arena!=='plaza'&&drop; hexMesh.visible=false;
  stepTiles(F.tiles,now,!!(F.cells&&F.cells.drop));
  stepCount(F.floorCount,now);
  // actores
