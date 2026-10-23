@@ -1488,11 +1488,11 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .mnTools{position:fixed;left:16px;top:14px;z-index:17;display:flex;align-items:center;gap:10px}
 .mnTool.pill{width:auto;padding:0 18px 0 12px;border-radius:999px;display:inline-flex;gap:8px;font-family:var(--pxFont);font-weight:800;font-size:14px;letter-spacing:.02em;color:#e8c56a}
 .mnTool.pill:hover{color:#fff2b0}
-/* en el menú los botones van ×1,8 (79 px) para verse bien; en pantallas estrechas, al tamaño de la partida */
-.mnTool{width:79px;height:79px}
-.mnTool svg{width:40px;height:40px}
-.mnTool.pill{padding:0 32px 0 22px;gap:14px;font-size:25px}
-.mnTools{left:20px;top:16px;gap:18px;flex-wrap:wrap;row-gap:12px;max-width:calc(50vw - 320px)}
+/* en el menú los botones van ×1,4 (62 px) para verse bien; en pantallas estrechas, al tamaño de la partida */
+.mnTool{width:62px;height:62px}
+.mnTool svg{width:31px;height:31px}
+.mnTool.pill{padding:0 25px 0 17px;gap:11px;font-size:20px}
+.mnTools{left:18px;top:15px;gap:14px;flex-wrap:wrap;row-gap:10px;max-width:calc(50vw - 320px)}
 @media (max-width:820px){ .mnTool{width:44px;height:44px} .mnTool svg{width:22px;height:22px} .mnTool.pill{padding:0 18px 0 12px;gap:8px;font-size:14px} .mnTools{left:16px;top:14px;gap:10px;max-width:none} }
 /* Pokédex: botón redondo con el aparato (img/menu/pokedex.webp) y sin texto */
 .pxb.mnDex{border-radius:50%;width:78px;height:78px;padding:0;justify-self:center;align-self:center;--fill:radial-gradient(circle at 50% 35%,#15161f,#05060b 70%);box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 3px 8px rgba(0,0,0,.6)}
