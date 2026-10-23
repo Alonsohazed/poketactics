@@ -80,7 +80,7 @@ function fileStore(file) {
     // Añade una clave al inventario de cosméticos (sin repetir). Devuelve si era nueva
     async addInv(userId, key) { const u = byId(userId); if (!u) return false; u.cosm = u.cosm || {}; const inv = u.cosm.inv = Array.isArray(u.cosm.inv) ? u.cosm.inv : []; if (inv.includes(key)) return false; inv.push(key); await save(); return true; },
     // Amigos: filas dirigidas {a, b, status: pending|accepted|blocked, label (nombre tal como se escribió), created}
-    async links(userId) { return db.friends.filter(l => l.a === userId || l.b === userId).map(l => { const A = byId(l.a), B = byId(l.b); return A && B ? { a: l.a, b: l.b, status: l.status, label: l.label || '', created: l.created, aName: A.name, aTrainer: A.trainer || '', bName: B.name, bTrainer: B.trainer || '' } : null; }).filter(Boolean); },
+    async links(userId) { return db.friends.filter(l => l.a === userId || l.b === userId).map(l => { const A = byId(l.a), B = byId(l.b); return A && B ? { a: l.a, b: l.b, status: l.status, label: l.label || '', created: l.created, aName: A.name, aTrainer: A.trainer || '', aEq: (A.cosm || {}).eq || {}, bName: B.name, bTrainer: B.trainer || '', bEq: (B.cosm || {}).eq || {} } : null; }).filter(Boolean); },
     async setLink(a, b, status, label) { const l = db.friends.find(x => x.a === a && x.b === b), now = new Date().toISOString();
       if (l) Object.assign(l, { status, label: label != null ? label : l.label, created: now }); else db.friends.push({ a, b, status, label: label || '', created: now }); await save(); },
     async delLink(a, b) { const n = db.friends.length; db.friends = db.friends.filter(x => !(x.a === a && x.b === b)); if (db.friends.length !== n) await save(); return n - db.friends.length; },
@@ -189,7 +189,7 @@ function pgStore(url) {
     },
     async addInv(userId, key) { return (await pool.query(`UPDATE users SET cosm = jsonb_set(cosm, '{inv}', COALESCE(cosm->'inv', '[]'::jsonb) || to_jsonb($2::text)) WHERE id = $1 AND NOT (COALESCE(cosm->'inv', '[]'::jsonb) ? $2)`, [userId, key])).rowCount > 0; },
     async links(userId) {
-      const r = await pool.query(`SELECT f.user_id AS a, f.friend_id AS b, f.status, f.label, f.created_at AS created, ua.name AS "aName", ua.trainer AS "aTrainer", ub.name AS "bName", ub.trainer AS "bTrainer"
+      const r = await pool.query(`SELECT f.user_id AS a, f.friend_id AS b, f.status, f.label, f.created_at AS created, ua.name AS "aName", ua.trainer AS "aTrainer", ua.cosm->'eq' AS "aEq", ub.name AS "bName", ub.trainer AS "bTrainer", ub.cosm->'eq' AS "bEq"
         FROM friends f JOIN users ua ON ua.id = f.user_id JOIN users ub ON ub.id = f.friend_id WHERE f.user_id = $1 OR f.friend_id = $1`, [userId]);
       return r.rows;
     },

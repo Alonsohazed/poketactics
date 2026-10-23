@@ -82,14 +82,18 @@ function publicMatch(m) { const r = m.data || {}, c = r.comp || {};
   if (m.mode === 'ranked') { if (r.revealed) o.revealed = rankOf(r.revealed.ladder); else if (r.placement) o.placement = r.placement; else if (typeof r.lp === 'number') o.lp = r.lp; }
   return o; }
 // agg: {modo: {g, w, t4, sp, cd, pk}} sacado de la tabla de partidas (sirve también para las cuentas antiguas)
+// eq: solo lo que se ve en el perfil (nombre, título, icono, marco y tema); eevee: insignia de la mítica
+const PROFILE_SLOTS = ['nc', 'tt', 'ic', 'fr', 'th'];
 function profileView(u, agg, matches) {
+  const COSM = require('./public/cosmetics'), cosm = u.cosm || {};
   const c = normComp(u.comp), pc = publicComp(c), by = {}; let xp = 0, peak = c.ladder;
   for (const m of MODES3) { const a = (agg && agg[m]) || {}, g = a.g | 0; xp += a.cd | 0;
     by[m] = { games: g, wins: a.w | 0, top4: a.t4 | 0, avg: g ? Math.round((a.sp / g) * 10) / 10 : null, candies: a.cd | 0 };
     if (m === 'ranked' && a.pk != null && peak != null && a.pk > peak) peak = a.pk; }
   const d = new Date(u.created);
   return { name: u.name, trainer: u.trainer || '', since: isNaN(d) ? '' : d.toISOString().slice(0, 7), account: accountLevel(xp), candies: pc.candies,
-    ranked: pc.ranked, peak: peak == null ? null : rankOf(peak), byMode: by, history: (matches || []).map(publicMatch) }; }
+    ranked: pc.ranked, peak: peak == null ? null : rankOf(peak), byMode: by, history: (matches || []).map(publicMatch),
+    cs: COSM.eqString(cosm.eq, PROFILE_SLOTS), eevee: COSM.hasEevee(cosm) }; }
 
 /* ---------- dificultad de los bots según el MMR ---------- */
 // Niveles internos (no se muestran): las diferencias están en sus decisiones, no en sus estadísticas

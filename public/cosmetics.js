@@ -74,6 +74,22 @@ var COSM = (function () {
   C.POOL = {}; C.TIERS.forEach(function (t) { C.POOL[t.k] = L.filter(function (i) { return i.t === t.k && i.key !== 'cd'; }).map(function (i) { return i.key; }); });
   C.typeOf = function (key) { return String(key).split(':')[0]; };
   C.isItem = function (key) { return !!C.BY[key] && key !== 'cd'; };
+  // Huecos que ven los demás (viajan en una cadena corta «nc:fuego|tt:domador|…» una vez por partida y en la lista de amigos).
+  // th (tema) y ac (acento de amigos) solo se ven en el perfil y en tu propio panel.
+  C.PUB_SLOTS = ['nc', 'tt', 'ic', 'fr', 'tr', 'gr', 'fb', 'tl', 'cr', 'br', 'fn', 'sh'];
+  C.SLOTS = ['nc', 'tt', 'ic', 'fr', 'th', 'ac', 'tr', 'gr', 'fb', 'tl', 'cr', 'br', 'fn', 'sh'];
+  C.validEq = function (slot, key) { return C.SLOTS.indexOf(slot) >= 0 && !!C.BY[key] && C.typeOf(key) === slot; };
+  C.eqString = function (eq, slots) { slots = slots || C.PUB_SLOTS; var out = []; if (eq && typeof eq === 'object') slots.forEach(function (s) { if (C.validEq(s, eq[s])) out.push(eq[s]); }); return out.join('|').slice(0, 200); };
+  C.parseCs = function (cs) { var o = {}; String(cs || '').slice(0, 200).split('|').forEach(function (k) { var s = C.typeOf(k); if (C.validEq(s, k)) o[s] = k; }); return o; };
+  // Rivales generados: llevan cosméticos como las personas (si no, un nombre siempre liso los delataría). Cada hueco con su
+  // probabilidad de ir equipado y el premio sorteado con el peso de su rareza (lo común, más a menudo)
+  C.BOT_EQUIP = { nc: 0.55, tt: 0.45, ic: 0.35, fr: 0.4, tr: 0.3, gr: 0.25, fb: 0.15, tl: 0.15, cr: 0.15, br: 0.15, fn: 0.1, sh: 0.03 };
+  C.botEquip = function (rng) { rng = rng || Math.random; var out = [];
+    Object.keys(C.BOT_EQUIP).forEach(function (s) { if (rng() >= C.BOT_EQUIP[s]) return;
+      var items = L.filter(function (i) { return C.typeOf(i.key) === s && C.TIER[i.t]; }), tot = 0;
+      items.forEach(function (i) { tot += C.TIER[i.t].p / C.POOL[i.t].length; });
+      var r = rng() * tot; for (var j = 0; j < items.length; j++) { r -= C.TIER[items[j].t].p / C.POOL[items[j].t].length; if (r <= 0) { out.push(items[j].key); break; } } });
+    return out.join('|'); };
   // ¿La cuenta puede usar esta minileyenda? (cosm puede venir vacío o de una cuenta antigua)
   C.ownsTac = function (cosm, k) { return C.LOCKED_TACS.indexOf(k) < 0 || !!(cosm && Array.isArray(cosm.inv) && cosm.inv.indexOf('tac:' + k) >= 0); };
   C.hasEevee = function (cosm) { return !!(cosm && Array.isArray(cosm.inv) && cosm.inv.indexOf(C.EEVEE) >= 0); };

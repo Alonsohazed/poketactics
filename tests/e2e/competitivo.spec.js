@@ -106,3 +106,21 @@ test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabili
   await expect(page.locator('.gaItem[data-k="tac:eevee"]')).toHaveCount(0); // Eevee no está a la venta
   expect(await page.locator('.gaItem').count()).toBe(await page.evaluate(() => ['l', 'e', 'r', 'c'].reduce((n, t) => n + COSM.POOL[t].length, 0)));
 });
+
+test('Personalizar y Colección: cuenta nueva sin cosméticos, desde el gacha y desde el perfil', async ({ page }) => {
+  await register(page);
+  await page.locator('#gachaBtn').click();
+  await page.locator('#gaPz').click();
+  await expect(page.locator('.pzSlots .pxb')).toHaveCount(14);
+  await expect(page.locator('.pzItems .gaItem.on')).toContainText('Ninguno');
+  await expect(page.locator('#gaWrap')).toContainText('Aún no tienes ninguno de este tipo');
+  await page.locator('[data-sl="fr"]').click();
+  await expect(page.locator('.pzSlots .pxb.on')).toHaveText('Marco');
+  await page.locator('#gaBack').click(); await page.locator('#gaColl').click();
+  await expect(page.locator('#gaWrap h2')).toContainText('Colección · 0/');
+  await expect(page.locator('.coRow')).toHaveCount(5);
+  expect(await page.locator('.coGrid .gaItem.locked').count()).toBeGreaterThan(100);
+  await page.locator('#mClose').click();
+  await page.locator('#pfBtn').click(); await page.locator('#pfCustom').click();
+  await expect(page.locator('.pzSlots')).toBeVisible();
+});

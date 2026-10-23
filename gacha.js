@@ -81,6 +81,19 @@ function apply(comp0, cosm0, req, ctx) {
   return { comp, cosm: c, out };
 }
 
+// Equipar (o quitar con key vacía) un cosmético que tienes en su hueco. Sin coste: no lleva nonce
+function equip(comp0, cosm0, { slot, key }) {
+  const c = normCosm(cosm0);
+  if (!COSM.SLOTS.includes(slot)) return fail(400, 'Hueco no válido');
+  if (key === '' || key == null) delete c.eq[slot];
+  else { if (typeof key !== 'string' || !COSM.validEq(slot, key)) return fail(400, 'Eso no va en ese hueco');
+    if (!c.inv.includes(key)) return fail(403, 'Aún no lo tienes');
+    if (slot === 'sh' && !COSM.ownsTac(c, COSM.BY[key].d.tac)) return fail(400, 'No tienes esa minileyenda');
+    c.eq[slot] = key; }
+  for (const s of Object.keys(c.eq)) if (!COSM.validEq(s, c.eq[s]) || !c.inv.includes(c.eq[s])) delete c.eq[s];
+  return { comp: comp0, cosm: c, out: { eq: c.eq } };
+}
+
 // Estado para la pantalla del gacha (solo lo propio)
 function view(comp0, cosm0, ctx) {
   const comp = normComp(comp0), c = normCosm(cosm0);
@@ -88,4 +101,4 @@ function view(comp0, cosm0, ctx) {
     daily: c.day === ctx.today ? 'usada' : ctx.playedToday ? 'lista' : 'jugar', price: COSM.PRICE, price10: COSM.PRICE10 };
 }
 
-module.exports = { apply, view, normCosm, rollOne, rarity, NONCE_RE };
+module.exports = { apply, equip, view, normCosm, rollOne, rarity, NONCE_RE };

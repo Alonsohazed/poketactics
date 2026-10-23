@@ -115,6 +115,17 @@ ready.then(() => server.listen(0, async () => {
     sMenu.close();
     assert.strictEqual((await post('/api/me', { trainer: 'eevee' }, ckE)).status, 200, 'quien la consigue ya puede elegir a Eevee');
     st = await ga(ckE); assert(st.eevee && st.pityLeft === 200, 'estado con Eevee');
+    // equipar: solo lo que tienes, en su hueco; lo equipado llega a la sala, a los amigos y al perfil
+    const eq = (slot, key, ck) => post('/api/cosm/equip', { slot, key }, ck);
+    assert.strictEqual((await fetch(url + '/api/cosm/equip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401, 'equipar sin sesión');
+    assert.strictEqual((await eq('nc', 'nc:fuego', cookieA)).status, 403, 'no se equipa lo que no tienes');
+    const anaId = (await db.userByName('Ana')).id; await db.addInv(anaId, 'nc:fuego'); await db.addInv(anaId, 'tt:domador'); await db.addInv(anaId, 'th:agua');
+    assert.strictEqual((await eq('tt', 'nc:fuego', cookieA)).status, 400, 'en otro hueco no');
+    assert.strictEqual((await eq('zz', 'nc:fuego', cookieA)).status, 400, 'hueco inexistente');
+    assert.strictEqual((await eq('nc', { x: 1 }, cookieA)).status, 400, 'clave que no es texto');
+    for (const [s, k] of [['nc', 'nc:fuego'], ['tt', 'tt:domador'], ['th', 'th:agua']]) assert.strictEqual((await eq(s, k, cookieA)).status, 200, 'equipar ' + k);
+    r = await eq('tt', '', cookieA); assert(r.status === 200 && !(await r.json()).eq.tt, 'quitar un hueco'); await eq('tt', 'tt:domador', cookieA);
+    assert.deepStrictEqual((await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json()).user.cosm.eq, { nc: 'nc:fuego', tt: 'tt:domador', th: 'th:agua' }, 'lo equipado queda en la cuenta');
   }
 
   // ---- perfil: solo el propio; para cualquier otro nombre (exista o no), 404 igual; nada privado ----
@@ -153,6 +164,8 @@ ready.then(() => server.listen(0, async () => {
     assert.strictEqual((await fetch(url + '/api/profile/Ana', { headers: { Cookie: cookieB } })).status, 404, 'sin ser amigos no se ve el perfil');
     assert.strictEqual((await op('accept', 'NoExiste_9', cookieB)).s, 404, 'aceptar una solicitud que no existe');
     const acc = await op('accept', 'Ana', cookieB); assert(acc.s === 200 && acc.b.friends.some(f => f.name === 'Ana' && f.st), 'aceptar');
+    assert(acc.b.friends.find(f => f.name === 'Ana').cs === 'nc:fuego|tt:domador', 'los amigos ven lo equipado (sin el tema)');
+    assert(ghost.b.outgoing.every(o => !('cs' in o) && !('trainer' in o)), 'las enviadas no dicen nada de la otra cuenta (real o no)');
     let A = await fr(cookieA); assert(A.friends.some(f => f.name === 'Beto') && !A.outgoing.some(o => o.name === 'Beto'), 'amistad en las dos direcciones');
     const pB = await fetch(url + '/api/profile/beto', { headers: { Cookie: cookieA } }); const pj = await pB.json();
     assert(pB.status === 200 && pj.friend && pj.profile.name === 'Beto' && pj.presence && !/pass|settings|mmr/i.test(JSON.stringify(pj)), 'perfil de un amigo, sin datos privados');
@@ -275,10 +288,11 @@ ready.then(() => server.listen(0, async () => {
   const mk = cookie => io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookie } });
   const A = mk(cookieA); let B = mk(cookieB);
   const st = { A: { pub: 0, priv: null, cmb: 0, rounds: new Set() }, B: { pub: 0, priv: null, cmb: 0, rounds: new Set() } };
-  let lobby = null, started = 0, lastPub = null;
+  let lobby = null, started = 0, lastPub = null; const cosMsgs = [];
   for (const [k, s] of [['A', A], ['B', B]]) {
     s.on('lobby', d => { lobby = d; });
     s.on('start', () => started++);
+    s.on('cos', d => cosMsgs.push(d));
     s.on('pub', d => { st[k].pub++; st[k].ph = d.ph; st[k].rounds.add(d.ri); st[k].over = d.ov; lastPub = d; });
     s.on('priv', d => { if (d.to === s.id) st[k].priv = d; });
     s.on('cmb', d => { if (d.to === s.id) st[k].cmb++; });
@@ -291,6 +305,7 @@ ready.then(() => server.listen(0, async () => {
   assert(lobby && lobby.code, 'sala creada');
   assert.strictEqual(lobby.seats[0].nick, 'Ana', 'el nombre sale de la cuenta, no del navegador');
   assert.strictEqual(lobby.seats[0].tr, 'squirtle', 'la minileyenda sale de la cuenta');
+  assert.strictEqual(lobby.seats[0].cs, 'nc:fuego|tt:domador', 'la sala ve lo equipado (sin el tema del perfil)');
   B.emit('join', { code: lobby.code });
   await sleep(200);
   assert.strictEqual(lobby.seats.length, 2, 'dos jugadores en la sala');
@@ -344,6 +359,10 @@ ready.then(() => server.listen(0, async () => {
   assert(st.A.cmbs >= 4 && st.B.cmbs >= 4, 'cada jugador recibe todos los combates para poder verlos');
   assert(Array.isArray(st.A.priv.po), 'llegan los posibles rivales');
   assert.strictEqual(st.A.priv.aq, 41, 'el estado privado devuelve el número de la última acción (los inválidos se ignoran)');
+  // cosméticos de los 8: una vez por jugador al empezar, pequeños, y nunca dentro de pub
+  assert(cosMsgs.length >= 2 && cosMsgs[0].pl.length === 8 && JSON.stringify(cosMsgs[0]).length < 1024, `«cos» al empezar (${JSON.stringify(cosMsgs[0]).length} bytes)`);
+  assert(cosMsgs[0].pl.some(x => x[1] === 'nc:fuego|tt:domador') && cosMsgs[0].pl.filter(x => x[1]).length >= 3, 'mi cadena y la de varios rivales (los rivales también llevan cosméticos)');
+  assert(!/nc:|tt:|fr:/.test(JSON.stringify(lastPub)), 'pub no lleva cosméticos');
   assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle', 'dratini', 'pichu', 'abra', 'chikorita', 'eevee'].includes(p[14])), 'todos los jugadores llevan minileyenda');
   assert.strictEqual(lastPub.pl.find(p => p[1] === 'Ana')[14], 'squirtle', 'la minileyenda de la partida sale de la cuenta');
   const tpB = lastPub.pl.find(p => p[8] && p[1] !== 'Ana')[16];

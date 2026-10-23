@@ -145,6 +145,7 @@ ready.then(() => server.listen(0, async () => {
     ok(PY.peak && PY.peak.ladder > PY.ranked.ladder, `perfil: el mejor rango recuerda el pico (${C.rankLabel(PY.peak)} frente a ${C.rankLabel(PY.ranked)})`);
     ok(PY.account.level === 1 + Math.floor((4 * 100 + 2 * 65 + 80) / 500) && PY.history.length === 7, 'perfil: nivel de cuenta por caramelos ganados y 7 partidas en el historial');
     ok(PY.history.every(m => m.mmrBefore === undefined && m.participants === undefined && m.why === undefined && m.oppAvg === undefined) && !/mmr/i.test(JSON.stringify(PY)), 'perfil: el historial no lleva MMR, rivales ni el porqué de los LP');
+    ok(PY.cs === '' && PY.eevee === false, 'perfil: cosméticos visibles e insignia de Eevee (vacíos en una cuenta nueva)');
     ok(PY.history[1].lp < 0 && PY.history[0].mode === 'custom' && PY.history.some(m => m.revealed), 'perfil: LP, rango revelado y modo de cada partida');
     // nombres de los rivales: nunca el de una cuenta real
     { const vm = require('vm'), ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval }; vm.createContext(ctx);
@@ -182,7 +183,7 @@ ready.then(() => server.listen(0, async () => {
     ok(got && got.rec.placement && got.rec.placement.done === 1 && got.comp.ranked.placing, 'primera partida clasificatoria: posicionamiento 1/3');
     ok(got && got.rec.comp && Array.isArray(got.rec.comp.units) && got.rec.participants.length === 8 && got.rec.participants.every(p => !('bot' in p)), 'el registro guarda la composición y no marca bots');
     // pantalla de resultados: los 8 jugadores, misma forma para personas y rivales generados, sin ids ni MMR
-    const B = got && got.board; const KEYS = 'a,lvl,me,n,pl,rd,t,tac,tf,u';
+    const B = got && got.board; const KEYS = 'a,cs,lvl,me,n,pl,rd,t,tac,tf,u';
     ok(Array.isArray(B) && B.length === 8 && B.every(b => Object.keys(b).sort().join() === KEYS), 'resultado: 8 tableros con las mismas claves para todos');
     ok(B && B.filter(b => b.me).length === 1 && B.find(b => b.me).pl === 8 && B.find(b => b.me).n === 'Xenia', 'resultado: mi fila, con mi puesto y mi nombre de cuenta');
     ok(B && B.filter(b => !b.me).every(b => b.pl === 0 && b.u.length >= 0), 'resultado: los que siguen vivos van sin puesto (en juego)');

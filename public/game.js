@@ -1368,12 +1368,12 @@ function newGame(opts={}){
  UID=1;
  G={pool:{},players:[],roundIdx:-1,round:null,phase:'idle',timer:0,combat:null,fights:[],log:[],over:false,speed:S.speed,auto:!!opts.auto,acc:0,resolving:false,myOpp:'',anvils:[],augTiers:rollAugTiers(),carousel:null,diff:opts.diff||'normal',mp:!!opts.mp,resolveNotBefore:0};
  for(const u of UNIT_LIST) G.pool[u.key]=POOL_SIZE[u.cost-1];
- if(!opts.server){ G.players.push(makePlayer(0,opts.auto?'Tú':S.name||'Tú',!!opts.auto,S.avatar||'🧢',S.trainer)); if(!opts.auto&&!HEADLESS&&savedTac()) G.players[0].tac=savedTac(); }
+ if(!opts.server){ G.players.push(makePlayer(0,opts.auto?'Tú':S.name||'Tú',!!opts.auto,S.avatar||'🧢',S.trainer)); if(!opts.auto&&!HEADLESS&&savedTac()) G.players[0].tac=savedTac(); if(!HEADLESS&&typeof COSM!=='undefined'&&ACC&&ACC.cosm) G.players[0].cs=COSM.eqString(ACC.cosm.eq); }
  let id=opts.server?0:1;
- for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.remote=true; p.peer=h.peer; G.players.push(p); }
+ for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.cs=String(h.cs||'').slice(0,200); p.remote=true; p.peer=h.peer; G.players.push(p); }
  const usados=G.players.map(p=>p.name);
  // opts.taken (servidor): nombre de una cuenta real; un rival generado nunca se llama como una persona
- while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.botIdx=G.players.length; G.players.push(bp); }
+ while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.cs=bs&&typeof bs.cs==='string'?bs.cs.slice(0,200):(!HEADLESS&&typeof COSM!=='undefined'?COSM.botEquip():''); bp.botIdx=G.players.length; G.players.push(bp); }
  // En el servidor no hay jugador local: G.me es un espectador fantasma fuera de la lista
  G.me=opts.server?Object.assign(makePlayer(-1,'',true,''),{alive:false}):G.players[0];
  note(null,`Empieza la partida (dificultad: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
@@ -1737,7 +1737,8 @@ function sock(){
  s.on('result',onResult);
  s.on('friends',()=>loadFriends()); // mi lista cambió (solicitud, aceptar, eliminar…)
  s.on('friendUpd',onFriendUpd);
- s.on('ann',onAnn);                 // alguien ha conseguido a Eevee     // un amigo cambió de estado (menú, cola, partida…)
+ s.on('ann',onAnn);
+ s.on('cos',onCos);                 // cosméticos de los 8 (una vez por partida)                 // alguien ha conseguido a Eevee     // un amigo cambió de estado (menú, cola, partida…)
  s.on('pub',d=>{ if(NET.mode==='client') applyPub(d); });
  s.on('priv',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyPriv(d); });
  s.on('cmb',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyCmb(d); });
@@ -1797,7 +1798,7 @@ function showRoomScreen(){
 function renderSeats(){
  const el=$('seats'); if(!el) return; const cfg=NET.cfg||{name:'Sala',max:8,diff:'normal'};
  $('roomInfo').textContent=`${cfg.name} · sala informal (da caramelos, no cambia tu rango)`;
- const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${esc(s.nick)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' <em class="hostTag">anfitrión</em>':''}</div>`:`<div class="seat wait"><i data-i="people" data-s="20"></i>Buscando jugador…</div>`); }
+ const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${nameHTML(s.nick,s.cs)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' <em class="hostTag">anfitrión</em>':''}</div>`:`<div class="seat wait"><i data-i="people" data-s="20"></i>Buscando jugador…</div>`); }
  el.innerHTML=rows.join(''); if(window.PX) PX.hydrate(el);
  const owner=NET.owner&&NET.owner===NET.myPeer;
  $('rmActions').innerHTML=(owner?'<button class="btn primary" id="rmStart">Empezar partida</button>':'<span class="muted" style="margin-right:auto">Esperando a que el creador de la sala empiece…</span>')+'<button class="btn" id="rmLeave">Salir de la sala</button>';
@@ -3172,8 +3173,8 @@ function renderPlayers(){
  const po=!combat&&G.me.alive?new Set(G.mirror?(G.me.po||[]):possibleOpps(G.me).map(p=>p.id)):new Set();
  const watching=G.view?G.view.pid:-1;
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
-   <div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
-   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
+   <div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${nameHTML(p.name,csOfP(p))}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
+   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring${csParse(csOfP(p)).fr?' fr':''}" style="--p:${clamp(p.hp,0,100)}${frameVars(csOfP(p))}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
@@ -3509,14 +3510,14 @@ function showAnvil(a,done){
    Los 8 jugadores con su minileyenda, nivel, equipo (estrellas y objetos), sinergias, aumentos y la ronda en que cayeron; los
    que siguen vivos, arriba y «En juego». En multijugador los datos llegan del servidor con el resultado (result.board); en la
    práctica sin conexión se calculan aquí con la misma forma. Ningún perfil se abre desde aquí; sí se puede pedir amistad. */
-function localBoard(){ return G.players.map(p=>{ const c=p.place&&p.finalComp?p.finalComp:compSnap(p); return {n:p.name,pl:p.place||0,tac:p.tac,tf:p.tacForm||['',''],lvl:c.lvl,rd:c.round,u:c.units,t:c.traits,a:c.augs,me:p===G.me}; }); }
+function localBoard(){ return G.players.map(p=>{ const c=p.place&&p.finalComp?p.finalComp:compSnap(p); return {n:p.name,cs:csOfP(p),pl:p.place||0,tac:p.tac,tf:p.tacForm||['',''],lvl:c.lvl,rd:c.round,u:c.units,t:c.traits,a:c.augs,me:p===G.me}; }); }
 function rsFriendBtn(b){ if(b.me||NET.mode==='sp'&&!ACC) return ''; const L=FR.list, k=String(b.n).toLowerCase();
  if(L&&L.friends.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Amigo</span>';
  if(L&&L.outgoing.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Enviada</span>';
  return `<button class="pxb pxb-sq frIc rsAdd" data-n="${esc(b.n)}" type="button" aria-label="Enviar solicitud de amistad a ${esc(b.n)}" title="Añadir amigo"><i data-i="addfriend" data-s="18"></i></button>`; }
 function rsRow(b){ const pl=b.pl||0, dex=tacDex({tac:TACS[b.tac]?b.tac:'charmander',tacForm:Array.isArray(b.tf)?b.tf:['',''],level:b.lvl|0});
- return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv">${portraitImg(dex)}</span>
-  <div class="rsWho"><b>${esc(b.n)}</b><small>Nivel ${b.lvl||'—'} · ${!pl?'En juego':pl===1?'Ganador':'Cae en '+esc(b.rd||'—')}</small></div>
+ return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv${csParse(b.cs).fr?' fr':''}" style="${frameVars(b.cs).slice(1)}">${portraitImg(dex)}</span>
+  <div class="rsWho"><b>${nameHTML(b.n,b.cs)}</b>${titleOf(b.cs)?`<small class="rsTitle2">«${esc(titleOf(b.cs))}»</small>`:''}<small>Nivel ${b.lvl||'—'} · ${!pl?'En juego':pl===1?'Ganador':'Cae en '+esc(b.rd||'—')}</small></div>
   <div class="hComp rsComp">${(b.u||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon</span>'}</div>
   <div class="hTraits rsTr">${(b.t||[]).slice(0,6).map(histTrait).join('')}${(b.a||[]).map(id=>AUG_BY[id]?`<span class="hA" title="${esc(AUG_BY[id].name)}">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div>
   <div class="rsAct">${rsFriendBtn(b)}</div></div>`; }
@@ -3541,7 +3542,7 @@ function showGameOver(late){
 function renderMenu(){
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], st=ACC.stats||{};
  $('menuWho').innerHTML=`<div class="stand artStand">${artImg(tk)}</div>
-  <div class="tname">${esc(ACC.name)}</div><div class="tfrom">Minileyenda: ${esc(t.name)}</div>
+  <div class="tname">${nameHTML(ACC.name,myCs())}</div>${titleOf(myCs())?`<div class="tTitle">«${esc(titleOf(myCs()))}»</div>`:''}<div class="tfrom">Minileyenda: ${esc(t.name)}</div>
   ${rankMiniHTML()}
   <div class="stats"><div><i data-i="ball" data-s="20"></i><b>${st.games||0}</b><span>Partidas</span></div><div><i data-i="trophy" data-s="20"></i><b>${st.wins||0}</b><span>Victorias</span></div><div><i data-i="medal" data-s="20"></i><b>${st.top4||0}</b><span>Top 4</span></div><div><i data-i="star" data-s="20"></i><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
   <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="20"></i><span>Ver perfil</span></button><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
@@ -3624,7 +3625,7 @@ function showRanked(){
 // ----- resultado de la partida, ascensos y revelación del rango -----
 function onResult(d){
  if(!d||!d.rec) return; NET.result=d; if(NET.sock) NET.sock.emit('resultSeen'); if(ACC&&d.comp){ ACC.comp=d.comp; renderMenu(); }
- if(Array.isArray(d.board)) d.board=d.board.slice(0,8).filter(b=>b&&typeof b==='object').map(b=>({n:String(b.n||'').slice(0,20),pl:clamp(b.pl|0,0,8),tac:TACS[b.tac]?b.tac:'charmander',tf:Array.isArray(b.tf)?b.tf.slice(0,2).map(k=>DEF[k]?k:''):['',''],lvl:clamp(b.lvl|0,0,10),rd:String(b.rd||'').slice(0,6),u:Array.isArray(b.u)?b.u.slice(0,12):[],t:Array.isArray(b.t)?b.t.slice(0,9):[],a:Array.isArray(b.a)?b.a.slice(0,4):[],me:!!b.me}));
+ if(Array.isArray(d.board)) d.board=d.board.slice(0,8).filter(b=>b&&typeof b==='object').map(b=>({n:String(b.n||'').slice(0,20),cs:String(b.cs||'').slice(0,200),pl:clamp(b.pl|0,0,8),tac:TACS[b.tac]?b.tac:'charmander',tf:Array.isArray(b.tf)?b.tf.slice(0,2).map(k=>DEF[k]?k:''):['',''],lvl:clamp(b.lvl|0,0,10),rd:String(b.rd||'').slice(0,6),u:Array.isArray(b.u)?b.u.slice(0,12):[],t:Array.isArray(b.t)?b.t.slice(0,9):[],a:Array.isArray(b.a)?b.a.slice(0,4):[],me:!!b.me}));
  if(NET.modal==='over') renderResultsTable(d.board);
  else if(d.late&&NET.mode!=='client'&&ACC&&!NET.modal) showGameOver({place:d.rec.place});
  if(d.rec.promoted||d.rec.revealed||d.rec.demoted) NET.rankFx=d;
@@ -3690,14 +3691,15 @@ function profileHTML(P,ctx={}){
  const mode0=P.byMode.ranked.games?'ranked':P.byMode.normal.games||!P.byMode.custom.games?'normal':'custom';
  // Pokémon más usados en las partidas del historial (por línea, la forma de la ficha más reciente)
  const use={}; for(const m of P.history){ const seen=new Set(); for(const u of (m.comp&&m.comp.units)||[]){ const d=DEF[u[0]], k=d&&d.evoOf||u[0]; if(seen.has(k)) continue; seen.add(k); (use[k]=use[k]||{n:0,dex:u[3],name:u[4]}).n++; } }
+ const thk=csParse(P.cs).th, thm=thk?COSM.BY[thk].d.c:null;
  const fav=Object.values(use).sort((x,y)=>y.n-x.n).slice(0,3), lg=!rk.placing&&rk.league?rk.league:'none';
  const favDot=f=>f?`<span class="pfDot" title="${esc(f.name||'')} · en ${f.n} partida${f.n===1?'':'s'}">${portraitImg(f.dex)}</span>`:'<span class="pfDot"></span>';
  // Como el perfil del LoL: estandarte vertical (nivel, retrato con el marco de su liga, nombre y 3 favoritos) sobre la ilustración de la minileyenda y una fila de vitrinas
  return `<div class="pfHero"><div class="pfBg" style="background-image:url('${CARD_ART[tk]||''}')"></div>
- <aside class="pfBanner lg-${lg}"><span class="pfLvlChip" title="Nivel de cuenta">${a.level}</span>
-  <div class="pfAvatar"><span class="pfRing">${artImg(tk)}</span><span class="pfCrest">${rankBadge(rk,54)}</span></div>
-  <b class="pfName">${esc(P.name)}</b><small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>${ctx.presence?`<small class="frSt st-${esc(ctx.presence.st)}"><i></i>${esc(frStatus(ctx.presence))}</small>`:''}
-  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div>${ctx.friend?`<button class="pxb pfAct" id="pfRemove" type="button"><i data-i="close" data-s="14"></i><span>Eliminar amigo</span></button>`:ctx.self?`<button class="pxb pfAct" id="pfFriends" type="button"><i data-i="people" data-s="16"></i><span>Amigos</span></button>`:''}<i class="pfTail" aria-hidden="true"></i></aside>
+ <aside class="pfBanner lg-${lg}${thm?' themed':''}"${thm?` style="--lg:${thm[0]};--th2:${thm[1]}"`:''}><span class="pfLvlChip" title="Nivel de cuenta">${a.level}</span>${P.eevee?'<span class="pfMythic" title="Ha conseguido a Eevee, la minileyenda mítica">Mítica</span>':''}
+  <div class="pfAvatar"><span class="pfRing${csParse(P.cs).fr?' fr':''}" style="${frameVars(P.cs).slice(1)}">${artImg(tk)}</span><span class="pfCrest">${rankBadge(rk,54)}</span></div>
+  <b class="pfName">${iconOf(P.cs,18)}${nameHTML(P.name,P.cs)}</b>${titleOf(P.cs)?`<small class="pfTitle">«${esc(titleOf(P.cs))}»</small>`:''}<small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>${ctx.presence?`<small class="frSt st-${esc(ctx.presence.st)}"><i></i>${esc(frStatus(ctx.presence))}</small>`:''}
+  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div>${ctx.friend?`<button class="pxb pfAct" id="pfRemove" type="button"><i data-i="close" data-s="14"></i><span>Eliminar amigo</span></button>`:ctx.self?`<button class="pxb pfAct" id="pfFriends" type="button"><i data-i="people" data-s="16"></i><span>Amigos</span></button><button class="pxb pfAct" id="pfCustom" type="button"><i data-i="gear" data-s="16"></i><span>Personalizar</span></button>`:''}<i class="pfTail" aria-hidden="true"></i></aside>
  <div class="pfShow">
   <div class="pfCase"><span class="pfCap">Clasificatoria</span><small>${unranked?'Sin clasificar':esc(rankText(rk))}</small><div class="pfBig">${rankBadge(rk,76)}</div><small class="muted">${rk.placing?`Posicionamiento ${rk.done}/${rk.of}`:rk.lp+' LP'}</small>${lpBar(rk)}</div>
   <div class="pfCase"><span class="pfCap">Mejor rango</span><small>${P.peak?esc(rankText(P.peak)):'—'}</small><div class="pfBig">${P.peak?rankBadge(P.peak,64):rankBadge(null,64)}</div></div>
@@ -3715,6 +3717,7 @@ async function showProfile(name){
  const el=$('pfWrap'); if(!el||NET.modal!=='profile') return;
  el.innerHTML=profileHTML(P,D); hydrate(el); window.PX&&PX.hydrate(el);
  if($('pfFriends')) $('pfFriends').onclick=()=>{ closeModal(); openFriends(true); };
+ if($('pfCustom')) $('pfCustom').onclick=async()=>{ await showGacha(); if(GA.st) gaPz('nc'); };
  if($('pfRemove')) $('pfRemove').onclick=e=>{ const b=e.currentTarget; if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('span').textContent='¿Seguro? Pulsa otra vez'; return; } closeModal(); friendOp('remove',P.name); };
  el.querySelectorAll('.pfTabs .pxb').forEach(b=>b.onclick=()=>{ el.querySelectorAll('.pfTabs .pxb').forEach(x=>{ x.classList.toggle('on',x===b); x.setAttribute('aria-selected',x===b); }); $('pfStats').innerHTML=pfStatsHTML(P.byMode[b.dataset.m]); });
 }
@@ -3732,14 +3735,14 @@ function onFriendUpd(d){ if(!FR.list||!d||typeof d.name!=='string') return; cons
  f.st=FR_ST[d.st]?d.st:'off'; f.r=String(d.r||'').slice(0,6); f.mode=String(d.mode||'').slice(0,10); renderFriends(); }
 async function friendOp(op,name){ try{ const d=await api('/api/friends/'+op,{name}); FR.list=d; FR.msg={ok:true,t:d.msg}; if(op!=='request') toast(d.msg); }catch(e){ FR.msg={ok:false,t:e.message}; if(op!=='request') toast(e.message); } FR.sel=''; renderFriends(); }
 function openFriends(on){ FR.open=on===undefined?!FR.open:!!on; if(FR.open&&!FR.list) loadFriends(); renderFriends(); if(FR.open) setTimeout(()=>$('frName')&&$('frName').focus(),30); }
-function frRow(f,kind){ const tk=TACS[f.trainer]?f.trainer:'', av=tk?artImg(tk):'<span class="frNone"></span>', n=esc(f.name);
+function frRow(f,kind){ const tk=TACS[f.trainer]?f.trainer:'', av=tk?artImg(tk):'<span class="frNone"></span>', n=esc(f.name), cs=kind==='friend'||kind==='in'?f.cs:'';
  let acts='', sub='';
  if(kind==='friend'){ sub=`<small class="frSt st-${f.st}"><i></i>${esc(frStatus(f))}</small>`;
    if(FR.sel===f.name) acts=`<div class="frActs"><button class="pxb" data-op="profile" data-n="${n}" type="button"><span>Perfil</span></button><button class="pxb" data-op="remove" data-n="${n}" type="button"><span>Eliminar</span></button><button class="pxb" data-op="block" data-n="${n}" type="button"><span>Bloquear</span></button></div>`; }
  else if(kind==='in'){ sub='<small class="frSt">Quiere ser tu amigo</small>'; acts=`<div class="frBtns"><button class="pxb pxb-sq frIc" data-op="accept" data-n="${n}" aria-label="Aceptar a ${n}" title="Aceptar" type="button"><i data-i="check" data-s="16"></i></button><button class="pxb pxb-sq frIc" data-op="decline" data-n="${n}" aria-label="Rechazar a ${n}" title="Rechazar" type="button"><i data-i="close" data-s="14"></i></button></div>`; }
  else if(kind==='out'){ sub='<small class="frSt">Solicitud enviada</small>'; acts=`<div class="frBtns"><button class="pxb pxb-sq frIc" data-op="cancel" data-n="${n}" aria-label="Cancelar la solicitud a ${n}" title="Cancelar" type="button"><i data-i="close" data-s="14"></i></button></div>`; }
  else if(kind==='blk'){ acts=`<div class="frBtns"><button class="pxb frTxtBtn" data-op="unblock" data-n="${n}" type="button"><span>Desbloquear</span></button></div>`; }
- return `<div class="frRow k-${kind}${kind==='friend'?' st-'+f.st:''}${FR.sel===f.name?' sel':''}" ${kind==='friend'?`data-pick="${n}" role="button" tabindex="0"`:''}><span class="frAv">${av}</span><span class="frTxt"><b>${n}</b>${sub}</span>${kind!=='friend'?acts:''}</div>${kind==='friend'?acts:''}`; }
+ return `<div class="frRow k-${kind}${kind==='friend'?' st-'+f.st:''}${FR.sel===f.name?' sel':''}" ${kind==='friend'?`data-pick="${n}" role="button" tabindex="0"`:''}><span class="frAv${csParse(cs).fr?' fr':''}" style="${frameVars(cs).slice(1)}">${av}</span><span class="frTxt"><b>${nameHTML(f.name,cs)}</b>${sub}</span>${kind!=='friend'?acts:''}</div>${kind==='friend'?acts:''}`; }
 function frGroup(key,title,rows,kind){ if(!rows.length&&key!=='online') return ''; const fold=FR.fold[key];
  return `<section class="frGrp"><button class="frGrpH" data-fold="${key}" type="button" aria-expanded="${!fold}"><i class="frCar${fold?'':' open'}" aria-hidden="true"></i><span>${title}</span><b>${rows.length}</b></button>${fold?'':rows.map(f=>frRow(f,kind)).join('')||'<p class="frEmpty">Nadie por aquí ahora mismo.</p>'}</section>`; }
 function renderFriends(){
@@ -3747,6 +3750,7 @@ function renderFriends(){
  const on=L?L.friends.filter(f=>f.st!=='off').length:0, inc=L?L.incoming.length:0;
  btn.innerHTML=`<i data-i="people" data-s="24"></i><span>Amigos</span><b class="frOn">${on}</b>${inc?`<em class="frBadge" aria-label="${inc} solicitudes">${inc}</em>`:''}`; btn.setAttribute('aria-expanded',FR.open); window.PX&&PX.hydrate(btn);
  const P=$('frPanel'); P.classList.toggle('hidden',!FR.open); if(!FR.open) return;
+ const ack=csParse(myCs()).ac; P.style.setProperty('--frAc',ack?COSM.BY[ack].d.c:'');
  const game=L?L.friends.filter(f=>f.st==='game'):[], online=L?L.friends.filter(f=>f.st!=='game'&&f.st!=='off'):[], off=L?L.friends.filter(f=>f.st==='off'):[];
  const keep=$('frName')?$('frName').value:'';
  P.innerHTML=`<div class="frHead"><b>Amigos</b><span>${L?L.friends.length:0}/${L?L.max:100}</span><button class="mclose" id="frClose" aria-label="Cerrar amigos" type="button"><i data-i="close" data-s="16"></i></button></div>
@@ -3769,6 +3773,19 @@ function renderFriends(){
    El servidor tira y cobra (/api/gacha). Cada pulsación lleva un nonce: un doble clic o un reintento no cobra dos veces.
    La Poké Ball es CSS: tiembla y se tiñe del color de la mejor rareza antes de mostrar las cartas. */
 const GA={st:null,busy:false};
+/* Cosméticos equipados: «cs» es una cadena corta («nc:fuego|tt:domador|…») validada contra el catálogo; los colores salen del
+   catálogo, nunca del texto que llegue. Lo mismo para personas y rivales generados. */
+const csParse=cs=>typeof COSM!=='undefined'?COSM.parseCs(cs):{};
+const myCs=()=>ACC&&ACC.cosm&&typeof COSM!=='undefined'?COSM.eqString(ACC.cosm.eq,COSM.SLOTS):'';
+function nameHTML(name,cs){ const k=csParse(cs).nc, d=k&&COSM.BY[k].d;
+ if(!d) return `<span class="cn">${esc(name)}</span>`;
+ return d.c?`<span class="cn" style="color:${d.c}">${esc(name)}</span>`:d.g?`<span class="cn cnG" style="--g1:${d.g[0]};--g2:${d.g[1]}">${esc(name)}</span>`:`<span class="cn cnA" style="--a:${d.a.join(',')}">${esc(name)}</span>`; }
+const frameVars=cs=>{ const k=csParse(cs).fr, d=k&&COSM.BY[k].d; return d?`;--f1:${d.c[0]};--f2:${d.c[1]}`:''; };
+const titleOf=cs=>{ const k=csParse(cs).tt; return k?COSM.BY[k].d.text:''; };
+const iconOf=(cs,z)=>{ const k=csParse(cs).ic, d=k&&COSM.BY[k].d; return d&&window.PX?`<span class="cIc" style="--c:${d.c}">${PX.icon(d.i,z||18)}</span>`:''; };
+const csOfP=p=>p?(p===G.me&&!G.mirror&&!p.cs?myCs():p.cs||(NET.cos&&NET.cos[p.id])||''):'';
+function onCos(d){ if(!d||!Array.isArray(d.pl)) return; NET.cos={}; for(const r of d.pl.slice(0,8)) if(Array.isArray(r)) NET.cos[r[0]|0]=String(r[1]||'').slice(0,200);
+ if(G&&G.players) for(const p of G.players) if(NET.cos[p.id]!=null) p.cs=NET.cos[p.id]; renderUI(); }
 const gaNonce=()=>{ try{ return crypto.randomUUID().replace(/-/g,'').slice(0,24); }catch(e){ return (Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,24); } };
 const cosTier=k=>COSM.TIER[(COSM.BY[k]||{}).t]||{name:'',col:'#b9b4d4'};
 // Muestra en miniatura de un premio, hecha solo con CSS, iconos PX y retratos que ya existen
@@ -3806,11 +3823,11 @@ function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return;
  ${gaPityHTML(st)}
  <div class="gaBtns"><button class="pxb pxb-main" id="ga1" type="button"><span class="pxbT"><b>Tirada</b><small>${PX.icon('candy',14)} ${st.price}</small></span></button>
   <button class="pxb pxb-alt" id="ga10" type="button"><span class="pxbT"><b>10 tiradas</b><small>${PX.icon('candy',14)} ${st.price10.toLocaleString('es-ES')}</small></span></button>${gaDailyBtn(st)}</div>
- <div class="gaLinks"><button class="pxb" id="gaOdds" type="button"><span>Probabilidades</span></button><button class="pxb" id="gaHist" type="button"><span>Historial</span></button><button class="pxb" id="gaShop" type="button"><i data-i="crystal" data-s="16"></i><span>Tienda de polvo</span></button></div>`;
+ <div class="gaLinks"><button class="pxb" id="gaOdds" type="button"><span>Probabilidades</span></button><button class="pxb" id="gaHist" type="button"><span>Historial</span></button><button class="pxb" id="gaShop" type="button"><i data-i="crystal" data-s="16"></i><span>Tienda de polvo</span></button><button class="pxb" id="gaColl" type="button"><i data-i="book" data-s="16"></i><span>Colección</span></button><button class="pxb pxb-alt" id="gaPz" type="button"><i data-i="gear" data-s="16"></i><span>Personalizar</span></button></div>`;
  hydrate(el); PX.hydrate(el);
  $('ga1').onclick=()=>gaDo('roll',{n:1}); $('ga10').onclick=()=>gaDo('roll',{n:10});
  $('gaD').onclick=()=>{ if(st.daily==='lista') gaDo('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); };
- $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; }
+ $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; $('gaColl').onclick=gaColl; $('gaPz').onclick=()=>gaPz(); }
 async function showGacha(){ openModal('<div class="gaWrap" id="gaWrap"><p class="muted">Cargando…</p></div>',{closable:true,kind:'gacha'});
  try{ GA.st=await api('/api/gacha'); }catch(e){ const el=$('gaWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; } renderGacha(); }
 function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pity=o.pity; st.pityLeft=o.pityLeft; for(const r of o.res||[]) if(r.new&&!st.inv.includes(r.key)) st.inv.push(r.key); if((o.res||[]).some(r=>r.key===COSM.EEVEE&&r.new)) st.eevee=true;
@@ -3847,6 +3864,31 @@ function gaShop(){ const st=GA.st, own=new Set(st.inv);
  $('gaWrap').querySelectorAll('.gaItem').forEach(b=>b.onclick=async()=>{ const k=b.dataset.k, t=COSM.TIER[COSM.BY[k].t]; if(GA.st.dust<t.price) return toast(`Necesitas ${t.price} de Polvo Estelar`); if(GA.busy) return;
    if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('small').textContent=`¿Comprar por ${t.price}? Pulsa otra vez`; return; }
    GA.busy=true; try{ const o=await api('/api/gacha/buy',{key:k,nonce:gaNonce()}); gaSync(o); toast('Comprado: '+COSM.BY[k].name); }catch(e){ toast(e.message); } GA.busy=false; gaShop(); }); }
+// ----- Personalizar: equipar lo que tienes, con vista previa de cómo te ven los demás -----
+const PZ_GAME=new Set(['tr','gr','fb','tl','cr','br','fn','sh']); // se ven dentro de la partida
+function pzPreview(eq){ const cs=COSM.eqString(eq,COSM.SLOTS), tk=savedTac()||'charmander', thk=csParse(cs).th, th=thk?COSM.BY[thk].d.c:null;
+ return `<div class="pzPrev"><div class="pzCard${th?' themed':''}" ${th?`style="--lg:${th[0]};--th2:${th[1]}"`:''}><span class="frAv pzAv${csParse(cs).fr?' fr':''}" style="${frameVars(cs).slice(1)}">${artImg(tk)}</span>
+  <div class="pzWho"><b>${iconOf(cs,16)}${nameHTML(ACC?ACC.name:'Entrenador',cs)}</b>${titleOf(cs)?`<small>«${esc(titleOf(cs))}»</small>`:'<small class="muted">Sin título</small>'}</div></div>
+  <p class="small muted">Así te ven en la lista de jugadores, en la sala, en tus amigos y en la pantalla de resultados.</p></div>`; }
+function gaPz(slot){ const st=GA.st; GA.slot=slot||GA.slot||'nc'; const sl=GA.slot, own=st.inv.filter(k=>COSM.typeOf(k)===sl&&COSM.validEq(sl,k)&&(sl!=='sh'||tacOwned(COSM.BY[k].d.tac))), cur=st.eq[sl]||'';
+ gaSub(`<h2 class="pxH">Personalizar</h2>${pzPreview(st.eq)}
+ <div class="pzSlots" role="tablist">${COSM.SLOTS.map(x=>`<button class="pxb${x===sl?' on':''}" role="tab" aria-selected="${x===sl}" data-sl="${x}" type="button"><span>${COSM.TYPES[x]}</span>${st.eq[x]?'<i class="pzDot" aria-label="equipado"></i>':''}</button>`).join('')}</div>
+ ${PZ_GAME.has(sl)?'<p class="small muted">Se ve dentro de la partida.</p>':''}
+ <div class="gaShop pzItems"><button class="gaItem${cur?'':' on'}" data-k="" type="button" style="--tc:#6f6a88"><span class="cc"><b class="muted">—</b></span><b>Ninguno</b><small>Quitar</small></button>
+ ${own.map(k=>{ const t=cosTier(k); return `<button class="gaItem${k===cur?' on':''}" data-k="${k}" type="button" style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${k===cur?'Equipado':t.name||'Colección'}</small></button>`; }).join('')}</div>
+ ${own.length?'':'<p class="small muted">Aún no tienes ninguno de este tipo: consíguelos en el gacha o en la tienda de polvo.</p>'}`);
+ const W=$('gaWrap'); W.querySelectorAll('[data-sl]').forEach(b=>b.onclick=()=>gaPz(b.dataset.sl));
+ W.querySelectorAll('.pzItems .gaItem').forEach(b=>b.onclick=async()=>{ if(GA.busy) return; GA.busy=true;
+   try{ const o=await api('/api/cosm/equip',{slot:sl,key:b.dataset.k}); st.eq=o.eq||{}; if(ACC){ ACC.cosm=Object.assign(ACC.cosm||{},{eq:Object.assign({},st.eq)}); renderMenu(); } }catch(e){ toast(e.message); }
+   GA.busy=false; gaPz(sl); }); }
+// ----- Colección: todo el catálogo, lo que tienes en color y lo que falta en silueta, y el progreso de cada colección -----
+function gaColl(){ const st=GA.st, own=new Set(st.inv), all=COSM.LIST.filter(i=>i.key!=='cd'&&i.t!=='x'), got=all.filter(i=>own.has(i.key)).length;
+ const cols=COSM.COLLECTIONS.map(c=>{ const n=c.items.filter(k=>own.has(k)).length, done=own.has(c.reward); return `<div class="coRow${done?' done':''}"><b>${esc(c.name)}</b><div class="rkBar" role="progressbar" aria-valuemin="0" aria-valuemax="${c.items.length}" aria-valuenow="${n}"><i style="width:${n/c.items.length*100}%"></i></div><span>${n}/${c.items.length}</span><small>${done?'Título conseguido: ':'Premio: título '}«${esc(COSM.BY[c.reward].name)}»</small></div>`; }).join('');
+ const types=COSM.SLOTS.concat(['tac']);
+ gaSub(`<h2 class="pxH">Colección · ${got}/${all.length}</h2><div class="coCols">${cols}</div>
+ ${types.map(ty=>{ const items=all.filter(i=>COSM.typeOf(i.key)===ty); if(!items.length) return ''; const n=items.filter(i=>own.has(i.key)).length;
+   return `<h3 class="gaShopH">${COSM.TYPES[ty]} · ${n}/${items.length}</h3><div class="gaShop coGrid">${items.map(i=>{ const t=COSM.TIER[i.t], h=own.has(i.key);
+     return `<div class="gaItem${h?'':' locked'}" style="--tc:${t.col}" title="${h?'':'Aún no lo tienes · '}${esc(t.name)}">${cosChip(i.key)}<b>${esc(i.name)}</b><small>${t.name}</small></div>`; }).join('')}</div>`; }).join('')}`); }
 // Anuncio: alguien ha conseguido a Eevee (solo llega a quien está en el menú)
 function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a Eevee</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
@@ -4075,11 +4117,13 @@ function serverForfeit(){
 }
 // Los 8 jugadores para la pantalla de resultados (solo al terminar alguien, no en cada tick): los eliminados con su equipo final y
 // los que siguen vivos con el de ahora. Todos con la misma forma: nada distingue a una persona de un rival generado.
-function serverBoards(){ return G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,tac:p.tac,tf:(p.tacForm||['','']).slice(0,2),comp:p.place&&p.finalComp?p.finalComp:compSnap(p)})):[]; }
+// Cosméticos equipados de los 8 (cadena corta por jugador; viaja una vez por partida en «cos»)
+function serverCosmetics(){ return G&&G.players?G.players.map(p=>[p.id,String(p.cs||'').slice(0,200)]):[]; }
+function serverBoards(){ return G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),cs:p.cs||'',place:p.place||0,tac:p.tac,tf:(p.tacForm||['','']).slice(0,2),comp:p.place&&p.finalComp?p.finalComp:compSnap(p)})):[]; }
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[],
   plist:G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,comp:p.peer&&p.place?p.finalComp||null:null})):[]}; }
 
-if(HEADLESS){ module.exports={generateBotName,serverBoards,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,castAbility,dealDamage,applyAct,
+if(HEADLESS){ module.exports={generateBotName,serverBoards,serverCosmetics,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,castAbility,dealDamage,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js

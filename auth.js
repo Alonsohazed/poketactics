@@ -215,6 +215,15 @@ function createAuth(db, { trainers, presence, onFriends, onEevee }) {
   // la primera partida del día. 20 acciones por minuto. Si sale Eevee, se anuncia a los jugadores en el menú (onEevee).
   const gachaLimit = limiter(20, 60 * 1000);
   const gachaCtx = async user => { const today = dayOf(Date.now()), last = (await db.matches(user.id, 1))[0]; return { today, playedToday: !!last && dayOf(last.created) === today }; };
+  // Equipar: 60 cambios por minuto
+  const equipLimit = limiter(60, 60 * 1000);
+  router.post('/cosm/equip', needUser(async (req, res, user) => {
+    if (equipLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiados cambios seguidos: espera un momento' });
+    equipLimit.hit(user.id); const b = req.body || {};
+    const r = await db.gachaTx(user.id, (comp, cosm) => GACHA.equip(comp, cosm, { slot: b.slot, key: b.key }));
+    if (r.error) return res.status(r.code).json({ error: r.error });
+    res.json(r.out);
+  }));
   router.get('/gacha', needUser(async (req, res, user) => res.json(GACHA.view(user.comp, user.cosm, await gachaCtx(user)))));
   router.post('/gacha/:op', needUser(async (req, res, user) => {
     const op = req.params.op; if (!['roll', 'daily', 'buy'].includes(op)) return res.status(404).json({ error: 'Acción no válida' });

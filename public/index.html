@@ -1125,6 +1125,32 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .annBar{position:fixed;top:16px;left:0;right:0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);z-index:31;display:flex;align-items:center;gap:10px;padding:12px 18px;font-family:var(--pxFont);font-size:16px;color:var(--pxInk);box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px #ff9ad8;animation:pxIn .3s steps(4) both}.annBar.hidden{display:none}.annBar b{color:#ff9ad8}
 @media (max-width:720px){ .gaCards.n10{grid-template-columns:repeat(2,minmax(0,1fr))} .gaBtns{grid-template-columns:1fr} .gaHead{flex-direction:column} .mnRow{grid-template-columns:repeat(3,1fr)} }
 @media (prefers-reduced-motion:reduce){ .gaBall,.gaCard,.cc-name.anim{animation:none!important} }
+/* ---------- cosméticos equipados (nombre, marco, título, icono, tema, acento) ---------- */
+.cn.cnG{background:linear-gradient(90deg,var(--g1),var(--g2));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+.cn.cnA{background:linear-gradient(90deg,var(--a));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;animation:ccFlow 2.4s linear infinite}
+.cIc{display:inline-flex;vertical-align:-3px;margin-right:4px;filter:drop-shadow(0 0 4px var(--c))}
+.pl .ring.fr{box-shadow:0 0 0 2px #0c1018,0 0 0 4px var(--f1),0 0 0 6px var(--f2),0 2px 6px rgba(0,0,0,.6)}
+.frAv.fr{box-shadow:0 0 0 2px var(--pxK),0 0 0 4px var(--f1),0 0 0 6px var(--f2)}
+.pfRing.fr{box-shadow:0 0 0 3px var(--pxK),0 0 0 6px var(--f1),0 0 0 9px var(--f2),0 0 22px color-mix(in srgb,var(--f1) 55%,transparent)}
+.pfBanner.themed{background:linear-gradient(180deg,color-mix(in srgb,var(--lg) 35%,#16122a),color-mix(in srgb,var(--th2) 22%,#120f22) 75%,#120f22)}
+.pfMythic{padding:2px 8px;font-family:var(--pxFont);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#0b0d18;background:linear-gradient(90deg,#ff9ad8,#b48cff,#7fe0ff);clip-path:var(--pxCutS)}
+.pfTitle,.tTitle{font-size:12px;font-style:italic;color:#ffe9a8;text-align:center}
+.rsTitle2{font-style:italic;color:#ffe9a8!important}
+.frPanel{--frAc:var(--pxGold)}.frPanel .frHead b{color:var(--frAc)}.frPanel{box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px color-mix(in srgb,var(--frAc) 55%,var(--pxLine)),inset 0 0 0 9px rgba(255,255,255,.05)}
+/* ---------- Personalizar y Colección ---------- */
+.pzPrev{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:6px 0 12px}
+.pzCard{--lg:#5d5873;--th2:#262c48;display:flex;align-items:center;gap:12px;padding:12px 16px;min-width:260px;background:linear-gradient(160deg,color-mix(in srgb,var(--lg) 28%,#16122a),#120f22);clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--lg) 60%,#262c48)}
+.pzAv{width:52px;height:52px}
+.pzWho{display:flex;flex-direction:column;gap:3px;font-family:var(--pxFont)}.pzWho b{font-size:17px}.pzWho small{font-size:12px;font-style:italic;color:#ffe9a8}.pzWho small.muted{color:var(--pxMut);font-style:normal}
+.pzPrev>p{flex:1;min-width:200px;margin:0}
+.pzSlots{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.pzSlots .pxb{position:relative;padding:7px 10px;font-size:12px;font-weight:600;opacity:.7}.pzSlots .pxb.on{opacity:1;color:var(--pxGold)}
+.pzDot{position:absolute;top:4px;right:4px;width:6px;height:6px;background:#7dffa8}
+.gaItem.on{box-shadow:inset 0 0 0 3px var(--pxGold);background:#1a1d33}
+.gaItem.locked{cursor:default}.gaItem.locked .cc{filter:grayscale(1) brightness(.35)}.gaItem.locked b,.gaItem.locked small{color:#5d5873}
+.coCols{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.coRow{display:grid;grid-template-columns:170px 1fr 48px;gap:4px 10px;align-items:center;padding:8px 12px;background:rgba(0,0,0,.25);clip-path:var(--pxCutS);font-family:var(--pxFont);font-size:13px}.coRow small{grid-column:1/-1;font-size:11px;color:var(--pxMut)}.coRow.done{box-shadow:inset 0 0 0 2px var(--pxGold2)}.coRow.done small{color:#ffe9a8}
+.coGrid .gaItem{cursor:default}
+@media (max-width:720px){ .coRow{grid-template-columns:1fr 48px}.coRow .rkBar{grid-column:1/-1;grid-row:2} }
 /* ---------- amigos (panel lateral del menú) ---------- */
 .frBtn{position:fixed;top:14px;right:16px;z-index:17;padding:8px 14px 8px 10px;gap:8px;font-size:15px;font-weight:700}
 .frBtn .frOn{min-width:22px;padding:1px 6px;font-size:13px;color:#7dffa8;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #2b7c36}
