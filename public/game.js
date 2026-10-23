@@ -686,6 +686,7 @@ function note(p,msg,toastIt){
 
 /* ============================== [COMBAT] ============================== */
 const DT=0.05, COMBAT_T=40, PREP_T=3; // duración máxima del combate (luego empate) y preparación antes de pelear (las fichas se dan la vuelta hacia el rival)
+const PLAN_T=30, AUG_T=45; // tiempos fijos (no se configuran): planificación de cada ronda y elección de aumento
 function hexDist(c1,r1,c2,r2){ const x1=c1-(r1-(r1&1))/2, x2=c2-(r2-(r2&1))/2; const y1=-x1-r1,y2=-x2-r2; return Math.max(Math.abs(x1-x2),Math.abs(y1-y2),Math.abs(r1-r2)); }
 const dU=(a,b)=>hexDist(a.c,a.r,b.c,b.r);
 function neighbors(c,r){ const d=(r&1)?[[1,0],[-1,0],[1,-1],[0,-1],[1,1],[0,1]]:[[1,0],[-1,0],[0,-1],[-1,-1],[0,1],[-1,1]]; return d.map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<7&&b>=0&&b<8); }
@@ -1440,7 +1441,7 @@ function nextRound(){
      if(p.isBot) applyAugment(p,AUG_BY[botAugPick(p,augmentChoices(p,tp),R.aug)]);
      else { p.augChoices=augmentChoices(p,tp); p.augPicked=false; p.augRR=[0,0,0]; }
    }
-   if(alivePlayers().some(isHuman)){ G.phase='augment'; G.augDeadline=G.mp?Date.now()+35000:Infinity; renderUI(); if(G.me.alive&&!G.me.isBot) showAugment(); return; }
+   if(alivePlayers().some(isHuman)){ G.phase='augment'; G.augDeadline=Date.now()+AUG_T*1000; renderUI(); if(G.me.alive&&!G.me.isBot) showAugment(); return; }
  }
  startPlanning();
 }
@@ -1454,7 +1455,7 @@ function botAugPick(p,choices,stage){
 }
 function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
 function startPlanning(){
- const R=G.round; G.phase='planning'; G.timer=S.timer||30; // siempre con tiempo: ya no hay «¡Listo!» para empezar antes
+ const R=G.round; G.phase='planning'; G.timer=PLAN_T; // siempre 30 s: ya no hay «¡Listo!» para empezar antes ni se configura
  G.preview=R.type==='pve'?pveWave(R.s,R.n):null;
  for(const p of G.players) p.ready=false;
  for(const p of alivePlayers()) if(p.isBot) botPlan(p);
@@ -1690,6 +1691,7 @@ function applyAct(p,a){
   case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,true); return r; }
   case 'rmitem': return {ok:false,why:'Para quitar objetos usa un 🧲 Imán Removedor'};
   case 'ready': if(ph==='planning') p.ready=true; return {ok:true};
+  case 'surrender': { if(!p.alive||G.over||!G.round||G.round.s<3||ph==='carousel'||ph==='over') return {ok:false,why:'Rendirse solo se puede desde la fase 3-1'}; return {ok:surrenderPlayer(p)}; }
   case 'aug': { if(ph!=='augment'||!p.augChoices||p.augPicked) return {ok:false}; const id=p.augChoices[idx(a.i)]; if(!id) return {ok:false}; applyAugment(p,AUG_BY[id]); p.augPicked=true; checkAugDone(); return {ok:true}; }
   case 'augrr': { const i=idx(a.i); if(ph!=='augment'||p.augPicked||!p.augChoices||i<0||i>2||(p.augRR||[])[i]) return {ok:false};
     // Refresco de una sola carta: otra del mismo nivel que no esté ya en la oferta
@@ -1848,7 +1850,7 @@ function renderSeats(){
  el.innerHTML=rows.join(''); if(window.PX) PX.hydrate(el);
  const owner=NET.owner&&NET.owner===NET.myPeer;
  $('rmActions').innerHTML=(owner?'<button class="btn primary" id="rmStart">Empezar partida</button>':'<span class="muted" style="margin-right:auto">Esperando a que el creador de la sala empiece…</span>')+'<button class="btn" id="rmLeave">Salir de la sala</button>';
- if($('rmStart')) $('rmStart').onclick=()=>NET.sock.emit('start',{timer:S.timer||30,speed:1});
+ if($('rmStart')) $('rmStart').onclick=()=>NET.sock.emit('start',{timer:PLAN_T,speed:1});
  $('rmLeave').onclick=()=>{ leaveRoom(); showNormal(); };
 }
 function resetNet(){ Object.assign(NET,{mode:'sp',code:'',owner:'',seats:[],cfg:null,screen:'',modal:'',shownOver:false,lastToast:0}); }
@@ -2596,20 +2598,15 @@ function bindEvents(){
  $('xpBtn').addEventListener('click',()=>{ if(inGame()){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); } });
  $('rerollBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'reroll'}); });
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
- // Menú ☰ de la partida: Configuración (volumen, tiempo, tema, calidad) y volver al menú. Se cierra con clic fuera o Esc
- const gm=$('gameMenu'), gmShow=on=>{ gm.hidden=!on; $('menuBtn').setAttribute('aria-expanded',on?'true':'false'); };
- $('menuBtn').addEventListener('click',e=>{ e.stopPropagation(); gmShow(gm.hidden); });
- $('gmOpts').addEventListener('click',()=>{ gmShow(false); showOptions(); });
- $('gmQuit').addEventListener('click',()=>{ gmShow(false); confirmQuit(); });
- document.addEventListener('pointerdown',e=>{ if(!gm.hidden&&!gm.contains(e.target)&&e.target!==$('menuBtn')) gmShow(false); });
- document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!gm.hidden) gmShow(false); });
+ // Engranaje de la partida: abre la ventana de configuración (con Rendirse y Volver al menú abajo)
+ $('menuBtn').addEventListener('click',()=>showOptions(true));
  $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
  $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('gachaBtn').addEventListener('click',showGacha);
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
- $('optBtn').addEventListener('click',showOptions);
+ $('optBtn').addEventListener('click',()=>showOptions(false));
  bindAuth();
  $('players').addEventListener('click',e=>{ const row=e.target.closest('.pl[data-pid]'); if(row&&G&&G.players.length) spectate(+row.dataset.pid); });
  document.querySelector('.sideTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
@@ -2620,7 +2617,7 @@ function bindEvents(){
  $('goldBox').addEventListener('click',e=>{ e.stopPropagation(); $('incomeInfo').hidden=!$('incomeInfo').hidden; });
  document.addEventListener('pointerdown',e=>{ if(!e.target.closest('#goldBox')) $('incomeInfo').hidden=true; });
  $('fsBtn').addEventListener('click',()=>{ const d=document; try{ if(d.fullscreenElement) d.exitFullscreen(); else d.documentElement.requestFullscreen({navigationUI:'hide'}).catch(()=>toast('Tu navegador no permite la pantalla completa')); }catch(e){ toast('Tu navegador no permite la pantalla completa'); } });
- document.addEventListener('fullscreenchange',()=>{ $('fsBtn').textContent=document.fullscreenElement?'🗗':'⛶'; layout(); });
+ document.addEventListener('fullscreenchange',()=>{ $('fsBtn').classList.toggle('on',!!document.fullscreenElement); $('fsBtn').title=document.fullscreenElement?'Salir de pantalla completa':'Pantalla completa'; layout(); });
  $('ucard').addEventListener('click',e=>{
    const me=G.me;
    if(e.target.closest('.uc-x')){ selected=null; selCombat=null; renderCard(); return; }
@@ -3023,7 +3020,7 @@ let lastBeep=-1;
 function combatBanner(){ const el=$('cbBanner'); if(!el) return; el.innerHTML=(G.round&&G.round.type==='pve'?ROUND_SVG.pve:ROUND_SVG.pvp)+'<span>¡Combate!</span>'; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(combatBanner.t); combatBanner.t=setTimeout(()=>el.classList.remove('on'),1600); }
 function updatePhase(){
  let t=''; // Temporizador y barra de la planificación; en los últimos 5 s suena un aviso cada segundo
- const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=S.timer||30;
+ const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=PLAN_T;
  // En combate, cuenta atrás del combate que se está viendo (el tuyo o el que miras), como la barra de TFT
  const vc=G.phase==='combat'&&viewCombat(), left=vc&&!vc.done?Math.max(0,COMBAT_T-vc.t):-1, csec=left>=0?Math.ceil(left):-1;
  $('rbTimer').textContent=plan?sec:csec>=0?csec:G.phase==='combat'?'⚔':'·';
@@ -3050,12 +3047,14 @@ function roundName(R){
 function renderTop(){
  const R=G.round; if(!R) return;
  $('stage').textContent=`Fase ${R.s}-${R.n}`; // solo la fase (qué ronda es ya lo dicen los iconos y su descripción al pasar el ratón)
- // Una bola por ronda de la fase: las de salvajes llevan el retrato de su Pokémon principal, como los monstruos de TFT.
- // Los combates PvP son unas espadas sin círculo: verdes si ganaste ese combate y rojas si lo perdiste (G.me.rres; en multijugador llega en priv.rr)
+ // Una ficha por ronda de la fase, sin círculos y del mismo tamaño: espadas (PvP), dos cartas (PvP con elección de aumento), el icono del carrusel y el sprite
+ // del Pokémon salvaje (PvE). La ronda actual va en dorado; las PvP jugadas, en verde si ganaste y en rojo si perdiste (G.me.rres; en multijugador llega en priv.rr)
  const rres=(G.me&&G.me.rres)||{};
- $('pills').innerHTML=ROUNDS.filter(x=>x.s===R.s).map(x=>{ const boss=x.type==='pve'?pveBoss(x):null, res=x.type==='pvp'?rres[ROUNDS.indexOf(x)]:null;
-   const ico=boss?`<img src="${SPRITE(boss.dex)}" alt="">`:x.type==='pvp'?`<img class="swd" src="img/ui/espadas-${res==='W'?'gana':res==='L'?'pierde':'neutra'}.webp" alt="">`:ROUND_SVG[x.type];
-   return `<span class="pill rt-${x.type} ${x===R?'cur':''} ${x.n<R.n?'past':''} ${res?'res-'+res:''}" title="${x.s}-${x.n}: ${esc(roundName(x))}${res?(res==='W'?' · ganado':' · perdido'):''}${x.aug>=0?' · aumento '+TIER_NAME[G.augTiers[x.aug]]:''}">${ico}${x.aug>=0?'<i class="augDot"></i>':''}</span>`; }).join('');
+ $('pills').innerHTML=ROUNDS.filter(x=>x.s===R.s).map(x=>{ const boss=x.type==='pve'?pveBoss(x):null, res=x.type==='pvp'?rres[ROUNDS.indexOf(x)]:null, cur=x===R;
+   const tint=res==='W'?'gana':res==='L'?'pierde':cur?'oro':'neutra', kind=x.type==='carousel'?'carrusel':x.aug>=0?'cartas':'espadas';
+   // El salvaje con el mismo retrato de la Pokédex que la ficha (public/dex, render de 128 px): el sprite pixelado de PokeAPI no se distinguía a este tamaño
+   const dn=boss?String(boss.dex).split('/').pop():'', ico=boss?`<img src="${DEX_FILES.has(+dn)?dexUrl(dn):SPRITE(boss.dex)}" alt="">`:`<img class="ico" src="img/ui/${kind}-${tint}.webp" alt="">`;
+   return `<span class="pill rt-${x.type} ${cur?'cur':''} ${x.n<R.n?'past':''} ${res?'res-'+res:''}" title="${x.s}-${x.n}: ${esc(roundName(x))}${res?(res==='W'?' · ganado':' · perdido'):''}${x.aug>=0?' · aumento '+TIER_NAME[G.augTiers[x.aug]]:''}">${ico}</span>`; }).join('');
  lastPhaseTxt=''; updatePhase();
 }
 // Iconos de las sinergias: un símbolo de un solo color (SVG 24×24) que va dentro de un hexágono metálico, al estilo de TFT
@@ -3410,7 +3409,7 @@ function renderCard(){
 }
 
 /* ---------- modales ---------- */
-function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
+function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
 function savedTac(){ if(ACC&&TACS[ACC.trainer]&&tacOwned(ACC.trainer)) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]&&tacOwned(k)?k:''; }catch(e){ return ''; } }
@@ -3458,16 +3457,29 @@ function showRecipes(){
  <div class="rtable"><table><tr><th></th>${ORDER.map(c=>`<th data-tip="item:${c}">${itemHTML(c,40)}</th>`).join('')}</tr>
  ${ORDER.map(a=>`<tr><th data-tip="item:${a}">${itemHTML(a,40)}</th>${ORDER.map(b=>{ const id=combineKey(a,b); return `<td data-tip="item:${id}">${itemHTML(id,40)}</td>`; }).join('')}</tr>`).join('')}</table></div>`,{closable:true});
 }
-function showOptions(){
+// Ventana de configuración (menú y partida): volumen, tema y calidad con botones redondos (CSS .cfg*; los tiempos de planificación y de aumento son fijos, PLAN_T y AUG_T);
+// en partida (inGame), abajo y separado, Rendirse (solo desde la fase 3-1) y Volver al menú; en el menú, Cerrar sesión
+function showOptions(inGame){
+ const rd=(name,opts,cur)=>`<div class="cfgOpts" id="${name}">${opts.map(([v,t])=>`<label class="rd"><input type="radio" name="${name}" value="${v}" ${String(cur)===String(v)?'checked':''}><i></i><span>${t}</span></label>`).join('')}</div>`;
+ const can=canSurrender(), vol=R0(S.vol*100);
  openModal(`<h1>Configuración</h1>
- <div class="field"><label for="optVol">Volumen de la música</label><input type="range" id="optVol" min="0" max="100" value="${R0(S.vol*100)}"></div>
- <div class="field"><label for="optTimer">Tiempo de planificación (solo / anfitrión)</label><select id="optTimer">${[[30,'30 segundos'],[45,'45 segundos'],[60,'60 segundos']].map(([v,t])=>`<option value="${v}" ${S.timer===v?'selected':''}>${t}</option>`).join('')}</select></div>
- <div class="field"><label for="optTheme">Tema</label><select id="optTheme">${[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']].map(([v,t])=>`<option value="${v}" ${S.theme===v?'selected':''}>${t}</option>`).join('')}</select></div>
- <div class="field"><label for="optGfx">Calidad gráfica (este dispositivo)</label><select id="optGfx">${[['auto','Automática (baja sola si va lento)'],['2','Alta: sombras nítidas y todas las partículas'],['1','Media'],['0','Baja: sin sombras y menos partículas']].map(([v,t])=>`<option value="${v}" ${GFX.q===v?'selected':''}>${t}</option>`).join('')}</select></div>
- <div class="row" style="justify-content:space-between;margin-top:16px"><button class="btn primary" id="saveOpt">Guardar</button><button class="btn ghost" id="logoutBtn">Cerrar sesión</button></div>`,{closable:true});
- $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; Music.init(); Music.setVol(); };
- $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',$('optGfx').value); }catch(e){} applyGfx(); S.timer=+$('optTimer').value; S.theme=$('optTheme').value; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
- $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
+ <div class="cfgRow"><b>Volumen de la música</b><div class="cfgVol"><input type="range" id="optVol" min="0" max="100" value="${vol}" aria-label="Volumen de la música"><b id="optVolV">${vol}</b></div></div>
+ <div class="cfgRow"><b>Tema</b>${rd('optTheme',[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']],S.theme||'system')}</div>
+ <div class="cfgRow"><b>Calidad gráfica</b>${rd('optGfx',[['auto','Automática'],['2','Alta'],['1','Media'],['0','Baja']],GFX.q)}</div>
+ <div class="cfgBtns">${inGame?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
+ ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true});
+ const val=n=>{ const e=document.querySelector(`input[name="${n}"]:checked`); return e?e.value:''; };
+ $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; $('optVolV').textContent=e.target.value; Music.init(); Music.setVol(); };
+ $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
+ if($('logoutBtn')) $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
+ if($('quitBtn')) $('quitBtn').onclick=()=>{ closeModal(); confirmQuit(); };
+ if($('surrBtn')) $('surrBtn').onclick=()=>{ if(!canSurrender()) return; closeModal(); confirmSurrender(); };
+}
+// Rendirse: solo desde la fase 3-1, vivo y fuera del carrusel (en multijugador lo valida igual el servidor en applyAct)
+function canSurrender(){ return !!(G&&G.players&&G.players.length&&!G.over&&G.me&&G.me.alive&&G.round&&G.round.s>=3&&G.phase!=='carousel'&&G.phase!=='over'); }
+function confirmSurrender(){
+ openModal(`<h1>¿Rendirse?</h1><p>Quedarás eliminado en el puesto ${alivePlayers().length} y la partida termina para ti.</p><div class="cfgBtns"><button class="cfgBtn ghost" id="srNo">Seguir jugando</button><button class="cfgBtn red" id="srYes">Rendirse</button></div>`,{closable:true,cfg:true});
+ $('srYes').onclick=()=>{ closeModal(); if(canSurrender()) doAct({t:'surrender'}); }; $('srNo').onclick=closeModal;
 }
 function confirmQuit(){
  openModal(`<h1>¿Volver al menú?</h1><p>${NET.mode==='client'?'Saldrás de la sala y tu partida continuará sin ti.':'La partida actual se perderá.'}</p><div style="display:flex;gap:8px"><button class="btn primary" id="qYes">Volver al menú</button><button class="btn" id="qNo">Seguir jugando</button></div>`,{closable:true});
@@ -4146,7 +4158,7 @@ async function boot(){
 function serverCreate(cfg,emit){
  geo=computeGeo(640);
  NET.mode='host'; NET.named={emit:(t,d)=>{ try{ emit(t,d); }catch(e){} return Promise.resolve(); }};
- S.timer=[30,45,60].includes(cfg.timer)?cfg.timer:30; S.speed=[1,2,4].includes(cfg.speed)?cfg.speed:1;
+ S.timer=PLAN_T; S.speed=[1,2,4].includes(cfg.speed)?cfg.speed:1; // el tiempo de planificación es fijo (cfg.timer ya no se usa)
  newGame({mp:true,server:true,diff:DIFF_NAME[cfg.diff]?cfg.diff:'normal',humans:cfg.humans||[],bots:Array.isArray(cfg.bots)?cfg.bots:[],taken:typeof cfg.taken==='function'?cfg.taken:null});
  // Solo en las pruebas (cfg.fast, que server.js pone con PT_TEST_FAST): «listo» adelanta el combate y vale la velocidad x2/x4. En partida real, nunca
  G.fast=!!cfg.fast; G.speed=G.fast?S.speed:1;
@@ -4182,6 +4194,17 @@ function serverResend(peer){
 function serverForfeit(){
  if(!G||!G.players||G.over) return; let n=alivePlayers().length;
  for(const p of G.players.filter(x=>x.away&&x.alive)){ p.finalComp=compSnap(p); p.place=n--; p.alive=false; p.hp=0; }
+}
+// Rendirse (act surrender, desde la fase 3-1): queda eliminado en el último puesto entre los vivos, su equipo y su tienda vuelven al pool y la partida sigue
+// para los demás (si solo queda uno, gana). En una partida en curso su combate termina solo; en el carrusel no se admite (su avatar seguiría eligiendo)
+function surrenderPlayer(p){
+ if(!p||!p.alive||!G||G.over) return false;
+ p.finalComp=compSnap(p); p.place=alivePlayers().length; p.alive=false; p.hp=0;
+ for(const u of allUnits(p)) returnToPool(u.baseId,Math.pow(3,u.star-1)); for(const k of p.shop) if(k) returnToPool(k,1);
+ p.board={}; p.bench=Array(BENCH).fill(null); p.shop=[null,null,null,null,null]; p.orbs=[];
+ note(null,`🏳️ ${p.name} se rinde (puesto ${p.place})`);
+ if(alivePlayers().length<=1||(!G.mp&&p===G.me)){ if(alivePlayers().length===1){ const w=alivePlayers()[0]; w.finalComp=compSnap(w); w.place=1; } later(endGame,600); }
+ return true;
 }
 // Los 8 jugadores para la pantalla de resultados (solo al terminar alguien, no en cada tick): los eliminados con su equipo final y
 // los que siguen vivos con el de ahora. Todos con la misma forma: nada distingue a una persona de un rival generado.

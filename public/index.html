@@ -1353,25 +1353,66 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 #cbBanner::before{top:0}#cbBanner::after{bottom:0}
 #cbBanner svg{width:.9em;height:.9em;fill:currentColor;filter:drop-shadow(0 2px 0 #000)}
 #cbBanner.on{display:flex;animation:cbBan 1.6s ease-out forwards}
-/* Barra de fases (en partida): más ancha, con marco dorado (el fondo dorado asoma 3 px alrededor del azul, ::before) y espadas sin círculo para los combates */
-.roundBar{min-width:min(860px,64vw);gap:26px;padding:7px 52px 10px;background:linear-gradient(180deg,#f6dc8a,#b8862e 55%,#7a5214);isolation:isolate;box-shadow:none}
+/* Barra superior en partida: sin franja (el logo, la barra de fases y los botones flotan sobre el tablero) */
+.top{position:relative;background:none;border-bottom:0;box-shadow:none}
+body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-filter:none}
+.top #fsBtn{margin-left:auto}
+/* Botones redondos (pantalla completa y configuración): negro, borde dorado hacia el interior e icono en dorado opaco */
+.top .btn.icon{width:44px;height:44px;min-width:0;padding:0;border-radius:50%;border:0;clip-path:none;display:grid;place-items:center;text-shadow:none;color:#c9a24a;
+  background:radial-gradient(circle at 50% 35%,#15161f,#05060b 70%);box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 3px 8px rgba(0,0,0,.6)}
+.top .btn.icon:hover{color:#f0d078;background:radial-gradient(circle at 50% 35%,#1b1c28,#05060b 70%);box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
+.top .btn.icon svg{width:22px;height:22px;display:block;fill:currentColor;stroke:currentColor;stroke-width:.8;stroke-linejoin:round}
+/* Barra de fases: más ancha, con marco dorado (el fondo dorado asoma 3 px alrededor del azul, ::before) y las rondas repartidas a lo ancho */
+.roundBar{min-width:min(900px,66vw);gap:22px;padding:7px 46px 10px;background:linear-gradient(180deg,#f6dc8a,#b8862e 55%,#7a5214);isolation:isolate;box-shadow:none}
 .roundBar::before{content:'';position:absolute;inset:0 3px 3px;z-index:-1;clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);
   background:linear-gradient(180deg,#1c3344,#0d1822 75%);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
-.roundBar .pills{gap:16px}
-.roundBar .pill.rt-pvp{background:none;border:0;box-shadow:none;width:34px;height:34px}
-.roundBar .pill.rt-pvp.cur{width:46px;height:46px;box-shadow:none;filter:drop-shadow(0 0 7px rgba(255,215,94,.75))}
-.roundBar .pill .swd{width:100%;height:100%;margin:0;image-rendering:auto;object-fit:contain;filter:none}
-.roundBar .pill.rt-pvp.past{opacity:.5;filter:none}
-.roundBar .pill.rt-pvp.res-W,.roundBar .pill.rt-pvp.res-L{opacity:1}
-.rbLeft{min-width:0}
-@media (max-width:820px){ .roundBar{min-width:0;gap:8px;padding:3px 18px 6px} .roundBar .pills{gap:4px} .roundBar .pill.rt-pvp{width:22px;height:22px} .roundBar .pill.rt-pvp.cur{width:28px;height:28px} }
-/* Menú ☰ de la partida */
-.top{position:relative} .top #fsBtn{margin-left:auto}
-.gameMenu{position:absolute;right:12px;top:calc(100% + 4px);z-index:60;display:flex;flex-direction:column;min-width:190px;padding:6px;border-radius:12px;
-  background:linear-gradient(180deg,#1c3344,#0d1822);border:2px solid #c99a3e;box-shadow:0 12px 30px rgba(0,0,0,.55)}
-.gameMenu[hidden]{display:none}
-.gameMenu button{all:unset;cursor:pointer;padding:10px 14px;border-radius:8px;font-weight:800;color:#eef2ff;font-size:14px}
-.gameMenu button:hover,.gameMenu button:focus-visible{background:rgba(255,215,94,.16);color:#ffe9a8}
+.roundBar .pills{flex:1;justify-content:space-evenly;gap:0;padding:0 6px}
+.rbLeft{min-width:0} .rbTitle{font-size:14px}
+/* Rondas sin círculo y del mismo tamaño: espadas (PvP), dos cartas (PvP con elección de aumento), el icono del carrusel y el sprite del Pokémon salvaje (PvE).
+   La actual en dorado (con brillo); las jugadas, en verde si ganaste y en rojo si perdiste */
+.roundBar .pill{background:none;border:0;box-shadow:none;border-radius:0;width:36px;height:36px}
+.roundBar .pill.cur{width:48px;height:48px;box-shadow:none;filter:drop-shadow(0 0 7px rgba(255,215,94,.75))}
+.roundBar .pill img{width:100%;height:100%;margin:0;object-fit:contain;filter:none;image-rendering:auto}
+.roundBar .pill.rt-pve img{transform:scale(1.25)} /* el render de la Pokédex trae algo de margen: así ocupa lo mismo que las espadas */
+.roundBar .pill.past{opacity:.5;filter:none}
+.roundBar .pill.res-W,.roundBar .pill.res-L{opacity:1}
+@media (max-width:820px){ .roundBar{min-width:0;gap:8px;padding:3px 18px 6px} .roundBar .pills{padding:0} .roundBar .pill{width:24px;height:24px} .roundBar .pill.cur{width:30px;height:30px} .top .btn.icon{width:36px;height:36px} .top .btn.icon svg{width:18px;height:18px} }
+/* Ventana de configuración (menú y partida): recuadro morado oscuro con título dorado, opciones con botón redondo (dorado la elegida), la X en la esquina
+   y, en partida, abajo y separado, Rendirse (solo desde la fase 3-1) y Volver al menú */
+.mbox.cfg{max-width:660px;padding:26px 30px 22px;border-radius:14px;overflow:visible;clip-path:none;border:2px solid #c9a24a;color:#eef2ff;
+  background:linear-gradient(160deg,#1f3a4e 0%,#13242f 45%,#0b141c 100%);box-shadow:0 0 0 1px #0a1118,0 30px 80px rgba(0,0,0,.6),inset 0 0 60px rgba(60,120,170,.16)}
+.mbox.cfg .mtop{position:absolute;top:0;right:0;height:0}
+/* La X de cerrar: solo una X blanca y nítida (SVG, sin círculo) en la esquina superior derecha */
+.mbox.cfg .mclose{position:absolute;top:10px;right:10px;margin:0;padding:0;width:34px;height:34px;border-radius:8px;clip-path:none;border:0;background:none;box-shadow:none;opacity:.85;display:block}
+.mbox.cfg .mclose:hover{opacity:1;background:rgba(255,255,255,.08);filter:none}
+.mbox.cfg .mclose svg{display:none} .mbox.cfg .mclose::after{content:'';display:block;width:100%;height:100%;background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 5L19 19M19 5L5 19' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/18px 18px no-repeat}
+.mbox.cfg h1{font-family:var(--display);font-weight:400;font-size:24px;color:#f4d27a;letter-spacing:.06em;margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid rgba(244,210,122,.35)}
+.mbox.cfg p{color:#c3d2e0}
+.cfgRow{display:grid;grid-template-columns:170px 1fr;align-items:center;gap:10px 16px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.cfgRow>b{font-weight:800;font-size:15px;color:#eef2ff}
+.cfgOpts{display:flex;flex-wrap:wrap;gap:6px 22px}
+.rd{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:15px;color:#a9b8c8;position:relative}
+.rd input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.rd i{width:24px;height:24px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 50% 35%,#2a3c4e,#0b141c 72%);box-shadow:inset 0 0 0 2px #070d12,inset 0 0 0 3px #3f5468,0 1px 0 rgba(255,255,255,.08)}
+.rd:hover i{box-shadow:inset 0 0 0 2px #070d12,inset 0 0 0 3px #6a8aa8}
+.rd input:checked+i{box-shadow:inset 0 0 0 2px #070d12,inset 0 0 0 4px #f0c860,0 0 10px rgba(240,200,96,.55)}
+.rd input:checked+i::after{content:'';position:absolute;inset:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff2b0,#e0a830)}
+.rd input:checked~span{color:#fff;font-weight:800}
+.cfgVol{display:flex;align-items:center;gap:12px}
+.cfgVol input[type=range]{flex:1;max-width:none;accent-color:#f0c860}
+.cfgVol b{min-width:34px;text-align:right;color:#f4d27a;font-family:var(--display);font-weight:400}
+.cfgBtns{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;flex-wrap:wrap}
+.cfgBtn{border:0;clip-path:none;cursor:pointer;font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.04em;padding:9px 20px;border-radius:10px;text-shadow:none;
+  background:linear-gradient(180deg,#f0d078,#b8862e);color:#2a1a05;box-shadow:0 2px 0 #5a3f12,0 4px 10px rgba(0,0,0,.4)}
+.cfgBtn:hover{filter:brightness(1.1)}
+.cfgBtn.ghost{background:rgba(255,255,255,.07);color:#eef2ff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.cfgBtn.red{background:linear-gradient(180deg,#e05a5a,#9a1f1f);color:#fff;box-shadow:0 2px 0 #4a0a0a,0 4px 10px rgba(0,0,0,.4)}
+.cfgBtn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.6)}
+.cfgSep{height:1px;margin:18px -30px 14px;background:linear-gradient(90deg,transparent,#c9a24a 20%,#c9a24a 80%,transparent)}
+.cfgSur{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap}
+.cfgSur>div{display:flex;gap:10px;flex-wrap:wrap}
+.cfgSur small{color:#a9b8c8;font-size:12.5px;max-width:260px}
+@media (max-width:620px){ .cfgRow{grid-template-columns:1fr;gap:6px} .cfgSep{margin-left:-16px;margin-right:-16px} .mbox.cfg{padding:22px 16px 18px} }
 @keyframes cbBan{0%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.97)}}
 </style>
 </head>
@@ -1380,9 +1421,8 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 <header class="top">
   <div class="brand"><img class="brandLogo" src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></div>
   <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
-  <button class="btn ghost icon" id="fsBtn" title="Pantalla completa">⛶</button>
-  <button class="btn ghost icon" id="menuBtn" title="Menú" aria-haspopup="menu" aria-expanded="false">☰</button>
-  <div class="gameMenu" id="gameMenu" role="menu" hidden><button role="menuitem" id="gmOpts">Configuración</button><button role="menuitem" id="gmQuit">Volver al menú</button></div>
+  <button class="btn ghost icon" id="fsBtn" title="Pantalla completa" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.5V3.5h6v2.4H5.9v3.6zm11-6h6v6h-2.4V5.9H14.5zM3.5 14.5h2.4v3.6h3.6v2.4h-6zm15.6 0h2.4v6h-6v-2.4h3.6z"/></svg></button>
+  <button class="btn ghost icon" id="menuBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
 </header>
 
 <main class="layout">

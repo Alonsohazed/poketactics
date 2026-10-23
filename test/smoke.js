@@ -280,6 +280,8 @@ ready.then(() => server.listen(0, async () => {
     assert.strictEqual(E.serverRejoin('x-no-existe', 'z'), false, 'un id desconocido no recupera ningún asiento');
     assert.strictEqual(E.serverRejoin('b', 'b2'), true, 'recupera su asiento'); assert.strictEqual(dos.away, false); assert.strictEqual(dos.remote, true); assert.strictEqual(dos.peer, 'b2'); assert.strictEqual(dos.isBot, false);
     assert.strictEqual(E.serverRejoin('b', 'b3'), false, 'el asiento ya no está libre');
+    // rendirse: antes de la fase 3-1 el servidor lo rechaza (la aceptación se prueba en test/sinergias.js)
+    assert(G.round.s < 3, 'montaje: seguimos en la fase ' + G.round.s); assert.strictEqual(E.applyAct(uno, { t: 'surrender' }).ok, false, 'rendirse antes de 3-1 se rechaza'); assert.strictEqual(uno.alive, true);
     // si no vuelve a tiempo, queda eliminado en el último puesto de los que siguen vivos
     E.serverLeave('b2'); const vivos = G.players.filter(p => p.alive).length; E.serverForfeit();
     assert.strictEqual(dos.alive, false); assert.strictEqual(dos.place, vivos, 'abandona en el último puesto de los vivos'); assert.strictEqual(uno.alive, true);

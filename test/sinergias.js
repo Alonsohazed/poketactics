@@ -472,6 +472,18 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
     ok(run('sellOverflow')(p) === 0 && nb() === max, 'banca llena: con n/n no se vende nada más'); }
 }
 
+// Rendirse: rechazado antes de 3-1 y en el carrusel; desde 3-1 elimina (último puesto entre los vivos, equipo al pool) y la partida sigue para los demás
+{ const { G, p } = fresh(); const run = s => vm.runInContext(s, ctx); G.phase = 'planning'; G.roundIdx = 5; G.round = E.ROUNDS[5];
+  ok(G.round.s === 2 && !E.applyAct(p, { t: 'surrender' }).ok && p.alive, 'rendirse: antes de la fase 3-1 se rechaza');
+  G.roundIdx = 10; G.round = E.ROUNDS[10]; ok(G.round.s === 3 && G.round.n === 1, 'rendirse: montaje (3-1)');
+  p.board = { '3,3': run('makeInst')('charmander') }; p.bench = Array(E.BENCH || 9).fill(null); const vivos = G.players.filter(x => x.alive).length;
+  const pool0 = (G.pool.charmander || 0) + p.shop.filter(k => k === 'charmander').length; // la tienda (al azar) también vuelve al pool
+  G.phase = 'carousel'; ok(!E.applyAct(p, { t: 'surrender' }).ok && p.alive, 'rendirse: en el carrusel no se admite'); G.phase = 'planning';
+  ok(E.applyAct(p, { t: 'surrender' }).ok && !p.alive && p.place === vivos && p.hp === 0 && Object.keys(p.board).length === 0, `rendirse: eliminado en el puesto ${p.place} de ${vivos}`);
+  ok(G.pool.charmander === pool0 + 1, 'rendirse: su equipo vuelve al pool');
+  ok(!E.applyAct(p, { t: 'surrender' }).ok, 'rendirse: ya eliminado, no se puede repetir');
+  ok(G.players.filter(x => x.alive).length === vivos - 1 && !G.over, 'rendirse: la partida sigue para los demás'); }
+
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');

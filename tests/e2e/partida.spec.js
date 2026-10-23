@@ -164,15 +164,26 @@ test('planificador de fases: título, rondas, reloj y jugadores vivos @rapido', 
   await jumpToRound(page, 6); // 2-4: carrusel
   await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1);
   await expect(page.locator('#pills .pill')).toHaveCount(7);
-  // los combates PvP son espadas sin círculo: verdes si ganaste ese combate, rojas si lo perdiste y neutras si aún no se ha jugado
+  // iconos sin círculo: cartas verdes en 2-1 (ronda con aumento, ganada), espadas rojas en 2-2 (perdida), espadas neutras en 2-3 (por jugar),
+  // el carrusel actual en dorado y, en 2-7, solo el sprite del Pokémon salvaje
   await page.evaluate(() => { G.me.rres = { 3: 'W', 4: 'L' }; renderUI(); });
-  const sw = await page.evaluate(() => [...document.querySelectorAll('#pills .pill.rt-pvp img.swd')].map(i => i.getAttribute('src').split('/').pop()));
-  expect(sw.slice(0, 3)).toEqual(['espadas-gana.webp', 'espadas-pierde.webp', 'espadas-neutra.webp']);
-  const fondo = await page.evaluate(() => { const s = getComputedStyle(document.querySelector('#pills .pill.rt-pvp')); return [s.backgroundImage, s.borderTopWidth]; });
-  expect(fondo).toEqual(['none', '0px']);
-  // el menú ☰ abre Configuración y Volver al menú
-  await page.locator('#menuBtn').click(); await expect(page.locator('#gameMenu')).toBeVisible();
-  await page.locator('#gmOpts').click(); await expect(page.locator('#modal h1')).toHaveText('Configuración'); await expect(page.locator('#optVol')).toBeVisible();
+  const ic = await page.evaluate(() => [...document.querySelectorAll('#pills .pill img')].map(i => i.getAttribute('src').split('/').pop().split('?')[0]));
+  expect(ic.slice(0, 4)).toEqual(['cartas-gana.webp', 'espadas-pierde.webp', 'espadas-neutra.webp', 'carrusel-oro.webp']);
+  expect(ic[6]).toMatch(/\.png$/);
+  const fondo = await page.evaluate(() => ['.pill.rt-pvp', '.pill.rt-pve', '.pill.rt-carousel'].map(q => { const s = getComputedStyle(document.querySelector('#pills ' + q)); return s.backgroundImage + '|' + s.borderTopWidth; }));
+  expect(fondo).toEqual(['none|0px', 'none|0px', 'none|0px']);
+  // la barra superior no lleva franja y sus dos botones son redondos
+  const top = await page.evaluate(() => { const t = getComputedStyle(document.querySelector('.top')), b = getComputedStyle(document.getElementById('menuBtn')); return [t.backgroundImage, t.borderBottomWidth, b.borderRadius, document.querySelectorAll('.top > button').length]; });
+  expect(top).toEqual(['none', '0px', '50%', 2]);
+  // el engranaje abre la ventana de configuración; Rendirse está deshabilitado antes de la fase 3-1
+  await page.locator('#menuBtn').click(); await expect(page.locator('#modal h1')).toHaveText('Configuración'); await expect(page.locator('#optVol')).toBeVisible();
+  await expect(page.locator('#surrBtn')).toBeDisabled(); await page.locator('#mClose').click(); await expect(page.locator('#modal')).toBeHidden();
+  // desde 3-1 se puede rendir: queda eliminado en el último puesto y la partida termina para ti
+  await jumpToRound(page, 10); // 3-1
+  await page.locator('#menuBtn').click(); await expect(page.locator('#surrBtn')).toBeEnabled(); await page.locator('#surrBtn').click();
+  await expect(page.locator('#modal h1')).toHaveText('¿Rendirse?'); await page.locator('#srYes').click();
+  expect(await page.evaluate(() => [G.me.alive, G.me.place])).toEqual([false, 8]);
+  await expect.poll(() => page.evaluate(() => G.over), { timeout: 5000 }).toBe(true);
 });
 
 // Regresión: con intereses ganados (cristales visibles) al empezar el carrusel el juego dejaba de enviar los intereses y el dibujo lanzaba
