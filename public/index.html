@@ -1372,10 +1372,10 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-filter:none}
 .top #fsBtn{margin-left:auto}
 /* Botones redondos (pantalla completa y configuración): negro, borde dorado hacia el interior e icono en dorado opaco */
-.top .btn.icon,.mnGear{width:44px;height:44px;min-width:0;padding:0;border-radius:50%;border:0;clip-path:none;display:grid;place-items:center;text-shadow:none;color:#c9a24a;
+.top .btn.icon,.mnTool{width:44px;height:44px;min-width:0;padding:0;border-radius:50%;border:0;clip-path:none;display:grid;place-items:center;text-shadow:none;color:#c9a24a;
   background:radial-gradient(circle at 50% 35%,#15161f,#05060b 70%);box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 3px 8px rgba(0,0,0,.6)}
-.top .btn.icon:hover,.mnGear:hover{color:#f0d078;background:radial-gradient(circle at 50% 35%,#1b1c28,#05060b 70%);box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
-.top .btn.icon svg,.mnGear svg{width:22px;height:22px;display:block;fill:currentColor;stroke:currentColor;stroke-width:.8;stroke-linejoin:round}
+.top .btn.icon:hover,.mnTool:hover{color:#f0d078;background:radial-gradient(circle at 50% 35%,#1b1c28,#05060b 70%);box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
+.top .btn.icon svg,.mnTool svg{width:22px;height:22px;display:block;fill:currentColor;stroke:currentColor;stroke-width:.8;stroke-linejoin:round}
 /* Barra de fases: más ancha, con marco dorado (el fondo dorado asoma 3 px alrededor del azul, ::before) y las rondas repartidas a lo ancho */
 .roundBar{min-width:min(900px,66vw);gap:22px;padding:7px 46px 10px;background:linear-gradient(180deg,#f6dc8a,#b8862e 55%,#7a5214);isolation:isolate;box-shadow:none}
 .roundBar::before{content:'';position:absolute;inset:0 3px 3px;z-index:-1;clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);
@@ -1485,7 +1485,9 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 /* Logo suavizado para ir con el fondo: sombra difusa en vez de la dura, algo menos saturado */
 .mnLogo img{filter:drop-shadow(0 6px 12px rgba(20,30,60,.38)) saturate(.9) brightness(1.03)}
 /* Engranaje de configuración: arriba a la izquierda, redondo y sin texto (igual que el de la partida) */
-.mnGear{position:fixed;left:16px;top:14px;z-index:17}
+.mnTools{position:fixed;left:16px;top:14px;z-index:17;display:flex;align-items:center;gap:10px}
+.mnTool.pill{width:auto;padding:0 18px 0 12px;border-radius:999px;display:inline-flex;gap:8px;font-family:var(--pxFont);font-weight:800;font-size:14px;letter-spacing:.02em;color:#e8c56a}
+.mnTool.pill:hover{color:#fff2b0}
 /* Pokédex: botón redondo con el aparato (img/menu/pokedex.webp) y sin texto */
 .pxb.mnDex{border-radius:50%;width:78px;height:78px;padding:0;justify-self:center;align-self:center;--fill:radial-gradient(circle at 50% 35%,#15161f,#05060b 70%);box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 3px 8px rgba(0,0,0,.6)}
 .pxb.mnDex:hover,.pxb.mnDex:focus-visible{box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
@@ -1495,9 +1497,8 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .tcard.mnCard{padding:30px 18px 16px;gap:6px;overflow:visible}
 .tcard.mnCard .mnTag{display:none}
 .mcRank{position:absolute;top:-20px;left:50%;transform:translateX(-50%);filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));line-height:0}
-.mcAvatar{width:120px;height:120px;border-radius:50%;padding:0;border:0;cursor:pointer;background:#101522;overflow:hidden;margin-top:4px;box-shadow:0 0 0 4px #c9a24a,0 0 0 6px #3a2a0e,0 8px 18px rgba(0,0,0,.45);transition:box-shadow .15s,transform .15s}
+.mcAvatar{width:120px;height:120px;border-radius:50%;padding:0;border:0;background:#101522;overflow:hidden;margin-top:4px;box-shadow:0 0 0 4px #c9a24a,0 0 0 6px #3a2a0e,0 8px 18px rgba(0,0,0,.45);transition:box-shadow .15s,transform .15s}
 .mcAvatar img{width:100%;height:100%;object-fit:cover;display:block}
-.mcAvatar:hover,.mcAvatar:focus-visible{outline:none;transform:translateY(-2px);box-shadow:0 0 0 4px #f0d078,0 0 0 6px #5a3f12,0 0 16px rgba(240,208,120,.5)}
 .tcard.mnCard .tname{margin-top:8px;font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.02em;text-shadow:0 2px 0 rgba(0,0,0,.5)}
 .mcSep{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);margin:8px 0 6px}
 .mcEq{display:flex;gap:16px;justify-content:center;width:100%}
@@ -1513,20 +1514,23 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .tcard.mnCard .rkMini{border-radius:12px;clip-path:none}
 .tcard.mnCard .row .pxb{width:auto;border-radius:999px;padding:8px 16px;font-size:13px}
 /* Selector de minileyenda (ventana clara): «?» junto al título, lista por rarezas, retratos circulares con marco dorado, Confirmar redondeado y X negra sin recuadro */
-.mbox.tp{background:#f4f6fb;color:#1b2235;max-width:760px;border-radius:18px;clip-path:none;box-shadow:0 30px 80px rgba(0,0,0,.5)}
-.mbox.tp h1{color:#1b2235;font-family:var(--display);font-weight:400;font-size:26px;margin:0;padding:0}
+.mbox.tp{background:linear-gradient(160deg,#1f3a4e 0%,#13242f 45%,#0b141c 100%);color:#eef2ff;max-width:760px;border-radius:18px;clip-path:none;border:2px solid #c9a24a;box-shadow:0 0 0 1px #0a1118,0 30px 80px rgba(0,0,0,.6),inset 0 0 60px rgba(60,120,170,.16)}
+.mbox.tp h1{color:#f4d27a;font-family:var(--display);font-weight:400;font-size:26px;margin:0;padding:0}
 .tpHead{display:flex;align-items:center;gap:12px;padding-right:40px;margin-bottom:10px}
-.tpHelp{width:28px;height:28px;border-radius:50%;border:2px solid #1b2235;background:none;color:#1b2235;font-family:var(--display);font-size:16px;cursor:pointer;display:grid;place-items:center;flex:none;padding:0;line-height:1}
-.tpHelp:hover,.tpHelp[aria-expanded="true"]{background:#1b2235;color:#fff}
-.tpInfo{background:#e6ebf5;border-radius:12px;padding:10px 14px;color:#2c3550;font-size:14px;margin:0 0 8px;line-height:1.45}
-.tpInfo.hidden{display:none}
+.tpHelp{width:28px;height:28px;border-radius:50%;border:2px solid #eef2ff;background:none;color:#eef2ff;font-family:var(--display);font-size:16px;cursor:pointer;display:grid;place-items:center;flex:none;padding:0;line-height:1}
+.tpHelp:hover,.tpHelp:focus-visible{outline:none;background:#eef2ff;color:#1b2235}
+/* globo flotante del «?»: sale al pasar el ratón (o con el foco), sin clic */
+.tpHelpWrap{position:relative;display:inline-flex;flex:none}
+.tpInfo{position:absolute;left:-6px;top:calc(100% + 12px);width:min(380px,calc(100vw - 80px));z-index:6;margin:0;background:linear-gradient(160deg,#1d3446,#101c26);border:1px solid #c9a24a;border-radius:12px;padding:10px 14px;color:#dfe8f2;font-size:14px;line-height:1.45;box-shadow:0 12px 30px rgba(0,0,0,.55);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility .15s;pointer-events:none}
+.tpInfo::before{content:"";position:absolute;left:14px;top:-7px;width:12px;height:12px;background:#1d3446;border-left:1px solid #c9a24a;border-top:1px solid #c9a24a;transform:rotate(45deg)}
+.tpHelpWrap:hover .tpInfo,.tpHelp:focus-visible+.tpInfo{opacity:1;visibility:visible;transform:none}
 .mbox.tp .tacPick{display:block;margin-top:4px}
-.tpTier{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #dde3ee;--tc:#5a6480}
+.tpTier{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08);--tc:#a9b8c8}
 .tpTier:last-child{border-bottom:0}
 .tpTier h4{margin:0;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
-.tpTier.pococomun{--tc:#2e9b57}.tpTier.raro{--tc:#2f6fd8}.tpTier.epico{--tc:#8a3fd1}.tpTier.legendario{--tc:#c98a12}
+.tpTier.pococomun{--tc:#5fd27f}.tpTier.raro{--tc:#6aa8ff}.tpTier.epico{--tc:#c08cff}.tpTier.legendario{--tc:#ffd75e}
 .tpList{display:flex;flex-wrap:wrap;gap:14px 16px;align-items:flex-start}
-.tpSoon{font-size:13px;color:#8a93a8;font-weight:700}
+.tpSoon{font-size:13px;color:#8a9bb0;font-weight:700}
 .mbox.tp .tacOpt{all:unset;position:relative;display:flex;flex-direction:column;align-items:center;width:100px;cursor:pointer;transition:transform .12s}
 .mbox.tp .tacOpt::after{display:none}
 .mbox.tp .tacOpt:hover{transform:translateY(-3px)}
@@ -1538,12 +1542,12 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .mbox.tp .tacOpt.locked{cursor:not-allowed}.mbox.tp .tacOpt.locked:hover{transform:none}
 .mbox.tp .tacOpt.locked .tpRing img{filter:grayscale(1) brightness(.5)}
 .mbox.tp .tacLock{position:absolute;left:50%;top:38px;transform:translate(-50%,0);display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-.mbox.tp .tpPity{display:block;width:120px;margin-top:6px;font-size:10.5px;line-height:1.25;color:#5a6480;text-align:center;font-weight:700}
+.mbox.tp .tpPity{display:block;width:120px;margin-top:6px;font-size:10.5px;line-height:1.25;color:#a9b8c8;text-align:center;font-weight:700}
 .mbox.tp .btn.gold{border-radius:999px;padding:11px 28px;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.04em;box-shadow:0 2px 0 #5a3f12,0 4px 10px rgba(0,0,0,.25)}
 .mbox.tp .mtop{position:absolute;top:0;right:0;height:0}
 .mbox.tp .mclose{position:absolute;top:12px;right:12px;margin:0;width:34px;height:34px;background:none;box-shadow:none;border:0;border-radius:8px;opacity:.85}
-.mbox.tp .mclose:hover{opacity:1;background:rgba(0,0,0,.06)}
-.mbox.tp .mclose svg{display:none} .mbox.tp .mclose::after{content:'';display:block;width:100%;height:100%;background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 5L19 19M19 5L5 19' stroke='%23111' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/20px 20px no-repeat}
+.mbox.tp .mclose:hover{opacity:1;background:rgba(255,255,255,.08)}
+.mbox.tp .mclose svg{display:none} .mbox.tp .mclose::after{content:'';display:block;width:100%;height:100%;background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 5L19 19M19 5L5 19' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/20px 20px no-repeat}
 @media (max-width:620px){ .tpTier{grid-template-columns:1fr;gap:6px} }
 /* Normal y Clasificatoria: ovalados, del mismo tamaño y con el texto a la izquierda; Clasificatoria arriba con la copa de Retador y Normal con la Poké Ball con profundidad (img/menu/pokeball.webp, de la foto que aportó el autor) */
 .pxb-main,.pxb-alt{border-radius:999px;min-height:78px;height:78px;padding:0 26px 0 16px;gap:16px;justify-content:flex-start}
@@ -1629,19 +1633,19 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 </div>
 
 <div id="menu" class="screen hidden">
-  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee-home.webp" alt="" width="400" height="400" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"><span>Gacha</span></button>
-  <button class="btn ghost icon mnGear" id="optBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
+  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee-home.webp" alt="" width="400" height="400" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"></button>
+  <div class="mnTools" id="mnTools">
+    <button class="btn ghost icon mnTool" id="optBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
+    <button class="btn ghost icon mnTool" id="howBtn" title="Guía" aria-label="Guía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 6.3C8.6 4.4 5.8 4.3 3 5.4v12c2.8-1.1 5.6-1 8.4.9zM12.6 6.3c2.8-1.9 5.6-2 8.4-.9v12c-2.8-1.1-5.6-1-8.4.9z"/><path d="M2 8.6h1v10.6c2.8-1.1 5.8-1 9 1.1 3.2-2.1 6.2-2.2 9-1.1V8.6h1V21H2z"/></svg></button>
+    <button class="btn ghost icon mnTool" id="dexMenuBtn" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M8 2.5h8a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-13a3 3 0 0 1 3-3zm4 4.4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6zM7.2 17h9.6v1.8H7.2z"/></svg></button>
+    <button class="btn ghost icon mnTool" id="recMenuBtn" title="Objetos" aria-label="Objetos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 5.2a2.8 2.8 0 0 1 5.6 0" fill="none" stroke="currentColor" stroke-width="2"/><path fill-rule="evenodd" d="M9 5h6a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a4 4 0 0 1 4-4zm.6 3.2v1.6h4.8V8.2zM9 12.5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2V21H9zm1.6 3.6v1.4h2.8v-1.4z"/><rect x="2.4" y="11.5" width="2" height="5.5" rx="1"/><rect x="19.6" y="11.5" width="2" height="5.5" rx="1"/></svg></button>
+    <button class="btn ghost icon mnTool pill" id="histBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M6.5 2.5h11a2 2 0 0 1 2 2v7.3a5.8 5.8 0 0 0-7.9 8.7H6.5a2 2 0 0 1-2-2v-14a2 2 0 0 1 2-2zm.9 4.3v1.6h7.2V6.8zm0 3.6v1.6h7.2v-1.6zm0 3.6v1.6H11v-1.6z"/><circle cx="17" cy="16.6" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M17 14.6v2.3l1.5.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19.7 19.3l2.3 2.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Historial</span></button>
+  </div>
   <div class="mnLayout">
     <h1 class="logo mnLogo"><img src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></h1>
     <nav class="mnNav" aria-label="Menú principal">
       <button class="pxb pxb-alt" id="rankedBtn"><img class="pxbIc" src="img/rank/challenger.webp" alt="" width="256" height="256" decoding="async"><span class="pxbT"><b>Clasificatoria</b><small>Rango, divisiones y LP</small></span><i class="pxCaret" aria-hidden="true"></i></button>
       <button class="pxb pxb-main" id="playBtn"><img class="pxbIc" src="img/menu/pokeball.webp" alt="" width="256" height="256" decoding="async"><span class="pxbT"><b>Normal</b><small>Dificultad adaptativa · salas con amigos</small></span><i class="pxCaret" aria-hidden="true"></i></button>
-      <div class="mnRow">
-        <button class="pxb pxb-sq" id="histBtn"><i data-i="hourglass" data-s="32"></i><span>Historial</span></button>
-        <button class="pxb pxb-sq mnDex" id="dexMenuBtn" title="Pokédex" aria-label="Pokédex"><img src="img/menu/pokedex.webp" alt="" width="200" height="266" decoding="async"></button>
-        <button class="pxb pxb-sq" id="recMenuBtn"><i data-i="bag" data-s="32"></i><span>Objetos</span></button>
-        <button class="pxb pxb-sq" id="howBtn"><i data-i="book" data-s="32"></i><span>Guía</span></button>
-      </div>
     </nav>
     <aside class="tcard pxpanel" id="menuWho" aria-label="Tu entrenador"></aside>
   </div>
