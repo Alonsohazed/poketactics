@@ -1642,6 +1642,7 @@ function applyAct(p,a){
   case 'tform': { const f=EEVEE_KEYS[(a.k|0)-1]; if(p.tac!=='eevee'||tacStage(p)<1||!f) return {ok:false}; p.tacForm=p.tacForm||['','']; p.tacForm[0]=f; return {ok:true}; }
   case 'orb': { return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
   // Burla de Charmander (H): se cuenta para que todos los que miran su tablero la vean (el contador viaja en pub.pl[i][17])
+  case 'greet': { const t=Date.now(); if(t-(p.greetAt||0)<1400) return {ok:false}; p.greetAt=t; p.gn=((p.gn||0)+1)%1000; return {ok:true}; }
   case 'taunt': { if((TACS[p.tac]?p.tac:'charmander')!=='charmander') return {ok:false}; const t=Date.now(); if(t-(p.tauntAt||0)<1400) return {ok:false}; p.tauntAt=t; p.tn=((p.tn||0)+1)%1000; return {ok:true}; }
   // Dónde está tu minileyenda para los demás: tablero que miras y destino (en radios de casilla desde la esquina del tablero)
   case 'tpos': { const b=idx(a.b), q=v=>Math.round(clamp(+v||0,-3,20)*100)/100; if(!G.players.some(o=>o.id===b)) return {ok:false}; p.tp=[b,q(a.x),q(a.y)]; return {ok:true}; }
@@ -1669,7 +1670,7 @@ function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk
 function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined}; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
@@ -1821,9 +1822,9 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn,gn]=r;
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
-   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000});
+   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000,gn:(+gn|0)%1000});
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
@@ -2028,6 +2029,11 @@ const Music=(()=>{
    this.chime(base,t,.16,.38); this.chime(base*1.5,t+gap,.13,.45); if(sec<=2) this.chime(base*2,t+gap*2,.08,.5); },
   // Evolución épica propia: subida brillante en arpegio, golpe grave y acorde mayor que se abre con destellos.
   // big: minileyenda (más larga); mega: Mega evolución (más grave, con segunda subida)
+  // Fanfarria cosmética (gacha): arpegio de campanas con las notas del premio y un acorde final; dura ~1,3 s
+  fanfare(notes){ if(!ac||S.muted||!Array.isArray(notes)) return; const t0=ac.currentTime+.03;
+   const bell=(f,t,len,vol)=>{ const o=ac.createOscillator(), o2=ac.createOscillator(), g=ac.createGain(); o.type='triangle'; o2.type='sine'; o.frequency.value=f; o2.frequency.value=f*2;
+     g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.015); g.gain.exponentialRampToValueAtTime(.0001,t+len); o.connect(g); o2.connect(g); g.connect(master); o.start(t); o2.start(t); o.stop(t+len+.05); o2.stop(t+len+.05); };
+   notes.slice(0,6).forEach((f,i)=>bell(f,t0+i*.11,.5,.16)); const tf=t0+notes.length*.11+.05; notes.slice(-3).forEach(f=>bell(f,tf,.9,.1)); },
   evolve(kind){ if(!ac||S.muted) return; const t0=ac.currentTime+.02, big=kind!=='unit', mega=kind==='mega';
    const pad=(f,t,len,vol,type='sawtooth')=>{ const o=ac.createOscillator(), fl=ac.createBiquadFilter(), g=ac.createGain(); o.type=type; o.frequency.value=f; o.detune.value=(Math.random()-.5)*14;
      fl.type='lowpass'; fl.frequency.setValueAtTime(400,t); fl.frequency.exponentialRampToValueAtTime(4200,t+len*.4); fl.Q.value=2;
@@ -2287,6 +2293,9 @@ function pixelPainter(w,h,seed){
 
 /* ---------- entrenadores (estrategas) ---------- */
 let trEmote=null;
+// Saludos de otros jugadores: cuando sube su contador (pub.pl[i][18]) se ve su frase 1,8 s
+const greetSeen=new Map();
+function otherGreet(p){ const n=p.gn|0, g=greetSeen.get(p.id); if(!g){ greetSeen.set(p.id,{n,t:0}); return ''; } if(n!==g.n){ g.n=n; g.t=performance.now(); } return performance.now()-g.t<1800?greetText(p,n):''; }
 // (x,y) en el suelo del tablero; se proyecta a pantalla y devuelve [x,y,tamaño] en pantalla
 function drawTrainer(x0,y0,key,o={}){
  const R=geo.R, [x,y,s]=trScreen(x0,y0,o.s||R*2), t=performance.now()/1000+(o.seed||0);
@@ -2383,16 +2392,20 @@ function drawBoardTrainers(){
  const bub=trEmote&&performance.now()-trEmote.t0<1800?trEmote.txt:'';
  // La tuya, la del dueño del tablero que miras, la de su rival y las de quien esté de visita (stepOthers)
  myTrBox=drawTacLabel(TAC.x,TAC.y,me,'#ff9a2e',bub);
- for(const o of tacOthers) drawTacLabel(o.x,o.y,o.p,o.col==='#7fc8ff'?'#4c8dff':o.col,'');
+ for(const o of tacOthers) drawTacLabel(o.x,o.y,o.p,o.col==='#7fc8ff'?'#4c8dff':o.col,otherGreet(o.p));
 }
 // Burla de la minileyenda de Charmander (H): hace su animación de habilidad (también Charmeleon y Charizard) y lanza una bola de fuego al campo rival
 function tacFire(){
  const me=G&&G.me; if(!me||!me.alive||!window.B3||tacKey(me)!=='charmander'||G.phase==='carousel'||modalOpen()) return;
  const now=performance.now(); if(now-(TAC.fireT||0)<1500) return; TAC.fireT=now; TAC.castN=(TAC.castN||0)+1; trEmote={t0:now,txt:'🔥'};
  const [tx,ty]=cellXY(3,1); TAC.fx=tx; TAC.fy=ty;
- setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty); },170);
+ setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty,0,(cosD(me,'fb')||{}).c); },170);
  if(NET.mode==='client') doAct({t:'taunt'}); // los demás la ven en su pantalla (stepOthers)
 }
+// Saludo (T): sin juego de saludos, el 👍 de siempre; con él, sus 3 frases por turnos. Los demás lo ven (act greet → pub, como la burla)
+function greetText(p,n){ const d=cosD(p,'gr'); return d?d.lines[(n|0)%d.lines.length]:'👍'; }
+function greet(){ const me=G&&G.me; if(!me||!me.alive||modalOpen()) return; const now=performance.now(); if(now-(TAC.grT||0)<1500) return; TAC.grT=now;
+ TAC.grN=(TAC.grN||0)+1; trEmote={t0:now,txt:greetText(me,TAC.grN)}; if(NET.mode==='client') doAct({t:'greet'}); }
 // Teclas 1-3 con la minileyenda Eevee desde el nivel 6: cambia su forma al momento y avisa a los demás
 function eeveeForm(n){ const me=G&&G.me; if(!me||!me.alive||me.tac!=='eevee'||tacStage(me)<1||!EEVEE_KEYS[n-1]) return; if(me.tacForm&&me.tacForm[0]===EEVEE_KEYS[n-1]) return;
  doAct({t:'tform',k:n}); }
@@ -2576,7 +2589,7 @@ function bindEvents(){
    else if(k==='f'){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); }
    else if(k==='e'&&hover){ doAct({t:'sell',loc:hover.loc}); if(selected===hover.u) selected=null; hover=null; }
    else if(k===' '){ e.preventDefault(); onReady(); }
-   else if(k==='t'){ trEmote={t0:performance.now(),txt:'👍'}; }
+   else if(k==='t'){ greet(); }
    else if(k==='h'){ tacFire(); }
    else if(k>='1'&&k<='3'&&!e.ctrlKey&&!e.metaKey&&!e.altKey) eeveeForm(+k);
  });
@@ -2739,7 +2752,7 @@ const tacVis=new Map(); let tacOthers=[];
 const tauntFx=new Map();
 function otherTaunt(o,now){
  const f=tauntFx.get(o.p.id); if(!f) return;
- if(f.fire){ const [tx,ty]=cellXY(3,1); setTimeout(()=>{ if(G&&window.B3&&B3.fireball&&tacOthers.some(q=>q.p===o.p)) B3.fireball(o.x,o.y-geo.R*.2,tx,ty); },170); f.fire=false; }
+ if(f.fire){ const [tx,ty]=cellXY(3,1); setTimeout(()=>{ if(G&&window.B3&&B3.fireball&&tacOthers.some(q=>q.p===o.p)) B3.fireball(o.x,o.y-geo.R*.2,tx,ty,0,(cosD(o.p,'fb')||{}).c); },170); f.fire=false; }
  o.cast=f.castN; if(now-f.t<1100){ const [tx,ty]=cellXY(3,1); o.tx=tx; o.ty=ty; }
 }
 function stepOthers(inCombat){
@@ -2811,9 +2824,9 @@ function sceneActors(){
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
-   A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
-   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDex(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
- else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+   A.push({key:'tac:'+me.id,tac:true,dex:tacDexC(me),trail:trailOf(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
+   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
+ else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:drag.loc&&drag.loc.i!==undefined?0:Math.PI,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
@@ -2830,11 +2843,11 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
- const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,k:clamp(left/3,0,1)}; }).filter(Boolean):[];
+ const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,k:clamp(left/3,0,1),col:(cosD(p,'br')||{}).c||null}; }).filter(Boolean):[];
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
-   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
+   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10)),col:(cosD(tP,'cr')||{}).c||null}:null,tiles:playing&&!inCar&&tP?(cosD(tP,'tl')||{}).c||null:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
  if(inCar) drawCarouselHud(); else { drawBoardTrainers(); drawTotemIcons(); }
@@ -3127,11 +3140,12 @@ const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.name;
 // Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
 let sndWatch={g:null,up:0,tac:0};
-function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join();
- if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm}; return; }
+function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join(), stk=me.streak|0;
+ if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm,stk}; return; }
+ if(stk>0&&stk!==sndWatch.stk&&G.round&&G.round.type!=='pve'){ const d=cosD(me,'fn'); if(d) Music.fanfare(d.notes); }
  if(up>sndWatch.up) Music.evolve('unit');
  if(tac>sndWatch.tac||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
- sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; }
+ sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
 // Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
 let DEX_NAME=null;
 const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
@@ -3528,6 +3542,7 @@ function renderResultsTable(board){ const el=$('rsTable'); if(!el) return;
 // late: resultado reenviado tras un corte justo al terminar (se muestra sobre el menú)
 function showGameOver(late){
  const place=late?late.place:G.me.place, won=place===1, sp=!late&&NET.mode==='sp';
+ if(won&&!late){ const d=cosD(G.me,'fn'); if(d) Music.fanfare(d.notes); }
  if(ACC&&!FR.list) loadFriends();
  openModal(`<div class="rsHead${won?' win':''}"><div class="rsBig"><b>${place?ordinal(place):'—'}</b><span>de 8</span></div>
   <div class="rsTitle"><div class="pxKicker">${won?'¡Campeón de la Liga!':'Fin de la partida'}</div><h1>${won?'Eres el último entrenador en pie':'Has quedado eliminado'}</h1>
@@ -3783,6 +3798,11 @@ function nameHTML(name,cs){ const k=csParse(cs).nc, d=k&&COSM.BY[k].d;
 const frameVars=cs=>{ const k=csParse(cs).fr, d=k&&COSM.BY[k].d; return d?`;--f1:${d.c[0]};--f2:${d.c[1]}`:''; };
 const titleOf=cs=>{ const k=csParse(cs).tt; return k?COSM.BY[k].d.text:''; };
 const iconOf=(cs,z)=>{ const k=csParse(cs).ic, d=k&&COSM.BY[k].d; return d&&window.PX?`<span class="cIc" style="--c:${d.c}">${PX.icon(d.i,z||18)}</span>`:''; };
+// Datos del cosmético de un hueco que lleva un jugador (del catálogo, nunca de la red)
+const cosD=(p,slot)=>{ const k=csParse(csOfP(p))[slot]; return k?COSM.BY[k].d:null; };
+// Variocolor equipado (solo para su minileyenda y si es gratuita): 'hue:<de>,<a>:<dex>' para board3d
+const tacDexC=p=>{ const d=cosD(p,'sh'), k=tacKey(p); return d&&d.tac===k&&!TACS[k].locked?`hue:${d.from},${d.to}:${tacDex(p)}`:tacDex(p); };
+const trailOf=p=>{ const d=cosD(p,'tr'); return d?d.c:null; };
 const csOfP=p=>p?(p===G.me&&!G.mirror&&!p.cs?myCs():p.cs||(NET.cos&&NET.cos[p.id])||''):'';
 function onCos(d){ if(!d||!Array.isArray(d.pl)) return; NET.cos={}; for(const r of d.pl.slice(0,8)) if(Array.isArray(r)) NET.cos[r[0]|0]=String(r[1]||'').slice(0,200);
  if(G&&G.players) for(const p of G.players) if(NET.cos[p.id]!=null) p.cs=NET.cos[p.id]; renderUI(); }

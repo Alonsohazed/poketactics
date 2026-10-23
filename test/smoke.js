@@ -333,6 +333,11 @@ ready.then(() => server.listen(0, async () => {
       const tn = nick => lastPub.pl.find(p => p[1] === nick)[17];
       assert.strictEqual(tn('Beto'), 1, 'la burla de Charmander llega a todos (y la segunda seguida se ignora)');
       assert.strictEqual(tn('Ana'), 0, 'quien no lleva Charmander no puede burlarse');
+      // Saludo (T): cualquiera, una vez cada 1,4 s, llega en pub.pl[i][18] (la frase la pone cada navegador con los cosméticos de «cos»)
+      A.emit('act', { t: 'greet' }); A.emit('act', { t: 'greet', txt: '<script>' }); await sleep(600);
+      const gnA = lastPub.pl.find(p => p[1] === 'Ana')[18];
+      assert.strictEqual(gnA, 1, 'el saludo llega a todos y el segundo seguido se ignora');
+      assert(!/script/.test(JSON.stringify(lastPub)), 'el saludo nunca lleva texto del navegador');
       // sin partida a medias no se puede «volver»: el usuario A tiene su asiento conectado, así que rejoin le cede el asiento solo a una ventana nueva (no se prueba aquí)
     }
     // Minileyenda de B en el tablero de A: entradas inválidas (jugador inexistente, tipos raros, fuera de rango) y luego una válida

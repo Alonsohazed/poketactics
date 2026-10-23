@@ -267,6 +267,8 @@ test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
 test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Pokémon', async ({ page }) => {
   await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
   const r = await page.evaluate(async () => {
+    // sin cosméticos de barrera, todas azul claro (con uno equipado, cada barrera lleva su color: ver la prueba del catálogo)
+    G.players.forEach(p => { p.cs = String(p.cs || '').split('|').filter(k => !k.startsWith('br:')).join('|'); });
     await new Promise(r => setTimeout(r, 800)); const C = G.carousel, me = G.me, a = C.av[me.id], { cx, cy } = carGeo();
     const bars = B3.bars, an = carAng(C.order.indexOf(me), C.order.length), [px, py] = carV(cx + Math.cos(an), cy + Math.sin(an));
     C.t = Math.max(C.t, releaseAt(C.order.indexOf(me))); await new Promise(r => setTimeout(r, 200));

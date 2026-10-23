@@ -124,3 +124,44 @@ test('Personalizar y Colección: cuenta nueva sin cosméticos, desde el gacha y 
   await page.locator('#pfBtn').click(); await page.locator('#pfCustom').click();
   await expect(page.locator('.pzSlots')).toBeVisible();
 });
+
+test('catálogo completo: cada premio tiene miniatura y su efecto real (nombre, marco, perfil, partida y sonido)', async ({ page }) => {
+  await register(page, undefined, 'charmander');
+  await startSolo(page);
+  const bad = await page.evaluate(() => {
+    const out = [], me = G.me; const set = k => { me.cs = k; };
+    for (const it of COSM.LIST) {
+      const k = it.key, ty = COSM.typeOf(k);
+      if (!cosChip(k)) out.push(k + ': sin miniatura');
+      if (k === 'cd' || it.t === 'x' && ty !== 'tt') continue;
+      set(k); let ok = true;
+      switch (ty) {
+        case 'nc': ok = /style=/.test(nameHTML('X', k)); break;
+        case 'fr': ok = /--f1:#/.test(frameVars(k)); break;
+        case 'tt': ok = !!titleOf(k); break;
+        case 'ic': ok = /cIc/.test(iconOf(k)); break;
+        case 'th': ok = Array.isArray(it.d.c) && it.d.c.length === 2; break;
+        case 'ac': ok = /^#/.test(it.d.c); break;
+        case 'tr': ok = Array.isArray(trailOf(me)) && trailOf(me).length === 2; break;
+        case 'gr': ok = it.d.lines.length === 3 && greetText(me, 1) === it.d.lines[1]; break;
+        case 'fb': ok = /^#/.test(cosD(me, 'fb').c); break;
+        case 'tl': ok = cosD(me, 'tl').c.length === 2; break;
+        case 'cr': ok = /^#/.test(cosD(me, 'cr').c); break;
+        case 'br': ok = cosD(me, 'br').c.length === 2; break;
+        case 'fn': try { Music.fanfare(it.d.notes); ok = it.d.notes.length >= 4; } catch (e) { ok = false; } break;
+        case 'sh': { const t0 = me.tac; me.tac = it.d.tac; ok = String(tacDexC(me)).startsWith('hue:'); me.tac = 'pichu' === it.d.tac ? 'abra' : 'pichu'; ok = ok && !String(tacDexC(me)).startsWith('hue:'); me.tac = t0; break; }
+        case 'tac': ok = k === COSM.EEVEE; break;
+        default: ok = false;
+      }
+      if (!ok) out.push(k + ': sin efecto');
+    }
+    me.cs = ''; return out;
+  });
+  expect(bad).toEqual([]);
+  // y dentro de la partida: el actor de la minileyenda lleva variocolor y rastro, y T dice la frase
+  await page.evaluate(() => { G.me.cs = 'sh:charmander|tr:fuego|gr:rival'; G.me.tac = 'charmander'; });
+  const tac = await page.evaluate(() => sceneActors().find(a => a.key === 'tac:' + G.me.id));
+  expect(tac.dex).toMatch(/^hue:/); expect(tac.trail).toHaveLength(2);
+  await page.keyboard.press('t');
+  expect(await page.evaluate(() => trEmote.txt)).toBe('¡Te tengo!');
+});
