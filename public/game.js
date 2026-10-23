@@ -1736,7 +1736,8 @@ function sock(){
  s.on('queue',onQueue);
  s.on('result',onResult);
  s.on('friends',()=>loadFriends()); // mi lista cambió (solicitud, aceptar, eliminar…)
- s.on('friendUpd',onFriendUpd);     // un amigo cambió de estado (menú, cola, partida…)
+ s.on('friendUpd',onFriendUpd);
+ s.on('ann',onAnn);                 // alguien ha conseguido a Eevee     // un amigo cambió de estado (menú, cola, partida…)
  s.on('pub',d=>{ if(NET.mode==='client') applyPub(d); });
  s.on('priv',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyPriv(d); });
  s.on('cmb',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyCmb(d); });
@@ -2541,7 +2542,7 @@ function bindEvents(){
  $('menuBtn').addEventListener('click',confirmQuit);
  $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
- $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends());
+ $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('gachaBtn').addEventListener('click',showGacha);
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
@@ -3764,6 +3765,90 @@ function renderFriends(){
    if((op==='remove'||op==='block')&&!b.dataset.sure){ b.dataset.sure=1; b.querySelector('span').textContent='¿Seguro?'; return; }
    friendOp(op,n); });
 }
+/* ---------- gacha cosmético (solo caramelos; todo es visual) ----------
+   El servidor tira y cobra (/api/gacha). Cada pulsación lleva un nonce: un doble clic o un reintento no cobra dos veces.
+   La Poké Ball es CSS: tiembla y se tiñe del color de la mejor rareza antes de mostrar las cartas. */
+const GA={st:null,busy:false};
+const gaNonce=()=>{ try{ return crypto.randomUUID().replace(/-/g,'').slice(0,24); }catch(e){ return (Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,24); } };
+const cosTier=k=>COSM.TIER[(COSM.BY[k]||{}).t]||{name:'',col:'#b9b4d4'};
+// Muestra en miniatura de un premio, hecha solo con CSS, iconos PX y retratos que ya existen
+function cosChip(key){ const it=COSM.BY[key], d=it?it.d:{}, ty=COSM.typeOf(key), px=(n,z)=>window.PX?PX.icon(n,z):'';
+ if(key==='cd') return `<span class="cc cc-amount">${px('candy',28)}<b>+${COSM.REFUND}</b></span>`;
+ if(key==='dust') return `<span class="cc cc-amount">${px('crystal',28)}<b>+${COSM.BIG_DUST}</b></span>`;
+ if(!it) return '';
+ switch(ty){
+  case 'nc': return `<span class="cc cc-name ${d.a?'anim':''}" style="${d.c?'color:'+d.c:d.g?`--g1:${d.g[0]};--g2:${d.g[1]}`:`--a:${d.a.join(',')}`}">${esc(ACC?ACC.name:'Entrenador')}</span>`;
+  case 'tt': return `<span class="cc cc-title">«${esc(d.text)}»</span>`;
+  case 'ic': return `<span class="cc cc-icon" style="--c:${d.c}">${px(d.i,30)}</span>`;
+  case 'fr': return `<span class="cc cc-frame" style="--c1:${d.c[0]};--c2:${d.c[1]}">${artImg('pichu')}</span>`;
+  case 'tr': return `<span class="cc cc-trail" style="--c1:${d.c[0]};--c2:${d.c[1]}"><i></i><i></i><i></i><i></i></span>`;
+  case 'gr': return `<span class="cc cc-bubble">${esc(d.lines[0])}</span>`;
+  case 'th': return `<span class="cc cc-theme" style="--c1:${d.c[0]};--c2:${d.c[1]}"><i></i></span>`;
+  case 'ac': return `<span class="cc cc-accent" style="--c:${d.c}"><i></i><i></i><i></i></span>`;
+  case 'fb': return `<span class="cc cc-orb" style="--c:${d.c}"></span>`;
+  case 'tl': return `<span class="cc cc-tiles" style="--c1:${d.c[0]};--c2:${d.c[1]}"><i></i><i></i><i></i></span>`;
+  case 'cr': return `<span class="cc cc-gem" style="--c:${d.c}"><i></i><i></i><i></i></span>`;
+  case 'br': return `<span class="cc cc-barrier" style="--c1:${d.c[0]};--c2:${d.c[1]}"></span>`;
+  case 'fn': return `<span class="cc cc-icon" style="--c:#ffd23f">${px('sound',30)}</span>`;
+  case 'sh': return `<span class="cc cc-shiny" style="--h:${Math.round((d.to-d.from)*360)}deg">${portraitImg(TACS[d.tac].dex[0])}<i>${px('star',14)}</i></span>`;
+  case 'tac': return `<span class="cc cc-mythic">${artImg('eevee')}</span>`;
+ } return ''; }
+function gaCard(r,i){ const t=COSM.TIER[r.t]||cosTier(r.key), it=COSM.BY[r.key], name=r.key==='cd'?'Caramelos de vuelta':r.key==='dust'?'Polvo Estelar':it?it.name:r.key;
+ return `<div class="gaCard t-${r.t}" style="--tc:${t.col};--i:${i}"><span class="gaTier">${r.t==='x'?'Colección':t.name}</span>${cosChip(r.key)}<b>${esc(name)}</b><small>${r.key==='cd'?'Caramelos':r.key==='dust'?'Ya tienes a Eevee':COSM.TYPES[COSM.typeOf(r.key)]||''}</small>${r.new?'<em class="gaNew">Nuevo</em>':r.dup?`<em class="gaDup">Repetido · +${r.dust} polvo</em>`:''}</div>`; }
+function gaPityHTML(st){ if(st.eevee) return '<div class="gaPity owned"><span>Ya tienes a Eevee: si vuelve a salir la mítica, recibes 1.500 de Polvo Estelar</span></div>';
+ const done=COSM.PITY-st.pityLeft; return `<div class="gaPity"><span>Eevee garantizado en <b>${st.pityLeft}</b> tirada${st.pityLeft===1?'':'s'}</span><div class="rkBar" role="progressbar" aria-label="Garantía de Eevee" aria-valuemin="0" aria-valuemax="${COSM.PITY}" aria-valuenow="${done}"><i style="width:${done/COSM.PITY*100}%"></i></div></div>`; }
+function gaDailyBtn(st){ const l={lista:'Tirada diaria gratis',usada:'Diaria usada hoy',jugar:'Diaria: termina una partida'}[st.daily];
+ return `<button class="pxb gaDaily${st.daily==='lista'?' ready':''}" id="gaD" type="button" ${st.daily==='lista'?'':'aria-disabled="true"'}><i data-i="star" data-s="20"></i><span>${l}</span></button>`; }
+function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return;
+ el.innerHTML=`<div class="gaHead"><div><div class="pxKicker">Gacha cosmético</div><h1>Poké Ball de la suerte</h1><p class="muted small">Solo cosméticos: nada cambia la partida.</p></div>
+  <div class="gaBal"><span title="Caramelos">${PX.icon('candy',22)}<b id="gaCandy">${st.candies.toLocaleString('es-ES')}</b></span><span title="Polvo Estelar">${PX.icon('crystal',22)}<b id="gaDust">${st.dust.toLocaleString('es-ES')}</b></span></div></div>
+ <div class="gaStage"><div class="gaBall" id="gaBall" aria-hidden="true"><i class="gbTop"></i><i class="gbBand"></i><i class="gbBtn"></i></div><div class="gaRes" id="gaRes" aria-live="polite"></div></div>
+ ${gaPityHTML(st)}
+ <div class="gaBtns"><button class="pxb pxb-main" id="ga1" type="button"><span class="pxbT"><b>Tirada</b><small>${PX.icon('candy',14)} ${st.price}</small></span></button>
+  <button class="pxb pxb-alt" id="ga10" type="button"><span class="pxbT"><b>10 tiradas</b><small>${PX.icon('candy',14)} ${st.price10.toLocaleString('es-ES')}</small></span></button>${gaDailyBtn(st)}</div>
+ <div class="gaLinks"><button class="pxb" id="gaOdds" type="button"><span>Probabilidades</span></button><button class="pxb" id="gaHist" type="button"><span>Historial</span></button><button class="pxb" id="gaShop" type="button"><i data-i="crystal" data-s="16"></i><span>Tienda de polvo</span></button></div>`;
+ hydrate(el); PX.hydrate(el);
+ $('ga1').onclick=()=>gaDo('roll',{n:1}); $('ga10').onclick=()=>gaDo('roll',{n:10});
+ $('gaD').onclick=()=>{ if(st.daily==='lista') gaDo('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); };
+ $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; }
+async function showGacha(){ openModal('<div class="gaWrap" id="gaWrap"><p class="muted">Cargando…</p></div>',{closable:true,kind:'gacha'});
+ try{ GA.st=await api('/api/gacha'); }catch(e){ const el=$('gaWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; } renderGacha(); }
+function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pity=o.pity; st.pityLeft=o.pityLeft; for(const r of o.res||[]) if(r.new&&!st.inv.includes(r.key)) st.inv.push(r.key); if((o.res||[]).some(r=>r.key===COSM.EEVEE&&r.new)) st.eevee=true;
+ if(ACC){ ACC.comp.candies=o.candies; ACC.cosm=Object.assign(ACC.cosm||{},{inv:st.inv.slice(),pity:o.pity,dust:o.dust,eevee:st.eevee}); renderMenu(); } }
+async function gaDo(op,body){ if(GA.busy) return; const st=GA.st; if(op==='roll'&&st.candies<(body.n===10?st.price10:st.price)){ toast(`Necesitas ${body.n===10?st.price10:st.price} caramelos`); return; }
+ GA.busy=true; document.querySelectorAll('#gaWrap .gaBtns .pxb').forEach(b=>b.disabled=true);
+ const ball=$('gaBall'), res=$('gaRes'); res.innerHTML=''; ball.className='gaBall shake'; ball.style.removeProperty('--tc');
+ let o; try{ o=await api('/api/gacha/'+op,Object.assign({nonce:gaNonce()},body)); }catch(e){ toast(e.message); GA.busy=false; renderGacha(); return; }
+ if(op==='daily') st.daily='usada';
+ const best=['m','l','e','r','c','x'].find(t=>o.res.some(r=>r.t===t))||'c', tc=(COSM.TIER[best]||{col:'#b9b4d4'}).col;
+ await new Promise(r=>setTimeout(r,900)); if(!$('gaBall')) { GA.busy=false; return; }
+ ball.className='gaBall glow t-'+best; ball.style.setProperty('--tc',tc); if(best==='m'||best==='l') Music.evolve(best==='m'?'mega':'tac');
+ await new Promise(r=>setTimeout(r,650)); GA.busy=false; gaSync(o); if(!$('gaWrap')) return; renderGacha();
+ $('gaBall').className='gaBall open t-'+best; $('gaBall').style.setProperty('--tc',tc);
+ $('gaRes').innerHTML=`<div class="gaCards n${o.res.length>1?'10':'1'}">${o.res.map(gaCard).join('')}</div>`; hydrate($('gaRes')); PX.hydrate($('gaRes'));
+ if(o.eevee) toast('¡Has conseguido a Eevee, la minileyenda mítica!'); }
+function gaBack(){ return '<button class="pxLink" id="gaBack" type="button">← Volver al gacha</button>'; }
+function gaSub(html){ const el=$('gaWrap'); el.innerHTML=gaBack()+html; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; }
+function gaOdds(){ const per=t=>COSM.POOL[t].length;
+ gaSub(`<h2 class="pxH">Probabilidades</h2><p class="small muted">Cada tirada sortea primero la rareza y después un premio de esa rareza, todos con la misma probabilidad. La tirada diaria funciona igual.</p>
+ <table class="gaOdds"><thead><tr><th>Rareza</th><th>Probabilidad</th><th>Premios</th><th>Cada premio</th><th>Si se repite</th></tr></thead><tbody>
+ ${COSM.TIERS.map(t=>{ const n=per(t.k), pc=t.k==='c'?t.p*(1-COSM.REFUND_SHARE):t.p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${(t.p*100).toLocaleString('es-ES',{maximumFractionDigits:1})} %</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${(pc/n*100).toLocaleString('es-ES',{maximumFractionDigits:3})} %</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
+ </tbody></table>
+ <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString('es-ES')} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
+ <li><b>Eevee</b> (mítica): 0,1 % fijo por tirada, sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b>. La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
+ <li><b>Colecciones:</b> reúne todos los premios de un elemento y ganas su título exclusivo (${COSM.COLLECTIONS.map(c=>'«'+esc(COSM.BY[c.reward].name)+'»').join(', ')}).</li>
+ <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`); }
+function gaHist(){ const h=(GA.st.hist||[]).slice().reverse();
+ gaSub(`<h2 class="pxH">Tus últimas tiradas</h2>${h.length?`<div class="gaHist">${h.map(([t,k])=>{ const tr=k==='cd'?COSM.TIER.c:k==='dust'?COSM.TIER.m:cosTier(k), it=COSM.BY[k]; return `<div class="gaHRow" style="--tc:${tr.col}"><span class="gaHT">${tr.name}</span><span class="gaHN">${esc(k==='cd'?'Caramelos de vuelta':k==='dust'?'Polvo Estelar':it?it.name:k)}</span><small>${fmtDate(t*1000)}</small></div>`; }).join('')}</div>`:'<div class="hEmpty"><p>Aún no has tirado.</p></div>'}`); }
+function gaShop(){ const st=GA.st, own=new Set(st.inv);
+ const tiers=COSM.TIERS.filter(t=>t.price);
+ gaSub(`<h2 class="pxH">Tienda de Polvo Estelar</h2><p class="small muted">Los premios repetidos se convierten en Polvo Estelar. Aquí compras premios concretos (Eevee no está a la venta). Tienes <b>${st.dust}</b> de polvo.</p>
+ ${tiers.map(t=>{ const items=COSM.POOL[t.k].filter(k=>!own.has(k)); return `<h3 class="gaShopH" style="--tc:${t.col}">${t.name} · ${t.price} polvo</h3>${items.length?`<div class="gaShop">${items.map(k=>`<button class="gaItem" data-k="${k}" type="button" ${st.dust<t.price?'aria-disabled="true"':''} style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${COSM.TYPES[COSM.typeOf(k)]}</small></button>`).join('')}</div>`:'<p class="small muted">Ya los tienes todos.</p>'}`; }).join('')}`);
+ $('gaWrap').querySelectorAll('.gaItem').forEach(b=>b.onclick=async()=>{ const k=b.dataset.k, t=COSM.TIER[COSM.BY[k].t]; if(GA.st.dust<t.price) return toast(`Necesitas ${t.price} de Polvo Estelar`); if(GA.busy) return;
+   if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('small').textContent=`¿Comprar por ${t.price}? Pulsa otra vez`; return; }
+   GA.busy=true; try{ const o=await api('/api/gacha/buy',{key:k,nonce:gaNonce()}); gaSync(o); toast('Comprado: '+COSM.BY[k].name); }catch(e){ toast(e.message); } GA.busy=false; gaShop(); }); }
+// Anuncio: alguien ha conseguido a Eevee (solo llega a quien está en el menú)
+function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a Eevee</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }

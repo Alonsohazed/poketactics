@@ -64,6 +64,59 @@ ready.then(() => server.listen(0, async () => {
     assert.strictEqual((await post('/api/me', { trainer: 'squirtle' }, cookieA)).status, 200, 'vuelve a Squirtle');
   }
 
+  // ---- gacha: cobro atómico, nonce, diaria al jugar, tienda de polvo, límites y anuncio de Eevee ----
+  {
+    const db = require('../db'), C = require('../competitive');
+    const ga = async ck => (await (await fetch(url + '/api/gacha', { headers: { Cookie: ck } })).json());
+    const gop = async (o, body, ck) => { const r = await post('/api/gacha/' + o, body, ck); return { s: r.status, b: await r.json() }; };
+    let nn = 0; const nonce = () => 'prueba' + String(++nn).padStart(6, '0');
+    const reg = async u => cookieOf(await post('/api/register', { user: u, pass: 'secreta' + u }));
+    const uid = async u => (await db.userByName(u)).id, setCandy = async (u, n) => { (await db.userById(await uid(u))).comp.candies = n; };
+    assert.strictEqual((await fetch(url + '/api/gacha')).status, 401, 'gacha sin sesión');
+    const ckG = await reg('Gacha1'); let st = await ga(ckG);
+    assert(st.candies === 0 && st.pity === 0 && st.pityLeft === 200 && st.daily === 'jugar' && st.price === 400 && st.price10 === 3600, 'estado inicial del gacha');
+    let r = await gop('roll', { n: 1, nonce: nonce() }, ckG); assert(r.s === 400 && /400 caramelos/.test(r.b.error), 'sin caramelos no se tira');
+    for (const bad of [{ n: 5, nonce: nonce() }, { n: 1 }, { n: 1, nonce: 'corto' }, { n: 1, nonce: 'a<b>c d e f g' }, { n: '1', nonce: nonce() }]) assert.strictEqual((await gop('roll', bad, ckG)).s, 400, 'entrada inválida: ' + JSON.stringify(bad));
+    assert.strictEqual((await gop('hack', { nonce: nonce() }, ckG)).s, 404, 'acción inexistente');
+    assert.strictEqual((await post('/api/gacha/roll', { n: 1, nonce: nonce() }, ckG, { Origin: 'https://malo.example' })).status, 403, 'tirada desde otro origen');
+    // tirada pagada y la misma petición repetida (doble clic): un solo cobro
+    await setCandy('Gacha1', 4000); const N1 = nonce();
+    const a = await gop('roll', { n: 1, nonce: N1 }, ckG), b = await gop('roll', { n: 1, nonce: N1 }, ckG);
+    assert(a.s === 200 && a.b.res.length === 1 && a.b.pity === 1 && a.b.pityLeft === 199, 'tirada de 1');
+    assert(b.s === 200 && b.b.replay && JSON.stringify(b.b.res) === JSON.stringify(a.b.res), 'el mismo nonce devuelve el mismo resultado');
+    st = await ga(ckG); assert(st.candies === a.b.candies && (st.candies === 3600 || st.candies === 3675) && st.pity === 1, `un solo cobro (${st.candies})`);
+    // dos pestañas a la vez con saldo para una sola tirada de 10: solo una se cobra
+    const ckP = await reg('Gacha2'); await setCandy('Gacha2', 3600);
+    const par = await Promise.all(Array.from({ length: 6 }, () => gop('roll', { n: 10, nonce: nonce() }, ckP)));
+    assert.strictEqual(par.filter(x => x.s === 200).length, 1, 'peticiones en paralelo: un único cobro');
+    st = await ga(ckP); assert(st.pity === 10 && st.candies < 3600 && st.hist.length === 10, 'la tirada de 10 cuenta 10 para la garantía');
+    // diaria: solo tras terminar una partida hoy; una vez al día
+    r = await gop('daily', { nonce: nonce() }, ckP); assert(r.s === 400 && /partida/.test(r.b.error), 'sin partida hoy no hay diaria');
+    await db.recordMatch(await uid('Gacha2'), 'g-m1', 'normal', c => C.applyMatch(c, { mode: 'normal', place: 4, opps: [1, 2, 3, 5, 6, 7, 8].map(p => ({ mmr: 1000, place: p })) }));
+    assert.strictEqual((await ga(ckP)).daily, 'lista', 'tras jugar, la diaria está lista');
+    r = await gop('daily', { nonce: nonce() }, ckP); assert(r.s === 200 && r.b.pity === 11, 'la diaria cuenta para la garantía');
+    assert.strictEqual((await gop('daily', { nonce: nonce() }, ckP)).s, 400, 'una sola diaria al día'); assert.strictEqual((await ga(ckP)).daily, 'usada', 'diaria usada');
+    // tienda de Polvo Estelar
+    assert.strictEqual((await gop('buy', { key: 'tac:eevee', nonce: nonce() }, ckP)).s, 400, 'Eevee no se compra con polvo');
+    assert.strictEqual((await gop('buy', { key: 'no:existe', nonce: nonce() }, ckP)).s, 400, 'clave inexistente');
+    const want = require('../public/cosmetics').POOL.e.find(k => !st.inv.includes(k));
+    assert.strictEqual((await gop('buy', { key: want, nonce: nonce() }, ckP)).s, 400, 'sin polvo no se compra');
+    (await db.userById(await uid('Gacha2'))).cosm.dust = 500; r = await gop('buy', { key: want, nonce: nonce() }, ckP);
+    assert(r.s === 200 && r.b.dust === 50 && r.b.res[0].key === want && r.b.pity === 11, 'comprar con polvo (450) sin tocar la garantía');
+    assert.strictEqual((await gop('buy', { key: want, nonce: nonce() }, ckP)).s, 409, 'no se compra dos veces');
+    // límite de 20 acciones por minuto
+    let lim; for (let i = 0; i < 20; i++) lim = await gop('roll', { n: 1, nonce: nonce() }, ckG); assert.strictEqual(lim.s, 429, 'límite de tiradas por minuto');
+    // Eevee en la tirada 200 (garantía): contador a 0, anuncio a quien está en el menú y ya se puede elegir
+    const ckE = await reg('Gacha3'); await setCandy('Gacha3', 400); (await db.userById(await uid('Gacha3'))).cosm = { pity: 199 };
+    const sMenu = io(url, { transports: ['websocket'], extraHeaders: { Cookie: cookieB } }); const anns = []; sMenu.on('ann', d => anns.push(d)); await new Promise(res => sMenu.on('connect', res));
+    r = await gop('roll', { n: 1, nonce: nonce() }, ckE);
+    assert(r.s === 200 && r.b.res[0].key === 'tac:eevee' && r.b.res[0].new && r.b.eevee && r.b.pity === 0, 'tirada 200: Eevee garantizada y el contador vuelve a 0');
+    await sleep(200); assert(anns.some(x => x.name === 'Gacha3') && !anns.some(x => 'id' in x), 'anuncio de Eevee a quien está en el menú');
+    sMenu.close();
+    assert.strictEqual((await post('/api/me', { trainer: 'eevee' }, ckE)).status, 200, 'quien la consigue ya puede elegir a Eevee');
+    st = await ga(ckE); assert(st.eevee && st.pityLeft === 200, 'estado con Eevee');
+  }
+
   // ---- perfil: solo el propio; para cualquier otro nombre (exista o no), 404 igual; nada privado ----
   {
     const prof = (n, ck) => fetch(url + '/api/profile/' + encodeURIComponent(n), { headers: ck ? { Cookie: ck } : {} });

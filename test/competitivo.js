@@ -68,6 +68,38 @@ const opps7 = (mmr, myPlace) => [1, 2, 3, 4, 5, 6, 7, 8].filter(p => p !== myPla
 { // caramelos: tabla configurada, todos los puestos reciben algo y nunca negativos
   ok(C.CFG.CANDY.join() === '100,95,90,85,80,75,70,65', 'caramelos por puesto'); ok(C.normComp({ candies: 'x' }).candies === 0, 'saldo inválido → 0 (nunca NaN)'); }
 
+// ---------- gacha (lógica pura, con un azar sustituible) ----------
+{ const G = require('../gacha'), CO = require('../public/cosmetics'); let k = 0; const N = () => 'test' + String(++k).padStart(8, '0');
+  const run = (comp, cosm, req, rng) => G.apply(comp, cosm, Object.assign({ nonce: N() }, req), { today: '2026-10-22', playedToday: true, rng });
+  // garantía: con un azar que nunca da la mítica, la tirada 200 da Eevee y el contador vuelve a 0
+  let comp = { candies: 1e6 }, cosm = {}, at = 0; const never = () => 0.5;
+  for (let i = 1; i <= 200; i++) { const r = run(comp, cosm, { op: 'roll', n: 1 }, never); comp = r.comp; cosm = r.cosm; if (r.out.res[0].key === CO.EEVEE) { at = i; break; } }
+  ok(at === 200 && cosm.pity === 0 && CO.hasEevee(cosm), `garantía: Eevee en la tirada ${at}`);
+  // con Eevee en la colección, la mítica da Polvo Estelar y ya no hay contador
+  const d0 = cosm.dust, rm = run(comp, cosm, { op: 'roll', n: 1 }, () => 0.0005);
+  ok(rm.out.res[0].key === 'dust' && rm.cosm.dust === d0 + CO.BIG_DUST && rm.cosm.pity === 0, 'mítica repetida: 1.500 de polvo');
+  // la tirada de 10 cuenta 10 y en la 200 sale aunque caiga en medio de un lote
+  let c2 = { pity: 195 }, p2 = { candies: 3600 }; const r10 = run(p2, c2, { op: 'roll', n: 10 }, never);
+  ok(r10.out.res[4].key === CO.EEVEE && r10.out.res.filter(x => x.key === CO.EEVEE).length === 1 && r10.cosm.pity === 0 && r10.comp.candies >= 0, 'lote de 10: Eevee en la 5.ª y después ya no hay contador');
+  // distribución con crypto: 300.000 tiradas sin garantía (contador reiniciado) cuadran con la tabla
+  const cnt = {}; let refund = 0, cc = { candies: 1e9 }, cs = {};
+  for (let i = 0; i < 30000; i++) { cs.pity = 0; if (cs.inv && cs.inv.length > 60) cs.inv = []; const r = run(cc, cs, { op: 'roll', n: 10 }); cc = r.comp; cs = r.cosm; cs.inv = cs.inv.filter(x => x !== CO.EEVEE); for (const x of r.out.res) { cnt[x.t] = (cnt[x.t] || 0) + 1; if (x.key === 'cd') refund++; } }
+  const T = 300000, near = (t, p, tol) => Math.abs((cnt[t] || 0) / T - p) < tol;
+  ok(near('c', .6, .006) && near('r', .3, .006) && near('e', .082, .003) && near('l', .017, .0012) && near('m', .001, .0004), `distribución por rarezas (${JSON.stringify(cnt)})`);
+  ok(Math.abs(refund / T - .15) < .005, `caramelos de vuelta en el 15 % (${(refund / T * 100).toFixed(2)} %)`);
+  // repetidos → polvo; colección completa → título exclusivo; tienda
+  let c3 = { inv: CO.COLLECTIONS[0].items.slice(1), dust: 2000 }; const first = CO.COLLECTIONS[0].items[0];
+  const rb = run({ candies: 0 }, c3, { op: 'buy', key: first }, never);
+  ok(rb.out.res.length === 2 && rb.out.res[1].key === CO.COLLECTIONS[0].reward && rb.cosm.inv.includes(CO.COLLECTIONS[0].reward), 'completar una colección da su título');
+  ok(rb.cosm.dust === 2000 - CO.TIER[CO.BY[first].t].price, 'la compra cobra el precio de su rareza');
+  const dup = run({ candies: 400 }, { inv: CO.POOL.r.slice() }, { op: 'roll', n: 1 }, (() => { const s = [0.3, 0.3]; return () => s.length ? s.shift() : 0.1; })());
+  ok(dup.out.res[0].dup && dup.out.res[0].dust === 20 && dup.cosm.dust === 20, 'una rara repetida da 20 de polvo');
+  ok(run({ candies: 0 }, {}, { op: 'buy', key: CO.COLLECTIONS[0].reward }, never).error, 'los títulos de colección no se compran');
+  ok(run({ candies: 0 }, {}, { op: 'daily' }, never).out && G.apply({ candies: 0 }, {}, { op: 'daily', nonce: N() }, { today: 'x', playedToday: false }).error, 'diaria solo si hoy terminaste una partida');
+  // catálogo: cada clave con rareza, tipo conocido y datos para pintarla; tamaño acotado
+  ok(CO.LIST.every(i => (CO.TIER[i.t] || i.t === 'x') && (i.key === 'cd' || CO.TYPES[CO.typeOf(i.key)]) && i.name && i.d), 'catálogo: todas las claves con rareza, tipo y datos');
+  ok(CO.LIST.every(i => i.key.length <= 16) && JSON.stringify(cs).length < 3000, `claves cortas y colección completa pequeña (${JSON.stringify(cs).length} bytes)`); }
+
 // ---------- migración de Eevee (JSON local): repetible y respeta a quien la consiguió ----------
 { const { execFileSync } = require('child_process'), f = path.join(tmp, 'mig.json');
   fs.writeFileSync(f, JSON.stringify({ seq: 3, sessions: {}, users: [

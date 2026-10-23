@@ -73,6 +73,10 @@ function fileStore(file) {
         a.g++; a.w += pl === 1; a.t4 += pl <= 4; a.sp += pl; a.cd += +r.candies || 0; if (Number.isFinite(L) && (a.pk == null || L > a.pk)) a.pk = L; }
       return o; },
     nameTaken: name => db.users.some(u => keyOf(u.name) === keyOf(name)),
+    // Gacha: fn(comp, cosm) → {comp, cosm, out} o {error}. Todo en memoria y sin esperas entre leer y escribir: atómico
+    async gachaTx(userId, fn) { const u = byId(userId); if (!u) return { code: 404, error: 'Cuenta no encontrada' };
+      const r = fn(u.comp || {}, u.cosm || {}); if (r.error || r.replay) return r;
+      u.comp = r.comp; u.cosm = r.cosm; await save(); return r; },
     // Añade una clave al inventario de cosméticos (sin repetir). Devuelve si era nueva
     async addInv(userId, key) { const u = byId(userId); if (!u) return false; u.cosm = u.cosm || {}; const inv = u.cosm.inv = Array.isArray(u.cosm.inv) ? u.cosm.inv : []; if (inv.includes(key)) return false; inv.push(key); await save(); return true; },
     // Amigos: filas dirigidas {a, b, status: pending|accepted|blocked, label (nombre tal como se escribió), created}
@@ -170,6 +174,19 @@ function pgStore(url) {
       if (u) names.add(keyOf(name)); return u;
     },
     nameTaken: name => names.has(keyOf(name)),
+    // Gacha en una transacción: bloquea la fila (dos pestañas o un doble clic esperan su turno), cobra, entrega y guarda junto
+    async gachaTx(userId, fn) {
+      const cl = await pool.connect();
+      try {
+        await cl.query('BEGIN');
+        const u = (await cl.query('SELECT comp, cosm FROM users WHERE id = $1 FOR UPDATE', [userId])).rows[0];
+        if (!u) { await cl.query('ROLLBACK'); return { code: 404, error: 'Cuenta no encontrada' }; }
+        const r = fn(u.comp || {}, u.cosm || {});
+        if (r.error || r.replay) { await cl.query('ROLLBACK'); return r; }
+        await cl.query('UPDATE users SET comp = $2::jsonb, cosm = $3::jsonb WHERE id = $1', [userId, JSON.stringify(r.comp), JSON.stringify(r.cosm)]);
+        await cl.query('COMMIT'); return r;
+      } catch (e) { await cl.query('ROLLBACK').catch(() => {}); throw e; } finally { cl.release(); }
+    },
     async addInv(userId, key) { return (await pool.query(`UPDATE users SET cosm = jsonb_set(cosm, '{inv}', COALESCE(cosm->'inv', '[]'::jsonb) || to_jsonb($2::text)) WHERE id = $1 AND NOT (COALESCE(cosm->'inv', '[]'::jsonb) ? $2)`, [userId, key])).rowCount > 0; },
     async links(userId) {
       const r = await pool.query(`SELECT f.user_id AS a, f.friend_id AS b, f.status, f.label, f.created_at AS created, ua.name AS "aName", ua.trainer AS "aTrainer", ub.name AS "bName", ub.trainer AS "bTrainer"

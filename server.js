@@ -38,7 +38,7 @@ app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin' });
   next();
 });
-const auth = createAuth(db, { trainers: TRAINER_KEYS, presence: presenceOf, onFriends });
+const auth = createAuth(db, { trainers: TRAINER_KEYS, presence: presenceOf, onFriends, onEevee });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rooms.size }));
 // Commit desplegado: el navegador pide los modelos animados (public/anims) a jsDelivr fijados a este commit, así no gastan
 // el ancho de banda de Render. En local no hay commit y se sirven desde aquí.
@@ -245,6 +245,8 @@ function presenceOf(uid) {
   return online.has(uid) ? { st: 'menu' } : { st: 'off' };
 }
 const friendsOf = uid => { if (!friendCache.has(uid)) friendCache.set(uid, db.friendIds(uid).then(a => new Set(a), () => (friendCache.delete(uid), new Set()))); return friendCache.get(uid); };
+// Alguien ha conseguido a Eevee: aviso a quien está en el menú (no a quien está jugando una partida)
+function onEevee(name) { for (const s of io.sockets.sockets.values()) if (!s.data.room && !inQueue(s.data.user.id)) s.emit('ann', { name: String(name).slice(0, 20) }); }
 // La lista de alguien cambió (solicitud, aceptar, eliminar…): se olvida su caché y se le pide al navegador que la recargue
 function onFriends(uids) { for (const u of new Set(uids)) { friendCache.delete(u); io.to('u:' + u).emit('friends'); } }
 setInterval(async () => {

@@ -86,3 +86,23 @@ test('Eevee es mítica: bloqueada en el selector del registro y del menú, con �
   await expect(page.locator('.tacOpt.on')).toHaveAttribute('data-k', 'pichu');
   // (que el servidor la rechace aunque el navegador lo intente se prueba en test/smoke.js)
 });
+
+test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabilidades, historial y tienda', async ({ page }) => {
+  await register(page);
+  await page.locator('#gachaBtn').click();
+  await expect(page.locator('.gaBall')).toBeVisible();
+  await expect(page.locator('#gaCandy')).toHaveText('0');
+  await expect(page.locator('.gaPity')).toContainText('Eevee garantizado en 200 tiradas');
+  await expect(page.locator('#gaD')).toContainText('termina una partida');
+  await page.locator('#ga1').click(); // sin caramelos: aviso y sin petición
+  await expect(page.locator('#toast')).toContainText('400 caramelos');
+  await page.locator('#gaOdds').click();
+  await expect(page.locator('.gaOdds tbody tr')).toHaveCount(5);
+  await expect(page.locator('.gaOdds')).toContainText('0,1 %');
+  await page.locator('#gaBack').click(); await page.locator('#gaHist').click();
+  await expect(page.locator('.hEmpty')).toContainText('Aún no has tirado');
+  await page.locator('#gaBack').click(); await page.locator('#gaShop').click();
+  await expect(page.locator('.gaItem').first()).toBeVisible();
+  await expect(page.locator('.gaItem[data-k="tac:eevee"]')).toHaveCount(0); // Eevee no está a la venta
+  expect(await page.locator('.gaItem').count()).toBe(await page.evaluate(() => ['l', 'e', 'r', 'c'].reduce((n, t) => n + COSM.POOL[t].length, 0)));
+});
