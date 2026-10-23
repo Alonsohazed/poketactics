@@ -73,3 +73,16 @@ test('pantalla de resultados: sale una vez al quedar eliminado, con los 8 y «Co
   await expect(page.locator('#menu')).toBeVisible();
   await expect(page.locator('.rsTable')).toHaveCount(0);
 });
+
+test('Eevee es mítica: bloqueada en el selector del registro y del menú, con «Gacha» y la garantía', async ({ page }) => {
+  await register(page, undefined, 'pichu'); // el registro ya pasa por el selector: Eevee no se puede elegir
+  await page.locator('#pickTr').click();
+  const ev = page.locator('.tacOpt[data-k="eevee"]');
+  await expect(ev).toHaveClass(/locked/);
+  await expect(ev).toContainText('Gacha');
+  await expect(ev).toContainText('Eevee garantizado en 200 tiradas');
+  await ev.click({ force: true }); // está marcada como desactivada (aria-disabled): el clic solo avisa
+  await expect(ev).not.toHaveClass(/\bon\b/);
+  await expect(page.locator('.tacOpt.on')).toHaveAttribute('data-k', 'pichu');
+  // (que el servidor la rechace aunque el navegador lo intente se prueba en test/smoke.js)
+});

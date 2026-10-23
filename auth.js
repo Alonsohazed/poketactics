@@ -58,9 +58,10 @@ function limiter(max, windowMs) {
 
 const { publicComp, profileView } = require('./competitive');
 const FR = require('./friends');
+const COSM = require('./public/cosmetics');
 // Lo que ve el navegador de su cuenta: nunca el MMR, solo su rango (o el posicionamiento) y sus caramelos
 function publicUser(u) {
-  return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp) };
+  return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp), cosm: COSM.publicCosm(u.cosm) };
 }
 function cleanSettings(s) {
   const out = {};
@@ -73,7 +74,8 @@ function cleanSettings(s) {
 function createAuth(db, { trainers, presence, onFriends }) {
   const ipLimit = limiter(+process.env.AUTH_IP_LIMIT || 30, 15 * 60 * 1000);      // 30 intentos de login/registro cada 15 min por IP
   const accountLimit = limiter(10, 15 * 60 * 1000); // 10 contraseñas fallidas cada 15 min por cuenta
-  const validTrainer = t => typeof t === 'string' && trainers.includes(t);
+  // Una minileyenda existe y la cuenta la tiene (Eevee solo se consigue en el gacha)
+  const validTrainer = (t, cosm) => typeof t === 'string' && trainers.includes(t) && COSM.ownsTac(cosm, t);
 
   async function startSession(req, res, user) {
     const token = crypto.randomBytes(32).toString('base64url');
@@ -123,7 +125,7 @@ function createAuth(db, { trainers, presence, onFriends }) {
     if (typeof pass !== 'string' || pass.length < PASS_MIN) return res.status(400).json({ error: `La contraseña debe tener al menos ${PASS_MIN} caracteres`, field: 'pass' });
     if (pass.length > PASS_MAX) return res.status(400).json({ error: `La contraseña puede tener como mucho ${PASS_MAX} caracteres`, field: 'pass' });
     if (pass.toLowerCase() === user.toLowerCase()) return res.status(400).json({ error: 'La contraseña no puede ser igual que el usuario', field: 'pass' });
-    const created = await db.createUser({ name: user, pass: await hashPassword(pass), trainer: validTrainer(trainer) ? trainer : '' });
+    const created = await db.createUser({ name: user, pass: await hashPassword(pass), trainer: validTrainer(trainer, {}) ? trainer : '' });
     if (!created) return res.status(409).json({ error: 'Ese nombre de usuario ya está en uso', field: 'user' });
     await startSession(req, res, created);
     res.status(201).json({ user: publicUser(created) });
@@ -160,7 +162,8 @@ function createAuth(db, { trainers, presence, onFriends }) {
   router.post('/me', needUser(async (req, res, user) => {
     const b = req.body || {}, fields = {};
     if (b.trainer !== undefined) {
-      if (!validTrainer(b.trainer)) return res.status(400).json({ error: 'Ese entrenador no existe' });
+      if (!trainers.includes(b.trainer)) return res.status(400).json({ error: 'Ese entrenador no existe' });
+      if (!validTrainer(b.trainer, user.cosm)) return res.status(403).json({ error: 'Esa minileyenda solo se consigue en el gacha' });
       fields.trainer = b.trainer;
     }
     if (b.settings !== undefined) fields.settings = cleanSettings(b.settings);

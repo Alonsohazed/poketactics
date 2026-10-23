@@ -924,6 +924,8 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .tacOpt{border:0;border-radius:0;clip-path:var(--pxCut);transition:transform .08s steps(2)}
 .tacOpt::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxLine)}
 .tacOpt.on{box-shadow:none}.tacOpt.on::after{box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxGold)}
+.tacOpt.locked{cursor:not-allowed}.tacOpt.locked:hover{transform:none}.tacOpt.locked .art{filter:grayscale(1) brightness(.35)}.tacOpt.locked b,.tacOpt.locked small{color:var(--pxMut)}
+.tacLock{position:absolute;top:30%;left:0;right:0;z-index:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--pxFont);font-size:18px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--pxGold);text-shadow:2px 2px 0 var(--pxK)}
 .tacOpt b{font-family:var(--pxFont);font-weight:700;text-shadow:2px 2px 0 var(--pxK)}
 .tacOpt small{font-family:var(--pxFont);font-weight:500}
 .dexFilters .btn[aria-pressed="true"]{background:linear-gradient(180deg,#ffd23f 0 52%,#e0a524 52% 100%);color:#2b1a03;text-shadow:none}
@@ -1373,6 +1375,7 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="ui-art.js"></script>
+<script src="cosmetics.js"></script>
 <script src="augments.js"></script>
 <script src="game.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>

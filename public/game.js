@@ -231,9 +231,12 @@ const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
 // Etapas: base · nivel 6 · nivel 8 (sin Megaevoluciones). Eevee no tiene línea fija: al llegar a 6 y a 8 eliges su evolución (pick: opciones de cada subida)
 const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,6]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur y Venusaur',dex:[1,2,3]},squirtle:{name:'Squirtle',evo:'Wartortle y Blastoise',dex:[7,8,9]},
  dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154]},
- eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
+ eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],locked:true,pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
 const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 const TAC_KEYS=Object.keys(TACS);
+// Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
+const FREE_TACS=TAC_KEYS.filter(k=>!TACS[k].locked);
+const tacOwned=k=>!!TACS[k]&&(!TACS[k].locked||!!(typeof ACC!=='undefined'&&ACC&&ACC.cosm&&Array.isArray(ACC.cosm.inv)&&ACC.cosm.inv.includes('tac:'+k)));
 // Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
 const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.pick&&st>0){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); if(k&&DEF[k]) return dexOf(DEF[k],1); return t.dex[0]; } return t.dex[st]; };
@@ -432,7 +435,7 @@ let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:
 const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0,xpCost:4,oddsSave:0,cheapCombine:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
-   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(TAC_KEYS),tacForm:['',''],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
+   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(FREE_TACS),tacForm:['',''],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
 }
 // stk: lo ganado para siempre (vida, ataque y poder). Los escalados infinitos dan ataque y poder a la par para que sirvan a cualquier ficha
 const AP_PER_AD=1.5;
@@ -3346,16 +3349,18 @@ function renderCard(){
 function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
-function savedTac(){ if(ACC&&TACS[ACC.trainer]) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]?k:''; }catch(e){ return ''; } }
+function savedTac(){ if(ACC&&TACS[ACC.trainer]&&tacOwned(ACC.trainer)) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]&&tacOwned(k)?k:''; }catch(e){ return ''; } }
 // La minileyenda se elige en el menú (una vez) y se guarda en la cuenta: el campo «trainer» de la base de datos guarda su clave
 function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
  openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p>
-  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k];
+  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k], own=tacOwned(k);
+    // Eevee sin conseguir: bloqueada, con «Gacha» y lo que falta para la garantía (el registro y el menú usan este mismo selector)
+    if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="Solo se consigue en el gacha"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><span class="tacLock"><i data-i="crystal" data-s="22"></i>Gacha</span><b>${t.name}</b><small>Mítica · ${typeof COSM!=='undefined'?`Eevee garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:'Solo en el gacha'}</small></button>`;
     return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn gold" id="tacOk">Confirmar</button></div>`,{closable:!first,onClose:()=>{ if(ACC) showMenu(); }});
- $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
+ $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast('Eevee solo se consigue en el gacha'); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
    $('tacOk').disabled=true;
    try{ const {user}=await api('/api/me',{trainer:sel}); applyAccount(user); closeModal(); showMenu(); }

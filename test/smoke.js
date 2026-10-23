@@ -50,6 +50,20 @@ ready.then(() => server.listen(0, async () => {
   await post('/api/logout', {}, tmpLogin);
   assert.strictEqual((await fetch(url + '/api/me', { headers: { Cookie: tmpLogin } })).status, 401, 'sesión cerrada');
 
+  // ---- Eevee es mítica: solo con el inventario del gacha ----
+  {
+    const meA = async () => (await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json()).user;
+    const u0 = await meA(); assert(u0.cosm && u0.cosm.pity === 0 && Array.isArray(u0.cosm.inv) && !u0.cosm.inv.length, 'la cuenta trae su colección vacía y la garantía a 0');
+    let r = await post('/api/me', { trainer: 'eevee' }, cookieA); assert.strictEqual(r.status, 403, 'no se puede elegir Eevee sin tenerla');
+    assert.strictEqual((await meA()).trainer, 'squirtle', 'la minileyenda no cambia');
+    r = await post('/api/register', { user: 'Evi', pass: 'secreta9', trainer: 'eevee' }); const ev = (await r.json()).user;
+    assert(r.status === 201 && ev.trainer === '', 'registrarse pidiendo Eevee no la da');
+    const db = require('../db'); assert(await db.addInv(u0.id, 'tac:eevee') && !(await db.addInv(u0.id, 'tac:eevee')), 'añadir al inventario una sola vez');
+    assert.strictEqual((await post('/api/me', { trainer: 'eevee' }, cookieA)).status, 200, 'con Eevee en el inventario sí se elige');
+    assert.strictEqual((await meA()).trainer, 'eevee', 'Eevee elegida');
+    assert.strictEqual((await post('/api/me', { trainer: 'squirtle' }, cookieA)).status, 200, 'vuelve a Squirtle');
+  }
+
   // ---- perfil: solo el propio; para cualquier otro nombre (exista o no), 404 igual; nada privado ----
   {
     const prof = (n, ck) => fetch(url + '/api/profile/' + encodeURIComponent(n), { headers: ck ? { Cookie: ck } : {} });

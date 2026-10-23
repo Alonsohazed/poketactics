@@ -68,6 +68,16 @@ const opps7 = (mmr, myPlace) => [1, 2, 3, 4, 5, 6, 7, 8].filter(p => p !== myPla
 { // caramelos: tabla configurada, todos los puestos reciben algo y nunca negativos
   ok(C.CFG.CANDY.join() === '100,95,90,85,80,75,70,65', 'caramelos por puesto'); ok(C.normComp({ candies: 'x' }).candies === 0, 'saldo inválido → 0 (nunca NaN)'); }
 
+// ---------- migración de Eevee (JSON local): repetible y respeta a quien la consiguió ----------
+{ const { execFileSync } = require('child_process'), f = path.join(tmp, 'mig.json');
+  fs.writeFileSync(f, JSON.stringify({ seq: 3, sessions: {}, users: [
+    { id: 1, name: 'ConEevee', pass: 'x', trainer: 'eevee', cosm: { inv: ['tac:eevee'] } },
+    { id: 2, name: 'SinEevee', pass: 'x', trainer: 'eevee' },
+    { id: 3, name: 'Normal', pass: 'x', trainer: 'pichu', cosm: {} }] }));
+  const run = () => execFileSync(process.execPath, ['-e', "require('./db').init().then(()=>{})"], { cwd: path.join(__dirname, '..'), env: Object.assign({}, process.env, { DB_FILE: f, DATABASE_URL: '' }) });
+  run(); const a = JSON.parse(fs.readFileSync(f, 'utf8')).users.map(u => u.trainer).join(); run(); const b = JSON.parse(fs.readFileSync(f, 'utf8')).users.map(u => u.trainer).join();
+  ok(a === 'eevee,charmander,pichu', `migración: solo pierde a Eevee quien no la tiene (${a})`); ok(a === b, 'migración: ejecutarla dos veces deja lo mismo'); }
+
 // ---------- 2 y 3. base de datos y servidor ----------
 const { server, ready, rooms, queues } = require('../server');
 const db = require('../db');
@@ -110,6 +120,8 @@ ready.then(() => server.listen(0, async () => {
       const libres = []; for (let i = 0; i < 30; i++) libres.push(E.generateBotName(libres)); const taken = new Set(libres.slice(0, 25).map(n => n.toLowerCase()));
       let bad = 0; for (let i = 0; i < 20; i++) { E.newGame({ mp: true, server: true, humans: [], taken: n => taken.has(n.toLowerCase()) }); bad += E.G.players.filter(p => taken.has(p.name.toLowerCase())).length; }
       ok(bad === 0, 'los rivales generados nunca se llaman como una cuenta real');
+      let eev = 0; for (let i = 0; i < 60; i++) { E.newGame({ mp: true, server: true, humans: [] }); eev += E.G.players.filter(p => p.tac === 'eevee').length; }
+      ok(eev === 0, 'los rivales generados nunca llevan a Eevee (mítica)');
       ok(db.nameTaken('xenia') && db.nameTaken('YAGO') && !db.nameTaken('Nadie_123'), 'nameTaken conoce las cuentas sin distinguir mayúsculas');
       // pantalla de resultados (datos): los 8 con la misma forma, sin ids de cuenta ni MMR, y pocos KB
       const B = E.serverBoards(); ok(B.length === 8 && B.every(b => b.comp && Array.isArray(b.comp.units) && 'tac' in b && Array.isArray(b.tf) && !('uid' in b) && !('isBot' in b) && !('skill' in b)), 'tableros de los 8: misma forma para todos y sin marcas de bot');

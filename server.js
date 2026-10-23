@@ -16,6 +16,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { createAuth } = require('./auth');
 const CMP = require('./competitive');
+const COSM = require('./public/cosmetics');
 
 const PORT = process.env.PORT || 3000;
 const MAX_ROOMS = +process.env.MAX_ROOMS || 50;
@@ -174,7 +175,8 @@ async function seatFor(socket) {
   const u = socket.data.user;
   const fresh = await db.userById(u.id).catch(() => null);
   const c = CMP.normComp(fresh && fresh.comp);
-  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), full: u.name, tr: (fresh || u).trainer || '', connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
+  const tr = (fresh || u).trainer || ''; // nunca una minileyenda que la cuenta no tenga (por si quedó de antes de la migración)
+  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), full: u.name, tr: COSM.ownsTac(fresh && fresh.cosm, tr) ? tr : COSM.DEFAULT_TAC, connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
 }
 
 // ---------- colas Normal y Clasificatoria ----------
