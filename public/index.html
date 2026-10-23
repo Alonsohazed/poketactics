@@ -1015,6 +1015,36 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .hDetGrid div{display:flex;flex-direction:column;gap:1px}.hDetGrid span{color:var(--pxMut);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.hDetGrid b{font-weight:600}
 .hParts{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:12px;color:var(--pxMut)}.hParts .me{color:var(--pxGold);font-weight:700}.hParts em{font-style:normal;font-size:10px;padding:0 4px;background:#262c48;color:#b9b4d4;margin-left:2px}
 .hEmpty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 10px;color:var(--pxMut);text-align:center}
+/* ---------- perfil ---------- */
+.pfHero{position:relative;display:grid;grid-template-columns:184px minmax(0,1fr);min-height:360px;margin:-6px -6px 14px;overflow:hidden;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #262c48;background:#0d0f1e}
+.pfBg{position:absolute;inset:0;background-size:cover;background-position:70% 30%;filter:saturate(.85) brightness(.62)}
+.pfBg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,15,30,.92) 0,rgba(13,15,30,.35) 34%,rgba(13,15,30,.15) 60%),linear-gradient(0deg,rgba(13,15,30,.95) 0,rgba(13,15,30,.55) 34%,transparent 62%)}
+.pfBanner{--lg:#8b7d78;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 12px 46px;margin-left:14px;background:linear-gradient(180deg,#221a36,#16122a 70%,#120f22);clip-path:polygon(0 0,100% 0,100% calc(100% - 34px),50% 100%,0 calc(100% - 34px));box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 5px color-mix(in srgb,var(--lg) 70%,#000);align-self:start}
+.pfBanner.lg-bronze{--lg:#c0784f}.pfBanner.lg-silver{--lg:#a9b6c8}.pfBanner.lg-gold{--lg:#e0b04a}.pfBanner.lg-platinum{--lg:#4fc1c9}.pfBanner.lg-emerald{--lg:#37b26c}.pfBanner.lg-diamond{--lg:#6a8dff}.pfBanner.lg-master{--lg:#b05cff}.pfBanner.lg-grandmaster{--lg:#ff5a4a}.pfBanner.lg-challenger{--lg:#ffd76a}.pfBanner.lg-none{--lg:#5d5873}
+.pfLvlChip{min-width:46px;padding:3px 8px;font-family:var(--pxFont);font-weight:700;font-size:15px;text-align:center;color:#9cd3ff;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #2c6c9c}
+.pfAvatar{position:relative;width:118px;height:132px;display:flex;justify-content:center}
+.pfRing{width:104px;height:104px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 3px var(--pxK),0 0 0 6px var(--lg),0 0 22px color-mix(in srgb,var(--lg) 55%,transparent);background:#0f1122}
+.pfRing img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;transform:scale(1.35)}
+.pfCrest{position:absolute;bottom:0;left:50%;transform:translateX(-50%);filter:drop-shadow(0 3px 4px rgba(0,0,0,.7))}
+.pfName{font-family:var(--pxFont);font-size:19px;font-weight:700;text-shadow:2px 2px 0 var(--pxK);text-align:center;word-break:break-all;line-height:1.1}
+.pfSince{font-size:11px;color:var(--pxMut);text-align:center;line-height:1.35}
+.pfDots{display:flex;gap:6px;margin-top:6px}
+.pfDot{width:38px;height:38px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#0f1122;box-shadow:0 0 0 2px var(--pxK),0 0 0 3px #3a3456}
+.pfDot img{width:150%;height:150%;max-width:none;object-fit:contain;image-rendering:pixelated}
+.pfDot.big{width:72px;height:72px;box-shadow:0 0 0 3px var(--pxK),0 0 0 5px var(--pxGold2)}
+.pfTail{position:absolute;bottom:10px;width:22px;height:12px;background:var(--lg);clip-path:polygon(0 0,50% 100%,100% 0,75% 0,50% 50%,25% 0)}
+.pfShow{position:relative;z-index:1;align-self:end;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:0 14px 16px}
+.pfCase{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-family:var(--pxFont)}
+.pfCase>small{font-size:11px;color:var(--pxInk);min-height:14px}.pfCase>small.muted{color:var(--pxMut)}
+.pfCap{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--pxGold);text-shadow:1px 1px 0 var(--pxK)}
+.pfBig{height:84px;display:grid;place-items:center}.pfBig .pxBadge{filter:drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+.pfNum{font-size:40px;font-weight:700;color:var(--pxGold);text-shadow:2px 2px 0 var(--pxK);line-height:1}.pfNum.sm{font-size:18px;color:#9cd3ff}
+.pfCase .rkBar{width:80%;height:7px}.pfCase .rkNext,.pfCase .rkPips{display:none}
+.pfTabs{display:flex;gap:8px;margin-bottom:8px}.pfTabs .pxb{flex:1;justify-content:center;padding:9px 8px;font-size:14px;font-weight:600;opacity:.65}.pfTabs .pxb.on{opacity:1;color:var(--pxGold)}
+.pfStats{grid-template-columns:repeat(5,1fr);margin-top:0}
+.pfRow .hMain{cursor:default}.pfRow .hMain:hover{background:none}
+@media (max-width:720px){ .pfHero{grid-template-columns:1fr;min-height:0} .pfBanner{margin:0 auto;padding-bottom:40px} .pfShow{grid-template-columns:repeat(3,minmax(0,1fr));padding-top:14px;row-gap:14px} .pfStats{grid-template-columns:repeat(3,1fr)} }
+
 @media (max-width:720px){ .hMain{grid-template-columns:1fr auto;grid-template-areas:"pl right" "mid mid"} .hPlace{grid-area:pl} .hLvl{display:none} .hMid{grid-area:mid} .hRight{grid-area:right}
   .leagues{grid-template-columns:repeat(5,1fr)} .rkBig{flex-direction:column;text-align:center} .mnRow{grid-template-columns:repeat(3,1fr)} }
 @media (prefers-reduced-motion:reduce){ #queueBar,#queueBar .pxw,.rkFxBadges .new .pxBadge{animation:none!important} }

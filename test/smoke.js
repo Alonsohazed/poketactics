@@ -49,6 +49,19 @@ ready.then(() => server.listen(0, async () => {
   await post('/api/logout', {}, tmpLogin);
   assert.strictEqual((await fetch(url + '/api/me', { headers: { Cookie: tmpLogin } })).status, 401, 'sesión cerrada');
 
+  // ---- perfil: solo el propio; para cualquier otro nombre (exista o no), 404 igual; nada privado ----
+  {
+    const prof = (n, ck) => fetch(url + '/api/profile/' + encodeURIComponent(n), { headers: ck ? { Cookie: ck } : {} });
+    assert.strictEqual((await prof('Ana')).status, 401, 'perfil sin sesión');
+    const pr = await prof('ana', cookieA); assert.strictEqual(pr.status, 200, 'mi perfil (sin distinguir mayúsculas)');
+    const P = (await pr.json()).profile, txt = JSON.stringify(P);
+    assert(P.name === 'Ana' && P.trainer === 'squirtle' && P.account.level === 1 && P.ranked.placing && P.peak === null && P.byMode.normal.games === 0 && Array.isArray(P.history), 'perfil nuevo: nivel 1, sin clasificar y sin partidas');
+    assert(!/pass|settings|mmr|scrypt|"id"/i.test(txt), 'el perfil no lleva contraseña, ajustes, MMR ni ids');
+    const other = await prof('Beto', cookieA), none = await prof('NoExisteNadie', cookieA), bad = await prof('x<y>', cookieA);
+    assert(other.status === 404 && none.status === 404 && bad.status === 404, 'perfil ajeno, inexistente o con nombre raro: el mismo 404');
+    assert.strictEqual(JSON.stringify(await other.json()), JSON.stringify(await none.json()), 'una cuenta real y un nombre inventado responden igual');
+  }
+
   // socket sin sesión: rechazado
   const anon = io(url, { transports: ['websocket'] });
   const anonErr = await new Promise(res => { anon.on('connect_error', e => res(e.message)); anon.on('connect', () => res('conectado')); });

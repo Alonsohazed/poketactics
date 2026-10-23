@@ -32,3 +32,20 @@ test('cancelar la cola, ver la clasificatoria y el historial vacío', async ({ p
   await page.locator('#histBtn').click();
   await expect(page.locator('.hEmpty')).toBeVisible();
 });
+
+test('perfil propio desde el menú: estandarte, vitrinas, pestañas por modo e historial vacío', async ({ page }) => {
+  const user = await register(page, undefined, 'squirtle');
+  await page.locator('#pfBtn').click();
+  await expect(page.locator('.pfHero')).toBeVisible();
+  await expect(page.locator('.pfName')).toHaveText(user);
+  await expect(page.locator('.pfLvlChip')).toHaveText('1');
+  await expect(page.locator('.pfCase')).toHaveCount(5);
+  await expect(page.locator('.pfCase').first()).toContainText('Sin clasificar');
+  await expect(page.locator('.pfTabs .pxb.on')).toHaveText('Normal');
+  await page.locator('.pfTabs .pxb[data-m="ranked"]').click();
+  await expect(page.locator('.pfTabs .pxb.on')).toHaveText('Clasificatoria');
+  await expect(page.locator('#pfStats .stats div')).toHaveCount(5);
+  await expect(page.locator('.pfWrap .hEmpty')).toBeVisible();
+  await page.locator('#mClose').click();
+  await expect(page.locator('.pfHero')).toHaveCount(0);
+});

@@ -93,6 +93,27 @@ ready.then(() => server.listen(0, async () => {
     for (let i = 2; i <= 8; i++) await db.recordMatch(X.id, 'm-' + i, 'normal', fn);
     const h = await hist(ckX); ok(h.length === 6 && h[0].matchId === 'm-8' && h[5].matchId === 'm-3', 'historial: las 6 más recientes, de la más nueva a la más antigua');
     ok((await db.matches(X.id, 100)).length === 8, 'los registros antiguos siguen guardados');
+    // perfil: estadísticas por modo calculadas de la tabla de partidas, mejor rango y nivel de cuenta
+    const ag = await db.modeStats(X.id); ok(ag.normal && ag.normal.g === 8 && ag.normal.t4 === 8 && ag.normal.sp === 24 && ag.normal.cd === 720 && !ag.ranked, `estadísticas por modo de la base (${JSON.stringify(ag)})`);
+    const ckY = await reg('Yago'), Y = await me(ckY); const rk = (pl, i) => comp => C.applyMatch(comp, { mode: 'ranked', place: pl, opps: opps7(1000, pl) });
+    for (let i = 0; i < 6; i++) await db.recordMatch(Y.id, 'y-' + i, 'ranked', rk(i < 4 ? 1 : 8));
+    await db.recordMatch(Y.id, 'y-c', 'custom', comp => C.applyMatch(comp, { mode: 'custom', place: 5, opps: opps7(1000, 5) }));
+    const PY = (await (await fetch(url + '/api/profile/Yago', { headers: { Cookie: ckY } })).json()).profile;
+    ok(PY.byMode.ranked.games === 6 && PY.byMode.ranked.wins === 4 && PY.byMode.ranked.avg === 3.3 && PY.byMode.custom.games === 1 && PY.byMode.normal.games === 0, 'perfil: partidas, victorias y puesto medio por modo');
+    ok(PY.peak && PY.peak.ladder > PY.ranked.ladder, `perfil: el mejor rango recuerda el pico (${C.rankLabel(PY.peak)} frente a ${C.rankLabel(PY.ranked)})`);
+    ok(PY.account.level === 1 + Math.floor((4 * 100 + 2 * 65 + 80) / 500) && PY.history.length === 7, 'perfil: nivel de cuenta por caramelos ganados y 7 partidas en el historial');
+    ok(PY.history.every(m => m.mmrBefore === undefined && m.participants === undefined && m.why === undefined && m.oppAvg === undefined) && !/mmr/i.test(JSON.stringify(PY)), 'perfil: el historial no lleva MMR, rivales ni el porqué de los LP');
+    ok(PY.history[1].lp < 0 && PY.history[0].mode === 'custom' && PY.history.some(m => m.revealed), 'perfil: LP, rango revelado y modo de cada partida');
+    // nombres de los rivales: nunca el de una cuenta real
+    { const vm = require('vm'), ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval }; vm.createContext(ctx);
+      vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/augments.js'), 'utf8') + '\n' + fs.readFileSync(path.join(__dirname, '../public/game.js'), 'utf8'), ctx); const E = ctx.module.exports;
+      const libres = []; for (let i = 0; i < 30; i++) libres.push(E.generateBotName(libres)); const taken = new Set(libres.slice(0, 25).map(n => n.toLowerCase()));
+      let bad = 0; for (let i = 0; i < 20; i++) { E.newGame({ mp: true, server: true, humans: [], taken: n => taken.has(n.toLowerCase()) }); bad += E.G.players.filter(p => taken.has(p.name.toLowerCase())).length; }
+      ok(bad === 0, 'los rivales generados nunca se llaman como una cuenta real');
+      ok(db.nameTaken('xenia') && db.nameTaken('YAGO') && !db.nameTaken('Nadie_123'), 'nameTaken conoce las cuentas sin distinguir mayúsculas');
+      // pantalla de resultados (datos): los 8 con la misma forma, sin ids de cuenta ni MMR, y pocos KB
+      const B = E.serverBoards(); ok(B.length === 8 && B.every(b => b.comp && Array.isArray(b.comp.units) && 'tac' in b && Array.isArray(b.tf) && !('uid' in b) && !('isBot' in b) && !('skill' in b)), 'tableros de los 8: misma forma para todos y sin marcas de bot');
+      ok(JSON.stringify(B).length < 6000, `tableros de los 8: ${JSON.stringify(B).length} bytes`); }
     // manipulación: no se aceptan resultados del navegador ni colas inválidas
     ok((await post('/api/result', { place: 1 }, ckX)).status === 410, 'POST /api/result rechazado (los resultados los apunta el servidor)');
     const sx = await sock(ckX); const errs = []; sx.on('err', m => errs.push(m)); const qx = []; sx.on('queue', d => qx.push(d));

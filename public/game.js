@@ -1369,7 +1369,8 @@ function newGame(opts={}){
  let id=opts.server?0:1;
  for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.remote=true; p.peer=h.peer; G.players.push(p); }
  const usados=G.players.map(p=>p.name);
- while(G.players.length<8){ const n=generateBotName(usados); usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.botIdx=G.players.length; G.players.push(bp); }
+ // opts.taken (servidor): nombre de una cuenta real; un rival generado nunca se llama como una persona
+ while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.botIdx=G.players.length; G.players.push(bp); }
  // En el servidor no hay jugador local: G.me es un espectador fantasma fuera de la lista
  G.me=opts.server?Object.assign(makePlayer(-1,'',true,''),{alive:false}):G.players[0];
  note(null,`Empieza la partida (dificultad: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
@@ -3514,9 +3515,9 @@ function renderMenu(){
   <div class="tname">${esc(ACC.name)}</div><div class="tfrom">Minileyenda: ${esc(t.name)}</div>
   ${rankMiniHTML()}
   <div class="stats"><div><i data-i="ball" data-s="20"></i><b>${st.games||0}</b><span>Partidas</span></div><div><i data-i="trophy" data-s="20"></i><b>${st.wins||0}</b><span>Victorias</span></div><div><i data-i="medal" data-s="20"></i><b>${st.top4||0}</b><span>Top 4</span></div><div><i data-i="star" data-s="20"></i><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
-  <div class="row"><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
+  <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="20"></i><span>Ver perfil</span></button><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
  $('menuWho').insertAdjacentHTML('afterbegin','<div class="mnTag">Entrenador</div>');
- $('pickTr').onclick=()=>showTacPick(false); $('rkMini').onclick=showRanked; pxArt($('menu'));
+ $('pickTr').onclick=()=>showTacPick(false); $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
 }
 /* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
 const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
@@ -3641,6 +3642,47 @@ async function showHistory(){
  el.innerHTML=list.length?list.slice(0,6).map(histRow).join(''):'<div class="hEmpty"><i data-i="ball" data-s="40"></i><p>Aún no has jugado ninguna partida de Normal, Clasificatoria o sala informal.</p></div>';
  window.PX&&PX.hydrate(el);
  el.querySelectorAll('.hMain').forEach(b=>b.onclick=()=>{ const det=b.parentElement.querySelector('.hDet'), open=det.hidden; det.hidden=!open; b.setAttribute('aria-expanded',open); b.parentElement.classList.toggle('open',open); });
+}
+// ----- perfil (estilo LoL): minileyenda, nivel de cuenta, rango, mejor rango, estadísticas por modo y las 10 últimas partidas -----
+// Todo sale de /api/profile, que nunca manda MMR, rivales ni ajustes. Desde la pantalla de resultados no se abre ningún perfil.
+const fmtMonth=s=>{ try{ return new Date(s+'-01T12:00:00').toLocaleDateString('es-ES',{month:'long',year:'numeric'}); }catch(e){ return ''; } };
+function pfRow(m){ const c=m.comp||{}, pl=m.place||8;
+ const lp=m.mode!=='ranked'?'':m.revealed?`<span class="rChip up">Rango revelado: ${esc(rankText(m.revealed))}</span>`:m.placement?`<span class="rChip">Posicionamiento ${m.placement.done}/${m.placement.of}</span>`:typeof m.lp==='number'?`<span class="rChip ${m.lp>=0?'up':'down'}">${m.lp>=0?'+':'−'}${Math.abs(m.lp)} LP</span>`:'';
+ return `<div class="hRow pfRow pl${pl===1?1:pl<=4?2:3}"><div class="hMain"><div class="hPlace"><b>${ordinal(pl)} lugar</b><small>${MODE_NAME[m.mode]||esc(m.mode)}</small><small>${fmtDate(m.created)}${m.duration?' · '+fmtDur(m.duration):''}</small></div>
+  <div class="hLvl" title="Nivel">${c.lvl||'—'}</div>
+  <div class="hMid"><div class="hComp">${(c.units||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon en el tablero</span>'}</div><div class="hTraits">${(c.traits||[]).map(histTrait).join('')}${(c.augs||[]).map(id=>AUG_BY[id]?`<span class="hA" title="${esc(AUG_BY[id].name)}">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div></div>
+  <div class="hRight">${lp}<span class="rChip candy"><i data-i="candy" data-s="16"></i>+${m.candies||0}</span></div></div></div>`; }
+function pfStatsHTML(s){ return `<div class="stats pfStats"><div><b>${s.games}</b><span>Partidas</span></div><div><b>${s.wins}</b><span>Victorias</span></div><div><b>${s.top4}</b><span>Top 4</span></div><div><b>${s.avg==null?'—':String(s.avg).replace('.',',')}</b><span>Puesto medio</span></div><div><b>${s.candies}</b><span>Caramelos</span></div></div>`; }
+function profileHTML(P){
+ const t=TACS[P.trainer]||TACS.charmander, tk=TACS[P.trainer]?P.trainer:'charmander', rk=P.ranked, a=P.account, unranked=rk.placing&&!rk.done;
+ const mode0=P.byMode.ranked.games?'ranked':P.byMode.normal.games||!P.byMode.custom.games?'normal':'custom';
+ // Pokémon más usados en las partidas del historial (por línea, la forma de la ficha más reciente)
+ const use={}; for(const m of P.history){ const seen=new Set(); for(const u of (m.comp&&m.comp.units)||[]){ const d=DEF[u[0]], k=d&&d.evoOf||u[0]; if(seen.has(k)) continue; seen.add(k); (use[k]=use[k]||{n:0,dex:u[3],name:u[4]}).n++; } }
+ const fav=Object.values(use).sort((x,y)=>y.n-x.n).slice(0,3), lg=!rk.placing&&rk.league?rk.league:'none';
+ const favDot=f=>f?`<span class="pfDot" title="${esc(f.name||'')} · en ${f.n} partida${f.n===1?'':'s'}">${portraitImg(f.dex)}</span>`:'<span class="pfDot"></span>';
+ // Como el perfil del LoL: estandarte vertical (nivel, retrato con el marco de su liga, nombre y 3 favoritos) sobre la ilustración de la minileyenda y una fila de vitrinas
+ return `<div class="pfHero"><div class="pfBg" style="background-image:url('${CARD_ART[tk]||''}')"></div>
+ <aside class="pfBanner lg-${lg}"><span class="pfLvlChip" title="Nivel de cuenta">${a.level}</span>
+  <div class="pfAvatar"><span class="pfRing">${artImg(tk)}</span><span class="pfCrest">${rankBadge(rk,54)}</span></div>
+  <b class="pfName">${esc(P.name)}</b><small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>
+  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div><i class="pfTail" aria-hidden="true"></i></aside>
+ <div class="pfShow">
+  <div class="pfCase"><span class="pfCap">Clasificatoria</span><small>${unranked?'Sin clasificar':esc(rankText(rk))}</small><div class="pfBig">${rankBadge(rk,76)}</div><small class="muted">${rk.placing?`Posicionamiento ${rk.done}/${rk.of}`:rk.lp+' LP'}</small>${lpBar(rk)}</div>
+  <div class="pfCase"><span class="pfCap">Mejor rango</span><small>${P.peak?esc(rankText(P.peak)):'—'}</small><div class="pfBig">${P.peak?rankBadge(P.peak,64):rankBadge(null,64)}</div></div>
+  <div class="pfCase"><span class="pfCap">Nivel</span><small>${a.xp}/${a.need}</small><div class="pfBig"><b class="pfNum">${a.level}</b></div><div class="rkBar" role="progressbar" aria-label="Nivel de cuenta" aria-valuemin="0" aria-valuemax="${a.need}" aria-valuenow="${a.xp}"><i style="width:${R0(a.xp/a.need*100)}%"></i></div></div>
+  <div class="pfCase"><span class="pfCap">Caramelos</span><small>en total</small><div class="pfBig"><i data-i="candy" data-s="44"></i></div><b class="pfNum sm">${P.candies}</b></div>
+  <div class="pfCase"><span class="pfCap">Favorito</span><small>${fav[0]?esc(fav[0].name||''):'—'}</small><div class="pfBig">${fav[0]?`<span class="pfDot big">${portraitImg(fav[0].dex)}</span>`:'<span class="pfDot big"></span>'}</div>${fav[0]?`<small class="muted">${fav[0].n} partida${fav[0].n===1?'':'s'}</small>`:''}</div>
+ </div></div>
+ <div class="pfTabs" role="tablist">${['normal','ranked','custom'].map(m=>`<button class="pxb${m===mode0?' on':''}" role="tab" aria-selected="${m===mode0}" data-m="${m}" type="button"><span>${MODE_NAME[m]}</span></button>`).join('')}</div>
+ <div id="pfStats">${pfStatsHTML(P.byMode[mode0])}</div>
+ <h3 class="pxH">Últimas partidas</h3>
+ <div class="hList">${P.history.length?P.history.map(pfRow).join(''):'<div class="hEmpty"><i data-i="ball" data-s="40"></i><p>Aún no hay partidas de Normal, Clasificatoria o sala informal.</p></div>'}</div>`; }
+async function showProfile(name){
+ openModal('<div class="pfWrap" id="pfWrap"><p class="muted">Cargando el perfil…</p></div>',{closable:true,kind:'profile'});
+ let P; try{ P=(await api('/api/profile/'+encodeURIComponent(name))).profile; }catch(e){ const el=$('pfWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; }
+ const el=$('pfWrap'); if(!el||NET.modal!=='profile') return;
+ el.innerHTML=profileHTML(P); hydrate(el); window.PX&&PX.hydrate(el);
+ el.querySelectorAll('.pfTabs .pxb').forEach(b=>b.onclick=()=>{ el.querySelectorAll('.pfTabs .pxb').forEach(x=>{ x.classList.toggle('on',x===b); x.setAttribute('aria-selected',x===b); }); $('pfStats').innerHTML=pfStatsHTML(P.byMode[b.dataset.m]); });
 }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
@@ -3832,7 +3874,7 @@ function serverCreate(cfg,emit){
  geo=computeGeo(640);
  NET.mode='host'; NET.named={emit:(t,d)=>{ try{ emit(t,d); }catch(e){} return Promise.resolve(); }};
  S.timer=[30,45,60].includes(cfg.timer)?cfg.timer:30; S.speed=[1,2,4].includes(cfg.speed)?cfg.speed:1;
- newGame({mp:true,server:true,diff:DIFF_NAME[cfg.diff]?cfg.diff:'normal',humans:cfg.humans||[],bots:Array.isArray(cfg.bots)?cfg.bots:[]});
+ newGame({mp:true,server:true,diff:DIFF_NAME[cfg.diff]?cfg.diff:'normal',humans:cfg.humans||[],bots:Array.isArray(cfg.bots)?cfg.bots:[],taken:typeof cfg.taken==='function'?cfg.taken:null});
  netFlush(true);
 }
 function serverTick(dt){
@@ -3866,10 +3908,13 @@ function serverForfeit(){
  if(!G||!G.players||G.over) return; let n=alivePlayers().length;
  for(const p of G.players.filter(x=>x.away&&x.alive)){ p.finalComp=compSnap(p); p.place=n--; p.alive=false; p.hp=0; }
 }
+// Los 8 jugadores para la pantalla de resultados (solo al terminar alguien, no en cada tick): los eliminados con su equipo final y
+// los que siguen vivos con el de ahora. Todos con la misma forma: nada distingue a una persona de un rival generado.
+function serverBoards(){ return G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,tac:p.tac,tf:(p.tacForm||['','']).slice(0,2),comp:p.place&&p.finalComp?p.finalComp:compSnap(p)})):[]; }
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[],
   plist:G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,comp:p.peer&&p.place?p.finalComp||null:null})):[]}; }
 
-if(HEADLESS){ module.exports={generateBotName,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,castAbility,dealDamage,applyAct,
+if(HEADLESS){ module.exports={generateBotName,serverBoards,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,castAbility,dealDamage,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js

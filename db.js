@@ -64,6 +64,11 @@ function fileStore(file) {
       const m = { id: db.matches.length + 1, matchId, userId, mode, created: new Date().toISOString(), data: rec }; db.matches.push(m); await save();
       return { comp, rec: m.data, created: m.created };
     },
+    async modeStats(userId) { const o = {};
+      for (const m of db.matches) { if (m.userId !== userId) continue; const r = m.data || {}, a = o[m.mode] = o[m.mode] || { g: 0, w: 0, t4: 0, sp: 0, cd: 0, pk: null }, pl = +r.place || 8, L = r.rankAfter && +r.rankAfter.ladder;
+        a.g++; a.w += pl === 1; a.t4 += pl <= 4; a.sp += pl; a.cd += +r.candies || 0; if (Number.isFinite(L) && (a.pk == null || L > a.pk)) a.pk = L; }
+      return o; },
+    nameTaken: name => db.users.some(u => keyOf(u.name) === keyOf(name)),
     async matches(userId, limit = 6) { return db.matches.filter(m => m.userId === userId).sort((a, b) => b.id - a.id).slice(0, limit).map(m => ({ matchId: m.matchId, mode: m.mode, created: m.created, data: m.data })); },
     async createSession(token, userId, expires) { db.sessions[token] = { userId, expires: +expires }; await save(); },
     async sessionUser(token) {
@@ -87,6 +92,7 @@ function pgStore(url) {
   pool.on('error', e => console.error('Error en la conexión con la base de datos', e.message));
   const row = r => r && { id: r.id, name: r.name, pass: r.pass, trainer: r.trainer, settings: r.settings || {}, stats: Object.assign(EMPTY_STATS(), r.stats || {}), comp: r.comp || {}, created: r.created_at };
   const one = async (sql, args) => row((await pool.query(sql, args)).rows[0]);
+  const names = new Set(); // nombres de las cuentas (en minúsculas): los rivales generados nunca se llaman igual que una persona
   return {
     kind: 'postgres',
     async init() {
@@ -118,10 +124,25 @@ function pgStore(url) {
           UNIQUE (match_id, user_id)
         );
         CREATE INDEX IF NOT EXISTS matches_user_idx ON matches(user_id, id DESC);`);
+      for (const r of (await pool.query('SELECT name_key FROM users')).rows) names.add(r.name_key);
     },
-    createUser: ({ name, pass, trainer }) => one(
-      `INSERT INTO users (name, name_key, pass, trainer) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (name_key) DO NOTHING RETURNING *`, [name, keyOf(name), pass, trainer || '']),
+    async createUser({ name, pass, trainer }) {
+      const u = await one(`INSERT INTO users (name, name_key, pass, trainer) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (name_key) DO NOTHING RETURNING *`, [name, keyOf(name), pass, trainer || '']);
+      if (u) names.add(keyOf(name)); return u;
+    },
+    nameTaken: name => names.has(keyOf(name)),
+    // Estadísticas por modo calculadas de la tabla de partidas: partidas, victorias, top 4, suma de puestos, caramelos y mejor escalera
+    async modeStats(userId) {
+      const r = await pool.query(`SELECT mode, count(*)::int AS g,
+          sum(CASE WHEN (data->>'place')::int = 1 THEN 1 ELSE 0 END)::int AS w,
+          sum(CASE WHEN (data->>'place')::int <= 4 THEN 1 ELSE 0 END)::int AS t4,
+          sum(COALESCE((data->>'place')::int, 8))::int AS sp,
+          sum(COALESCE((data->>'candies')::int, 0))::int AS cd,
+          max((data->'rankAfter'->>'ladder')::int) AS pk
+        FROM matches WHERE user_id = $1 GROUP BY mode`, [userId]);
+      const o = {}; for (const x of r.rows) o[x.mode] = { g: x.g, w: x.w, t4: x.t4, sp: x.sp, cd: x.cd, pk: x.pk == null ? null : +x.pk }; return o;
+    },
     userByName: name => one('SELECT * FROM users WHERE name_key = $1', [keyOf(name)]),
     userById: id => one('SELECT * FROM users WHERE id = $1', [id]),
     updateUser: (id, f) => one(

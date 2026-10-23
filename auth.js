@@ -56,7 +56,7 @@ function limiter(max, windowMs) {
   };
 }
 
-const { publicComp } = require('./competitive');
+const { publicComp, profileView } = require('./competitive');
 // Lo que ve el navegador de su cuenta: nunca el MMR, solo su rango (o el posicionamiento) y sus caramelos
 function publicUser(u) {
   return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp) };
@@ -172,6 +172,18 @@ function createAuth(db, { trainers }) {
 
   // Historial: las 6 partidas más recientes (en la base se guardan todas)
   router.get('/history', needUser(async (req, res, user) => res.json({ matches: await db.matches(user.id, 6) })));
+
+  // Perfil: el propio (y, cuando haya amigos, el de un amigo). Para cualquier otro nombre, 404, exista o no la cuenta:
+  // así no se puede comprobar qué nombres son personas (ni distinguir a los rivales generados).
+  const profileLimit = limiter(60, 60 * 1000);
+  router.get('/profile/:name', needUser(async (req, res, user) => {
+    if (profileLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiadas peticiones. Espera un momento.' });
+    profileLimit.hit(user.id);
+    const name = String(req.params.name || '');
+    if (!NAME_RE.test(name) || name.toLowerCase() !== user.name.toLowerCase()) return res.status(404).json({ error: 'Perfil no disponible' });
+    const [agg, list] = await Promise.all([db.modeStats(user.id), db.matches(user.id, 10)]);
+    res.json({ profile: profileView(user, agg, list), self: true });
+  }));
 
   // Socket.io: solo entran jugadores con sesión
   function socketGuard(socket, next) {

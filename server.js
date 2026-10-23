@@ -110,7 +110,7 @@ function startGame(room, opts) {
   if (!room.botInfo) room.botInfo = CMP.botsFor('normal', room.seats.map(s => s.nmmr || CMP.CFG.START_MMR), 8 - room.seats.length);
   io.to(room.code).emit('start', { seats: publicSeats(room.seats) });
   room.game.serverCreate(
-    { diff: room.diff, humans: publicSeats(room.seats), bots: room.botInfo.map(b => ({ skill: b.skill })), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
+    { diff: room.diff, humans: publicSeats(room.seats), bots: room.botInfo.map(b => ({ skill: b.skill })), taken: n => db.nameTaken(n), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
     (t, d) => route(room, t, d)
   );
   let last = Date.now();
