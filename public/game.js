@@ -830,11 +830,16 @@ function aoeTarget(cb,u,t,rad,cnt){ if(!t) return t; const fs=foesOf(cb,u).filte
 const aoeDir=(cb,u,t,o)=>aoeTarget(cb,u,t,0,c=>dirTargets(cb,u,c,o).length);
 // Zonas de curación: donde más aliados heridos quedan dentro (antes caían sobre el lanzador o sobre el enemigo)
 function allyCluster(cb,u,rad){ const al=alliesOf(cb,u); let best=u, bs=-1; for(const c of al){ const sc=al.reduce((s2,a)=>s2+(dU(c,a)<=rad?1+2*(1-a.hp/a.maxHp):0),0); if(sc>bs){ bs=sc; best=c; } } return best; }
-function nearestEnemy(cb,u,except){
+function nearestEnemy(cb,u,except,ok){
  let best=null,bd=1e9;
- for(const e of cb.units){ if(e.dead||e.side===u.side||e===except||e.stealth>0) continue; const d=dU(u,e)+cb.rng()*.1; if(d<bd){bd=d;best=e;} }
+ for(const e of cb.units){ if(e.dead||e.side===u.side||e===except||e.stealth>0||(ok&&!ok(e))) continue; const d=dU(u,e)+cb.rng()*.1; if(d<bd){bd=d;best=e;} }
  return best;
 }
+// Agro inicial de tanques (solo en el primer tick del combate): si una ficha tiene a su alcance, en las posiciones iniciales, un tanque enemigo
+// (rol 't', vivo y sin sigilo), empieza atacándolo: el más cercano, con el mismo desempate por cb.rng que nearestEnemy. Así un tanque bien
+// colocado protege a los aliados que tiene al lado. Si no hay ninguno, devuelve null y la ficha elige como siempre (el más cercano, en su turno).
+// No se vuelve a aplicar en ese combate: al cambiar de objetivo manda la cercanía, y Guardianes y provocar lo siguen sobrescribiendo.
+function pickInitialTarget(cb,u){ return nearestEnemy(cb,u,null,e=>e.role==='t'&&dU(u,e)<=u.range); }
 function freeCell(cb,c,r,except){ return !cb.units.some(x=>!x.dead&&x!==except&&x.c===c&&x.r===r); }
 function nextStep(cb,u,t){
  const occ=new Set(cb.units.filter(x=>!x.dead&&x!==u).map(x=>x.c+','+x.r));
@@ -1112,6 +1117,9 @@ function stepCombat(cb){
    for(const side of cb.huntPend||[]){ const foes=cb.units.filter(e=>e.side!==side); const t=foes.sort((a,b)=>b.maxHp-a.maxHp)[0]; if(t){ t.markT=99; t.markAmp=Math.max(t.markAmp||0,.2); t.hunted=side; } }
    for(const u of cb.units){ if(u.startShield){ u.shield+=u.startShield; u.shieldT=8; } if(u.sp.startShieldPct){ u.shield+=u.maxHp*u.sp.startShieldPct; u.shieldT=8; } }
    for(const u of cb.units) if(u.sp.veil) for(const a of cb.units) if(a!==u&&a.side===u.side&&dU(u,a)<=1){ a.shield+=u.sp.veil; a.shieldT=Math.max(a.shieldT,8); }
+   // Agro inicial de tanques, una sola vez y con las posiciones iniciales (antes de que nadie se mueva). Solo gasta azar si hay un tanque a tiro:
+   // sin tanques a su alcance, nadie cambia y el combate es idéntico al de antes de esta regla
+   for(const u of cb.units) if(!u.dead&&!u.target){ const t=pickInitialTarget(cb,u); if(t) u.target=t; }
    for(const u of cb.units){
      // Los asesinos ya no saltan a la retaguardia al empezar: entran por delante y la sinergia Asesino los hace esfumarse al 50 %
    }

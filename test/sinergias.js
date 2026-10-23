@@ -243,6 +243,62 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   const q = fresh().p; q.board = { '0,0': E.makeInst('rayquaza'), '1,0': E.makeInst('dratini'), '2,0': E.makeInst('horsea'), '3,0': E.makeInst('gible') };
   ok(E.traitTiers(q).nl['Dragón'] === 1 && E.traitTiers(q)['Dragón'] === 3, 'resonancia con los escalones viejos: 3 dragones no legendarios = 1 nivel (sinergia: escalón 3)'); }
 
+// Agro inicial de tanques: solo en el primer tick, contra un tanque enemigo a su alcance; después manda la cercanía
+{ const hexD = vm.runInContext('hexDist', ctx), DTc = vm.runInContext('DT', ctx);
+  const role = (r, extra) => E.UNIT_LIST.find(u => u.role === r && u.cost <= 3 && !E.DEF[u.key].evoOf && !u.traits.includes('Guardián') && (!extra || extra(u))).key;
+  const K = { t: role('t'), b: role('b'), a: role('a'), r: role('r'), m: role('m') };
+  // combate con las fichas indicadas; luego se colocan a mano (c, r de la rejilla completa 7×8) y se apaga lo que podría ensuciar la prueba
+  const fight = (a, b, seed = 3) => { const pos = ks => ks.map((k, i) => [i + ',0', k, 1, [], 0, 0]);
+    const cb = E.createCombatSnap({ ag: [], m: {}, u: pos(a) }, { ag: [], m: {}, u: pos(b) }, { s: 5, n: 2 }, { seed }); for (const u of cb.units) { u.maxMana = 1e9; u.mana = 0; u.maxHp = u.hp = 1e6; } return cb; };
+  const at = (u, c, r) => { u.c = u.pc = c; u.r = u.pr = r; };
+  const free = (cb, c, r) => !cb.units.some(x => x.c === c && x.r === r);
+  const cellAt = (cb, from, d, cond = () => true) => { for (let r = 0; r < 8; r++) for (let c = 0; c < 7; c++) if (free(cb, c, r) && hexD(from.c, from.r, c, r) === d && cond(c, r)) return [c, r]; return null; };
+  // 1) Tirador rival (alcance 4) con un tanque a 4 casillas y un mago a 3: empieza con el tanque
+  { const cb = fight([K.t, K.m], [K.r]), [T, M] = cb.units.filter(u => u.side === 0), R = cb.units.find(u => u.side === 1);
+    at(R, 3, 0); at(T, 6, 6); at(M, 0, 0); const ct = cellAt(cb, R, 4); at(T, ...ct); const cm = cellAt(cb, R, 3); at(M, ...cm);
+    ok(R.range === 4 && hexD(R.c, R.r, T.c, T.r) === 4 && hexD(R.c, R.r, M.c, M.r) === 3, 'agro: montaje (tanque a 4, mago a 3, alcance 4)');
+    T.moveCd = M.moveCd = 5; // quietos en el primer tick: así se compara con las posiciones del montaje
+    vmStep(cb); ok(R.target === T, 'agro: el tirador empieza atacando al tanque a su alcance aunque el mago esté más cerca'); }
+  // 2) Cuerpo a cuerpo rival pegado a un tanque y a un asesino: siempre empieza con el tanque (sin la regla, la mitad de las veces iría al asesino)
+  { let n = 0; for (let s = 1; s <= 20; s++) { const cb = fight([K.t, K.a], [K.b], s), [T, A] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+      at(B, 3, 3); at(T, 6, 7); at(A, 0, 7); at(T, 3, 4); at(A, 2, 3); if (hexD(3, 3, 3, 4) === 1 && hexD(3, 3, 2, 3) === 1) { vmStep(cb); if (B.target === T) n++; } }
+    ok(n === 20, `agro: el cuerpo a cuerpo pegado a un tanque y a un asesino empieza con el tanque (${n}/20 semillas)`); }
+  // 3) Sin tanque a su alcance al empezar: va al más cercano y no cambia al tanque aunque pase junto a él
+  { const cb = fight([K.m, K.t], [K.b]), [M, T] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+    at(B, 3, 0); at(M, 3, 5); at(T, 6, 7); const ct = cellAt(cb, B, hexD(3, 0, 3, 5) + 1, (c, r) => hexD(c, r, 3, 5) <= 2); at(T, ...ct);
+    ok(hexD(B.c, B.r, M.c, M.r) < hexD(B.c, B.r, T.c, T.r) && hexD(B.c, B.r, T.c, T.r) > B.range, 'agro: montaje (sin tanque a su alcance, el mago es el más cercano)');
+    let siempre = true, junto = false; for (let i = 0; i < 80; i++) { vmStep(cb); if (B.target !== M) siempre = false; if (hexD(B.c, B.r, T.c, T.r) <= 1) junto = true; }
+    ok(siempre && junto, `agro: va al más cercano y no cambia al tanque aunque pase junto a él (objetivo fijo: ${siempre}, pasó junto al tanque: ${junto})`); }
+  // 4) Si muere su objetivo a mitad de combate, elige al más cercano, sea tanque o no (la regla ya no se aplica)
+  { const cb = fight([K.m, K.m, K.t], [K.r]), [X, M2, T] = cb.units.filter(u => u.side === 0), R = cb.units.find(u => u.side === 1);
+    at(R, 3, 0); at(X, 3, 1); at(M2, 0, 7); at(T, 6, 7); for (let i = 0; i < 10; i++) vmStep(cb); ok(R.target === X, 'agro: sin tanque a tiro al empezar, el tirador va al más cercano');
+    X.dead = true; X.hp = 0; at(M2, ...cellAt(cb, R, 2)); at(T, ...cellAt(cb, R, 3)); vmStep(cb); ok(R.target === M2, 'agro: muerto su objetivo, elige al más cercano (el mago a 2), no al tanque a 3');
+    M2.dead = true; M2.hp = 0; vmStep(cb); ok(R.target === T, 'agro: si el más cercano es un tanque, lo elige por cercanía'); }
+  // 5) Sin tanques: el combate es idéntico al de antes de la regla (se compara con la regla apagada)
+  { const trace = (a, b, seed) => { const cb = E.createCombatSnap({ ag: [], m: {}, u: a }, { ag: [], m: {}, u: b }, { s: 5, n: 2 }, { seed }); let s = ''; for (let i = 0; i < 900 && !cb.done; i++) { vmStep(cb); s += cb.units.map(u => `${u.c},${u.r},${Math.round(u.hp)},${cb.units.indexOf(u.target)}`).join('|') + ';'; } return s + cb.winner; };
+    const noTank = E.UNIT_LIST.filter(u => u.role !== 't' && u.cost <= 3 && !E.DEF[u.key].evoOf).map(u => u.key);
+    const teams = s => { const r = () => noTank[(s = (s * 1103515245 + 12345) >>> 0) % noTank.length]; const pos = ['3,0', '2,0', '4,0', '3,3', '2,3']; return [pos.map(p => [p, r(), 2, [], 0, 0]), pos.map(p => [p, r(), 2, [], 0, 0])]; };
+    const real = vm.runInContext('pickInitialTarget', ctx); let iguales = 0;
+    for (let s = 1; s <= 12; s++) { const [a, b] = teams(s), con = trace(a, b, s); vm.runInContext('pickInitialTarget=()=>null', ctx); const sin = trace(a, b, s); ctx.__pit = real; vm.runInContext('pickInitialTarget=__pit', ctx); if (con === sin) iguales++; }
+    ok(iguales === 12, `agro: sin tanques, el combate es idéntico al de antes (${iguales}/12, comparando cada tick)`); }
+  // 6) Provocar y Guardianes siguen cambiando el objetivo como siempre
+  { const cb = fight([K.t, K.m], [K.b]), [T, G] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+    at(B, 3, 3); at(T, 3, 4); at(G, 6, 7); at(G, 4, 4); G.bodyguard = .1; vmStep(cb); ok(B.target === T, 'agro: empieza con el tanque');
+    for (let i = 0; i < Math.ceil(1.5 / DTc) + 1; i++) vmStep(cb); ok(B.target === G, 'agro: a los 1,5 s un Guardián lo provoca y cambia de objetivo'); }
+  { const cb = fight([K.t, K.m], [K.b]), [T, P] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+    at(B, 3, 3); at(T, 3, 4); at(P, 6, 7); at(P, 4, 5); vmStep(cb); ok(B.target === T, 'agro: empieza con el tanque (provocar)');
+    E.castAbility(cb, P, ['taunt', 'Provocar', { m: 1 }]); ok(B.target === P, 'agro: una habilidad de provocar (como Duskull o Vaporeon) le cambia el objetivo'); }
+  // 7) El daño no cambia: cuerpo a cuerpo de coste 3 a 2★ contra tanque de coste 3 a 2★ ≈ 89 por golpe
+  { const bk = E.UNIT_LIST.find(u => u.role === 'b' && u.cost === 3).key, tk = E.UNIT_LIST.find(u => u.role === 't' && u.cost === 3).key;
+    const src = E.baseCombatUnit(E.DEF[bk], 1, 2), tgt = E.baseCombatUnit(E.DEF[tk], 0, 2); tgt.hp = tgt.maxHp;
+    E.dealDamage({ units: [src, tgt], fx: [], feed: [], rng: () => .5, visual: false, t: 0, gold: [0, 0], pend: [] }, src, tgt, src.ad, 'phys', true);
+    const d = tgt.maxHp - tgt.hp; ok(Math.abs(src.ad - 142.74) < .01 && tgt.df === 60 && Math.abs(d - 142.74 * 100 / 160) < 1, `daño: ${src.ad.toFixed(1)} de ataque contra 60 de defensa = ${d.toFixed(1)} por golpe (≈89)`); }
+  // 8) Misma semilla, mismo combate (con tanques en juego)
+  { const a = [['3,0', K.t, 2, [], 0, 0], ['2,0', K.b, 2, [], 0, 0], ['3,3', K.r, 2, [], 0, 0]], b = [['3,0', K.b, 2, [], 0, 0], ['2,0', K.t, 2, [], 0, 0], ['4,3', K.m, 2, [], 0, 0]];
+    const log = () => { const cb = E.createCombatSnap({ ag: [], m: {}, u: a }, { ag: [], m: {}, u: b }, { s: 5, n: 2 }, { seed: 77 }); let s = ''; for (let i = 0; i < 900 && !cb.done; i++) { vmStep(cb); s += cb.units.map(u => `${u.c},${u.r},${u.hp.toFixed(3)},${cb.units.indexOf(u.target)}`).join('|') + ';'; } return s + cb.winner; };
+    ok(log() === log(), 'agro: dos ejecuciones con la misma semilla dan exactamente el mismo registro de combate'); }
+}
+
 // Coste 4: Bagon mago tanque, Timburr con golpes que saltan, tanques a 3★ con su bonus de defensa
 { const b2 = E.baseCombatUnit(E.DEF.bagon, 0, 2), r2 = E.baseCombatUnit(E.DEF.ralts, 0, 2); ok(b2.role === 't' && b2.range === 1 && b2.maxHp > r2.maxHp * 1.5, 'Bagon: stats y alcance de tanque');
   const bx = Object.assign({}, b2, { ap: 50 }), bh = Object.assign({}, b2, { maxHp: b2.maxHp * 2 }); ok(E.abilPower(bx) > E.abilPower(b2) * 1.4 && Math.abs(E.abilPower(bh) - E.abilPower(b2)) < 1, 'Bagon: su habilidad escala con el poder, no con la vida');

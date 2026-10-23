@@ -62,6 +62,7 @@ El detalle, con los nombres de las funciones, está en la skill `autochess-syste
 - **Progresión**: nivel máximo 10 (`XP_NEED`); probabilidades de la tienda por nivel en `SHOP_ODDS`; pool compartido `POOL_SIZE=[30,25,18,10,9]`; 3 copias suben 1 estrella. Tablero = nivel + bonus + Medallas Maestras.
 - **Combate**:
   - tick de 0,05 s y límite de 40 s (luego empate);
+  - **objetivo**: cada ficha ataca al enemigo más cercano (`nearestEnemy`, desempate con `cb.rng`) y lo mantiene hasta que muere o entra en sigilo; Guardianes (a los 1,5 s, ≤2 casillas) y provocar (≤3) lo cambian. **Agro inicial de tanques** (`pickInitialTarget`, solo en el primer tick y con las posiciones iniciales, antes de que nadie se mueva): si una ficha tiene a su alcance un tanque enemigo (rol `t`), empieza atacándolo; si no, elige como siempre (sin gastar azar: sin tanques a tiro el combate es idéntico al de antes). Después no se vuelve a aplicar (pruebas en `test/sinergias.js`; medido en 400 combates al azar: los tanques reciben ~4 % más de daño);
   - +10 de maná por ataque y maná al recibir daño;
   - reducción de daño de 100/(100+defensa) (física) o 100/(100+resistencia) (mágica);
   - reducción extra con un máximo del 75 %;
