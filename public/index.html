@@ -721,7 +721,7 @@ body:has(#menu:not(.hidden)) #boardStack,body:has(#auth:not(.hidden)) #boardStac
 #menuScene canvas{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
 #menuScene .mnUnits{position:absolute;inset:0}
 .mnUnit{position:absolute;image-rendering:pixelated;filter:drop-shadow(0 3px 0 rgba(11,13,24,.55))}
-body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{display:block}
+/* la escena pixel del menú (#menuScene) ya no se muestra: fondo azul liso (degradado del body) hasta que haya fondo nuevo */
 .pxi{display:block;image-rendering:pixelated}.pxw{display:inline-flex;font-style:normal;line-height:0}
 /* Botón pixel: marco de dos anillos (oscuro y acento), esquinas escalonadas y bisel de 3 px */
 .pxb{--acc:var(--pxLine);--fill:var(--pxPanel2);position:relative;display:flex;align-items:center;gap:14px;border:0;margin:0;cursor:pointer;color:var(--pxInk);font-family:var(--pxFont);
@@ -946,8 +946,25 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .rkPips{display:flex;gap:5px}.rkPips i{width:16px;height:8px;background:#0f1122;box-shadow:inset 0 0 0 2px var(--pxLine)}.rkPips i.on{background:var(--pxGold);box-shadow:inset 0 0 0 2px var(--pxGold2)}
 .candyRow{display:flex;align-items:center;gap:6px;align-self:stretch;justify-content:center;font-family:var(--pxFont);font-size:13px;color:var(--pxMut);margin:-2px 0 2px}
 .candyRow b{color:#9cd3ff;font-size:17px;font-weight:700;text-shadow:1px 1px 0 var(--pxK)}
-.mnRow{grid-template-columns:repeat(6,1fr)}
+.mnRow{grid-template-columns:repeat(5,1fr)}
 .pxb-sq{font-size:13px}
+/* Eevee del gacha (menú): la ilustración oficial de Eevee (PokeAPI, nítida a este tamaño; el sprite de GO solo mide 92 px) dentro de un halo dorado de energía (img/menu/halo-oro*.webp, hechos con halo-oro.js: anillo
+   inclinado con resplandor, vetas, rayos y destellos; la parte baja del anillo va por delante del sprite). Al pasar el ratón su silueta se resalta en dorado y
+   abre el gacha (sustituye al botón «Gacha»). A la izquierda de la pantalla, algo por debajo del centro */
+.mnEevee{position:fixed;left:clamp(8px,calc(50% - 740px),320px);top:58%;transform:translateY(-50%);z-index:16;width:340px;height:400px;overflow:visible;border:0;background:none;padding:0;cursor:pointer;display:block;clip-path:none;box-shadow:none}
+.mnEevee .halo,.mnEevee .haloF,.mnEevee .ev{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none}
+.mnEevee .halo,.mnEevee .haloF{width:330px;height:330px;animation:mnHalo 3.6s ease-in-out infinite}
+.mnEevee .haloF{opacity:1}
+.mnEevee .ev{width:230px;height:230px;top:48%;filter:drop-shadow(0 10px 10px rgba(0,0,0,.45));transition:transform .15s,filter .15s}
+.mnEevee span{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);font-family:var(--pxFont);font-size:16px;letter-spacing:.06em;color:#f4d27a;text-shadow:1px 1px 0 var(--pxK),0 0 10px rgba(255,215,94,.55)}
+@keyframes mnHalo{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.04)}}
+.mnEevee:hover .ev,.mnEevee:focus-visible .ev{transform:translate(-50%,-52%);filter:drop-shadow(2px 0 0 #ffd75e) drop-shadow(-2px 0 0 #ffd75e) drop-shadow(0 2px 0 #ffd75e) drop-shadow(0 -2px 0 #ffd75e) drop-shadow(0 0 12px rgba(255,215,94,.9)) brightness(1.06)}
+.mnEevee:hover .halo,.mnEevee:focus-visible .halo{filter:brightness(1.15) saturate(1.1)}
+.mnEevee:hover span,.mnEevee:focus-visible span{color:#fff2b0}
+.mnEevee:focus-visible{outline:none}
+/* el menú (776 px centrado) deja a la izquierda (50% − 388 px); si no caben los 340 px del Eevee (ancho < 1480) o la pantalla es baja, va pequeño abajo a la izquierda */
+@media (max-width:1479px),(max-height:979px){ .mnEevee{left:6px;top:auto;bottom:6px;transform:none;width:176px;height:200px} .mnEevee .halo,.mnEevee .haloF{width:176px;height:176px} .mnEevee .ev{width:116px;height:116px} .mnEevee span{font-size:13px} }
+@media (prefers-reduced-motion:reduce){ .mnEevee .halo,.mnEevee .haloF{animation:none} }
 /* ---------- cola ---------- */
 #queueBar{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);bottom:18px;z-index:30;display:flex;align-items:center;gap:14px;padding:14px 16px 14px 18px;min-width:min(520px,calc(100vw - 32px));color:var(--pxInk);animation:pxIn .3s steps(4) both}
 #queueBar.hidden{display:none}
@@ -1493,13 +1510,13 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
 </div>
 
 <div id="menu" class="screen hidden">
+  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee.webp" alt="" width="400" height="400" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"><span>Gacha</span></button>
   <div class="mnLayout">
     <h1 class="logo mnLogo"><img src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></h1>
     <nav class="mnNav" aria-label="Menú principal">
       <button class="pxb pxb-main" id="playBtn"><i data-i="ball" data-s="44"></i><span class="pxbT"><b>Normal</b><small>Dificultad adaptativa · salas con amigos</small></span><i class="pxCaret" aria-hidden="true"></i></button>
       <button class="pxb pxb-alt" id="rankedBtn"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Clasificatoria</b><small>Rango, divisiones y LP</small></span><i class="pxCaret" aria-hidden="true"></i></button>
       <div class="mnRow">
-        <button class="pxb pxb-sq" id="gachaBtn"><i data-i="ball" data-s="32"></i><span>Gacha</span></button>
         <button class="pxb pxb-sq" id="histBtn"><i data-i="hourglass" data-s="32"></i><span>Historial</span></button>
         <button class="pxb pxb-sq" id="dexMenuBtn"><i data-i="dex" data-s="32"></i><span>Pokédex</span></button>
         <button class="pxb pxb-sq" id="recMenuBtn"><i data-i="bag" data-s="32"></i><span>Objetos</span></button>

@@ -2602,7 +2602,7 @@ function bindEvents(){
  $('menuBtn').addEventListener('click',()=>showOptions(true));
  $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
- $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('gachaBtn').addEventListener('click',showGacha);
+ $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('eeveeGacha').addEventListener('click',showGacha); // el Eevee con halo del menú abre el gacha
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
@@ -3977,7 +3977,7 @@ function showMenu(){ loadFriends(); setTimeout(()=>{ layout.key=''; layout(); pr
  // tras una partida con ascenso, descenso o rango revelado, se celebra al volver al menú
  if(NET.rankFx){ const d=NET.rankFx; NET.rankFx=null; setTimeout(()=>showRankChange(d),250); } }
 // Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
-function pxArt(root){ if(window.PX) PX.hydrate(root||document); if(window.MenuScene) MenuScene.ensure(); }
+function pxArt(root){ if(window.PX) PX.hydrate(root||document); } // la escena pixel del menú (MenuScene) ya no se arranca: fondo azul liso hasta que haya fondo nuevo
 /* ---------- escena pixel del menú (estilo Esmeralda) ---------- */
 // Cielo por bandas, nubes grandes, mar con destellos, valla y hierba; Latios y Latias cruzan el cielo.
 const GEN3=d=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/emerald/${d}.png`;

@@ -89,7 +89,7 @@ test('Eevee es mítica: bloqueada en el selector del registro y del menú, con �
 
 test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabilidades, historial y tienda', async ({ page }) => {
   await register(page);
-  await page.locator('#gachaBtn').click();
+  await page.locator('#eeveeGacha').click();
   await expect(page.locator('.gaBall')).toBeVisible();
   await expect(page.locator('#gaCandy')).toHaveText('0');
   await expect(page.locator('.gaPity')).toContainText('Eevee garantizado en 200 tiradas');
@@ -109,7 +109,7 @@ test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabili
 
 test('Personalizar y Colección: cuenta nueva sin cosméticos, desde el gacha y desde el perfil', async ({ page }) => {
   await register(page);
-  await page.locator('#gachaBtn').click();
+  await page.locator('#eeveeGacha').click();
   await page.locator('#gaPz').click();
   await expect(page.locator('.pzSlots .pxb')).toHaveCount(14);
   await expect(page.locator('.pzItems .gaItem.on')).toContainText('Ninguno');
