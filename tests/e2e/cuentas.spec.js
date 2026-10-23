@@ -55,7 +55,7 @@ test('la sesión sobrevive a recargar la página', async ({ page }) => {
 
 test('los menús secundarios abren y cierran', async ({ page }) => {
   await register(page);
-  for (const [btn, title] of [['#dexMenuBtn', 'Pokédex'], ['#recMenuBtn', 'Objetos'], ['#howBtn', 'Cómo jugar'], ['#optBtn', 'Opciones']]) {
+  for (const [btn, title] of [['#dexMenuBtn', 'Pokédex'], ['#recMenuBtn', 'Objetos'], ['#howBtn', 'Cómo jugar'], ['#optBtn', 'Configuración']]) {
     await page.locator(btn).click();
     await expect(page.locator('#mbox h1')).toHaveText(title);
     await page.locator('#mClose').click();
