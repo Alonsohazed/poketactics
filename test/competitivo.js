@@ -137,6 +137,18 @@ ready.then(() => server.listen(0, async () => {
     ok(got && got.mode === 'ranked' && got.rec.place === 8 && got.rec.candies === 65, `resultado del servidor: puesto ${got && got.rec.place}, ${got && got.rec.candies} caramelos`);
     ok(got && got.rec.placement && got.rec.placement.done === 1 && got.comp.ranked.placing, 'primera partida clasificatoria: posicionamiento 1/3');
     ok(got && got.rec.comp && Array.isArray(got.rec.comp.units) && got.rec.participants.length === 8 && got.rec.participants.every(p => !('bot' in p)), 'el registro guarda la composición y no marca bots');
+    // pantalla de resultados: los 8 jugadores, misma forma para personas y rivales generados, sin ids ni MMR
+    const B = got && got.board; const KEYS = 'a,lvl,me,n,pl,rd,t,tac,tf,u';
+    ok(Array.isArray(B) && B.length === 8 && B.every(b => Object.keys(b).sort().join() === KEYS), 'resultado: 8 tableros con las mismas claves para todos');
+    ok(B && B.filter(b => b.me).length === 1 && B.find(b => b.me).pl === 8 && B.find(b => b.me).n === 'Xenia', 'resultado: mi fila, con mi puesto y mi nombre de cuenta');
+    ok(B && B.filter(b => !b.me).every(b => b.pl === 0 && b.u.length >= 0), 'resultado: los que siguen vivos van sin puesto (en juego)');
+    ok(B && !/uid|mmr|skill|isBot|peer/i.test(JSON.stringify(B)) && JSON.stringify(B).length < 8000, `resultado: sin ids, MMR ni nivel de bot (${B && JSON.stringify(B).length} bytes)`);
+    // si el navegador no confirma el resultado (corte justo al terminar), se reenvía al volver a conectar; tras confirmarlo, ya no
+    const s2 = await new Promise(res => { const s = io(url, { transports: ['websocket'], extraHeaders: { Cookie: ckX } }); const got2 = []; s.on('result', d => got2.push(d)); s.on('connect', () => setTimeout(() => res({ s, got2 }), 300)); });
+    ok(s2.got2.length === 1 && s2.got2[0].late && s2.got2[0].board.length === 8, 'resultado reenviado al reconectar');
+    s2.s.emit('resultSeen'); await sleep(150); s2.s.close();
+    const s3 = await new Promise(res => { const s = io(url, { transports: ['websocket'], extraHeaders: { Cookie: ckX } }); const got3 = []; s.on('result', d => got3.push(d)); s.on('connect', () => setTimeout(() => res({ s, got3 }), 300)); });
+    ok(!s3.got3.length, 'tras confirmarlo, no se vuelve a enviar'); s3.s.close();
     const h2 = await hist(ckX); ok(h2[0].mode === 'ranked' && h2[0].data.place === 8, 'el historial refleja exactamente el resultado');
     const cand = (await me(ckX)).comp.candies;
     // reprocesar el mismo resultado (reintento): no cambia nada

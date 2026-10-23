@@ -1,5 +1,5 @@
 // Modos de juego en el navegador: cola de Normal con bots, cancelar una cola, clasificatoria en posicionamiento e historial vacío
-const { test, expect, register } = require('./helpers');
+const { test, expect, register, startSolo } = require('./helpers');
 
 test('Normal: buscar partida, entrar con bots y la partida la lleva el servidor @rapido', async ({ page }) => {
   await register(page);
@@ -48,4 +48,28 @@ test('perfil propio desde el menú: estandarte, vitrinas, pestañas por modo e h
   await expect(page.locator('.pfWrap .hEmpty')).toBeVisible();
   await page.locator('#mClose').click();
   await expect(page.locator('.pfHero')).toHaveCount(0);
+});
+
+test('pantalla de resultados: sale una vez al quedar eliminado, con los 8 y «Continuar» al menú', async ({ page }) => {
+  await register(page);
+  await startSolo(page);
+  // equipos para todos; luego me eliminan (4 vivos)
+  await page.evaluate(() => { G.timer = Infinity; const keys = UNIT_LIST.map(u => u.key);
+    G.players.forEach((p, i) => { p.board = {}; for (let j = 0; j < 3; j++) p.board[j + ',0'] = makeInst(keys[(i * 5 + j) % keys.length]); });
+    [G.players[7], G.players[6], G.players[5], G.players[0]].forEach((p, k) => { p.finalComp = compSnap(p); p.place = 8 - k; p.alive = false; p.hp = 0; });
+    endGame(); });
+  await expect(page.locator('.rsHead')).toContainText('Has quedado eliminado');
+  await expect(page.locator('.rsBig b')).toHaveText('5.º');
+  await expect(page.locator('.rsRow')).toHaveCount(8);
+  await expect(page.locator('.rsRow.pl0')).toHaveCount(4); // los vivos, arriba y «En juego»
+  await expect(page.locator('.rsRow').first()).toContainText('En juego');
+  await expect(page.locator('.rsRow.me')).toHaveCount(1);
+  await expect(page.locator('.rsRow.me .rsAdd')).toHaveCount(0); // a uno mismo no se le pide amistad
+  await expect(page.locator('.rsRow .rsWho a, .rsRow [data-pick]')).toHaveCount(0); // desde aquí no se abre ningún perfil
+  // pedir amistad desde la fila de un rival
+  await page.locator('.rsRow:not(.me) .rsAdd').first().click();
+  await expect(page.locator('.rsRow:not(.me) .rsTag').first()).toHaveText('Enviada');
+  await page.locator('#rsGo').click();
+  await expect(page.locator('#menu')).toBeVisible();
+  await expect(page.locator('.rsTable')).toHaveCount(0);
 });

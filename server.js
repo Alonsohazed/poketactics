@@ -135,6 +135,18 @@ function startGame(room, opts) {
   broadcastRooms();
 }
 
+// Pantalla de resultados: los 8 jugadores tal y como estaban al terminar esta persona (los eliminados con su equipo final,
+// los vivos con el de ahora y place 0). Personas y rivales generados con la misma forma; las personas con su nombre completo
+// de cuenta, para poder pedirles amistad por nombre (los rivales nunca se llaman como una cuenta).
+function resultBoard(room, meIdx) {
+  let B = []; try { B = room.game.serverBoards(); } catch (e) { /* noop */ }
+  return B.map((b, j) => { const s = b.peer && room.seats.find(q => q.peer === b.peer), c = b.comp || {};
+    return { n: s ? s.full || s.nick : b.name, pl: b.place || 0, tac: b.tac, tf: b.tf, lvl: c.lvl || 0, rd: c.round || '', u: c.units || [], t: c.traits || [], a: c.augs || [], me: j === meIdx }; });
+}
+// Último resultado de cada persona hasta que su navegador confirma que lo recibió (resultSeen): si se corta justo al
+// terminar, se le reenvía al volver a conectar (como mucho 15 min)
+const lastResults = new Map();
+setInterval(() => { const lim = Date.now() - 15 * 60 * 1000; for (const [u, v] of lastResults) if (v.at < lim) lastResults.delete(u); }, 60 * 1000).unref();
 // Apunta el resultado de cada persona en cuanto queda eliminada: MMR, LP, caramelos e historial (una sola vez por asiento;
 // además la base rechaza repetir la misma partida y usuario). Los rivales que siguen vivos cuentan como por encima.
 function recordPlaces(room, info) {
@@ -147,11 +159,13 @@ function recordPlaces(room, info) {
     const mode = room.mode, mmrOf = (x, j) => { if (x.peer) { const s = room.seats.find(q => q.peer === x.peer); return s ? (mode === 'ranked' ? s.rmmr : s.nmmr) || CMP.CFG.START_MMR : CMP.CFG.START_MMR; } const b = room.botInfo[j - room.seats.length]; return b ? b.mmr : CMP.CFG.START_MMR; };
     const opps = pl.map((x, j) => j === i ? null : { mmr: mmrOf(x, j), place: x.place || 0 }).filter(Boolean);
     const participants = pl.map((x, j) => ({ name: x.name, place: x.place || null, me: j === i }));
+    const board = resultBoard(room, i), uid = seat.uid;
     db.recordMatch(seat.uid, room.matchId, mode, comp => {
       const r = CMP.applyMatch(comp, { mode, place: e.place, opps });
       Object.assign(r.rec, { comp: e.comp || null, participants, duration: Math.round((Date.now() - room.startedAt) / 1000) });
       return r;
-    }).then(r => { if (r && !r.dup) io.to(seat.peer).emit('result', { mode, rec: r.rec, comp: CMP.publicComp(r.comp) }); })
+    }).then(r => { if (!r || r.dup) return; const msg = { mode, rec: r.rec, comp: CMP.publicComp(r.comp), board };
+      lastResults.set(uid, { msg, at: Date.now() }); io.to(seat.peer).emit('result', msg); })
       .catch(err => console.error(`[${room.code}] no se pudo guardar el resultado`, err.message));
   });
 }
@@ -160,7 +174,7 @@ async function seatFor(socket) {
   const u = socket.data.user;
   const fresh = await db.userById(u.id).catch(() => null);
   const c = CMP.normComp(fresh && fresh.comp);
-  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), tr: (fresh || u).trainer || '', connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
+  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), full: u.name, tr: (fresh || u).trainer || '', connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
 }
 
 // ---------- colas Normal y Clasificatoria ----------
@@ -253,6 +267,9 @@ io.on('connection', socket => {
   };
 
   socket.on('list', () => socket.emit('rooms', roomList()));
+  // resultado que no llegó a confirmarse (corte justo al terminar): se reenvía una vez conectado
+  { const lr = lastResults.get(me.id); if (lr) socket.emit('result', Object.assign({ late: true }, lr.msg)); }
+  socket.on('resultSeen', () => lastResults.delete(me.id));
   // ¿tengo una partida a medias? (al conectar, y cada vez que el menú lo pregunta)
   socket.emit('resume', resumeInfo(socket.data.user.id));
   socket.on('resumable', () => { if (!limited()) socket.emit('resume', resumeInfo(socket.data.user.id)); });

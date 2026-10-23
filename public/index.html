@@ -1044,6 +1044,27 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .pfStats{grid-template-columns:repeat(5,1fr);margin-top:0}
 .pfRow .hMain{cursor:default}.pfRow .hMain:hover{background:none}
 .pfAct{margin-top:8px;padding:7px 10px;gap:6px;font-size:12px;font-weight:600;justify-content:center}
+/* ---------- pantalla de resultados ---------- */
+.mbox:has(.rsTable){max-width:1120px;overflow-x:hidden}
+.rsHead{display:flex;align-items:center;gap:18px;margin-bottom:12px}
+.rsBig{flex:none;width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0f1122;clip-path:var(--pxCut);box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px #6f6a88;font-family:var(--pxFont)}
+.rsBig b{font-size:38px;font-weight:700;line-height:1;text-shadow:2px 2px 0 var(--pxK)}.rsBig span{font-size:12px;color:var(--pxMut)}
+.rsHead.win .rsBig{box-shadow:inset 0 0 0 3px var(--pxK),inset 0 0 0 6px var(--pxGold)}.rsHead.win .rsBig b{color:var(--pxGold)}
+.rsTitle{flex:1;min-width:0}.rsTitle h1{margin:2px 0 0;padding:0}.rsTitle .goChips{margin:8px 0 0}
+.rsTable{display:flex;flex-direction:column;gap:6px;min-width:0}.rsRow>*{min-width:0}
+.rsRow{--pc:#6f6a88;display:grid;grid-template-columns:44px 44px 150px minmax(0,1fr) 150px 40px;gap:10px;align-items:center;padding:6px 10px 6px 12px;background:rgba(0,0,0,.28);clip-path:var(--pxCutS);box-shadow:inset 4px 0 0 0 var(--pc),inset 0 0 0 2px #262c48;font-family:var(--pxFont)}
+.rsRow.pl0{--pc:#3fbf5a}.rsRow.pl1{--pc:var(--pxGold)}.rsRow.pl2{--pc:#7fb2ff}
+.rsRow.me{background:rgba(255,210,63,.08);box-shadow:inset 4px 0 0 0 var(--pc),inset 0 0 0 2px var(--pxGold2)}
+.rsPl{font-size:20px;font-weight:700;color:var(--pc);text-shadow:1px 1px 0 var(--pxK);text-align:center}
+.rsAv img{object-fit:contain;transform:none;image-rendering:pixelated}
+.rsWho{display:flex;flex-direction:column;gap:2px;min-width:0}.rsWho b{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rsWho small{font-size:11px;color:var(--pxMut)}
+.rsRow.me .rsWho b{color:var(--pxGold)}
+.rsComp .hU{width:38px;height:46px}.rsComp .hU img{width:60px;height:60px}
+.rsTr{justify-content:flex-end}
+.rsAct{display:grid;place-items:center}.rsAdd{width:34px;height:34px}
+.rsTag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pxMut)}
+.rsFoot{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:16px}.rsFoot .pxb-main{width:min(360px,100%);min-height:60px;justify-content:center}.rsFoot .pxb-main b{font-size:24px;text-transform:uppercase}
+@media (max-width:820px){ .rsRow{grid-template-columns:36px 40px minmax(0,1fr) 40px;grid-template-areas:"pl av who act" "comp comp comp comp" "tr tr tr tr"} .rsPl{grid-area:pl} .rsAv{grid-area:av} .rsWho{grid-area:who} .rsAct{grid-area:act} .rsComp{grid-area:comp} .rsTr{grid-area:tr;justify-content:flex-start} .rsHead{flex-direction:column;text-align:center} }
 /* ---------- amigos (panel lateral del menú) ---------- */
 .frBtn{position:fixed;top:14px;right:16px;z-index:17;padding:8px 14px 8px 10px;gap:8px;font-size:15px;font-weight:700}
 .frBtn .frOn{min-width:22px;padding:1px 6px;font-size:13px;color:#7dffa8;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px #2b7c36}

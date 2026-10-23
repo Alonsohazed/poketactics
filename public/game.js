@@ -3499,16 +3499,37 @@ function showAnvil(a,done){
  <div class="choices">${a.opts.map((k,i)=>`<button class="choice" data-i="${i}" data-tip="item:${k}">${itemHTML(k,52)}<b>${ITEMS[k].name}</b><span class="small">${statLine(ITEMS[k].s)}${ITEMS[k].comp?'':'<br>'+ITEMS[k].desc}</span></button>`).join('')}</div>`);
  $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ giveItem(G.me,a.opts[+b.dataset.i]); closeModal(); renderUI(); done(); });
 }
-function showGameOver(){
- const me=G.me, won=me.place===1;
- openModal(`<h1>${won?'¡Campeón de la Liga!':me.alive?'Fin de la partida':'Has quedado eliminado'}</h1>
- <p>${won?'Eres el último entrenador en pie.':`Puesto ${me.place||'—'} de 8.`} Ronda ${G.round?G.round.s+'-'+G.round.n:'—'} · nivel ${me.level}.</p>
- <p class="small muted">Aumentos: ${me.augments.map(id=>AUG_BY[id]?AUG_BY[id].name:'').filter(Boolean).join(', ')||'ninguno'}</p>
- <div id="goRes">${NET.mode==='sp'?'<p class="small muted">Práctica sin conexión: no da caramelos ni cuenta para el historial.</p>':NET.result?resultHTML(NET.result):'<p class="small muted">Guardando el resultado en tu cuenta…</p>'}</div>
- <div style="display:flex;gap:8px;flex-wrap:wrap">${NET.mode==='sp'?'<button class="btn primary" id="againBtn">Practicar otra vez</button>':''}${NET.mode==='client'&&!G.over?'<button class="btn" id="watchBtn">Seguir mirando</button>':''}<button class="btn" id="toMenu">Menú principal</button></div>`,{kind:'over'});
+/* ----- pantalla de resultados: sale UNA vez al terminar tu partida (eliminado o campeón) y «Continuar» lleva al menú -----
+   Los 8 jugadores con su minileyenda, nivel, equipo (estrellas y objetos), sinergias, aumentos y la ronda en que cayeron; los
+   que siguen vivos, arriba y «En juego». En multijugador los datos llegan del servidor con el resultado (result.board); en la
+   práctica sin conexión se calculan aquí con la misma forma. Ningún perfil se abre desde aquí; sí se puede pedir amistad. */
+function localBoard(){ return G.players.map(p=>{ const c=p.place&&p.finalComp?p.finalComp:compSnap(p); return {n:p.name,pl:p.place||0,tac:p.tac,tf:p.tacForm||['',''],lvl:c.lvl,rd:c.round,u:c.units,t:c.traits,a:c.augs,me:p===G.me}; }); }
+function rsFriendBtn(b){ if(b.me||NET.mode==='sp'&&!ACC) return ''; const L=FR.list, k=String(b.n).toLowerCase();
+ if(L&&L.friends.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Amigo</span>';
+ if(L&&L.outgoing.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Enviada</span>';
+ return `<button class="pxb pxb-sq frIc rsAdd" data-n="${esc(b.n)}" type="button" aria-label="Enviar solicitud de amistad a ${esc(b.n)}" title="Añadir amigo"><i data-i="addfriend" data-s="18"></i></button>`; }
+function rsRow(b){ const pl=b.pl||0, dex=tacDex({tac:TACS[b.tac]?b.tac:'charmander',tacForm:Array.isArray(b.tf)?b.tf:['',''],level:b.lvl|0});
+ return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv">${portraitImg(dex)}</span>
+  <div class="rsWho"><b>${esc(b.n)}</b><small>Nivel ${b.lvl||'—'} · ${!pl?'En juego':pl===1?'Ganador':'Cae en '+esc(b.rd||'—')}</small></div>
+  <div class="hComp rsComp">${(b.u||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon</span>'}</div>
+  <div class="hTraits rsTr">${(b.t||[]).slice(0,6).map(histTrait).join('')}${(b.a||[]).map(id=>AUG_BY[id]?`<span class="hA" title="${esc(AUG_BY[id].name)}">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div>
+  <div class="rsAct">${rsFriendBtn(b)}</div></div>`; }
+function renderResultsTable(board){ const el=$('rsTable'); if(!el) return;
+ const B=(board||[]).slice(0,8).sort((x,y)=>(x.pl||0)-(y.pl||0)); // los vivos (puesto 0) arriba, luego 1.º, 2.º…
+ el.innerHTML=B.length?B.map(rsRow).join(''):'<p class="muted">Cargando los equipos…</p>'; hydrate(el); window.PX&&PX.hydrate(el);
+ el.querySelectorAll('.rsAdd').forEach(bt=>bt.onclick=async()=>{ bt.disabled=true; await friendOp('request',bt.dataset.n); if(FR.msg&&FR.msg.ok) bt.outerHTML='<span class="rsTag">Enviada</span>'; else { bt.disabled=false; toast(FR.msg?FR.msg.t:'No se pudo enviar'); } }); }
+// late: resultado reenviado tras un corte justo al terminar (se muestra sobre el menú)
+function showGameOver(late){
+ const place=late?late.place:G.me.place, won=place===1, sp=!late&&NET.mode==='sp';
+ if(ACC&&!FR.list) loadFriends();
+ openModal(`<div class="rsHead${won?' win':''}"><div class="rsBig"><b>${place?ordinal(place):'—'}</b><span>de 8</span></div>
+  <div class="rsTitle"><div class="pxKicker">${won?'¡Campeón de la Liga!':'Fin de la partida'}</div><h1>${won?'Eres el último entrenador en pie':'Has quedado eliminado'}</h1>
+   <div id="goRes">${sp?'<p class="small muted">Práctica sin conexión: no da caramelos ni cuenta para el historial.</p>':NET.result?resultHTML(NET.result):'<p class="small muted">Guardando el resultado en tu cuenta…</p>'}</div></div></div>
+  <div class="rsTable" id="rsTable"></div>
+  <div class="rsFoot"><button class="pxb pxb-main" id="rsGo" type="button"><span class="pxbT"><b>Continuar</b></span><i class="pxCaret" aria-hidden="true"></i></button>${sp?'<button class="pxLink" id="againBtn" type="button">Practicar otra vez</button>':''}</div>`,{kind:'over'});
+ renderResultsTable(sp?localBoard():NET.result&&NET.result.board);
  if($('againBtn')) $('againBtn').onclick=()=>{ closeModal(); selected=null; selCombat=null; newGame({diff:'normal'}); };
- if($('watchBtn')) $('watchBtn').onclick=closeModal;
- $('toMenu').onclick=()=>{ closeModal(); if(NET.mode!=='sp') leaveRoom(); showMenu(); };
+ $('rsGo').onclick=()=>{ closeModal(); if(!sp&&!late) leaveRoom(); showMenu(); };
  if(window.PX) PX.hydrate($('mbox'));
 }
 function renderMenu(){
@@ -3596,7 +3617,10 @@ function showRanked(){
 
 // ----- resultado de la partida, ascensos y revelación del rango -----
 function onResult(d){
- if(!d||!d.rec) return; NET.result=d; if(ACC&&d.comp){ ACC.comp=d.comp; renderMenu(); }
+ if(!d||!d.rec) return; NET.result=d; if(NET.sock) NET.sock.emit('resultSeen'); if(ACC&&d.comp){ ACC.comp=d.comp; renderMenu(); }
+ if(Array.isArray(d.board)) d.board=d.board.slice(0,8).filter(b=>b&&typeof b==='object').map(b=>({n:String(b.n||'').slice(0,20),pl:clamp(b.pl|0,0,8),tac:TACS[b.tac]?b.tac:'charmander',tf:Array.isArray(b.tf)?b.tf.slice(0,2).map(k=>DEF[k]?k:''):['',''],lvl:clamp(b.lvl|0,0,10),rd:String(b.rd||'').slice(0,6),u:Array.isArray(b.u)?b.u.slice(0,12):[],t:Array.isArray(b.t)?b.t.slice(0,9):[],a:Array.isArray(b.a)?b.a.slice(0,4):[],me:!!b.me}));
+ if(NET.modal==='over') renderResultsTable(d.board);
+ else if(d.late&&NET.mode!=='client'&&ACC&&!NET.modal) showGameOver({place:d.rec.place});
  if(d.rec.promoted||d.rec.revealed||d.rec.demoted) NET.rankFx=d;
  const el=$('goRes'); if(el){ el.innerHTML=resultHTML(d); window.PX&&PX.hydrate(el); }
 }
