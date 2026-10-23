@@ -68,6 +68,48 @@ const opps7 = (mmr, myPlace) => [1, 2, 3, 4, 5, 6, 7, 8].filter(p => p !== myPla
 { // caramelos: tabla configurada, todos los puestos reciben algo y nunca negativos
   ok(C.CFG.CANDY.join() === '100,95,90,85,80,75,70,65', 'caramelos por puesto'); ok(C.normComp({ candies: 'x' }).candies === 0, 'saldo inválido → 0 (nunca NaN)'); }
 
+// ---------- gacha (lógica pura, con un azar sustituible) ----------
+{ const G = require('../gacha'), CO = require('../public/cosmetics'); let k = 0; const N = () => 'test' + String(++k).padStart(8, '0');
+  const run = (comp, cosm, req, rng) => G.apply(comp, cosm, Object.assign({ nonce: N() }, req), { today: '2026-10-22', playedToday: true, rng });
+  // garantía: con un azar que nunca da la mítica, la tirada 200 da Eevee y el contador vuelve a 0
+  let comp = { candies: 1e6 }, cosm = {}, at = 0; const never = () => 0.5;
+  for (let i = 1; i <= 200; i++) { const r = run(comp, cosm, { op: 'roll', n: 1 }, never); comp = r.comp; cosm = r.cosm; if (r.out.res[0].key === CO.EEVEE) { at = i; break; } }
+  ok(at === 200 && cosm.pity === 0 && CO.hasEevee(cosm), `garantía: Eevee en la tirada ${at}`);
+  // con Eevee en la colección, la mítica da Polvo Estelar y ya no hay contador
+  const d0 = cosm.dust, rm = run(comp, cosm, { op: 'roll', n: 1 }, () => 0.0005);
+  ok(rm.out.res[0].key === 'dust' && rm.cosm.dust === d0 + CO.BIG_DUST && rm.cosm.pity === 0, 'mítica repetida: 1.500 de polvo');
+  // la tirada de 10 cuenta 10 y en la 200 sale aunque caiga en medio de un lote
+  let c2 = { pity: 195 }, p2 = { candies: 3600 }; const r10 = run(p2, c2, { op: 'roll', n: 10 }, never);
+  ok(r10.out.res[4].key === CO.EEVEE && r10.out.res.filter(x => x.key === CO.EEVEE).length === 1 && r10.cosm.pity === 0 && r10.comp.candies >= 0, 'lote de 10: Eevee en la 5.ª y después ya no hay contador');
+  // distribución con crypto: 300.000 tiradas sin garantía (contador reiniciado) cuadran con la tabla
+  const cnt = {}; let refund = 0, cc = { candies: 1e9 }, cs = {};
+  for (let i = 0; i < 30000; i++) { cs.pity = 0; if (cs.inv && cs.inv.length > 60) cs.inv = []; const r = run(cc, cs, { op: 'roll', n: 10 }); cc = r.comp; cs = r.cosm; cs.inv = cs.inv.filter(x => x !== CO.EEVEE); for (const x of r.out.res) { cnt[x.t] = (cnt[x.t] || 0) + 1; if (x.key === 'cd') refund++; } }
+  const T = 300000, near = (t, p, tol) => Math.abs((cnt[t] || 0) / T - p) < tol;
+  ok(near('c', .6, .006) && near('r', .3, .006) && near('e', .082, .003) && near('l', .017, .0012) && near('m', .001, .0004), `distribución por rarezas (${JSON.stringify(cnt)})`);
+  ok(Math.abs(refund / T - .15) < .005, `caramelos de vuelta en el 15 % (${(refund / T * 100).toFixed(2)} %)`);
+  // repetidos → polvo; colección completa → título exclusivo; tienda
+  let c3 = { inv: CO.COLLECTIONS[0].items.slice(1), dust: 2000 }; const first = CO.COLLECTIONS[0].items[0];
+  const rb = run({ candies: 0 }, c3, { op: 'buy', key: first }, never);
+  ok(rb.out.res.length === 2 && rb.out.res[1].key === CO.COLLECTIONS[0].reward && rb.cosm.inv.includes(CO.COLLECTIONS[0].reward), 'completar una colección da su título');
+  ok(rb.cosm.dust === 2000 - CO.TIER[CO.BY[first].t].price, 'la compra cobra el precio de su rareza');
+  const dup = run({ candies: 400 }, { inv: CO.POOL.r.slice() }, { op: 'roll', n: 1 }, (() => { const s = [0.3, 0.3]; return () => s.length ? s.shift() : 0.1; })());
+  ok(dup.out.res[0].dup && dup.out.res[0].dust === 20 && dup.cosm.dust === 20, 'una rara repetida da 20 de polvo');
+  ok(run({ candies: 0 }, {}, { op: 'buy', key: CO.COLLECTIONS[0].reward }, never).error, 'los títulos de colección no se compran');
+  ok(run({ candies: 0 }, {}, { op: 'daily' }, never).out && G.apply({ candies: 0 }, {}, { op: 'daily', nonce: N() }, { today: 'x', playedToday: false }).error, 'diaria solo si hoy terminaste una partida');
+  // catálogo: cada clave con rareza, tipo conocido y datos para pintarla; tamaño acotado
+  ok(CO.LIST.every(i => (CO.TIER[i.t] || i.t === 'x') && (i.key === 'cd' || CO.TYPES[CO.typeOf(i.key)]) && i.name && i.d), 'catálogo: todas las claves con rareza, tipo y datos');
+  ok(CO.LIST.every(i => i.key.length <= 16) && JSON.stringify(cs).length < 3000, `claves cortas y colección completa pequeña (${JSON.stringify(cs).length} bytes)`); }
+
+// ---------- migración de Eevee (JSON local): repetible y respeta a quien la consiguió ----------
+{ const { execFileSync } = require('child_process'), f = path.join(tmp, 'mig.json');
+  fs.writeFileSync(f, JSON.stringify({ seq: 3, sessions: {}, users: [
+    { id: 1, name: 'ConEevee', pass: 'x', trainer: 'eevee', cosm: { inv: ['tac:eevee'] } },
+    { id: 2, name: 'SinEevee', pass: 'x', trainer: 'eevee' },
+    { id: 3, name: 'Normal', pass: 'x', trainer: 'pichu', cosm: {} }] }));
+  const run = () => execFileSync(process.execPath, ['-e', "require('./db').init().then(()=>{})"], { cwd: path.join(__dirname, '..'), env: Object.assign({}, process.env, { DB_FILE: f, DATABASE_URL: '' }) });
+  run(); const a = JSON.parse(fs.readFileSync(f, 'utf8')).users.map(u => u.trainer).join(); run(); const b = JSON.parse(fs.readFileSync(f, 'utf8')).users.map(u => u.trainer).join();
+  ok(a === 'eevee,charmander,pichu', `migración: solo pierde a Eevee quien no la tiene (${a})`); ok(a === b, 'migración: ejecutarla dos veces deja lo mismo'); }
+
 // ---------- 2 y 3. base de datos y servidor ----------
 const { server, ready, rooms, queues } = require('../server');
 const db = require('../db');
@@ -103,6 +145,7 @@ ready.then(() => server.listen(0, async () => {
     ok(PY.peak && PY.peak.ladder > PY.ranked.ladder, `perfil: el mejor rango recuerda el pico (${C.rankLabel(PY.peak)} frente a ${C.rankLabel(PY.ranked)})`);
     ok(PY.account.level === 1 + Math.floor((4 * 100 + 2 * 65 + 80) / 500) && PY.history.length === 7, 'perfil: nivel de cuenta por caramelos ganados y 7 partidas en el historial');
     ok(PY.history.every(m => m.mmrBefore === undefined && m.participants === undefined && m.why === undefined && m.oppAvg === undefined) && !/mmr/i.test(JSON.stringify(PY)), 'perfil: el historial no lleva MMR, rivales ni el porqué de los LP');
+    ok(PY.cs === '' && PY.eevee === false, 'perfil: cosméticos visibles e insignia de Eevee (vacíos en una cuenta nueva)');
     ok(PY.history[1].lp < 0 && PY.history[0].mode === 'custom' && PY.history.some(m => m.revealed), 'perfil: LP, rango revelado y modo de cada partida');
     // nombres de los rivales: nunca el de una cuenta real
     { const vm = require('vm'), ctx = { __SERVER__: true, module: { exports: {} }, console, setTimeout, clearTimeout, setInterval, clearInterval }; vm.createContext(ctx);
@@ -110,6 +153,8 @@ ready.then(() => server.listen(0, async () => {
       const libres = []; for (let i = 0; i < 30; i++) libres.push(E.generateBotName(libres)); const taken = new Set(libres.slice(0, 25).map(n => n.toLowerCase()));
       let bad = 0; for (let i = 0; i < 20; i++) { E.newGame({ mp: true, server: true, humans: [], taken: n => taken.has(n.toLowerCase()) }); bad += E.G.players.filter(p => taken.has(p.name.toLowerCase())).length; }
       ok(bad === 0, 'los rivales generados nunca se llaman como una cuenta real');
+      let eev = 0; for (let i = 0; i < 60; i++) { E.newGame({ mp: true, server: true, humans: [] }); eev += E.G.players.filter(p => p.tac === 'eevee').length; }
+      ok(eev === 0, 'los rivales generados nunca llevan a Eevee (mítica)');
       ok(db.nameTaken('xenia') && db.nameTaken('YAGO') && !db.nameTaken('Nadie_123'), 'nameTaken conoce las cuentas sin distinguir mayúsculas');
       // pantalla de resultados (datos): los 8 con la misma forma, sin ids de cuenta ni MMR, y pocos KB
       const B = E.serverBoards(); ok(B.length === 8 && B.every(b => b.comp && Array.isArray(b.comp.units) && 'tac' in b && Array.isArray(b.tf) && !('uid' in b) && !('isBot' in b) && !('skill' in b)), 'tableros de los 8: misma forma para todos y sin marcas de bot');
@@ -138,7 +183,7 @@ ready.then(() => server.listen(0, async () => {
     ok(got && got.rec.placement && got.rec.placement.done === 1 && got.comp.ranked.placing, 'primera partida clasificatoria: posicionamiento 1/3');
     ok(got && got.rec.comp && Array.isArray(got.rec.comp.units) && got.rec.participants.length === 8 && got.rec.participants.every(p => !('bot' in p)), 'el registro guarda la composición y no marca bots');
     // pantalla de resultados: los 8 jugadores, misma forma para personas y rivales generados, sin ids ni MMR
-    const B = got && got.board; const KEYS = 'a,lvl,me,n,pl,rd,t,tac,tf,u';
+    const B = got && got.board; const KEYS = 'a,cs,lvl,me,n,pl,rd,t,tac,tf,u';
     ok(Array.isArray(B) && B.length === 8 && B.every(b => Object.keys(b).sort().join() === KEYS), 'resultado: 8 tableros con las mismas claves para todos');
     ok(B && B.filter(b => b.me).length === 1 && B.find(b => b.me).pl === 8 && B.find(b => b.me).n === 'Xenia', 'resultado: mi fila, con mi puesto y mi nombre de cuenta');
     ok(B && B.filter(b => !b.me).every(b => b.pl === 0 && b.u.length >= 0), 'resultado: los que siguen vivos van sin puesto (en juego)');

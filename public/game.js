@@ -231,9 +231,12 @@ const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
 // Etapas: base · nivel 6 · nivel 8 (sin Megaevoluciones). Eevee no tiene línea fija: al llegar a 6 y a 8 eliges su evolución (pick: opciones de cada subida)
 const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,6]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur y Venusaur',dex:[1,2,3]},squirtle:{name:'Squirtle',evo:'Wartortle y Blastoise',dex:[7,8,9]},
  dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154]},
- eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
+ eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],locked:true,pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
 const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 const TAC_KEYS=Object.keys(TACS);
+// Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
+const FREE_TACS=TAC_KEYS.filter(k=>!TACS[k].locked);
+const tacOwned=k=>!!TACS[k]&&(!TACS[k].locked||!!(typeof ACC!=='undefined'&&ACC&&ACC.cosm&&Array.isArray(ACC.cosm.inv)&&ACC.cosm.inv.includes('tac:'+k)));
 // Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
 const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.pick&&st>0){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); if(k&&DEF[k]) return dexOf(DEF[k],1); return t.dex[0]; } return t.dex[st]; };
@@ -432,7 +435,7 @@ let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:
 const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0,xpCost:4,oddsSave:0,cheapCombine:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
-   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(TAC_KEYS),tacForm:['',''],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
+   streak:0,augments:[],augSt:{},picks:[],mods:defaultMods(),items:[],orbs:[],tac:pick(FREE_TACS),tacForm:['',''],alive:true,place:0,lastOpp:-1,met:[],oppRound:{},ghosts:0,po:null,history:[],freeRerolls:0,lastDmg:0,remote:false,peer:'',ready:false,log:[],toasts:[],tseq:0};
 }
 // stk: lo ganado para siempre (vida, ataque y poder). Los escalados infinitos dan ataque y poder a la par para que sirvan a cualquier ficha
 const AP_PER_AD=1.5;
@@ -1365,12 +1368,12 @@ function newGame(opts={}){
  UID=1;
  G={pool:{},players:[],roundIdx:-1,round:null,phase:'idle',timer:0,combat:null,fights:[],log:[],over:false,speed:S.speed,auto:!!opts.auto,acc:0,resolving:false,myOpp:'',anvils:[],augTiers:rollAugTiers(),carousel:null,diff:opts.diff||'normal',mp:!!opts.mp,resolveNotBefore:0};
  for(const u of UNIT_LIST) G.pool[u.key]=POOL_SIZE[u.cost-1];
- if(!opts.server){ G.players.push(makePlayer(0,opts.auto?'Tú':S.name||'Tú',!!opts.auto,S.avatar||'🧢',S.trainer)); if(!opts.auto&&!HEADLESS&&savedTac()) G.players[0].tac=savedTac(); }
+ if(!opts.server){ G.players.push(makePlayer(0,opts.auto?'Tú':S.name||'Tú',!!opts.auto,S.avatar||'🧢',S.trainer)); if(!opts.auto&&!HEADLESS&&savedTac()) G.players[0].tac=savedTac(); if(!HEADLESS&&typeof COSM!=='undefined'&&ACC&&ACC.cosm) G.players[0].cs=COSM.eqString(ACC.cosm.eq); }
  let id=opts.server?0:1;
- for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.remote=true; p.peer=h.peer; G.players.push(p); }
+ for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.cs=String(h.cs||'').slice(0,200); p.remote=true; p.peer=h.peer; G.players.push(p); }
  const usados=G.players.map(p=>p.name);
  // opts.taken (servidor): nombre de una cuenta real; un rival generado nunca se llama como una persona
- while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.botIdx=G.players.length; G.players.push(bp); }
+ while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.cs=bs&&typeof bs.cs==='string'?bs.cs.slice(0,200):(!HEADLESS&&typeof COSM!=='undefined'?COSM.botEquip():''); bp.botIdx=G.players.length; G.players.push(bp); }
  // En el servidor no hay jugador local: G.me es un espectador fantasma fuera de la lista
  G.me=opts.server?Object.assign(makePlayer(-1,'',true,''),{alive:false}):G.players[0];
  note(null,`Empieza la partida (dificultad: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
@@ -1639,6 +1642,7 @@ function applyAct(p,a){
   case 'tform': { const f=EEVEE_KEYS[(a.k|0)-1]; if(p.tac!=='eevee'||tacStage(p)<1||!f) return {ok:false}; p.tacForm=p.tacForm||['','']; p.tacForm[0]=f; return {ok:true}; }
   case 'orb': { return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
   // Burla de Charmander (H): se cuenta para que todos los que miran su tablero la vean (el contador viaja en pub.pl[i][17])
+  case 'greet': { const t=Date.now(); if(t-(p.greetAt||0)<1400) return {ok:false}; p.greetAt=t; p.gn=((p.gn||0)+1)%1000; return {ok:true}; }
   case 'taunt': { if((TACS[p.tac]?p.tac:'charmander')!=='charmander') return {ok:false}; const t=Date.now(); if(t-(p.tauntAt||0)<1400) return {ok:false}; p.tauntAt=t; p.tn=((p.tn||0)+1)%1000; return {ok:true}; }
   // Dónde está tu minileyenda para los demás: tablero que miras y destino (en radios de casilla desde la esquina del tablero)
   case 'tpos': { const b=idx(a.b), q=v=>Math.round(clamp(+v||0,-3,20)*100)/100; if(!G.players.some(o=>o.id===b)) return {ok:false}; p.tp=[b,q(a.x),q(a.y)]; return {ok:true}; }
@@ -1664,13 +1668,13 @@ function randomCode(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let s=''; for(
 function myPeerOf(room){ const me=room.peers().find(p=>p.sameTab); return me?me.peer:''; }
 function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0]; }
 function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined}; }
-// Cristales de intereses de un jugador (1 por cada 10 de oro, hasta su máximo y 5): el propio se calcula; el de los demás llega en pub.pl[i][18]
+// Cristales de intereses de un jugador (1 por cada 10 de oro, hasta su máximo y 5): el propio se calcula; el de los demás llega en pub.pl[i][19]
 const interestOf=p=>p.mods&&p!==G.me&&p.icn!=null&&NET.mode==='client'?p.icn:Math.min(p.mods?p.mods.maxInterest:5,5,Math.floor((p.gold||0)/10));
 // Rival del combate que se está viendo (null en salvajes): su banca y sus cristales se ven en su lado del campo
 function combatOpp(){ const me=G.me, v=G.view; if(G.phase!=='combat'||!G.round||G.round.type==='pve') return null; const o=v?v.opp:G.players.find(p=>p!==me&&G.myOpp&&G.myOpp.replace(' (fantasma)','')===p.name); return o&&o!==me?o:null; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,interestOf(p)]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0,interestOf(p)]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
 }
@@ -1737,7 +1741,9 @@ function sock(){
  s.on('queue',onQueue);
  s.on('result',onResult);
  s.on('friends',()=>loadFriends()); // mi lista cambió (solicitud, aceptar, eliminar…)
- s.on('friendUpd',onFriendUpd);     // un amigo cambió de estado (menú, cola, partida…)
+ s.on('friendUpd',onFriendUpd);
+ s.on('ann',onAnn);
+ s.on('cos',onCos);                 // cosméticos de los 8 (una vez por partida)                 // alguien ha conseguido a Eevee     // un amigo cambió de estado (menú, cola, partida…)
  s.on('pub',d=>{ if(NET.mode==='client') applyPub(d); });
  s.on('priv',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyPriv(d); });
  s.on('cmb',d=>{ if(NET.mode==='client'&&d&&d.to===NET.myPeer) applyCmb(d); });
@@ -1797,7 +1803,7 @@ function showRoomScreen(){
 function renderSeats(){
  const el=$('seats'); if(!el) return; const cfg=NET.cfg||{name:'Sala',max:8,diff:'normal'};
  $('roomInfo').textContent=`${cfg.name} · sala informal (da caramelos, no cambia tu rango)`;
- const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${esc(s.nick)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' <em class="hostTag">anfitrión</em>':''}</div>`:`<div class="seat wait"><i data-i="people" data-s="20"></i>Buscando jugador…</div>`); }
+ const rows=[]; for(let i=0;i<8;i++){ const s=NET.seats[i]; rows.push(s?`<div class="seat ${s.peer===NET.owner?'host':''}">${tacHeadHTML(s.tr,44)}${nameHTML(s.nick,s.cs)}${s.peer===NET.myPeer?' (tú)':''}${s.peer===NET.owner?' <em class="hostTag">anfitrión</em>':''}</div>`:`<div class="seat wait"><i data-i="people" data-s="20"></i>Buscando jugador…</div>`); }
  el.innerHTML=rows.join(''); if(window.PX) PX.hydrate(el);
  const owner=NET.owner&&NET.owner===NET.myPeer;
  $('rmActions').innerHTML=(owner?'<button class="btn primary" id="rmStart">Empezar partida</button>':'<span class="muted" style="margin-right:auto">Esperando a que el creador de la sala empiece…</span>')+'<button class="btn" id="rmLeave">Salir de la sala</button>';
@@ -1820,10 +1826,10 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn,icn]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn,gn,icn]=r;
    if(Number.isFinite(+icn)) r.icn=clamp(+icn|0,0,5);
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
-   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000});
+   Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000,gn:(+gn|0)%1000});
    if(r.icn!=null&&p!==G.me) p.icn=r.icn;
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
@@ -2029,6 +2035,11 @@ const Music=(()=>{
    this.chime(base,t,.16,.38); this.chime(base*1.5,t+gap,.13,.45); if(sec<=2) this.chime(base*2,t+gap*2,.08,.5); },
   // Evolución épica propia: subida brillante en arpegio, golpe grave y acorde mayor que se abre con destellos.
   // big: minileyenda (más larga); mega: Mega evolución (más grave, con segunda subida)
+  // Fanfarria cosmética (gacha): arpegio de campanas con las notas del premio y un acorde final; dura ~1,3 s
+  fanfare(notes){ if(!ac||S.muted||!Array.isArray(notes)) return; const t0=ac.currentTime+.03;
+   const bell=(f,t,len,vol)=>{ const o=ac.createOscillator(), o2=ac.createOscillator(), g=ac.createGain(); o.type='triangle'; o2.type='sine'; o.frequency.value=f; o2.frequency.value=f*2;
+     g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.015); g.gain.exponentialRampToValueAtTime(.0001,t+len); o.connect(g); o2.connect(g); g.connect(master); o.start(t); o2.start(t); o.stop(t+len+.05); o2.stop(t+len+.05); };
+   notes.slice(0,6).forEach((f,i)=>bell(f,t0+i*.11,.5,.16)); const tf=t0+notes.length*.11+.05; notes.slice(-3).forEach(f=>bell(f,tf,.9,.1)); },
   evolve(kind){ if(!ac||S.muted) return; const t0=ac.currentTime+.02, big=kind!=='unit', mega=kind==='mega';
    const pad=(f,t,len,vol,type='sawtooth')=>{ const o=ac.createOscillator(), fl=ac.createBiquadFilter(), g=ac.createGain(); o.type=type; o.frequency.value=f; o.detune.value=(Math.random()-.5)*14;
      fl.type='lowpass'; fl.frequency.setValueAtTime(400,t); fl.frequency.exponentialRampToValueAtTime(4200,t+len*.4); fl.Q.value=2;
@@ -2288,6 +2299,9 @@ function pixelPainter(w,h,seed){
 
 /* ---------- entrenadores (estrategas) ---------- */
 let trEmote=null;
+// Saludos de otros jugadores: cuando sube su contador (pub.pl[i][18]) se ve su frase 1,8 s
+const greetSeen=new Map();
+function otherGreet(p){ const n=p.gn|0, g=greetSeen.get(p.id); if(!g){ greetSeen.set(p.id,{n,t:0}); return ''; } if(n!==g.n){ g.n=n; g.t=performance.now(); } return performance.now()-g.t<1800?greetText(p,n):''; }
 // (x,y) en el suelo del tablero; se proyecta a pantalla y devuelve [x,y,tamaño] en pantalla
 function drawTrainer(x0,y0,key,o={}){
  const R=geo.R, [x,y,s]=trScreen(x0,y0,o.s||R*2), t=performance.now()/1000+(o.seed||0);
@@ -2384,16 +2398,20 @@ function drawBoardTrainers(){
  const bub=trEmote&&performance.now()-trEmote.t0<1800?trEmote.txt:'';
  // La tuya, la del dueño del tablero que miras, la de su rival y las de quien esté de visita (stepOthers)
  myTrBox=drawTacLabel(TAC.x,TAC.y,me,'#ff9a2e',bub);
- for(const o of tacOthers) drawTacLabel(o.x,o.y,o.p,o.col==='#7fc8ff'?'#4c8dff':o.col,'');
+ for(const o of tacOthers) drawTacLabel(o.x,o.y,o.p,o.col==='#7fc8ff'?'#4c8dff':o.col,otherGreet(o.p));
 }
 // Burla de la minileyenda de Charmander (H): hace su animación de habilidad (también Charmeleon y Charizard) y lanza una bola de fuego al campo rival
 function tacFire(){
  const me=G&&G.me; if(!me||!me.alive||!window.B3||tacKey(me)!=='charmander'||G.phase==='carousel'||modalOpen()) return;
  const now=performance.now(); if(now-(TAC.fireT||0)<1500) return; TAC.fireT=now; TAC.castN=(TAC.castN||0)+1; trEmote={t0:now,txt:'🔥'};
  const [tx,ty]=cellXY(3,1); TAC.fx=tx; TAC.fy=ty;
- setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty); },170);
+ setTimeout(()=>{ if(G&&G.me===me&&B3.fireball) B3.fireball(TAC.x,TAC.y-geo.R*.2,tx,ty,0,(cosD(me,'fb')||{}).c); },170);
  if(NET.mode==='client') doAct({t:'taunt'}); // los demás la ven en su pantalla (stepOthers)
 }
+// Saludo (T): sin juego de saludos, el 👍 de siempre; con él, sus 3 frases por turnos. Los demás lo ven (act greet → pub, como la burla)
+function greetText(p,n){ const d=cosD(p,'gr'); return d?d.lines[(n|0)%d.lines.length]:'👍'; }
+function greet(){ const me=G&&G.me; if(!me||!me.alive||modalOpen()) return; const now=performance.now(); if(now-(TAC.grT||0)<1500) return; TAC.grT=now;
+ TAC.grN=(TAC.grN||0)+1; trEmote={t0:now,txt:greetText(me,TAC.grN)}; if(NET.mode==='client') doAct({t:'greet'}); }
 // Teclas 1-3 con la minileyenda Eevee desde el nivel 6: cambia su forma al momento y avisa a los demás
 function eeveeForm(n){ const me=G&&G.me; if(!me||!me.alive||me.tac!=='eevee'||tacStage(me)<1||!EEVEE_KEYS[n-1]) return; if(me.tacForm&&me.tacForm[0]===EEVEE_KEYS[n-1]) return;
  doAct({t:'tform',k:n}); }
@@ -2544,7 +2562,7 @@ function bindEvents(){
  $('menuBtn').addEventListener('click',confirmQuit);
  $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
- $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends());
+ $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('gachaBtn').addEventListener('click',showGacha);
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
@@ -2577,7 +2595,7 @@ function bindEvents(){
    else if(k==='f'){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); }
    else if(k==='e'&&hover){ doAct({t:'sell',loc:hover.loc}); if(selected===hover.u) selected=null; hover=null; }
    else if(k===' '){ e.preventDefault(); onReady(); }
-   else if(k==='t'){ trEmote={t0:performance.now(),txt:'👍'}; }
+   else if(k==='t'){ greet(); }
    else if(k==='h'){ tacFire(); }
    else if(k>='1'&&k<='3'&&!e.ctrlKey&&!e.metaKey&&!e.altKey) eeveeForm(+k);
  });
@@ -2740,7 +2758,7 @@ const tacVis=new Map(); let tacOthers=[];
 const tauntFx=new Map();
 function otherTaunt(o,now){
  const f=tauntFx.get(o.p.id); if(!f) return;
- if(f.fire){ const [tx,ty]=cellXY(3,1); setTimeout(()=>{ if(G&&window.B3&&B3.fireball&&tacOthers.some(q=>q.p===o.p)) B3.fireball(o.x,o.y-geo.R*.2,tx,ty); },170); f.fire=false; }
+ if(f.fire){ const [tx,ty]=cellXY(3,1); setTimeout(()=>{ if(G&&window.B3&&B3.fireball&&tacOthers.some(q=>q.p===o.p)) B3.fireball(o.x,o.y-geo.R*.2,tx,ty,0,(cosD(o.p,'fb')||{}).c); },170); f.fire=false; }
  o.cast=f.castN; if(now-f.t<1100){ const [tx,ty]=cellXY(3,1); o.tx=tx; o.ty=ty; }
 }
 function stepOthers(inCombat){
@@ -2812,9 +2830,9 @@ function sceneActors(){
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
-   A.push({key:'tac:'+me.id,tac:true,dex:tacDex(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
-   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDex(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
- else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDex(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+   A.push({key:'tac:'+me.id,tac:true,dex:tacDexC(me),trail:trailOf(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
+   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
+ else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
@@ -2833,11 +2851,11 @@ function draw(){
  if(!$('menu').classList.contains('hidden')||!$('auth').classList.contains('hidden')){ ctx.clearRect(0,0,view.W,view.H); return; }
  const A=playing?sceneActors():[];
  const tP=viewedPlayer(), tsp=trainerSpots();
- const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,k:clamp(left/3,0,1)}; }).filter(Boolean):[];
+ const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,k:clamp(left/3,0,1),col:(cosD(p,'br')||{}).c||null}; }).filter(Boolean):[];
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
-   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n2:(()=>{ const o=inCombat&&combatOpp(); return o?interestOf(o):0; })(),n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10))}:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
+   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n2:(()=>{ const o=inCombat&&combatOpp(); return o?interestOf(o):0; })(),col2:(()=>{ const o=inCombat&&combatOpp(); return o?(cosD(o,'cr')||{}).c||null:null; })(),n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10)),col:(cosD(tP,'cr')||{}).c||null}:null,tiles:playing&&!inCar&&tP?(cosD(tP,'tl')||{}).c||null:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
  if(inCar) drawCarouselHud(); else { drawBoardTrainers(); drawTotemIcons(); }
@@ -3130,11 +3148,12 @@ const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.name;
 // Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
 let sndWatch={g:null,up:0,tac:0};
-function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join();
- if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm}; return; }
+function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join(), stk=me.streak|0;
+ if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm,stk}; return; }
+ if(stk>0&&stk!==sndWatch.stk&&G.round&&G.round.type!=='pve'){ const d=cosD(me,'fn'); if(d) Music.fanfare(d.notes); }
  if(up>sndWatch.up) Music.evolve('unit');
  if(tac>sndWatch.tac||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
- sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; }
+ sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
 // Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
 let DEX_NAME=null;
 const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
@@ -3176,8 +3195,8 @@ function renderPlayers(){
  const po=!combat&&G.me.alive?new Set(G.mirror?(G.me.po||[]):possibleOpps(G.me).map(p=>p.id)):new Set();
  const watching=G.view?G.view.pid:-1;
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
-   <div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${esc(p.name)}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
-   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring" style="--p:${clamp(p.hp,0,100)}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
+   <div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${nameHTML(p.name,csOfP(p))}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
+   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring${csParse(csOfP(p)).fr?' fr':''}" style="--p:${clamp(p.hp,0,100)}${frameVars(csOfP(p))}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
@@ -3354,16 +3373,18 @@ function renderCard(){
 function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
-function savedTac(){ if(ACC&&TACS[ACC.trainer]) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]?k:''; }catch(e){ return ''; } }
+function savedTac(){ if(ACC&&TACS[ACC.trainer]&&tacOwned(ACC.trainer)) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]&&tacOwned(k)?k:''; }catch(e){ return ''; } }
 // La minileyenda se elige en el menú (una vez) y se guarda en la cuenta: el campo «trainer» de la base de datos guarda su clave
 function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
  openModal(`<h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><p class="muted">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p>
-  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k];
+  <div class="tacPick">${TAC_KEYS.map(k=>{ const t=TACS[k], own=tacOwned(k);
+    // Eevee sin conseguir: bloqueada, con «Gacha» y lo que falta para la garantía (el registro y el menú usan este mismo selector)
+    if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="Solo se consigue en el gacha"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><span class="tacLock"><i data-i="crystal" data-s="22"></i>Gacha</span><b>${t.name}</b><small>Mítica · ${typeof COSM!=='undefined'?`Eevee garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:'Solo en el gacha'}</small></button>`;
     return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}"><span class="art cardArt" style="background-image:url('${CARD_ART[k]}')"></span><b>${t.name}</b><small>Evoluciona en ${t.evo}</small></button>`; }).join('')}</div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn gold" id="tacOk">Confirmar</button></div>`,{closable:!first,onClose:()=>{ if(ACC) showMenu(); }});
- $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
+ $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast('Eevee solo se consigue en el gacha'); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
    $('tacOk').disabled=true;
    try{ const {user}=await api('/api/me',{trainer:sel}); applyAccount(user); closeModal(); showMenu(); }
@@ -3511,14 +3532,14 @@ function showAnvil(a,done){
    Los 8 jugadores con su minileyenda, nivel, equipo (estrellas y objetos), sinergias, aumentos y la ronda en que cayeron; los
    que siguen vivos, arriba y «En juego». En multijugador los datos llegan del servidor con el resultado (result.board); en la
    práctica sin conexión se calculan aquí con la misma forma. Ningún perfil se abre desde aquí; sí se puede pedir amistad. */
-function localBoard(){ return G.players.map(p=>{ const c=p.place&&p.finalComp?p.finalComp:compSnap(p); return {n:p.name,pl:p.place||0,tac:p.tac,tf:p.tacForm||['',''],lvl:c.lvl,rd:c.round,u:c.units,t:c.traits,a:c.augs,me:p===G.me}; }); }
+function localBoard(){ return G.players.map(p=>{ const c=p.place&&p.finalComp?p.finalComp:compSnap(p); return {n:p.name,cs:csOfP(p),pl:p.place||0,tac:p.tac,tf:p.tacForm||['',''],lvl:c.lvl,rd:c.round,u:c.units,t:c.traits,a:c.augs,me:p===G.me}; }); }
 function rsFriendBtn(b){ if(b.me||NET.mode==='sp'&&!ACC) return ''; const L=FR.list, k=String(b.n).toLowerCase();
  if(L&&L.friends.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Amigo</span>';
  if(L&&L.outgoing.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Enviada</span>';
  return `<button class="pxb pxb-sq frIc rsAdd" data-n="${esc(b.n)}" type="button" aria-label="Enviar solicitud de amistad a ${esc(b.n)}" title="Añadir amigo"><i data-i="addfriend" data-s="18"></i></button>`; }
 function rsRow(b){ const pl=b.pl||0, dex=tacDex({tac:TACS[b.tac]?b.tac:'charmander',tacForm:Array.isArray(b.tf)?b.tf:['',''],level:b.lvl|0});
- return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv">${portraitImg(dex)}</span>
-  <div class="rsWho"><b>${esc(b.n)}</b><small>Nivel ${b.lvl||'—'} · ${!pl?'En juego':pl===1?'Ganador':'Cae en '+esc(b.rd||'—')}</small></div>
+ return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv${csParse(b.cs).fr?' fr':''}" style="${frameVars(b.cs).slice(1)}">${portraitImg(dex)}</span>
+  <div class="rsWho"><b>${nameHTML(b.n,b.cs)}</b>${titleOf(b.cs)?`<small class="rsTitle2">«${esc(titleOf(b.cs))}»</small>`:''}<small>Nivel ${b.lvl||'—'} · ${!pl?'En juego':pl===1?'Ganador':'Cae en '+esc(b.rd||'—')}</small></div>
   <div class="hComp rsComp">${(b.u||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon</span>'}</div>
   <div class="hTraits rsTr">${(b.t||[]).slice(0,6).map(histTrait).join('')}${(b.a||[]).map(id=>AUG_BY[id]?`<span class="hA" title="${esc(AUG_BY[id].name)}">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div>
   <div class="rsAct">${rsFriendBtn(b)}</div></div>`; }
@@ -3529,6 +3550,7 @@ function renderResultsTable(board){ const el=$('rsTable'); if(!el) return;
 // late: resultado reenviado tras un corte justo al terminar (se muestra sobre el menú)
 function showGameOver(late){
  const place=late?late.place:G.me.place, won=place===1, sp=!late&&NET.mode==='sp';
+ if(won&&!late){ const d=cosD(G.me,'fn'); if(d) Music.fanfare(d.notes); }
  if(ACC&&!FR.list) loadFriends();
  openModal(`<div class="rsHead${won?' win':''}"><div class="rsBig"><b>${place?ordinal(place):'—'}</b><span>de 8</span></div>
   <div class="rsTitle"><div class="pxKicker">${won?'¡Campeón de la Liga!':'Fin de la partida'}</div><h1>${won?'Eres el último entrenador en pie':'Has quedado eliminado'}</h1>
@@ -3543,7 +3565,7 @@ function showGameOver(late){
 function renderMenu(){
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], st=ACC.stats||{};
  $('menuWho').innerHTML=`<div class="stand artStand">${artImg(tk)}</div>
-  <div class="tname">${esc(ACC.name)}</div><div class="tfrom">Minileyenda: ${esc(t.name)}</div>
+  <div class="tname">${nameHTML(ACC.name,myCs())}</div>${titleOf(myCs())?`<div class="tTitle">«${esc(titleOf(myCs()))}»</div>`:''}<div class="tfrom">Minileyenda: ${esc(t.name)}</div>
   ${rankMiniHTML()}
   <div class="stats"><div><i data-i="ball" data-s="20"></i><b>${st.games||0}</b><span>Partidas</span></div><div><i data-i="trophy" data-s="20"></i><b>${st.wins||0}</b><span>Victorias</span></div><div><i data-i="medal" data-s="20"></i><b>${st.top4||0}</b><span>Top 4</span></div><div><i data-i="star" data-s="20"></i><b>${st.best?'#'+st.best:'—'}</b><span>Mejor</span></div></div>
   <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="20"></i><span>Ver perfil</span></button><button class="pxb" id="pickTr"><i data-i="swap" data-s="20"></i><span>Cambiar minileyenda</span></button></div>`;
@@ -3626,7 +3648,7 @@ function showRanked(){
 // ----- resultado de la partida, ascensos y revelación del rango -----
 function onResult(d){
  if(!d||!d.rec) return; NET.result=d; if(NET.sock) NET.sock.emit('resultSeen'); if(ACC&&d.comp){ ACC.comp=d.comp; renderMenu(); }
- if(Array.isArray(d.board)) d.board=d.board.slice(0,8).filter(b=>b&&typeof b==='object').map(b=>({n:String(b.n||'').slice(0,20),pl:clamp(b.pl|0,0,8),tac:TACS[b.tac]?b.tac:'charmander',tf:Array.isArray(b.tf)?b.tf.slice(0,2).map(k=>DEF[k]?k:''):['',''],lvl:clamp(b.lvl|0,0,10),rd:String(b.rd||'').slice(0,6),u:Array.isArray(b.u)?b.u.slice(0,12):[],t:Array.isArray(b.t)?b.t.slice(0,9):[],a:Array.isArray(b.a)?b.a.slice(0,4):[],me:!!b.me}));
+ if(Array.isArray(d.board)) d.board=d.board.slice(0,8).filter(b=>b&&typeof b==='object').map(b=>({n:String(b.n||'').slice(0,20),cs:String(b.cs||'').slice(0,200),pl:clamp(b.pl|0,0,8),tac:TACS[b.tac]?b.tac:'charmander',tf:Array.isArray(b.tf)?b.tf.slice(0,2).map(k=>DEF[k]?k:''):['',''],lvl:clamp(b.lvl|0,0,10),rd:String(b.rd||'').slice(0,6),u:Array.isArray(b.u)?b.u.slice(0,12):[],t:Array.isArray(b.t)?b.t.slice(0,9):[],a:Array.isArray(b.a)?b.a.slice(0,4):[],me:!!b.me}));
  if(NET.modal==='over') renderResultsTable(d.board);
  else if(d.late&&NET.mode!=='client'&&ACC&&!NET.modal) showGameOver({place:d.rec.place});
  if(d.rec.promoted||d.rec.revealed||d.rec.demoted) NET.rankFx=d;
@@ -3692,14 +3714,15 @@ function profileHTML(P,ctx={}){
  const mode0=P.byMode.ranked.games?'ranked':P.byMode.normal.games||!P.byMode.custom.games?'normal':'custom';
  // Pokémon más usados en las partidas del historial (por línea, la forma de la ficha más reciente)
  const use={}; for(const m of P.history){ const seen=new Set(); for(const u of (m.comp&&m.comp.units)||[]){ const d=DEF[u[0]], k=d&&d.evoOf||u[0]; if(seen.has(k)) continue; seen.add(k); (use[k]=use[k]||{n:0,dex:u[3],name:u[4]}).n++; } }
+ const thk=csParse(P.cs).th, thm=thk?COSM.BY[thk].d.c:null;
  const fav=Object.values(use).sort((x,y)=>y.n-x.n).slice(0,3), lg=!rk.placing&&rk.league?rk.league:'none';
  const favDot=f=>f?`<span class="pfDot" title="${esc(f.name||'')} · en ${f.n} partida${f.n===1?'':'s'}">${portraitImg(f.dex)}</span>`:'<span class="pfDot"></span>';
  // Como el perfil del LoL: estandarte vertical (nivel, retrato con el marco de su liga, nombre y 3 favoritos) sobre la ilustración de la minileyenda y una fila de vitrinas
  return `<div class="pfHero"><div class="pfBg" style="background-image:url('${CARD_ART[tk]||''}')"></div>
- <aside class="pfBanner lg-${lg}"><span class="pfLvlChip" title="Nivel de cuenta">${a.level}</span>
-  <div class="pfAvatar"><span class="pfRing">${artImg(tk)}</span><span class="pfCrest">${rankBadge(rk,54)}</span></div>
-  <b class="pfName">${esc(P.name)}</b><small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>${ctx.presence?`<small class="frSt st-${esc(ctx.presence.st)}"><i></i>${esc(frStatus(ctx.presence))}</small>`:''}
-  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div>${ctx.friend?`<button class="pxb pfAct" id="pfRemove" type="button"><i data-i="close" data-s="14"></i><span>Eliminar amigo</span></button>`:ctx.self?`<button class="pxb pfAct" id="pfFriends" type="button"><i data-i="people" data-s="16"></i><span>Amigos</span></button>`:''}<i class="pfTail" aria-hidden="true"></i></aside>
+ <aside class="pfBanner lg-${lg}${thm?' themed':''}"${thm?` style="--lg:${thm[0]};--th2:${thm[1]}"`:''}><span class="pfLvlChip" title="Nivel de cuenta">${a.level}</span>${P.eevee?'<span class="pfMythic" title="Ha conseguido a Eevee, la minileyenda mítica">Mítica</span>':''}
+  <div class="pfAvatar"><span class="pfRing${csParse(P.cs).fr?' fr':''}" style="${frameVars(P.cs).slice(1)}">${artImg(tk)}</span><span class="pfCrest">${rankBadge(rk,54)}</span></div>
+  <b class="pfName">${iconOf(P.cs,18)}${nameHTML(P.name,P.cs)}</b>${titleOf(P.cs)?`<small class="pfTitle">«${esc(titleOf(P.cs))}»</small>`:''}<small class="pfSince">${esc(t.name)}${P.since?'<br>Desde '+esc(fmtMonth(P.since)):''}</small>${ctx.presence?`<small class="frSt st-${esc(ctx.presence.st)}"><i></i>${esc(frStatus(ctx.presence))}</small>`:''}
+  <div class="pfDots">${[0,1,2].map(i=>favDot(fav[i])).join('')}</div>${ctx.friend?`<button class="pxb pfAct" id="pfRemove" type="button"><i data-i="close" data-s="14"></i><span>Eliminar amigo</span></button>`:ctx.self?`<button class="pxb pfAct" id="pfFriends" type="button"><i data-i="people" data-s="16"></i><span>Amigos</span></button><button class="pxb pfAct" id="pfCustom" type="button"><i data-i="gear" data-s="16"></i><span>Personalizar</span></button>`:''}<i class="pfTail" aria-hidden="true"></i></aside>
  <div class="pfShow">
   <div class="pfCase"><span class="pfCap">Clasificatoria</span><small>${unranked?'Sin clasificar':esc(rankText(rk))}</small><div class="pfBig">${rankBadge(rk,76)}</div><small class="muted">${rk.placing?`Posicionamiento ${rk.done}/${rk.of}`:rk.lp+' LP'}</small>${lpBar(rk)}</div>
   <div class="pfCase"><span class="pfCap">Mejor rango</span><small>${P.peak?esc(rankText(P.peak)):'—'}</small><div class="pfBig">${P.peak?rankBadge(P.peak,64):rankBadge(null,64)}</div></div>
@@ -3717,6 +3740,7 @@ async function showProfile(name){
  const el=$('pfWrap'); if(!el||NET.modal!=='profile') return;
  el.innerHTML=profileHTML(P,D); hydrate(el); window.PX&&PX.hydrate(el);
  if($('pfFriends')) $('pfFriends').onclick=()=>{ closeModal(); openFriends(true); };
+ if($('pfCustom')) $('pfCustom').onclick=async()=>{ await showGacha(); if(GA.st) gaPz('nc'); };
  if($('pfRemove')) $('pfRemove').onclick=e=>{ const b=e.currentTarget; if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('span').textContent='¿Seguro? Pulsa otra vez'; return; } closeModal(); friendOp('remove',P.name); };
  el.querySelectorAll('.pfTabs .pxb').forEach(b=>b.onclick=()=>{ el.querySelectorAll('.pfTabs .pxb').forEach(x=>{ x.classList.toggle('on',x===b); x.setAttribute('aria-selected',x===b); }); $('pfStats').innerHTML=pfStatsHTML(P.byMode[b.dataset.m]); });
 }
@@ -3734,14 +3758,14 @@ function onFriendUpd(d){ if(!FR.list||!d||typeof d.name!=='string') return; cons
  f.st=FR_ST[d.st]?d.st:'off'; f.r=String(d.r||'').slice(0,6); f.mode=String(d.mode||'').slice(0,10); renderFriends(); }
 async function friendOp(op,name){ try{ const d=await api('/api/friends/'+op,{name}); FR.list=d; FR.msg={ok:true,t:d.msg}; if(op!=='request') toast(d.msg); }catch(e){ FR.msg={ok:false,t:e.message}; if(op!=='request') toast(e.message); } FR.sel=''; renderFriends(); }
 function openFriends(on){ FR.open=on===undefined?!FR.open:!!on; if(FR.open&&!FR.list) loadFriends(); renderFriends(); if(FR.open) setTimeout(()=>$('frName')&&$('frName').focus(),30); }
-function frRow(f,kind){ const tk=TACS[f.trainer]?f.trainer:'', av=tk?artImg(tk):'<span class="frNone"></span>', n=esc(f.name);
+function frRow(f,kind){ const tk=TACS[f.trainer]?f.trainer:'', av=tk?artImg(tk):'<span class="frNone"></span>', n=esc(f.name), cs=kind==='friend'||kind==='in'?f.cs:'';
  let acts='', sub='';
  if(kind==='friend'){ sub=`<small class="frSt st-${f.st}"><i></i>${esc(frStatus(f))}</small>`;
    if(FR.sel===f.name) acts=`<div class="frActs"><button class="pxb" data-op="profile" data-n="${n}" type="button"><span>Perfil</span></button><button class="pxb" data-op="remove" data-n="${n}" type="button"><span>Eliminar</span></button><button class="pxb" data-op="block" data-n="${n}" type="button"><span>Bloquear</span></button></div>`; }
  else if(kind==='in'){ sub='<small class="frSt">Quiere ser tu amigo</small>'; acts=`<div class="frBtns"><button class="pxb pxb-sq frIc" data-op="accept" data-n="${n}" aria-label="Aceptar a ${n}" title="Aceptar" type="button"><i data-i="check" data-s="16"></i></button><button class="pxb pxb-sq frIc" data-op="decline" data-n="${n}" aria-label="Rechazar a ${n}" title="Rechazar" type="button"><i data-i="close" data-s="14"></i></button></div>`; }
  else if(kind==='out'){ sub='<small class="frSt">Solicitud enviada</small>'; acts=`<div class="frBtns"><button class="pxb pxb-sq frIc" data-op="cancel" data-n="${n}" aria-label="Cancelar la solicitud a ${n}" title="Cancelar" type="button"><i data-i="close" data-s="14"></i></button></div>`; }
  else if(kind==='blk'){ acts=`<div class="frBtns"><button class="pxb frTxtBtn" data-op="unblock" data-n="${n}" type="button"><span>Desbloquear</span></button></div>`; }
- return `<div class="frRow k-${kind}${kind==='friend'?' st-'+f.st:''}${FR.sel===f.name?' sel':''}" ${kind==='friend'?`data-pick="${n}" role="button" tabindex="0"`:''}><span class="frAv">${av}</span><span class="frTxt"><b>${n}</b>${sub}</span>${kind!=='friend'?acts:''}</div>${kind==='friend'?acts:''}`; }
+ return `<div class="frRow k-${kind}${kind==='friend'?' st-'+f.st:''}${FR.sel===f.name?' sel':''}" ${kind==='friend'?`data-pick="${n}" role="button" tabindex="0"`:''}><span class="frAv${csParse(cs).fr?' fr':''}" style="${frameVars(cs).slice(1)}">${av}</span><span class="frTxt"><b>${nameHTML(f.name,cs)}</b>${sub}</span>${kind!=='friend'?acts:''}</div>${kind==='friend'?acts:''}`; }
 function frGroup(key,title,rows,kind){ if(!rows.length&&key!=='online') return ''; const fold=FR.fold[key];
  return `<section class="frGrp"><button class="frGrpH" data-fold="${key}" type="button" aria-expanded="${!fold}"><i class="frCar${fold?'':' open'}" aria-hidden="true"></i><span>${title}</span><b>${rows.length}</b></button>${fold?'':rows.map(f=>frRow(f,kind)).join('')||'<p class="frEmpty">Nadie por aquí ahora mismo.</p>'}</section>`; }
 function renderFriends(){
@@ -3749,6 +3773,7 @@ function renderFriends(){
  const on=L?L.friends.filter(f=>f.st!=='off').length:0, inc=L?L.incoming.length:0;
  btn.innerHTML=`<i data-i="people" data-s="24"></i><span>Amigos</span><b class="frOn">${on}</b>${inc?`<em class="frBadge" aria-label="${inc} solicitudes">${inc}</em>`:''}`; btn.setAttribute('aria-expanded',FR.open); window.PX&&PX.hydrate(btn);
  const P=$('frPanel'); P.classList.toggle('hidden',!FR.open); if(!FR.open) return;
+ const ack=csParse(myCs()).ac; P.style.setProperty('--frAc',ack?COSM.BY[ack].d.c:'');
  const game=L?L.friends.filter(f=>f.st==='game'):[], online=L?L.friends.filter(f=>f.st!=='game'&&f.st!=='off'):[], off=L?L.friends.filter(f=>f.st==='off'):[];
  const keep=$('frName')?$('frName').value:'';
  P.innerHTML=`<div class="frHead"><b>Amigos</b><span>${L?L.friends.length:0}/${L?L.max:100}</span><button class="mclose" id="frClose" aria-label="Cerrar amigos" type="button"><i data-i="close" data-s="16"></i></button></div>
@@ -3767,6 +3792,133 @@ function renderFriends(){
    if((op==='remove'||op==='block')&&!b.dataset.sure){ b.dataset.sure=1; b.querySelector('span').textContent='¿Seguro?'; return; }
    friendOp(op,n); });
 }
+/* ---------- gacha cosmético (solo caramelos; todo es visual) ----------
+   El servidor tira y cobra (/api/gacha). Cada pulsación lleva un nonce: un doble clic o un reintento no cobra dos veces.
+   La Poké Ball es CSS: tiembla y se tiñe del color de la mejor rareza antes de mostrar las cartas. */
+const GA={st:null,busy:false};
+/* Cosméticos equipados: «cs» es una cadena corta («nc:fuego|tt:domador|…») validada contra el catálogo; los colores salen del
+   catálogo, nunca del texto que llegue. Lo mismo para personas y rivales generados. */
+const csParse=cs=>typeof COSM!=='undefined'?COSM.parseCs(cs):{};
+const myCs=()=>ACC&&ACC.cosm&&typeof COSM!=='undefined'?COSM.eqString(ACC.cosm.eq,COSM.SLOTS):'';
+function nameHTML(name,cs){ const k=csParse(cs).nc, d=k&&COSM.BY[k].d;
+ if(!d) return `<span class="cn">${esc(name)}</span>`;
+ return d.c?`<span class="cn" style="color:${d.c}">${esc(name)}</span>`:d.g?`<span class="cn cnG" style="--g1:${d.g[0]};--g2:${d.g[1]}">${esc(name)}</span>`:`<span class="cn cnA" style="--a:${d.a.join(',')}">${esc(name)}</span>`; }
+const frameVars=cs=>{ const k=csParse(cs).fr, d=k&&COSM.BY[k].d; return d?`;--f1:${d.c[0]};--f2:${d.c[1]}`:''; };
+const titleOf=cs=>{ const k=csParse(cs).tt; return k?COSM.BY[k].d.text:''; };
+const iconOf=(cs,z)=>{ const k=csParse(cs).ic, d=k&&COSM.BY[k].d; return d&&window.PX?`<span class="cIc" style="--c:${d.c}">${PX.icon(d.i,z||18)}</span>`:''; };
+// Datos del cosmético de un hueco que lleva un jugador (del catálogo, nunca de la red)
+const cosD=(p,slot)=>{ const k=csParse(csOfP(p))[slot]; return k?COSM.BY[k].d:null; };
+// Variocolor equipado (solo para su minileyenda y si es gratuita): 'hue:<de>,<a>:<dex>' para board3d
+const tacDexC=p=>{ const d=cosD(p,'sh'), k=tacKey(p); return d&&d.tac===k&&!TACS[k].locked?`hue:${d.from},${d.to}:${tacDex(p)}`:tacDex(p); };
+const trailOf=p=>{ const d=cosD(p,'tr'); return d?d.c:null; };
+const csOfP=p=>p?(p===G.me&&!G.mirror&&!p.cs?myCs():p.cs||(NET.cos&&NET.cos[p.id])||''):'';
+function onCos(d){ if(!d||!Array.isArray(d.pl)) return; NET.cos={}; for(const r of d.pl.slice(0,8)) if(Array.isArray(r)) NET.cos[r[0]|0]=String(r[1]||'').slice(0,200);
+ if(G&&G.players) for(const p of G.players) if(NET.cos[p.id]!=null) p.cs=NET.cos[p.id]; renderUI(); }
+const gaNonce=()=>{ try{ return crypto.randomUUID().replace(/-/g,'').slice(0,24); }catch(e){ return (Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,24); } };
+const cosTier=k=>COSM.TIER[(COSM.BY[k]||{}).t]||{name:'',col:'#b9b4d4'};
+// Muestra en miniatura de un premio, hecha solo con CSS, iconos PX y retratos que ya existen
+function cosChip(key){ const it=COSM.BY[key], d=it?it.d:{}, ty=COSM.typeOf(key), px=(n,z)=>window.PX?PX.icon(n,z):'';
+ if(key==='cd') return `<span class="cc cc-amount">${px('candy',28)}<b>+${COSM.REFUND}</b></span>`;
+ if(key==='dust') return `<span class="cc cc-amount">${px('crystal',28)}<b>+${COSM.BIG_DUST}</b></span>`;
+ if(!it) return '';
+ switch(ty){
+  case 'nc': return `<span class="cc cc-name ${d.a?'anim':''}" style="${d.c?'color:'+d.c:d.g?`--g1:${d.g[0]};--g2:${d.g[1]}`:`--a:${d.a.join(',')}`}">${esc(ACC?ACC.name:'Entrenador')}</span>`;
+  case 'tt': return `<span class="cc cc-title">«${esc(d.text)}»</span>`;
+  case 'ic': return `<span class="cc cc-icon" style="--c:${d.c}">${px(d.i,30)}</span>`;
+  case 'fr': return `<span class="cc cc-frame" style="--c1:${d.c[0]};--c2:${d.c[1]}">${artImg('pichu')}</span>`;
+  case 'tr': return `<span class="cc cc-trail" style="--c1:${d.c[0]};--c2:${d.c[1]}"><i></i><i></i><i></i><i></i></span>`;
+  case 'gr': return `<span class="cc cc-bubble">${esc(d.lines[0])}</span>`;
+  case 'th': return `<span class="cc cc-theme" style="--c1:${d.c[0]};--c2:${d.c[1]}"><i></i></span>`;
+  case 'ac': return `<span class="cc cc-accent" style="--c:${d.c}"><i></i><i></i><i></i></span>`;
+  case 'fb': return `<span class="cc cc-orb" style="--c:${d.c}"></span>`;
+  case 'tl': return `<span class="cc cc-tiles" style="--c1:${d.c[0]};--c2:${d.c[1]}"><i></i><i></i><i></i></span>`;
+  case 'cr': return `<span class="cc cc-gem" style="--c:${d.c}"><i></i><i></i><i></i></span>`;
+  case 'br': return `<span class="cc cc-barrier" style="--c1:${d.c[0]};--c2:${d.c[1]}"></span>`;
+  case 'fn': return `<span class="cc cc-icon" style="--c:#ffd23f">${px('sound',30)}</span>`;
+  case 'sh': return `<span class="cc cc-shiny" style="--h:${Math.round((d.to-d.from)*360)}deg">${portraitImg(TACS[d.tac].dex[0])}<i>${px('star',14)}</i></span>`;
+  case 'tac': return `<span class="cc cc-mythic">${artImg('eevee')}</span>`;
+ } return ''; }
+function gaCard(r,i){ const t=COSM.TIER[r.t]||cosTier(r.key), it=COSM.BY[r.key], name=r.key==='cd'?'Caramelos de vuelta':r.key==='dust'?'Polvo Estelar':it?it.name:r.key;
+ return `<div class="gaCard t-${r.t}" style="--tc:${t.col};--i:${i}"><span class="gaTier">${r.t==='x'?'Colección':t.name}</span>${cosChip(r.key)}<b>${esc(name)}</b><small>${r.key==='cd'?'Caramelos':r.key==='dust'?'Ya tienes a Eevee':COSM.TYPES[COSM.typeOf(r.key)]||''}</small>${r.new?'<em class="gaNew">Nuevo</em>':r.dup?`<em class="gaDup">Repetido · +${r.dust} polvo</em>`:''}</div>`; }
+function gaPityHTML(st){ if(st.eevee) return '<div class="gaPity owned"><span>Ya tienes a Eevee: si vuelve a salir la mítica, recibes 1.500 de Polvo Estelar</span></div>';
+ const done=COSM.PITY-st.pityLeft; return `<div class="gaPity"><span>Eevee garantizado en <b>${st.pityLeft}</b> tirada${st.pityLeft===1?'':'s'}</span><div class="rkBar" role="progressbar" aria-label="Garantía de Eevee" aria-valuemin="0" aria-valuemax="${COSM.PITY}" aria-valuenow="${done}"><i style="width:${done/COSM.PITY*100}%"></i></div></div>`; }
+function gaDailyBtn(st){ const l={lista:'Tirada diaria gratis',usada:'Diaria usada hoy',jugar:'Diaria: termina una partida'}[st.daily];
+ return `<button class="pxb gaDaily${st.daily==='lista'?' ready':''}" id="gaD" type="button" ${st.daily==='lista'?'':'aria-disabled="true"'}><i data-i="star" data-s="20"></i><span>${l}</span></button>`; }
+function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return;
+ el.innerHTML=`<div class="gaHead"><div><div class="pxKicker">Gacha cosmético</div><h1>Poké Ball de la suerte</h1><p class="muted small">Solo cosméticos: nada cambia la partida.</p></div>
+  <div class="gaBal"><span title="Caramelos">${PX.icon('candy',22)}<b id="gaCandy">${st.candies.toLocaleString('es-ES')}</b></span><span title="Polvo Estelar">${PX.icon('crystal',22)}<b id="gaDust">${st.dust.toLocaleString('es-ES')}</b></span></div></div>
+ <div class="gaStage"><div class="gaBall" id="gaBall" aria-hidden="true"><i class="gbTop"></i><i class="gbBand"></i><i class="gbBtn"></i></div><div class="gaRes" id="gaRes" aria-live="polite"></div></div>
+ ${gaPityHTML(st)}
+ <div class="gaBtns"><button class="pxb pxb-main" id="ga1" type="button"><span class="pxbT"><b>Tirada</b><small>${PX.icon('candy',14)} ${st.price}</small></span></button>
+  <button class="pxb pxb-alt" id="ga10" type="button"><span class="pxbT"><b>10 tiradas</b><small>${PX.icon('candy',14)} ${st.price10.toLocaleString('es-ES')}</small></span></button>${gaDailyBtn(st)}</div>
+ <div class="gaLinks"><button class="pxb" id="gaOdds" type="button"><span>Probabilidades</span></button><button class="pxb" id="gaHist" type="button"><span>Historial</span></button><button class="pxb" id="gaShop" type="button"><i data-i="crystal" data-s="16"></i><span>Tienda de polvo</span></button><button class="pxb" id="gaColl" type="button"><i data-i="book" data-s="16"></i><span>Colección</span></button><button class="pxb pxb-alt" id="gaPz" type="button"><i data-i="gear" data-s="16"></i><span>Personalizar</span></button></div>`;
+ hydrate(el); PX.hydrate(el);
+ $('ga1').onclick=()=>gaDo('roll',{n:1}); $('ga10').onclick=()=>gaDo('roll',{n:10});
+ $('gaD').onclick=()=>{ if(st.daily==='lista') gaDo('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); };
+ $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; $('gaColl').onclick=gaColl; $('gaPz').onclick=()=>gaPz(); }
+async function showGacha(){ openModal('<div class="gaWrap" id="gaWrap"><p class="muted">Cargando…</p></div>',{closable:true,kind:'gacha'});
+ try{ GA.st=await api('/api/gacha'); }catch(e){ const el=$('gaWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; } renderGacha(); }
+function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pity=o.pity; st.pityLeft=o.pityLeft; for(const r of o.res||[]) if(r.new&&!st.inv.includes(r.key)) st.inv.push(r.key); if((o.res||[]).some(r=>r.key===COSM.EEVEE&&r.new)) st.eevee=true;
+ if(ACC){ ACC.comp.candies=o.candies; ACC.cosm=Object.assign(ACC.cosm||{},{inv:st.inv.slice(),pity:o.pity,dust:o.dust,eevee:st.eevee}); renderMenu(); } }
+async function gaDo(op,body){ if(GA.busy) return; const st=GA.st; if(op==='roll'&&st.candies<(body.n===10?st.price10:st.price)){ toast(`Necesitas ${body.n===10?st.price10:st.price} caramelos`); return; }
+ GA.busy=true; document.querySelectorAll('#gaWrap .gaBtns .pxb').forEach(b=>b.disabled=true);
+ const ball=$('gaBall'), res=$('gaRes'); res.innerHTML=''; ball.className='gaBall shake'; ball.style.removeProperty('--tc');
+ let o; try{ o=await api('/api/gacha/'+op,Object.assign({nonce:gaNonce()},body)); }catch(e){ toast(e.message); GA.busy=false; renderGacha(); return; }
+ if(op==='daily') st.daily='usada';
+ const best=['m','l','e','r','c','x'].find(t=>o.res.some(r=>r.t===t))||'c', tc=(COSM.TIER[best]||{col:'#b9b4d4'}).col;
+ await new Promise(r=>setTimeout(r,900)); if(!$('gaBall')) { GA.busy=false; return; }
+ ball.className='gaBall glow t-'+best; ball.style.setProperty('--tc',tc); if(best==='m'||best==='l') Music.evolve(best==='m'?'mega':'tac');
+ await new Promise(r=>setTimeout(r,650)); GA.busy=false; gaSync(o); if(!$('gaWrap')) return; renderGacha();
+ $('gaBall').className='gaBall open t-'+best; $('gaBall').style.setProperty('--tc',tc);
+ $('gaRes').innerHTML=`<div class="gaCards n${o.res.length>1?'10':'1'}">${o.res.map(gaCard).join('')}</div>`; hydrate($('gaRes')); PX.hydrate($('gaRes'));
+ if(o.eevee) toast('¡Has conseguido a Eevee, la minileyenda mítica!'); }
+function gaBack(){ return '<button class="pxLink" id="gaBack" type="button">← Volver al gacha</button>'; }
+function gaSub(html){ const el=$('gaWrap'); el.innerHTML=gaBack()+html; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; }
+function gaOdds(){ const per=t=>COSM.POOL[t].length;
+ gaSub(`<h2 class="pxH">Probabilidades</h2><p class="small muted">Cada tirada sortea primero la rareza y después un premio de esa rareza, todos con la misma probabilidad. La tirada diaria funciona igual.</p>
+ <table class="gaOdds"><thead><tr><th>Rareza</th><th>Probabilidad</th><th>Premios</th><th>Cada premio</th><th>Si se repite</th></tr></thead><tbody>
+ ${COSM.TIERS.map(t=>{ const n=per(t.k), pc=t.k==='c'?t.p*(1-COSM.REFUND_SHARE):t.p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${(t.p*100).toLocaleString('es-ES',{maximumFractionDigits:1})} %</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${(pc/n*100).toLocaleString('es-ES',{maximumFractionDigits:3})} %</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
+ </tbody></table>
+ <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString('es-ES')} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
+ <li><b>Eevee</b> (mítica): 0,1 % fijo por tirada, sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b>. La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
+ <li><b>Colecciones:</b> reúne todos los premios de un elemento y ganas su título exclusivo (${COSM.COLLECTIONS.map(c=>'«'+esc(COSM.BY[c.reward].name)+'»').join(', ')}).</li>
+ <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`); }
+function gaHist(){ const h=(GA.st.hist||[]).slice().reverse();
+ gaSub(`<h2 class="pxH">Tus últimas tiradas</h2>${h.length?`<div class="gaHist">${h.map(([t,k])=>{ const tr=k==='cd'?COSM.TIER.c:k==='dust'?COSM.TIER.m:cosTier(k), it=COSM.BY[k]; return `<div class="gaHRow" style="--tc:${tr.col}"><span class="gaHT">${tr.name}</span><span class="gaHN">${esc(k==='cd'?'Caramelos de vuelta':k==='dust'?'Polvo Estelar':it?it.name:k)}</span><small>${fmtDate(t*1000)}</small></div>`; }).join('')}</div>`:'<div class="hEmpty"><p>Aún no has tirado.</p></div>'}`); }
+function gaShop(){ const st=GA.st, own=new Set(st.inv);
+ const tiers=COSM.TIERS.filter(t=>t.price);
+ gaSub(`<h2 class="pxH">Tienda de Polvo Estelar</h2><p class="small muted">Los premios repetidos se convierten en Polvo Estelar. Aquí compras premios concretos (Eevee no está a la venta). Tienes <b>${st.dust}</b> de polvo.</p>
+ ${tiers.map(t=>{ const items=COSM.POOL[t.k].filter(k=>!own.has(k)); return `<h3 class="gaShopH" style="--tc:${t.col}">${t.name} · ${t.price} polvo</h3>${items.length?`<div class="gaShop">${items.map(k=>`<button class="gaItem" data-k="${k}" type="button" ${st.dust<t.price?'aria-disabled="true"':''} style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${COSM.TYPES[COSM.typeOf(k)]}</small></button>`).join('')}</div>`:'<p class="small muted">Ya los tienes todos.</p>'}`; }).join('')}`);
+ $('gaWrap').querySelectorAll('.gaItem').forEach(b=>b.onclick=async()=>{ const k=b.dataset.k, t=COSM.TIER[COSM.BY[k].t]; if(GA.st.dust<t.price) return toast(`Necesitas ${t.price} de Polvo Estelar`); if(GA.busy) return;
+   if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('small').textContent=`¿Comprar por ${t.price}? Pulsa otra vez`; return; }
+   GA.busy=true; try{ const o=await api('/api/gacha/buy',{key:k,nonce:gaNonce()}); gaSync(o); toast('Comprado: '+COSM.BY[k].name); }catch(e){ toast(e.message); } GA.busy=false; gaShop(); }); }
+// ----- Personalizar: equipar lo que tienes, con vista previa de cómo te ven los demás -----
+const PZ_GAME=new Set(['tr','gr','fb','tl','cr','br','fn','sh']); // se ven dentro de la partida
+function pzPreview(eq){ const cs=COSM.eqString(eq,COSM.SLOTS), tk=savedTac()||'charmander', thk=csParse(cs).th, th=thk?COSM.BY[thk].d.c:null;
+ return `<div class="pzPrev"><div class="pzCard${th?' themed':''}" ${th?`style="--lg:${th[0]};--th2:${th[1]}"`:''}><span class="frAv pzAv${csParse(cs).fr?' fr':''}" style="${frameVars(cs).slice(1)}">${artImg(tk)}</span>
+  <div class="pzWho"><b>${iconOf(cs,16)}${nameHTML(ACC?ACC.name:'Entrenador',cs)}</b>${titleOf(cs)?`<small>«${esc(titleOf(cs))}»</small>`:'<small class="muted">Sin título</small>'}</div></div>
+  <p class="small muted">Así te ven en la lista de jugadores, en la sala, en tus amigos y en la pantalla de resultados.</p></div>`; }
+function gaPz(slot){ const st=GA.st; GA.slot=slot||GA.slot||'nc'; const sl=GA.slot, own=st.inv.filter(k=>COSM.typeOf(k)===sl&&COSM.validEq(sl,k)&&(sl!=='sh'||tacOwned(COSM.BY[k].d.tac))), cur=st.eq[sl]||'';
+ gaSub(`<h2 class="pxH">Personalizar</h2>${pzPreview(st.eq)}
+ <div class="pzSlots" role="tablist">${COSM.SLOTS.map(x=>`<button class="pxb${x===sl?' on':''}" role="tab" aria-selected="${x===sl}" data-sl="${x}" type="button"><span>${COSM.TYPES[x]}</span>${st.eq[x]?'<i class="pzDot" aria-label="equipado"></i>':''}</button>`).join('')}</div>
+ ${PZ_GAME.has(sl)?'<p class="small muted">Se ve dentro de la partida.</p>':''}
+ <div class="gaShop pzItems"><button class="gaItem${cur?'':' on'}" data-k="" type="button" style="--tc:#6f6a88"><span class="cc"><b class="muted">—</b></span><b>Ninguno</b><small>Quitar</small></button>
+ ${own.map(k=>{ const t=cosTier(k); return `<button class="gaItem${k===cur?' on':''}" data-k="${k}" type="button" style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${k===cur?'Equipado':t.name||'Colección'}</small></button>`; }).join('')}</div>
+ ${own.length?'':'<p class="small muted">Aún no tienes ninguno de este tipo: consíguelos en el gacha o en la tienda de polvo.</p>'}`);
+ const W=$('gaWrap'); W.querySelectorAll('[data-sl]').forEach(b=>b.onclick=()=>gaPz(b.dataset.sl));
+ W.querySelectorAll('.pzItems .gaItem').forEach(b=>b.onclick=async()=>{ if(GA.busy) return; GA.busy=true;
+   try{ const o=await api('/api/cosm/equip',{slot:sl,key:b.dataset.k}); st.eq=o.eq||{}; if(ACC){ ACC.cosm=Object.assign(ACC.cosm||{},{eq:Object.assign({},st.eq)}); renderMenu(); } }catch(e){ toast(e.message); }
+   GA.busy=false; gaPz(sl); }); }
+// ----- Colección: todo el catálogo, lo que tienes en color y lo que falta en silueta, y el progreso de cada colección -----
+function gaColl(){ const st=GA.st, own=new Set(st.inv), all=COSM.LIST.filter(i=>i.key!=='cd'&&i.t!=='x'), got=all.filter(i=>own.has(i.key)).length;
+ const cols=COSM.COLLECTIONS.map(c=>{ const n=c.items.filter(k=>own.has(k)).length, done=own.has(c.reward); return `<div class="coRow${done?' done':''}"><b>${esc(c.name)}</b><div class="rkBar" role="progressbar" aria-valuemin="0" aria-valuemax="${c.items.length}" aria-valuenow="${n}"><i style="width:${n/c.items.length*100}%"></i></div><span>${n}/${c.items.length}</span><small>${done?'Título conseguido: ':'Premio: título '}«${esc(COSM.BY[c.reward].name)}»</small></div>`; }).join('');
+ const types=COSM.SLOTS.concat(['tac']);
+ gaSub(`<h2 class="pxH">Colección · ${got}/${all.length}</h2><div class="coCols">${cols}</div>
+ ${types.map(ty=>{ const items=all.filter(i=>COSM.typeOf(i.key)===ty); if(!items.length) return ''; const n=items.filter(i=>own.has(i.key)).length;
+   return `<h3 class="gaShopH">${COSM.TYPES[ty]} · ${n}/${items.length}</h3><div class="gaShop coGrid">${items.map(i=>{ const t=COSM.TIER[i.t], h=own.has(i.key);
+     return `<div class="gaItem${h?'':' locked'}" style="--tc:${t.col}" title="${h?'':'Aún no lo tienes · '}${esc(t.name)}">${cosChip(i.key)}<b>${esc(i.name)}</b><small>${t.name}</small></div>`; }).join('')}</div>`; }).join('')}`); }
+// Anuncio: alguien ha conseguido a Eevee (solo llega a quien está en el menú)
+function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a Eevee</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }
@@ -3993,11 +4145,13 @@ function serverForfeit(){
 }
 // Los 8 jugadores para la pantalla de resultados (solo al terminar alguien, no en cada tick): los eliminados con su equipo final y
 // los que siguen vivos con el de ahora. Todos con la misma forma: nada distingue a una persona de un rival generado.
-function serverBoards(){ return G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,tac:p.tac,tf:(p.tacForm||['','']).slice(0,2),comp:p.place&&p.finalComp?p.finalComp:compSnap(p)})):[]; }
+// Cosméticos equipados de los 8 (cadena corta por jugador; viaja una vez por partida en «cos»)
+function serverCosmetics(){ return G&&G.players?G.players.map(p=>[p.id,String(p.cs||'').slice(0,200)]):[]; }
+function serverBoards(){ return G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),cs:p.cs||'',place:p.place||0,tac:p.tac,tf:(p.tacForm||['','']).slice(0,2),comp:p.place&&p.finalComp?p.finalComp:compSnap(p)})):[]; }
 function serverInfo(){ return {over:!!(G&&G.over),humans:G&&G.players?G.players.filter(p=>p.remote&&p.alive).length:0,round:G&&G.round?G.round.s+'-'+G.round.n:'',places:G&&G.players?G.players.filter(p=>p.peer&&p.place>0).map(p=>[p.peer,p.place]):[],
   plist:G&&G.players?G.players.map(p=>({peer:p.peer||null,name:String(p.name).slice(0,20),place:p.place||0,comp:p.peer&&p.place?p.finalComp||null:null})):[]}; }
 
-if(HEADLESS){ module.exports={generateBotName,serverBoards,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,castAbility,dealDamage,applyAct,
+if(HEADLESS){ module.exports={generateBotName,serverBoards,serverCosmetics,serverCreate,serverTick,serverAct,serverLeave,serverRejoin,serverResend,serverForfeit,serverInfo,newGame,TRAINERS,TAC_KEYS,makeFights,possibleOpps,get G(){return G},ROUNDS,DEF,UNIT_LIST,AUGS,ITEMS,RECIPE,FULL_KEYS,BASIC,abDesc,baseCombatUnit,abilPower,abOf,SONGS,createCombatSnap,teamSnap,simulate,castAbility,dealDamage,applyAct,
   // Para las pruebas de aumentos (test/augments.js)
   AUG_BY,augProgress,augmentChoices,applyAugment,augFire,augSnap,resolvePick,autoPicks,CHAOS,makeInst,addUnitToBench,giveItem,traitCounts,traitTiers,addItemToUnit,reroll,buy,sellAt,addXp,combine,resolveRound,startCombat,nextRound,
   // Para test/sinergias.js

@@ -16,6 +16,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { createAuth } = require('./auth');
 const CMP = require('./competitive');
+const COSM = require('./public/cosmetics');
 
 const PORT = process.env.PORT || 3000;
 const MAX_ROOMS = +process.env.MAX_ROOMS || 50;
@@ -37,7 +38,7 @@ app.use((req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin' });
   next();
 });
-const auth = createAuth(db, { trainers: TRAINER_KEYS, presence: presenceOf, onFriends });
+const auth = createAuth(db, { trainers: TRAINER_KEYS, presence: presenceOf, onFriends, onEevee });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rooms.size }));
 // Commit desplegado: el navegador pide los modelos animados (public/anims) a jsDelivr fijados a este commit, así no gastan
 // el ancho de banda de Render. En local no hay commit y se sirven desde aquí.
@@ -72,7 +73,7 @@ function roomList() {
   }));
 }
 const broadcastRooms = () => io.emit('rooms', roomList());
-const publicSeats = seats => seats.map(s => ({ peer: s.peer, nick: s.nick, tr: s.tr, connected: s.connected }));
+const publicSeats = seats => seats.map(s => ({ peer: s.peer, nick: s.nick, tr: s.tr, cs: s.cs || '', connected: s.connected }));
 function lobbyState(r) { return { code: r.code, name: r.name, max: r.max, diff: r.diff, owner: r.owner, seats: publicSeats(r.seats) }; }
 const emitLobby = r => io.to(r.code).emit('lobby', lobbyState(r));
 
@@ -110,9 +111,11 @@ function startGame(room, opts) {
   if (!room.botInfo) room.botInfo = CMP.botsFor('normal', room.seats.map(s => s.nmmr || CMP.CFG.START_MMR), 8 - room.seats.length);
   io.to(room.code).emit('start', { seats: publicSeats(room.seats) });
   room.game.serverCreate(
-    { diff: room.diff, humans: publicSeats(room.seats), bots: room.botInfo.map(b => ({ skill: b.skill })), taken: n => db.nameTaken(n), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
+    { diff: room.diff, humans: publicSeats(room.seats), bots: room.botInfo.map(b => ({ skill: b.skill, cs: b.cs || (b.cs = COSM.botEquip()) })), taken: n => db.nameTaken(n), timer: [30, 45, 60].includes(opts.timer) ? opts.timer : 30, speed: [1, 2, 4].includes(opts.speed) ? opts.speed : 1 },
     (t, d) => route(room, t, d)
   );
+  // Cosméticos de los 8 (personas y rivales, misma forma): una sola vez por partida, no en cada pub
+  io.to(room.code).emit('cos', { pl: room.game.serverCosmetics() });
   let last = Date.now();
   room.timer = setInterval(() => {
     const now = Date.now();
@@ -141,7 +144,7 @@ function startGame(room, opts) {
 function resultBoard(room, meIdx) {
   let B = []; try { B = room.game.serverBoards(); } catch (e) { /* noop */ }
   return B.map((b, j) => { const s = b.peer && room.seats.find(q => q.peer === b.peer), c = b.comp || {};
-    return { n: s ? s.full || s.nick : b.name, pl: b.place || 0, tac: b.tac, tf: b.tf, lvl: c.lvl || 0, rd: c.round || '', u: c.units || [], t: c.traits || [], a: c.augs || [], me: j === meIdx }; });
+    return { n: s ? s.full || s.nick : b.name, cs: String(b.cs || '').slice(0, 200), pl: b.place || 0, tac: b.tac, tf: b.tf, lvl: c.lvl || 0, rd: c.round || '', u: c.units || [], t: c.traits || [], a: c.augs || [], me: j === meIdx }; });
 }
 // Último resultado de cada persona hasta que su navegador confirma que lo recibió (resultSeen): si se corta justo al
 // terminar, se le reenvía al volver a conectar (como mucho 15 min)
@@ -174,7 +177,8 @@ async function seatFor(socket) {
   const u = socket.data.user;
   const fresh = await db.userById(u.id).catch(() => null);
   const c = CMP.normComp(fresh && fresh.comp);
-  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), full: u.name, tr: (fresh || u).trainer || '', connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
+  const tr = (fresh || u).trainer || ''; // nunca una minileyenda que la cuenta no tenga (por si quedó de antes de la migración)
+  return { peer: socket.id, uid: u.id, nick: u.name.slice(0, 14), full: u.name, cs: COSM.eqString(fresh && fresh.cosm && fresh.cosm.eq), tr: COSM.ownsTac(fresh && fresh.cosm, tr) ? tr : COSM.DEFAULT_TAC, connected: true, nmmr: c.nmmr, rmmr: c.rmmr };
 }
 
 // ---------- colas Normal y Clasificatoria ----------
@@ -243,6 +247,8 @@ function presenceOf(uid) {
   return online.has(uid) ? { st: 'menu' } : { st: 'off' };
 }
 const friendsOf = uid => { if (!friendCache.has(uid)) friendCache.set(uid, db.friendIds(uid).then(a => new Set(a), () => (friendCache.delete(uid), new Set()))); return friendCache.get(uid); };
+// Alguien ha conseguido a Eevee: aviso a quien está en el menú (no a quien está jugando una partida)
+function onEevee(name) { for (const s of io.sockets.sockets.values()) if (!s.data.room && !inQueue(s.data.user.id)) s.emit('ann', { name: String(name).slice(0, 20) }); }
 // La lista de alguien cambió (solicitud, aceptar, eliminar…): se olvida su caché y se le pide al navegador que la recargue
 function onFriends(uids) { for (const u of new Set(uids)) { friendCache.delete(u); io.to('u:' + u).emit('friends'); } }
 setInterval(async () => {
@@ -292,6 +298,7 @@ io.on('connection', socket => {
     console.log(`[${room.code}] ${seat.nick} vuelve a la partida (${old === socket.id ? 'misma conexión' : 'conexión nueva'})`);
     socket.emit('start', { seats: publicSeats(room.seats) });
     room.game.serverResend(socket.id);
+    socket.emit('cos', { pl: room.game.serverCosmetics() });
   });
 
   // Entrar en la cola de un modo (un usuario solo puede estar en una cola o partida a la vez)

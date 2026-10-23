@@ -8,6 +8,7 @@
  * - Solo se puede bloquear a amigos o a quien te ha enviado una solicitud (personas seguro): bloquear una solicitud
  *   enviada delataría si era una cuenta real.
  */
+const COSM = require('./public/cosmetics');
 const EXPIRE_MS = 14 * 864e5, MAX_FRIENDS = 100, MAX_OUT = 20;
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const OPS = ['request', 'accept', 'decline', 'cancel', 'remove', 'block', 'unblock'];
@@ -18,10 +19,10 @@ const fail = (code, error) => ({ code, error });
 async function view(db, me, presence) {
   const L = (await db.links(me.id)).filter(live), out = { friends: [], incoming: [], outgoing: [], blocked: [], max: MAX_FRIENDS };
   for (const l of L) {
-    if (l.a === me.id && l.status === 'accepted') out.friends.push(Object.assign({ name: l.bName, trainer: l.bTrainer }, presence ? presence(l.b) : { st: 'off' }));
+    if (l.a === me.id && l.status === 'accepted') out.friends.push(Object.assign({ name: l.bName, trainer: l.bTrainer, cs: COSM.eqString(l.bEq) }, presence ? presence(l.b) : { st: 'off' }));
     else if (l.a === me.id && l.status === 'pending') out.outgoing.push({ name: l.label || l.bName, created: l.created });
     else if (l.a === me.id && l.status === 'blocked') out.blocked.push({ name: l.bName });
-    else if (l.b === me.id && l.status === 'pending' && !L.some(x => x.a === me.id && x.b === l.a && x.status === 'blocked')) out.incoming.push({ name: l.aName, trainer: l.aTrainer, created: l.created });
+    else if (l.b === me.id && l.status === 'pending' && !L.some(x => x.a === me.id && x.b === l.a && x.status === 'blocked')) out.incoming.push({ name: l.aName, trainer: l.aTrainer, cs: COSM.eqString(l.aEq), created: l.created });
   }
   for (const g of await db.ghosts(me.id)) if (live({ status: 'pending', created: g.created })) out.outgoing.push({ name: g.name, created: g.created });
   const by = (a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });

@@ -453,6 +453,18 @@ const spriteTex={};
 function getSpriteTex(dex){ if(!spriteTex[dex]){ const t=new THREE.TextureLoader().setCrossOrigin('anonymous').load(SPRITE_URL(dex)); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; spriteTex[dex]=t; } return spriteTex[dex]; }
 
 // Variocolor: lleva los tonos azules (y cian) de la textura al rojo, sin tocar blancos, cremas ni grises (como el Gyarados variocolor)
+// Variocolor cosmético de las minileyendas: los tonos cerca de «from» (±0,08) pasan a «to», con la misma saturación y brillo.
+// Un programa de shader por pareja (como mucho 7, uno por minileyenda gratuita)
+function hueMat(mt,from,to){
+ mt.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+  { vec3 c=diffuseColor.rgb; float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.;
+    float h=0.; if(d>1e-4){ if(mx==c.r) h=mod((c.g-c.b)/d,6.); else if(mx==c.g) h=(c.b-c.r)/d+2.; else h=(c.r-c.g)/d+4.; h/=6.; }
+    float dh=abs(h-${from.toFixed(3)}); dh=min(dh,1.-dh);
+    float w=(1.-smoothstep(.05,.09,dh))*smoothstep(.15,.3,s);
+    float h2=fract(h+${(to-from).toFixed(3)}); vec3 k=clamp(abs(mod(h2*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);
+    diffuseColor.rgb=mix(c,mx*mix(vec3(1.),k,s),w); }`); };
+ mt.customProgramCacheKey=()=>'hue'+from+to; mt.needsUpdate=true;
+}
 function shinyMat(mt){
  mt.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
   { vec3 c=diffuseColor.rgb; float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.;
@@ -495,7 +507,7 @@ class Actor{
  }
  // 'shiny:130' = el mismo modelo con los azules teñidos de rojo (Pokemon-3D-api no tiene todos los variocolor)
  setDex(dex){
-   if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(String(dex).replace(/^shiny:/,''));
+   if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(String(dex).replace(/^(shiny|hue:[\d.]+,[\d.]+):/,''));
  }
  clearModel(){ this.sm=null; this.noKo=false; if(this.ball){ this.body.remove(this.ball); this.ball=null; } if(this.model){ this.body.remove(this.model); poolPut(this); this.model=null; this.smActs=null; this.mixer=null; this.cur=null; this.mats=null; this.acts=null; this.proc=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
  ensure(){
@@ -506,8 +518,8 @@ class Actor{
      const kk=this.fitH&&m.kh?Math.min(m.kh,m.k*1.6):m.k, pk=this.dex+'|'+kk, pooled=poolGet(pk);
      if(pooled){ Object.assign(this,pooled); this.poolKey=pk; this.body.add(this.model); this.alpha=undefined; if(m.sm&&this.smActs){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.go('idle'); } else this.play('idle',true); return; }
      const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(kk); holder.userData.k=kk; this.poolKey=pk;
-     const shiny=String(this.dex).startsWith('shiny:');
-     this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); if(shiny) shinyMat(mt); this.mats.push(mt); } } });
+     const shiny=String(this.dex).startsWith('shiny:'), hue=/^hue:([\d.]+),([\d.]+):/.exec(String(this.dex));
+     this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); if(shiny) shinyMat(mt); else if(hue) hueMat(mt,+hue[1],+hue[2]); this.mats.push(mt); } } });
      this.model=holder; this.body.add(holder); this.mixer=new THREE.AnimationMixer(inst); this.acts={};
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
      this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;
@@ -564,6 +576,7 @@ class Actor{
    else if(spec.tx!=null&&!this.moveT){ const q=W3(spec.tx,spec.ty); this.face=Math.atan2(q.x-p.x,q.z-p.z); }
    // La minileyenda, una vez que ha caminado, se queda mirando hacia donde iba (no vuelve a la diagonal de partida al llegar)
    else if(spec.face!=null&&!this.moveT&&!(spec.tac&&this.walked)) this.face=spec.face;
+   if(spec.trail&&moving&&(this.trT=(this.trT||0)+dt)>.03){ this.trT=0; this.trN=(this.trN||0)+1; emit({p:new THREE.Vector3(p.x+rnd(.15),TOP+.1,p.z+rnd(.15)),v:[rnd(.12),.32,rnd(.12)],col:spec.trail[this.trN%2],size:.3,size1:.04,life:.8,drag:.6}); }
    this.lastPos=p.clone();
    const sc=spec.scale||1; this.root.position.set(p.x,0,p.z);
    // giro suave hacia donde mira
@@ -698,14 +711,15 @@ const TRANS=[];
 function shock(p,c,r0,r1,life,flat=true){ const m=new THREE.Mesh(geoS('ring',()=>new THREE.RingGeometry(.86,1,40)),addMat(c)); m.rotation.x=flat?-Math.PI/2:0; m.position.copy(p); if(!flat) m.lookAt(camera.position); m.renderOrder=11; scene.add(m); TRANS.push({m,t:0,life,r0,r1}); }
 // Bola de fuego de la minileyenda de Charmander (tecla H): sale de su boca, sube en arco con estela de llamas y estalla en el campo rival
 const PROJ=[];
-function fireball(x1,y1,x2,y2,delay=0){ const a=W3(x1,y1,0), b=W3(x2,y2,0); PROJ.push({a,b,t:-delay,T:Math.max(.5,Math.hypot(b.x-a.x,b.z-a.z)/11)}); }
+// col: color cosmético (bola de fuego del gacha); sin él, la de siempre
+function fireball(x1,y1,x2,y2,delay=0,col){ const a=W3(x1,y1,0), b=W3(x2,y2,0); const c=col?[col,new THREE.Color(col).lerp(new THREE.Color('#ffffff'),.45).getStyle(),new THREE.Color(col).lerp(new THREE.Color('#ffffff'),.75).getStyle()]:['#ff7a1f','#ffcf4a','#fff6c8','#ff9a2a']; PROJ.push({a,b,t:-delay,T:Math.max(.5,Math.hypot(b.x-a.x,b.z-a.z)/11),c:col?[c[0],c[1],c[2],c[0]]:c}); }
 function stepProj(dt){
  for(let i=PROJ.length-1;i>=0;i--){ const o=PROJ[i]; o.t+=dt; if(o.t<0) continue; const k=Math.min(1,o.t/o.T), arc=Math.sin(k*Math.PI)*1.1;
    const p=new THREE.Vector3(lerp(o.a.x,o.b.x,k),TOP+.9+(1-k)*.2+arc,lerp(o.a.z,o.b.z,k));
-   for(let n=0;n<7;n++) emit({p:p.clone().add(new THREE.Vector3(rnd(.18),rnd(.18),rnd(.18))),v:[rnd(.6),rnd(.6)+.2,rnd(.6)],col:n%2?'#ff7a1f':'#ffcf4a',size:1,size1:.08,life:.5,g:-.5,drag:1,alpha:.95});
-   emit({p:p.clone(),col:'#fff6c8',size:1.5,size1:1,life:.08,alpha:1}); emit({p:p.clone(),col:'#ff9a2a',size:2.2,size1:1.6,life:.08,alpha:.45});
+   for(let n=0;n<7;n++) emit({p:p.clone().add(new THREE.Vector3(rnd(.18),rnd(.18),rnd(.18))),v:[rnd(.6),rnd(.6)+.2,rnd(.6)],col:n%2?o.c[0]:o.c[1],size:1,size1:.08,life:.5,g:-.5,drag:1,alpha:.95});
+   emit({p:p.clone(),col:o.c[2],size:1.5,size1:1,life:.08,alpha:1}); emit({p:p.clone(),col:o.c[3],size:2.2,size1:1.6,life:.08,alpha:.45});
    if(Math.random()<.5) emit({p:p.clone(),v:[rnd(.6),.4,rnd(.6)],col:'#ffe08a',size:.1,size1:.02,life:.6,g:2});
-   if(k>=1){ const e=o.b.clone().setY(TOP+.25); impactFx(EL.Fuego,'Fuego',e,true); shock(e.clone().setY(TOP+.06),'#ff8a2a',.3,2.4,.5); shock(e.clone().setY(TOP+.06),'#ffe08a',.15,1.4,.35); burst(e.clone().setY(TOP+.5),['#ff5a1a','#ffb02e','#fff0a0'],26,3.6,{up:4,size:.4,size1:.03,life:.8,g:-1}); PROJ.splice(i,1); } }
+   if(k>=1){ const e=o.b.clone().setY(TOP+.25); impactFx(EL.Fuego,'Fuego',e,true); shock(e.clone().setY(TOP+.06),o.c[3]==='#ff9a2a'?'#ff8a2a':o.c[0],.3,2.4,.5); shock(e.clone().setY(TOP+.06),o.c[2],.15,1.4,.35); burst(e.clone().setY(TOP+.5),[o.c[0],o.c[1],o.c[2]],26,3.6,{up:4,size:.4,size1:.03,life:.8,g:-1}); PROJ.splice(i,1); } }
 }
 const SHIELDS=[];
 // Guardián: escudo de cristal translúcido (img/fx/escudo.webp, 17 KB; se ve la ficha a través). Coloso: campo de fuerza esférico alrededor de la ficha (img/fx/burbuja.webp, 13 KB).
@@ -895,6 +909,7 @@ function stepPads(list){
 function stepBubbles(list,now){
  const seen=new Set();
  for(const o of list||[]){ let v=bubVis.get(o.id); if(!v){ v=makeBubble(o); bubVis.set(o.id,v); } seen.add(o.id);
+   const bc=o.col||null; if(v.c2!==bc){ v.c2=bc; v.col=bc?bc[0]:BAR_COL; v.ring.material.color.set(v.col); v.wall.material.color.set(bc?new THREE.Color(bc[1]).lerp(new THREE.Color('#ffffff'),.35):'#d8f3ff'); }
    const p=W3(o.x,o.y,0); v.g.position.set(p.x,TOP,p.z); v.tex.offset.x=(now*.12+o.id*.37)%1; v.wall.material.opacity=.8+.2*Math.sin(now*3+o.id);
    if(Math.abs(v.k-o.k)>.004){ v.k=o.k; v.ring.geometry.dispose(); v.ring.geometry=barRing(o.k); v.wall.geometry.dispose(); v.wall.geometry=barWall(o.k); } }
  for(const [id,v] of bubVis) if(!seen.has(id)){ burst(v.g.position.clone().setY(TOP+.5),[v.col,'#ffffff'],30,3,{up:2,size:.28}); scene.remove(v.g); v.g.traverse(m=>{ if(m.geometry&&m!==v.g) m.geometry.dispose(); if(m.material) m.material.dispose(); }); v.tex.dispose(); bubVis.delete(id); }
@@ -933,7 +948,7 @@ function stepProps(F,now){
    const e=want?1-Math.pow(1-U.v,3):U.v*U.v, bob=0, rise=(1-e)*.5; // quietos una vez aparecidos: solo se anima la aparición (ease-out al salir, ease-in al hundirse)
    { const w=flatWorld(slot?FLAT_IMG.holes[j]:FLAT_IMG.holes2[j-5],0); c.position.set(w.x,.52+bob-rise,w.z); } // la punta de abajo (0,5 por debajo del centro) queda en el hueco pintado
    const m=c.userData.m, flash=want&&U.v<1?1+Math.sin(U.v*Math.PI)*.9:1; c.scale.setScalar(.2+.8*e);
-   m.material.color.set('#9fe8ff'); m.material.emissive.set('#2aa8ff'); m.material.emissiveIntensity=1*flash; m.material.opacity=.95*e; m.rotation.y=.6+(1-e)*4; c.userData.h.visible=true; c.userData.h.scale.setScalar(1.3*(.6+.4*e)*flash); }); // el rombo gira solo mientras brota y luego se queda quieto
+   const cc=(slot?I.col:I.col2)||null; m.material.color.set(cc?new THREE.Color(cc).lerp(new THREE.Color('#ffffff'),.4):'#9fe8ff'); m.material.emissive.set(cc||'#2aa8ff'); if(c.userData.hc!==cc){ c.userData.hc=cc; c.userData.h.material.color.set(cc||'#7fe0ff'); } m.material.emissiveIntensity=1*flash; m.material.opacity=.95*e; m.rotation.y=.6+(1-e)*4; c.userData.h.visible=true; c.userData.h.scale.setScalar(1.3*(.6+.4*e)*flash); }); // el rombo gira solo mientras brota y luego se queda quieto
 }
 const totemTop=()=>totem&&totem.visible?projectV(totem.position.clone().setY(FLAT_IMG.totemTopY!=null?FLAT_IMG.totemTopY+.15:TOP+2.2)):null; // encima de la punta del trofeo
 
@@ -1072,6 +1087,14 @@ function stepCount(c,now){
    cntTex.needsUpdate=true; }
  const p=W3(c.x,c.y,0); cntMesh.position.set(p.x,TOP+.04,p.z); cntMesh.visible=true; cntMesh.material.opacity=c.full?.7:.82+.18*Math.sin(now*3);
 }
+// Casillas cosméticas: el lado del dueño del tablero, sutil y quieto, con sus dos colores alternos
+let tileMesh=null, tileKey='';
+function stepTiles(c,now,drop){
+ if(!c||drop||!hexMesh){ if(tileMesh) tileMesh.visible=false; return; }
+ if(!tileMesh){ tileMesh=new THREE.InstancedMesh(hexMesh.geometry,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.2,depthWrite:false}),28); tileMesh.renderOrder=1; scene.add(tileMesh); tileKey=''; }
+ const k=c.join(); if(k!==tileKey){ tileKey=k; const m=new THREE.Matrix4(); for(let i=0;i<28;i++){ hexMesh.getMatrixAt(28+i,m); tileMesh.setMatrixAt(i,m); tileMesh.setColorAt(i,new THREE.Color(c[(i+Math.floor(i/7))%2])); } tileMesh.instanceMatrix.needsUpdate=true; tileMesh.instanceColor.needsUpdate=true; }
+ tileMesh.visible=true;
+}
 function render(F){
  if(!ready) return;
  const now=performance.now()/1000, raw=lastT?now-lastT:0, dt=Math.min(.1,raw); lastT=now;
@@ -1083,6 +1106,7 @@ function render(F){
  // escenario plano: las casillas del banquillo son las losas de la imagen; las 3D solo se intuyen al arrastrar una ficha
  if(FLAT&&curArena==='glade'){ benchPads.visible=!!(F.cells&&F.cells.drop)||!!(F.pandora&&F.pandora.length); benchPads.material.transparent=true; benchPads.material.opacity=F.pandora&&!(F.cells&&F.cells.drop)?.5:.3; benchPads.material.depthWrite=false; }
  hexMesh.visible=hexRing.visible=F.arena!=='plaza'&&!!(F.cells&&F.cells.drop);
+ stepTiles(F.tiles,now,!!(F.cells&&F.cells.drop));
  stepCount(F.floorCount,now);
  // actores
  const pt0=performance.now(); const seen=new Set();

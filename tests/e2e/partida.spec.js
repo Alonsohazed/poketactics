@@ -280,6 +280,8 @@ test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
 test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Pokémon', async ({ page }) => {
   await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
   const r = await page.evaluate(async () => {
+    // sin cosméticos de barrera, todas azul claro (con uno equipado, cada barrera lleva su color: ver la prueba del catálogo)
+    G.players.forEach(p => { p.cs = String(p.cs || '').split('|').filter(k => !k.startsWith('br:')).join('|'); });
     await new Promise(r => setTimeout(r, 800)); const C = G.carousel, me = G.me, a = C.av[me.id], { cx, cy } = carGeo();
     const bars = B3.bars, an = carAng(C.order.indexOf(me), C.order.length), [px, py] = carV(cx + Math.cos(an), cy + Math.sin(an));
     C.t = Math.max(C.t, releaseAt(C.order.indexOf(me))); await new Promise(r => setTimeout(r, 200));
@@ -527,12 +529,19 @@ test('retratos pequeños: salen del sprite de la Pokédex al instante (sin desca
   expect(r.have).toEqual(files); expect(r.n).toBe(6); expect(r.sprites).toBe(6); await page.waitForTimeout(500); expect(glb.filter(u => /\/(4|25|129|130|150|446)\.glb/.test(u))).toEqual([]);
 });
 
+// Pico de efectos de colocación (escudos del Guardián y campos del Coloso) alrededor de un arrastre: se empieza a registrar antes de
+// arrastrar y se lee 1,2 s después de soltar. Sin GPU el juego va a ~10 FPS y el propio arrastre puede durar más de un segundo.
+async function fxAround(page, from, to) {
+  await page.evaluate(() => { window.__fx = { escudo: 0, burbuja: 0 }; if (!window.__fxLoop) { window.__fxLoop = true; const f = () => { const c = B3.fxSyn; __fx.escudo = Math.max(__fx.escudo, c.escudo); __fx.burbuja = Math.max(__fx.burbuja, c.burbuja); requestAnimationFrame(f); }; f(); } });
+  await drag(page, from, to); await page.waitForTimeout(1200);
+  return page.evaluate(() => Object.assign({}, window.__fx));
+}
+
 test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (arrastrando de verdad)', async ({ page }) => {
   await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['squirtle', 'onix', 'shellder']) addUnitToBench(me, makeInst(k)); renderUI(); });
   await page.waitForTimeout(4000);
-  const pico = async () => page.evaluate(async () => { const a = B3.debugInfo().sprites; let mx = a; const t0 = performance.now(); while (performance.now() - t0 < 1000) { await new Promise(r => requestAnimationFrame(r)); mx = Math.max(mx, B3.debugInfo().sprites); } return mx - a; });
   const r = [];
-  for (let i = 0; i < 3; i++) { const p = pico(); await drag(page, await benchPoint(page, i), await cellPoint(page, i * 2 + 1, 5)); r.push(await p); await page.waitForTimeout(1800); }
+  for (let i = 0; i < 3; i++) { r.push((await fxAround(page, await benchPoint(page, i), await cellPoint(page, i * 2 + 1, 5))).escudo); await page.waitForTimeout(1000); }
   expect(await page.evaluate(() => [Object.keys(G.me.board).length, traitTiers(G.me)['Guardián'] || 0])).toEqual([3, 1]);
   expect(r[0]).toBe(0);               // con 1 Guardián no hay sinergia
   expect(r[1]).toBeGreaterThanOrEqual(2); // al poner el 2.º se activa y los dos sueltan su escudo
@@ -542,9 +551,8 @@ test('sinergia de Guardián: el efecto de colocación sale ya con 2 Guardianes (
 test('sinergias: el Guardián suelta su escudo de cristal y el Coloso un campo de fuerza (imágenes ligeras, sin Poké Ball)', async ({ page }) => {
   await page.evaluate(() => { const me = G.me; me.level = 8; me.board = {}; me.bench = Array(BENCH).fill(null); for (const k of ['magikarp', 'geodude', 'squirtle', 'onix']) addUnitToBench(me, makeInst(k)); renderUI(); });
   await page.waitForTimeout(4000);
-  const pico = () => page.evaluate(async () => { const m = { escudo: 0, burbuja: 0 }; const t0 = performance.now(); while (performance.now() - t0 < 1000) { await new Promise(r => requestAnimationFrame(r)); const c = B3.fxSyn; m.escudo = Math.max(m.escudo, c.escudo); m.burbuja = Math.max(m.burbuja, c.burbuja); } return m; });
   const r = [];
-  for (let i = 0; i < 4; i++) { const p = pico(); await drag(page, await benchPoint(page, i), await cellPoint(page, i * 2, 5)); r.push(await p); await page.waitForTimeout(1800); }
+  for (let i = 0; i < 4; i++) { r.push(await fxAround(page, await benchPoint(page, i), await cellPoint(page, i * 2, 5))); await page.waitForTimeout(1000); }
   expect(r[0]).toEqual({ escudo: 0, burbuja: 0 });               // 1 Coloso: sin sinergia
   expect(r[1].burbuja).toBeGreaterThanOrEqual(2);                // 2.º Coloso: los dos sueltan su campo de fuerza
   expect(r[3].escudo).toBeGreaterThanOrEqual(2);                 // 2.º Guardián: los dos sueltan su escudo

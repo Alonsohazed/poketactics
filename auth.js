@@ -58,9 +58,14 @@ function limiter(max, windowMs) {
 
 const { publicComp, profileView } = require('./competitive');
 const FR = require('./friends');
+const COSM = require('./public/cosmetics');
+const GACHA = require('./gacha');
+// Día del gacha (tirada diaria): fecha AAAA-MM-DD en la zona DAY_TZ (por defecto, la hora de México)
+const DAY_TZ = process.env.DAY_TZ || 'America/Mexico_City';
+const dayOf = d => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: DAY_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d)); } catch (e) { return new Date(d).toISOString().slice(0, 10); } };
 // Lo que ve el navegador de su cuenta: nunca el MMR, solo su rango (o el posicionamiento) y sus caramelos
 function publicUser(u) {
-  return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp) };
+  return { id: u.id, name: u.name, trainer: u.trainer || '', settings: u.settings || {}, stats: u.stats || {}, comp: publicComp(u.comp), cosm: COSM.publicCosm(u.cosm) };
 }
 function cleanSettings(s) {
   const out = {};
@@ -70,10 +75,11 @@ function cleanSettings(s) {
   return out;
 }
 
-function createAuth(db, { trainers, presence, onFriends }) {
+function createAuth(db, { trainers, presence, onFriends, onEevee }) {
   const ipLimit = limiter(+process.env.AUTH_IP_LIMIT || 30, 15 * 60 * 1000);      // 30 intentos de login/registro cada 15 min por IP
   const accountLimit = limiter(10, 15 * 60 * 1000); // 10 contraseñas fallidas cada 15 min por cuenta
-  const validTrainer = t => typeof t === 'string' && trainers.includes(t);
+  // Una minileyenda existe y la cuenta la tiene (Eevee solo se consigue en el gacha)
+  const validTrainer = (t, cosm) => typeof t === 'string' && trainers.includes(t) && COSM.ownsTac(cosm, t);
 
   async function startSession(req, res, user) {
     const token = crypto.randomBytes(32).toString('base64url');
@@ -123,7 +129,7 @@ function createAuth(db, { trainers, presence, onFriends }) {
     if (typeof pass !== 'string' || pass.length < PASS_MIN) return res.status(400).json({ error: `La contraseña debe tener al menos ${PASS_MIN} caracteres`, field: 'pass' });
     if (pass.length > PASS_MAX) return res.status(400).json({ error: `La contraseña puede tener como mucho ${PASS_MAX} caracteres`, field: 'pass' });
     if (pass.toLowerCase() === user.toLowerCase()) return res.status(400).json({ error: 'La contraseña no puede ser igual que el usuario', field: 'pass' });
-    const created = await db.createUser({ name: user, pass: await hashPassword(pass), trainer: validTrainer(trainer) ? trainer : '' });
+    const created = await db.createUser({ name: user, pass: await hashPassword(pass), trainer: validTrainer(trainer, {}) ? trainer : '' });
     if (!created) return res.status(409).json({ error: 'Ese nombre de usuario ya está en uso', field: 'user' });
     await startSession(req, res, created);
     res.status(201).json({ user: publicUser(created) });
@@ -160,7 +166,8 @@ function createAuth(db, { trainers, presence, onFriends }) {
   router.post('/me', needUser(async (req, res, user) => {
     const b = req.body || {}, fields = {};
     if (b.trainer !== undefined) {
-      if (!validTrainer(b.trainer)) return res.status(400).json({ error: 'Ese entrenador no existe' });
+      if (!trainers.includes(b.trainer)) return res.status(400).json({ error: 'Ese entrenador no existe' });
+      if (!validTrainer(b.trainer, user.cosm)) return res.status(403).json({ error: 'Esa minileyenda solo se consigue en el gacha' });
       fields.trainer = b.trainer;
     }
     if (b.settings !== undefined) fields.settings = cleanSettings(b.settings);
@@ -203,6 +210,31 @@ function createAuth(db, { trainers, presence, onFriends }) {
     res.json(Object.assign({ ok: true, msg: r.msg }, await FR.view(db, user, presence)));
   }));
   setInterval(() => db.purgeFriends(FR.EXPIRE_MS).catch(() => {}), 3600 * 1000).unref();
+
+  // Gacha: el servidor tira (crypto.randomInt) y cobra en una transacción (db.gachaTx). La diaria se desbloquea al terminar
+  // la primera partida del día. 20 acciones por minuto. Si sale Eevee, se anuncia a los jugadores en el menú (onEevee).
+  const gachaLimit = limiter(20, 60 * 1000);
+  const gachaCtx = async user => { const today = dayOf(Date.now()), last = (await db.matches(user.id, 1))[0]; return { today, playedToday: !!last && dayOf(last.created) === today }; };
+  // Equipar: 60 cambios por minuto
+  const equipLimit = limiter(60, 60 * 1000);
+  router.post('/cosm/equip', needUser(async (req, res, user) => {
+    if (equipLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiados cambios seguidos: espera un momento' });
+    equipLimit.hit(user.id); const b = req.body || {};
+    const r = await db.gachaTx(user.id, (comp, cosm) => GACHA.equip(comp, cosm, { slot: b.slot, key: b.key }));
+    if (r.error) return res.status(r.code).json({ error: r.error });
+    res.json(r.out);
+  }));
+  router.get('/gacha', needUser(async (req, res, user) => res.json(GACHA.view(user.comp, user.cosm, await gachaCtx(user)))));
+  router.post('/gacha/:op', needUser(async (req, res, user) => {
+    const op = req.params.op; if (!['roll', 'daily', 'buy'].includes(op)) return res.status(404).json({ error: 'Acción no válida' });
+    if (gachaLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiadas tiradas seguidas: espera un momento' });
+    gachaLimit.hit(user.id);
+    const b = req.body || {}, ctx = await gachaCtx(user);
+    const r = await db.gachaTx(user.id, (comp, cosm) => GACHA.apply(comp, cosm, { op, n: b.n, key: b.key, nonce: b.nonce }, ctx));
+    if (r.error) return res.status(r.code).json({ error: r.error });
+    if (r.out.eevee && !r.replay && onEevee) onEevee(user.name);
+    res.json(Object.assign({}, r.out, { pityLeft: COSM.PITY - r.out.pity, replay: !!r.replay }));
+  }));
 
   // Socket.io: solo entran jugadores con sesión
   function socketGuard(socket, next) {

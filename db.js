@@ -11,6 +11,9 @@
 const fs = require('fs');
 const path = require('path');
 
+const COSM = require('./public/cosmetics');
+// Minileyendas de pago (Eevee) sin tenerlas en el inventario → la de por defecto. Devuelve cuántas cuentas cambió.
+function migrateEeveeRows(users) { let n = 0; for (const u of users) if (!COSM.ownsTac(u.cosm, u.trainer)) { u.trainer = COSM.DEFAULT_TAC; n++; } return n; }
 const EMPTY_STATS = () => ({ games: 0, wins: 0, top4: 0, best: 0 });
 const keyOf = name => String(name).toLowerCase();
 function applyResult(stats, place) {
@@ -40,11 +43,12 @@ function fileStore(file) {
     async init() {
       await fs.promises.mkdir(path.dirname(file), { recursive: true });
       try { db = JSON.parse(await fs.promises.readFile(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-      db.matches = db.matches || []; db.friends = db.friends || []; db.ghosts = db.ghosts || []; for (const u of db.users) u.comp = u.comp || {};
+      db.matches = db.matches || []; db.friends = db.friends || []; db.ghosts = db.ghosts || []; for (const u of db.users) { u.comp = u.comp || {}; u.cosm = u.cosm || {}; }
+      if (migrateEeveeRows(db.users)) await save();
     },
     async createUser({ name, pass, trainer }) {
       if (db.users.some(u => keyOf(u.name) === keyOf(name))) return null;
-      const u = { id: ++db.seq, name, pass, trainer: trainer || '', settings: {}, stats: EMPTY_STATS(), comp: {}, created: new Date().toISOString() };
+      const u = { id: ++db.seq, name, pass, trainer: trainer || '', settings: {}, stats: EMPTY_STATS(), comp: {}, cosm: {}, created: new Date().toISOString() };
       db.users.push(u); await save(); return u;
     },
     async userByName(name) { return db.users.find(u => keyOf(u.name) === keyOf(name)) || null; },
@@ -69,8 +73,14 @@ function fileStore(file) {
         a.g++; a.w += pl === 1; a.t4 += pl <= 4; a.sp += pl; a.cd += +r.candies || 0; if (Number.isFinite(L) && (a.pk == null || L > a.pk)) a.pk = L; }
       return o; },
     nameTaken: name => db.users.some(u => keyOf(u.name) === keyOf(name)),
+    // Gacha: fn(comp, cosm) → {comp, cosm, out} o {error}. Todo en memoria y sin esperas entre leer y escribir: atómico
+    async gachaTx(userId, fn) { const u = byId(userId); if (!u) return { code: 404, error: 'Cuenta no encontrada' };
+      const r = fn(u.comp || {}, u.cosm || {}); if (r.error || r.replay) return r;
+      u.comp = r.comp; u.cosm = r.cosm; await save(); return r; },
+    // Añade una clave al inventario de cosméticos (sin repetir). Devuelve si era nueva
+    async addInv(userId, key) { const u = byId(userId); if (!u) return false; u.cosm = u.cosm || {}; const inv = u.cosm.inv = Array.isArray(u.cosm.inv) ? u.cosm.inv : []; if (inv.includes(key)) return false; inv.push(key); await save(); return true; },
     // Amigos: filas dirigidas {a, b, status: pending|accepted|blocked, label (nombre tal como se escribió), created}
-    async links(userId) { return db.friends.filter(l => l.a === userId || l.b === userId).map(l => { const A = byId(l.a), B = byId(l.b); return A && B ? { a: l.a, b: l.b, status: l.status, label: l.label || '', created: l.created, aName: A.name, aTrainer: A.trainer || '', bName: B.name, bTrainer: B.trainer || '' } : null; }).filter(Boolean); },
+    async links(userId) { return db.friends.filter(l => l.a === userId || l.b === userId).map(l => { const A = byId(l.a), B = byId(l.b); return A && B ? { a: l.a, b: l.b, status: l.status, label: l.label || '', created: l.created, aName: A.name, aTrainer: A.trainer || '', aEq: (A.cosm || {}).eq || {}, bName: B.name, bTrainer: B.trainer || '', bEq: (B.cosm || {}).eq || {} } : null; }).filter(Boolean); },
     async setLink(a, b, status, label) { const l = db.friends.find(x => x.a === a && x.b === b), now = new Date().toISOString();
       if (l) Object.assign(l, { status, label: label != null ? label : l.label, created: now }); else db.friends.push({ a, b, status, label: label || '', created: now }); await save(); },
     async delLink(a, b) { const n = db.friends.length; db.friends = db.friends.filter(x => !(x.a === a && x.b === b)); if (db.friends.length !== n) await save(); return n - db.friends.length; },
@@ -103,7 +113,7 @@ function pgStore(url) {
   const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
   const pool = new Pool({ connectionString: url, max: 5, ssl: local ? false : { rejectUnauthorized: true } });
   pool.on('error', e => console.error('Error en la conexión con la base de datos', e.message));
-  const row = r => r && { id: r.id, name: r.name, pass: r.pass, trainer: r.trainer, settings: r.settings || {}, stats: Object.assign(EMPTY_STATS(), r.stats || {}), comp: r.comp || {}, created: r.created_at };
+  const row = r => r && { id: r.id, name: r.name, pass: r.pass, trainer: r.trainer, settings: r.settings || {}, stats: Object.assign(EMPTY_STATS(), r.stats || {}), comp: r.comp || {}, cosm: r.cosm || {}, created: r.created_at };
   const one = async (sql, args) => row((await pool.query(sql, args)).rows[0]);
   const names = new Set(); // nombres de las cuentas (en minúsculas): los rivales generados nunca se llaman igual que una persona
   return {
@@ -127,6 +137,7 @@ function pgStore(url) {
         );
         CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS comp JSONB NOT NULL DEFAULT '{}';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS cosm JSONB NOT NULL DEFAULT '{}';
         CREATE TABLE IF NOT EXISTS matches (
           id SERIAL PRIMARY KEY,
           match_id TEXT NOT NULL,
@@ -154,6 +165,8 @@ function pgStore(url) {
           PRIMARY KEY (user_id, name_key)
         );`);
       for (const r of (await pool.query('SELECT name_key FROM users')).rows) names.add(r.name_key);
+      // Eevee pasa a ser mítica: quien la llevaba sin haberla conseguido en el gacha vuelve a la minileyenda por defecto (repetible)
+      await pool.query(`UPDATE users SET trainer = $1 WHERE trainer = ANY($2::text[]) AND NOT (COALESCE(cosm->'inv', '[]'::jsonb) ? ('tac:' || trainer))`, [COSM.DEFAULT_TAC, COSM.LOCKED_TACS]);
     },
     async createUser({ name, pass, trainer }) {
       const u = await one(`INSERT INTO users (name, name_key, pass, trainer) VALUES ($1, $2, $3, $4)
@@ -161,8 +174,22 @@ function pgStore(url) {
       if (u) names.add(keyOf(name)); return u;
     },
     nameTaken: name => names.has(keyOf(name)),
+    // Gacha en una transacción: bloquea la fila (dos pestañas o un doble clic esperan su turno), cobra, entrega y guarda junto
+    async gachaTx(userId, fn) {
+      const cl = await pool.connect();
+      try {
+        await cl.query('BEGIN');
+        const u = (await cl.query('SELECT comp, cosm FROM users WHERE id = $1 FOR UPDATE', [userId])).rows[0];
+        if (!u) { await cl.query('ROLLBACK'); return { code: 404, error: 'Cuenta no encontrada' }; }
+        const r = fn(u.comp || {}, u.cosm || {});
+        if (r.error || r.replay) { await cl.query('ROLLBACK'); return r; }
+        await cl.query('UPDATE users SET comp = $2::jsonb, cosm = $3::jsonb WHERE id = $1', [userId, JSON.stringify(r.comp), JSON.stringify(r.cosm)]);
+        await cl.query('COMMIT'); return r;
+      } catch (e) { await cl.query('ROLLBACK').catch(() => {}); throw e; } finally { cl.release(); }
+    },
+    async addInv(userId, key) { return (await pool.query(`UPDATE users SET cosm = jsonb_set(cosm, '{inv}', COALESCE(cosm->'inv', '[]'::jsonb) || to_jsonb($2::text)) WHERE id = $1 AND NOT (COALESCE(cosm->'inv', '[]'::jsonb) ? $2)`, [userId, key])).rowCount > 0; },
     async links(userId) {
-      const r = await pool.query(`SELECT f.user_id AS a, f.friend_id AS b, f.status, f.label, f.created_at AS created, ua.name AS "aName", ua.trainer AS "aTrainer", ub.name AS "bName", ub.trainer AS "bTrainer"
+      const r = await pool.query(`SELECT f.user_id AS a, f.friend_id AS b, f.status, f.label, f.created_at AS created, ua.name AS "aName", ua.trainer AS "aTrainer", ua.cosm->'eq' AS "aEq", ub.name AS "bName", ub.trainer AS "bTrainer", ub.cosm->'eq' AS "bEq"
         FROM friends f JOIN users ua ON ua.id = f.user_id JOIN users ub ON ub.id = f.friend_id WHERE f.user_id = $1 OR f.friend_id = $1`, [userId]);
       return r.rows;
     },
