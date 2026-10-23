@@ -2710,7 +2710,7 @@ const FX_EL=new Set(['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dr
 function drawHud(a){
  if(!a.anchor||a.dead) return;
  const R=geo.R, o=a.hud; let [hx,hy]=a.anchor;
- // Como en TFT: barra arriba y, debajo, la fila de objetos; las estrellas encima de todo
+ // Como en TFT: barra arriba y, debajo, la fila de objetos (sin estrellas encima: no se quieren sobre la ficha)
  // Los objetos van pegados, marco con marco, y las barras de vida y maná miden exactamente lo mismo que la fila de 3 objetos (marcos incluidos)
  const bsz=Math.max(22,R*.8), bbw=Math.max(2,bsz*.1), slot=bsz+2*bbw, rowW=slot*3;
  const isz=o.items&&o.items.length?bsz:0; let itemsY=hy-isz-4;
@@ -2728,12 +2728,6 @@ function drawHud(a){
    if(shv>0){ ctx.fillStyle='rgba(245,245,245,.95)'; ctx.fillRect(bx+wh*hpK,by,w*shv/tot,hh); }
    ctx.fillStyle='rgba(10,12,24,.7)'; for(let k=300;k<tot;k+=300){ const tx=bx+w*k/tot; ctx.fillRect(tx,by,1,k%1500?hh*.55:hh); }
    if(hasM){ const full=o.mana>=o.maxMana*.9; ctx.fillStyle='#1b2a48'; ctx.fillRect(bx,by+hh+1,w,mh); ctx.fillStyle=full?`hsl(205,100%,${70+15*Math.sin(performance.now()/90)}%)`:'#4aa3ff'; ctx.fillRect(bx,by+hh+1,w*clamp(o.mana/o.maxMana,0,1),mh); }
-   hy=by;
- } else if(isz) hy=itemsY;
- if(!o.creep&&o.star){
-   ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
-   ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
-   const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
  }
  if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
