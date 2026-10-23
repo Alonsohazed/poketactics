@@ -1351,7 +1351,7 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
  background:linear-gradient(90deg,transparent,rgba(6,14,26,.78) 22%,rgba(6,14,26,.78) 78%,transparent)}
 #cbBanner::before,#cbBanner::after{content:'';position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#7fe8ff 30%,#7fe8ff 70%,transparent)}
 #cbBanner::before{top:0}#cbBanner::after{bottom:0}
-#cbBanner svg{width:.9em;height:.9em;fill:currentColor;filter:drop-shadow(0 2px 0 #000)}
+#cbBanner img{width:1.25em;height:1.25em;object-fit:contain;filter:drop-shadow(0 2px 0 #000)}
 #cbBanner.on{display:flex;animation:cbBan 1.6s ease-out forwards}
 /* Barra superior en partida: sin franja (el logo, la barra de fases y los botones flotan sobre el tablero) */
 .top{position:relative;background:none;border-bottom:0;box-shadow:none}
@@ -1367,6 +1367,7 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
 .roundBar::before{content:'';position:absolute;inset:0 3px 3px;z-index:-1;clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);
   background:linear-gradient(180deg,#1c3344,#0d1822 75%);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 .roundBar .pills{flex:1;justify-content:space-evenly;gap:0;padding:0 6px}
+.roundBar .pills.few{justify-content:center;gap:34px} /* fase 1 (3 rondas salvajes): juntas en el centro */
 .rbLeft{min-width:0} .rbTitle{font-size:14px}
 /* Rondas sin círculo y del mismo tamaño: espadas (PvP), dos cartas (PvP con elección de aumento), el icono del carrusel y el sprite del Pokémon salvaje (PvE).
    La actual en dorado (con brillo); las jugadas, en verde si ganaste y en rojo si perdiste */

@@ -3,11 +3,12 @@
 //  - espadas-*: de la imagen de espadas cruzadas que aportó el autor (fondo blanco: se quita con un relleno desde los bordes, así no se agujerean los brillos).
 //  - cartas-*: dos cartas (una vertical y otra encima ladeada a la derecha) dibujadas aquí en SVG, para las rondas con elección de aumento.
 //  - carrusel-*: el icono del carrusel (mismo trazado que ROUND_SVG.carousel en game.js), solo neutra y oro.
-// Uso: node iconos-fases.js <espadas.png> <carpeta de salida>   (necesita sharp fuera del proyecto, p. ej. NODE_PATH=<carpeta con sharp>)
+//  - combate.webp (200 px): el emblema del cartel «¡Combate!» (escudo con espadas cruzadas que aportó el autor), teñido del blanco azulado de sus letras.
+// Uso: node iconos-fases.js <espadas.png> <carpeta de salida> [<emblema.png>]   (necesita sharp fuera del proyecto, p. ej. NODE_PATH=<carpeta con sharp>)
 const sharp = require('sharp');
-const [inp, out] = process.argv.slice(2);
-const S = 160, PAD = 6, R = 2.5; // lienzo, margen y grosor del borde negro
-const TINTS = { neutra: [[34, 58, 78], [176, 204, 224]], oro: [[128, 82, 10], [255, 236, 150]], gana: [[18, 92, 44], [150, 240, 160]], pierde: [[120, 18, 18], [255, 150, 140]] };
+const [inp, out, emblema] = process.argv.slice(2);
+let S = 160; const PAD = 6, R = 2.5; // lienzo (160; 200 para el emblema), margen y grosor del borde negro
+const TINTS = { neutra: [[34, 58, 78], [176, 204, 224]], oro: [[128, 82, 10], [255, 236, 150]], gana: [[18, 92, 44], [150, 240, 160]], pierde: [[120, 18, 18], [255, 150, 140]], blanco: [[62, 84, 104], [244, 251, 255]] };
 
 // Alfa y luminosidad reducidas a S×S (muestreo 4×4 por píxel: bordes suaves) a partir de una imagen RGBA y su máscara de fondo
 function reduce(data, W, H, bg) {
@@ -23,11 +24,11 @@ function reduce(data, W, H, bg) {
 async function tinted({ A, L }, name, file) {
   let lo = 1, hi = 0; for (let i = 0; i < S * S; i++) if (A[i] > .5) { lo = Math.min(lo, L[i]); hi = Math.max(hi, L[i]); }
   const B = new Float32Array(S * S); for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { let m = 0; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const d = Math.hypot(dx, dy); if (d > R + .5) continue; const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= S || yy >= S) continue; m = Math.max(m, A[yy * S + xx] * Math.min(1, R + .5 - d)); } B[y * S + x] = m; }
-  for (const [tn, [d, l]] of Object.entries(TINTS)) { if (name === 'carrusel' && tn !== 'neutra' && tn !== 'oro') continue;
+  for (const [tn, [d, l]] of Object.entries(TINTS)) { if (name === 'carrusel' && tn !== 'neutra' && tn !== 'oro') continue; if (name === 'combate' ? tn !== 'blanco' : tn === 'blanco') continue;
     const o = Buffer.alloc(S * S * 4);
     for (let i = 0; i < S * S; i++) { const t = Math.min(1, Math.max(0, (L[i] - lo) / (hi - lo || 1))), a = A[i], c = d.map((v, j) => v + (l[j] - v) * Math.pow(t, .85));
       const ab = B[i], aa = a + ab * (1 - a); for (let j = 0; j < 3; j++) o[i * 4 + j] = aa ? Math.round(c[j] * a / aa) : 0; o[i * 4 + 3] = Math.round(aa * 255); }
-    await sharp(o, { raw: { width: S, height: S, channels: 4 } }).webp({ quality: 90, alphaQuality: 100 }).toFile(`${file}/${name}-${tn}.webp`); }
+    await sharp(o, { raw: { width: S, height: S, channels: 4 } }).webp({ quality: 90, alphaQuality: 100 }).toFile(name === 'combate' ? `${file}/combate.webp` : `${file}/${name}-${tn}.webp`); }
 }
 // Fondo blanco (y la sombra gris del suelo en el cuarto inferior) rellenado desde los bordes
 function whiteBg(data, W, H) {
@@ -55,5 +56,6 @@ const CAROUSEL = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" wi
   await tinted(reduce(data, info.width, info.height, whiteBg(data, info.width, info.height)), 'espadas', out);
   await tinted(await fromSvg(CARDS), 'cartas', out);
   await tinted(await fromSvg(CAROUSEL), 'carrusel', out);
-  console.log('ok: espadas ×4, cartas ×4, carrusel ×2 en', out);
+  if (emblema) { S = 200; const e = await sharp(emblema).ensureAlpha().raw().toBuffer({ resolveWithObject: true }); await tinted(reduce(e.data, e.info.width, e.info.height, whiteBg(e.data, e.info.width, e.info.height)), 'combate', out); }
+  console.log('ok: espadas ×4, cartas ×4, carrusel ×2' + (emblema ? ', combate' : '') + ' en', out);
 })().catch(e => { console.error(e); process.exit(1); });

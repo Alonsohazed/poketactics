@@ -3017,7 +3017,7 @@ function renderUI(){ if(HEADLESS||!G||G.auto||!G.players||!G.players.length) ret
 const ROUND_SVG={pve:'<svg viewBox="0 0 24 24"><path d="M6 3l2.2 7.6L4 9l3.4 6.6L5 21l5-4 2 5 2-5 5 4-2.4-5.4L20 9l-4.2 1.6L18 3l-6 5z"/></svg>',pvp:'<svg viewBox="0 0 24 24"><path d="M3 3l7.5 7.5-1.4 1.4L2 4.8V3zm18 0v1.8l-7.1 7.1-1.4-1.4L20 3zM5 14l5 5-2 2-1.5-1.5L4 22l-2-2 2.5-2.5L3 16zm14 0l2 2-1.5 1.5L22 20l-2 2-2.5-2.5L16 21l-2-2z"/></svg>',carousel:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 8.5 6h-3a6.2 6.2 0 0 0-11 0h-3A9 9 0 0 1 12 3zm0 18a9 9 0 0 1-8.5-6h3a6.2 6.2 0 0 0 11 0h3A9 9 0 0 1 12 21zm0-12a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>'};
 let lastBeep=-1;
 // Cartel «¡Combate!» cuando acaba la preparación y empieza a pelear (stepVisual)
-function combatBanner(){ const el=$('cbBanner'); if(!el) return; el.innerHTML=(G.round&&G.round.type==='pve'?ROUND_SVG.pve:ROUND_SVG.pvp)+'<span>¡Combate!</span>'; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(combatBanner.t); combatBanner.t=setTimeout(()=>el.classList.remove('on'),1600); }
+function combatBanner(){ const el=$('cbBanner'); if(!el) return; el.innerHTML='<img src="img/ui/combate.webp" alt=""><span>¡Combate!</span>'; /* emblema (escudo y espadas) del mismo blanco azulado que las letras */ el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(combatBanner.t); combatBanner.t=setTimeout(()=>el.classList.remove('on'),1600); }
 function updatePhase(){
  let t=''; // Temporizador y barra de la planificación; en los últimos 5 s suena un aviso cada segundo
  const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=PLAN_T;
@@ -3049,8 +3049,8 @@ function renderTop(){
  $('stage').textContent=`Fase ${R.s}-${R.n}`; // solo la fase (qué ronda es ya lo dicen los iconos y su descripción al pasar el ratón)
  // Una ficha por ronda de la fase, sin círculos y del mismo tamaño: espadas (PvP), dos cartas (PvP con elección de aumento), el icono del carrusel y el sprite
  // del Pokémon salvaje (PvE). La ronda actual va en dorado; las PvP jugadas, en verde si ganaste y en rojo si perdiste (G.me.rres; en multijugador llega en priv.rr)
- const rres=(G.me&&G.me.rres)||{};
- $('pills').innerHTML=ROUNDS.filter(x=>x.s===R.s).map(x=>{ const boss=x.type==='pve'?pveBoss(x):null, res=x.type==='pvp'?rres[ROUNDS.indexOf(x)]:null, cur=x===R;
+ const rres=(G.me&&G.me.rres)||{}, fase=ROUNDS.filter(x=>x.s===R.s); $('pills').classList.toggle('few',fase.length<5); // fase 1 (3 rondas): juntas en el centro, no repartidas a lo ancho
+ $('pills').innerHTML=fase.map(x=>{ const boss=x.type==='pve'?pveBoss(x):null, res=x.type==='pvp'?rres[ROUNDS.indexOf(x)]:null, cur=x===R;
    const tint=res==='W'?'gana':res==='L'?'pierde':cur?'oro':'neutra', kind=x.type==='carousel'?'carrusel':x.aug>=0?'cartas':'espadas';
    // El salvaje con el mismo retrato de la Pokédex que la ficha (public/dex, render de 128 px): el sprite pixelado de PokeAPI no se distinguía a este tamaño
    const dn=boss?String(boss.dex).split('/').pop():'', ico=boss?`<img src="${DEX_FILES.has(+dn)?dexUrl(dn):SPRITE(boss.dex)}" alt="">`:`<img class="ico" src="img/ui/${kind}-${tint}.webp" alt="">`;
