@@ -46,9 +46,9 @@ test('dos jugadores crean sala, se unen con código y juegan', async ({ browser 
   // una acción imposible no rompe nada ni da oro
   await B.evaluate(() => { NET.sock.emit('act', { t: 'buy', i: 99 }); NET.sock.emit('act', { t: 'xp' }); NET.sock.emit('act', { t: 'nada' }); });
 
-  // los dos pulsan Listo y empieza el combate en ambos
-  await A.locator('#readyBtn').click();
-  await B.locator('#readyBtn').click();
+  // ya no hay botón «¡Listo!»: en las pruebas (PT_TEST_FAST) los dos mandan «ready» y empieza el combate en ambos
+  await A.evaluate(() => NET.sock.emit('act', { t: 'ready' }));
+  await B.evaluate(() => NET.sock.emit('act', { t: 'ready' }));
   for (const p of [A, B]) await expect.poll(() => p.evaluate(() => G.phase), { timeout: 30_000 }).toBe('combat');
   expect(errors).toEqual([]);
   await ctxA.close(); await ctxB.close();

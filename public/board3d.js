@@ -1075,11 +1075,13 @@ function stepCount(c,now){
  if(!c){ if(cntMesh) cntMesh.visible=false; return; }
  if(!cntMesh){ cntCv=document.createElement('canvas'); cntCv.width=1024; cntCv.height=384; cntTex=new THREE.CanvasTexture(cntCv); cntTex.colorSpace=THREE.SRGBColorSpace; cntTex.anisotropy=8;
    cntMesh=new THREE.Mesh(new THREE.PlaneGeometry(11,4.125),new THREE.MeshBasicMaterial({map:cntTex,transparent:true,depthWrite:false,depthTest:false})); cntMesh.rotation.x=-Math.PI/2; cntScene.add(cntMesh); }
- const key=c.txt+(c.full?'f':'');
+ const key=c.txt+(c.full?'f':'')+(c.over?'o':'');
  if(key!==cntKey){ cntKey=key; const g=cntCv.getContext('2d'), W=1024, H=384; g.clearRect(0,0,W,H); g.textAlign='center'; g.textBaseline='alphabetic'; g.lineJoin='round';
    // Poké Ball y número forman un solo grupo centrado en el lienzo: la bola pegada al número (hueco fijo) y ambos con el mismo centro vertical (el de los dígitos, no el de la línea de texto)
    const fs=250; g.font='900 '+fs+'px Nunito, system-ui, sans-serif'; const r=112, gap=34, tw=g.measureText(c.txt).width, gw=2*r+gap+tw, x0=(W-gw)/2, m=g.measureText('0123456789'), ty=H/2+(m.actualBoundingBoxAscent-m.actualBoundingBoxDescent)/2, tx=x0+2*r+gap+tw/2, cy=H/2;
    if(c.full){ g.fillStyle='rgba(120,130,150,.55)'; g.strokeStyle='rgba(10,14,24,.5)'; }
+   // Más fichas que el máximo (banquillo lleno): número en rojo, hay que sacar una o se venderá sola al empezar el combate
+   else if(c.over){ const gr=g.createLinearGradient(0,cy-fs*.36,0,cy+fs*.36); gr.addColorStop(0,'#ffd9d4'); gr.addColorStop(.5,'#ff4a3d'); gr.addColorStop(1,'#b3140c'); g.fillStyle=gr; g.strokeStyle='#4a0804'; g.shadowColor='rgba(255,60,40,.9)'; g.shadowBlur=34; }
    else { const gr=g.createLinearGradient(0,cy-fs*.36,0,cy+fs*.36); gr.addColorStop(0,'#e4fbff'); gr.addColorStop(.5,'#58d8ff'); gr.addColorStop(1,'#2a7bff'); g.fillStyle=gr; g.strokeStyle='#0a3a66'; g.shadowColor='rgba(80,220,255,.9)'; g.shadowBlur=34; }
    g.lineWidth=26; g.strokeText(c.txt,tx,ty); g.shadowBlur=c.full?0:24; g.fillText(c.txt,tx,ty); g.shadowBlur=0;
    // Poké Ball a la izquierda del número

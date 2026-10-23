@@ -4,6 +4,7 @@
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'poke-tactics-desc-'));
 process.env.DB_FILE = path.join(tmp, 'db.json'); process.env.REJOIN_MS = '5000'; delete process.env.DATABASE_URL;
+process.env.PT_TEST_FAST = '1'; // solo en pruebas: «listo» adelanta el combate y vale la velocidad x4
 const { server, rooms, ready } = require('../server');
 const { io } = require('socket.io-client');
 const sleep = ms => new Promise(r => setTimeout(r, ms));

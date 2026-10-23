@@ -33,6 +33,7 @@ module.exports = defineConfig({
       DATABASE_URL: '',
       AUTH_IP_LIMIT: '1000', // cada prueba registra una cuenta: el tope de 30 intentos por IP se agotaba a media tanda
       QUEUE_FILL_MS: '2000', // la cola se completa con bots a los 2 s en las pruebas
+      PT_TEST_FAST: '1', // solo en pruebas: «listo» (act ready) adelanta el combate; en el juego ya no hay botón
       DB_FILE: path.join(os.tmpdir(), `poke-tactics-e2e-${process.pid}.json`),
     },
   },

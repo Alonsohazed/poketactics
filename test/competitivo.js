@@ -111,6 +111,7 @@ const opps7 = (mmr, myPlace) => [1, 2, 3, 4, 5, 6, 7, 8].filter(p => p !== myPla
   ok(a === 'eevee,charmander,pichu', `migración: solo pierde a Eevee quien no la tiene (${a})`); ok(a === b, 'migración: ejecutarla dos veces deja lo mismo'); }
 
 // ---------- 2 y 3. base de datos y servidor ----------
+process.env.PT_TEST_FAST = '1'; // solo en pruebas: «listo» adelanta el combate
 const { server, ready, rooms, queues } = require('../server');
 const db = require('../db');
 const { io } = require('socket.io-client');

@@ -499,8 +499,7 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .roundBar .pill.cur svg{width:24px;height:24px}
 .augDot{position:absolute;top:-3px;right:-3px;width:10px;height:10px;transform:rotate(45deg);background:#c97bff;border:1px solid #fff;box-shadow:0 0 6px #c97bff}
 .rbLow{display:flex;align-items:center;gap:10px;margin-top:1px}
-.rbPhase,.rbAlive{font-size:12px;font-weight:900;padding:3px 12px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);white-space:nowrap}
-.rbPhase{color:#cfe8ff}
+.rbAlive{font-size:12px;font-weight:900;padding:3px 12px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);white-space:nowrap}
 .rbAlive{color:#f4e3b0}
 .rbClock{position:relative;width:48px;height:48px;display:grid;place-items:center;flex:none}
 .rbClock svg{position:absolute;inset:0;transform:rotate(-90deg)}
@@ -859,11 +858,10 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
   /* Móvil: barra superior y tienda compactas para que el tablero y el banquillo quepan entre las dos */
   .top{gap:6px;padding:6px 8px}
   .top .stage{font-size:13px;padding:2px 8px}
-  .roundBar{padding:3px 14px 5px;gap:2px;margin:0;min-width:0} .rbTitle{font-size:11px} .roundBar .pill{width:22px;height:22px} .roundBar .pill.cur{width:28px;height:28px} .roundBar .pill svg{width:13px;height:13px} .roundBar .pill img{width:26px;height:26px} .roundBar{gap:8px;min-width:0} .rbLeft{min-width:0} .roundBar .pills{gap:4px} .rbPhase{font-size:10.5px;padding:2px 8px} .rbClock{width:34px;height:34px} .rbTimer{font-size:13px} .roundBar .phase{display:none}
+  .roundBar{padding:3px 14px 5px;gap:2px;margin:0;min-width:0} .rbTitle{font-size:11px} .roundBar .pill{width:22px;height:22px} .roundBar .pill.cur{width:28px;height:28px} .roundBar .pill svg{width:13px;height:13px} .roundBar .pill img{width:26px;height:26px} .roundBar{gap:8px;min-width:0} .rbLeft{min-width:0} .roundBar .pills{gap:4px} .rbClock{width:34px;height:34px} .rbTimer{font-size:13px} .roundBar .phase{display:none}
   .pills{gap:2px} .pill{width:22px;height:20px;font-size:10px;border-radius:6px}
   .phase{flex:1 1 calc(100% - 190px);min-width:0;font-size:12px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .top .btn{padding:5px 8px;font-size:13px} .top .btn.icon{min-width:34px;padding:5px 6px}
-  .top #readyBtn{flex:1}
   .layout{padding:8px;gap:10px} .center{gap:6px}
   .boardInfo{gap:4px;font-size:11px} .boardInfo span:not(:empty){padding:2px 8px}
   .shop{padding:4px 8px calc(6px + env(safe-area-inset-bottom,0px))}
@@ -1355,6 +1353,25 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 #cbBanner::before{top:0}#cbBanner::after{bottom:0}
 #cbBanner svg{width:.9em;height:.9em;fill:currentColor;filter:drop-shadow(0 2px 0 #000)}
 #cbBanner.on{display:flex;animation:cbBan 1.6s ease-out forwards}
+/* Barra de fases (en partida): más ancha, con marco dorado (el fondo dorado asoma 3 px alrededor del azul, ::before) y espadas sin círculo para los combates */
+.roundBar{min-width:min(860px,64vw);gap:26px;padding:7px 52px 10px;background:linear-gradient(180deg,#f6dc8a,#b8862e 55%,#7a5214);isolation:isolate;box-shadow:none}
+.roundBar::before{content:'';position:absolute;inset:0 3px 3px;z-index:-1;clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);
+  background:linear-gradient(180deg,#1c3344,#0d1822 75%);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.roundBar .pills{gap:16px}
+.roundBar .pill.rt-pvp{background:none;border:0;box-shadow:none;width:34px;height:34px}
+.roundBar .pill.rt-pvp.cur{width:46px;height:46px;box-shadow:none;filter:drop-shadow(0 0 7px rgba(255,215,94,.75))}
+.roundBar .pill .swd{width:100%;height:100%;margin:0;image-rendering:auto;object-fit:contain;filter:none}
+.roundBar .pill.rt-pvp.past{opacity:.5;filter:none}
+.roundBar .pill.rt-pvp.res-W,.roundBar .pill.rt-pvp.res-L{opacity:1}
+.rbLeft{min-width:0}
+@media (max-width:820px){ .roundBar{min-width:0;gap:8px;padding:3px 18px 6px} .roundBar .pills{gap:4px} .roundBar .pill.rt-pvp{width:22px;height:22px} .roundBar .pill.rt-pvp.cur{width:28px;height:28px} }
+/* Menú ☰ de la partida */
+.top{position:relative} .top #fsBtn{margin-left:auto}
+.gameMenu{position:absolute;right:12px;top:calc(100% + 4px);z-index:60;display:flex;flex-direction:column;min-width:190px;padding:6px;border-radius:12px;
+  background:linear-gradient(180deg,#1c3344,#0d1822);border:2px solid #c99a3e;box-shadow:0 12px 30px rgba(0,0,0,.55)}
+.gameMenu[hidden]{display:none}
+.gameMenu button{all:unset;cursor:pointer;padding:10px 14px;border-radius:8px;font-weight:800;color:#eef2ff;font-size:14px}
+.gameMenu button:hover,.gameMenu button:focus-visible{background:rgba(255,215,94,.16);color:#ffe9a8}
 @keyframes cbBan{0%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.97)}}
 </style>
 </head>
@@ -1362,15 +1379,10 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 <div id="menuScene" aria-hidden="true"><canvas></canvas><div class="mnUnits"></div></div>
 <header class="top">
   <div class="brand"><img class="brandLogo" src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></div>
-  <span class="netTag" id="netTag" hidden></span>
-  <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div><span class="rbPhase" id="rbPhase">Planificación</span></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
-  <button class="btn ghost icon" id="dexBtn" title="Pokédex">📕</button>
-  <button class="btn ghost icon" id="recBtn" title="Recetas de objetos">⚒️</button>
-  <button class="btn ghost icon" id="muteBtn" title="Música" aria-label="Música"><i data-i="sound" data-s="20"></i></button>
-  <button class="btn" id="speedBtn" title="Velocidad del combate">x1</button>
-  <button class="btn gold" id="readyBtn">¡Listo!</button>
+  <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
   <button class="btn ghost icon" id="fsBtn" title="Pantalla completa">⛶</button>
-  <button class="btn ghost icon" id="menuBtn" title="Volver al menú">☰</button>
+  <button class="btn ghost icon" id="menuBtn" title="Menú" aria-haspopup="menu" aria-expanded="false">☰</button>
+  <div class="gameMenu" id="gameMenu" role="menu" hidden><button role="menuitem" id="gmOpts">Configuración</button><button role="menuitem" id="gmQuit">Volver al menú</button></div>
 </header>
 
 <main class="layout">

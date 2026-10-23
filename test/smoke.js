@@ -7,6 +7,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'poke-tactics-'));
 process.env.DB_FILE = path.join(tmp, 'db.json');
 delete process.env.DATABASE_URL;
 process.env.PRESENCE_MS = '250'; // el estado de los amigos se revisa cada 250 ms en la prueba
+process.env.PT_TEST_FAST = '1'; // solo en pruebas: «listo» adelanta el combate y vale la velocidad x4
 
 const { server, ready } = require('../server');
 const { io } = require('socket.io-client');
@@ -250,7 +251,7 @@ ready.then(() => server.listen(0, async () => {
     vm.createContext(ctx);
     vm.runInContext(['augments.js', 'game.js'].map(f => fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8')).join('\n'), ctx);
     const E = ctx.module.exports;
-    E.serverCreate({ diff: 'normal', timer: 30, speed: 4, humans: [{ nick: 'Uno', peer: 'a', tr: 'charmander' }, { nick: 'Dos', peer: 'b', tr: 'squirtle' }] }, () => {});
+    E.serverCreate({ diff: 'normal', timer: 30, speed: 4, fast: true, humans: [{ nick: 'Uno', peer: 'a', tr: 'charmander' }, { nick: 'Dos', peer: 'b', tr: 'squirtle' }] }, () => {});
     const G = E.G, uno = G.players.find(p => p.name === 'Uno'), dos = G.players.find(p => p.name === 'Dos');
     E.serverTick(.05);
     E.serverLeave('b');

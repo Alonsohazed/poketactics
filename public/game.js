@@ -505,7 +505,19 @@ function openAnvil(p,kind){ const pool=kind==='f'?FULL_KEYS.slice():BASIC.slice(
 function giveUnitTo(p,key){
  if(!key) return false;
  if(p.bench.some(x=>!x)||p.bench.filter(u=>u&&u.baseId===key&&u.star===1).length>=2){ addUnitToBench(p,makeInst(key)); return true; }
+ // Banquillo lleno (carrusel, aumentos…): va al tablero aunque se pase del máximo (el contador sale en rojo, n+1/n); si al empezar el combate sigue sobrando, se vende uno al azar (sellOverflow)
+ if(!p.isBot&&G.phase!=='combat'){ const k=freeBoardCell(p,DEF[key]); if(k){ augFire(p,'gain',{key,dup:allUnits(p).some(u=>u.baseId===key)}); p.board[k]=makeInst(key); combine(p); note(p,`Banquillo lleno: ${DEF[key].name} va al tablero. Si sobra al empezar el combate se venderá uno al azar`,true); return true; } }
  p.gold+=DEF[key].cost; returnToPool(key,1); note(p,`Banquillo lleno: ${DEF[key].name} se convirtió en oro`); return false;
+}
+// Casilla libre de tu mitad del tablero (tanques y luchadores delante), en el mismo orden que autoFill
+function freeBoardCell(p,d){ const C=[3,2,4,1,5,0,6], rows=['t','b'].includes(d.role)?[0,1,2,3]:[3,2,1,0]; for(const r of rows) for(const c of C) if(!p.board[c+','+r]) return c+','+r; return null; }
+// Al empezar el combate el tablero no puede pasar del máximo: se venden fichas al azar (su valor en oro y sus objetos al inventario)
+function sellOverflow(p){
+ const out=[]; let extra=boardUnits(p).length-maxBoard(p);
+ while(extra-->0){ const ks=Object.keys(p.board).filter(k=>p.board[k]); if(!ks.length) break; const k=pick(ks), u=p.board[k], g=sellValue(u);
+   p.gold+=g; returnToPool(u.baseId,Math.pow(3,u.star-1)); augFire(p,'sell',{key:u.baseId,star:u.star,cost:DEF[u.defId].cost}); for(const it of u.items) giveItem(p,it); delete p.board[k]; out.push(`${DEF[u.defId].name} (+${g} de oro)`); }
+ if(out.length) note(p,`Tablero lleno: se vendió ${out.join(', ')}`,true);
+ return out.length;
 }
 function giveItem(p,it,raw){ it=it||pick(BASIC); if(!raw&&p.mods&&p.mods.anvilBuffet&&ITEMS[it]&&ITEMS[it].comp&&it!=='medal'){ giveAnvil(p,'c'); return it; } if(p.items.length<MAX_ITEMS_BENCH) p.items.push(it); else { p.gold+=2; note(p,'Inventario lleno: objeto convertido en 2 de oro'); } return it; }
 // Guante de Boxeo: objetos que da esta ronda (u.tg). Con Guantes de la Suerte (mods.luckyGloves), los ideales para su rol
@@ -1299,8 +1311,12 @@ let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques 
 // Orbe de botín: color según lo bueno que es (gris, dorado o prismático) y contenido ya decidido al soltarlo
 const ORB_TIER=k=>k==='prism'?'prism':/^(gray|c$|mag$)/.test(k)?'gray':'gold';
 function dropOrb(p,key,at){ const toks=ORBS[key]?weighted(ORBS[key].t):[key]; G.orbSeq=(G.orbSeq||0)+1; p.orbs.push({id:G.orbSeq,tier:ORB_TIER(key),toks,c:at?at.c:null,r:at?at.r:null}); }
+// Un orbe con Pokémon dentro no se abre (ni a mano ni solo al empezar el combate) si no caben en el banquillo: espera en el suelo a que hagas sitio
+const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(u\d|dup$)/.test(t)).length:(o.nu|0);
+const benchFree=p=>p.bench.filter(x=>!x).length;
+const orbBlocked=(p,o)=>!p.isBot&&orbUnits(o)>benchFree(p); // los rivales generados los abren siempre (si no cabe, oro): así no se les acumulan
 function openPlayerOrb(p,id,quick){
- const i=p.orbs.findIndex(o=>o.id===id); if(i<0) return null;
+ const i=p.orbs.findIndex(o=>o.id===id); if(i<0||orbBlocked(p,p.orbs[i])) return null;
  const o=p.orbs.splice(i,1)[0], out=[]; NO_ANVIL=!!quick; for(const t of o.toks) grant(p,t,out); NO_ANVIL=false;
  note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,true); return o;
 }
@@ -1386,7 +1402,7 @@ function newGame(opts={}){
  if(!HEADLESS&&!opts.auto&&typeof guardBack==='function') guardBack();
  if(!HEADLESS&&window.B3&&B3.dropQueue) B3.dropQueue();
  UID=1;
- G={pool:{},players:[],roundIdx:-1,round:null,phase:'idle',timer:0,combat:null,fights:[],log:[],over:false,speed:S.speed,auto:!!opts.auto,acc:0,resolving:false,myOpp:'',anvils:[],augTiers:rollAugTiers(),carousel:null,diff:opts.diff||'normal',mp:!!opts.mp,resolveNotBefore:0};
+ G={pool:{},players:[],roundIdx:-1,round:null,phase:'idle',timer:0,combat:null,fights:[],log:[],over:false,speed:1,auto:!!opts.auto,acc:0,resolving:false,myOpp:'',anvils:[],augTiers:rollAugTiers(),carousel:null,diff:opts.diff||'normal',mp:!!opts.mp,resolveNotBefore:0};
  for(const u of UNIT_LIST) G.pool[u.key]=POOL_SIZE[u.cost-1];
  if(!opts.server){ G.players.push(makePlayer(0,opts.auto?'Tú':S.name||'Tú',!!opts.auto,S.avatar||'🧢',S.trainer)); if(!opts.auto&&!HEADLESS&&savedTac()) G.players[0].tac=savedTac(); if(!HEADLESS&&typeof COSM!=='undefined'&&ACC&&ACC.cosm) G.players[0].cs=COSM.eqString(ACC.cosm.eq); }
  let id=opts.server?0:1;
@@ -1438,7 +1454,7 @@ function botAugPick(p,choices,stage){
 }
 function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
 function startPlanning(){
- const R=G.round; G.phase='planning'; G.timer=S.timer||Infinity; if(G.mp&&!isFinite(G.timer)) G.timer=60;
+ const R=G.round; G.phase='planning'; G.timer=S.timer||30; // siempre con tiempo: ya no hay «¡Listo!» para empezar antes
  G.preview=R.type==='pve'?pveWave(R.s,R.n):null;
  for(const p of G.players) p.ready=false;
  for(const p of alivePlayers()) if(p.isBot) botPlan(p);
@@ -1459,6 +1475,7 @@ function startCombat(){
  if(G.phase!=='planning') return;
  const R=G.round, me=G.me;
  for(const p of alivePlayers()) for(const o of p.orbs.slice()) openPlayerOrb(p,o.id,true);
+ for(const p of alivePlayers()) sellOverflow(p);
  for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
  G.phase='combat'; G.acc=0; G.resolving=false;
  const alive=alivePlayers(); G.fights=[];
@@ -1570,6 +1587,8 @@ function resolveRound(){
    else if(c.winner===1){ lose(A,base+survivors(c,1)); won.set(A,false); if(!f.ghost){ win(B); won.set(B,true); } }
    else { lose(A,base+survivors(c,1)); won.set(A,false); if(!f.ghost){ lose(B,base+survivors(c,0)); won.set(B,false); } }
    A.lastOpp=B.id; if(!f.ghost) B.lastOpp=A.id;
+   // Resultado de cada ronda PvP (las espadas de la barra de fases se pintan de verde o rojo; el empate cuenta como derrota)
+   for(const p of f.ghost?[A]:[A,B]) (p.rres=p.rres||{})[G.roundIdx]=won.get(p)?'W':'L';
    say(A,c.winner===0?`✅ Victoria contra ${B.name}`:c.winner===1?`❌ Derrota contra ${B.name}: −${A.lastDmg} de vida`:`⏱️ Empate por tiempo con ${B.name}: −${A.lastDmg} de vida`);
    if(!f.ghost) say(B,c.winner===1?`✅ Victoria contra ${A.name}`:c.winner===0?`❌ Derrota contra ${A.name}: −${B.lastDmg} de vida`:`⏱️ Empate por tiempo con ${A.name}: −${B.lastDmg} de vida`);
  }
@@ -1703,7 +1722,7 @@ function makePub(){
 function makePriv(p){ ensureGloves(p);
  const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
-   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],ef:p.eeveeForm||'',lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r]),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
+   po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],ef:p.eeveeForm||'',lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r,orbUnits(o)]),rr:Object.entries(p.rres||{}).filter(([i])=>G.round&&ROUNDS[i]&&ROUNDS[i].s===G.round.s).map(([i,v])=>i+v).join(','),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
  if(JSON.stringify(d).length>3900){ d.lg=d.lg.slice(0,2); d.ts=d.ts.slice(-1); }
  return d;
 }
@@ -1829,17 +1848,17 @@ function renderSeats(){
  el.innerHTML=rows.join(''); if(window.PX) PX.hydrate(el);
  const owner=NET.owner&&NET.owner===NET.myPeer;
  $('rmActions').innerHTML=(owner?'<button class="btn primary" id="rmStart">Empezar partida</button>':'<span class="muted" style="margin-right:auto">Esperando a que el creador de la sala empiece…</span>')+'<button class="btn" id="rmLeave">Salir de la sala</button>';
- if($('rmStart')) $('rmStart').onclick=()=>NET.sock.emit('start',{timer:S.timer||30,speed:S.speed||1});
+ if($('rmStart')) $('rmStart').onclick=()=>NET.sock.emit('start',{timer:S.timer||30,speed:1});
  $('rmLeave').onclick=()=>{ leaveRoom(); showNormal(); };
 }
-function resetNet(){ Object.assign(NET,{mode:'sp',code:'',owner:'',seats:[],cfg:null,screen:'',modal:'',shownOver:false,lastToast:0}); updateNetTag(); }
+function resetNet(){ Object.assign(NET,{mode:'sp',code:'',owner:'',seats:[],cfg:null,screen:'',modal:'',shownOver:false,lastToast:0}); }
 function leaveRoom(){ if(NET.sock) NET.sock.emit('leave'); if(G&&G.mirror) G.over=true; resetNet(); }
 // ----- cliente: espejo del estado que manda el anfitrión -----
 function startClient(){
  guardBack(); NET.mode='client'; closeModal(); NET.screen=''; $('menu').classList.add('hidden'); selected=null; selCombat=null; NET.shownOver=false; NET.lastToast=0;
  const me=makePlayer(-1,S.name,false,S.avatar,S.trainer);
  G={mirror:true,players:[me],me,phase:'idle',roundIdx:0,round:ROUNDS[0],timer:0,log:[],speed:1,pool:{},augTiers:['G','G','G'],diff:'normal',over:false,combat:null,acc:0,flip:false,myOpp:'',mp:true};
- me.tac=savedTac()||me.tac; updateNetTag(); renderUI();
+ me.tac=savedTac()||me.tac; renderUI();
 }
 function applyPub(d){
  if(!d||!Array.isArray(d.pl)) return;
@@ -1886,7 +1905,8 @@ function applyPriv(d){
  me.reveals=Array.isArray(d.rv)?d.rv.filter(r=>Array.isArray(r)&&r.length>=5).slice(-3).map(r=>[+r[0]||0,...r.slice(1,6).map(x=>String(x).slice(0,300)),Array.isArray(r[6])?r[6].slice(0,3).map(n=>clamp(+n|0,1,6)):0]):[];
  me.picks=d.pk&&Array.isArray(d.pk.opts)?[{id:+d.pk.id,src:String(d.pk.src),title:String(d.pk.title).slice(0,60),desc:String(d.pk.desc||'').slice(0,400),opts:d.pk.opts.slice(0,6).map(o=>({t:String(o.t).slice(0,60),i:String(o.i||'').slice(0,4),d:String(o.d||'').slice(0,200),v:String(o.v)}))}]:[];
  me.augUi=d.ap&&typeof d.ap==='object'?d.ap:{};
- me.orbs=Array.isArray(d.ob)?d.ob.slice(0,12).filter(o=>Array.isArray(o)&&['gray','gold','prism'].includes(o[1])).map(([id,tier,c,r])=>({id:+id,tier,toks:[],c:Number.isInteger(c)?clamp(c,0,6):null,r:Number.isInteger(r)?clamp(r,0,7):null})):[];
+ me.rres={}; for(const s of String(d.rr||'').split(',').slice(0,8)){ const m=/^(\d{1,3})([WL])$/.exec(s); if(m) me.rres[+m[1]]=m[2]; }
+ me.orbs=Array.isArray(d.ob)?d.ob.slice(0,12).filter(o=>Array.isArray(o)&&['gray','gold','prism'].includes(o[1])).map(([id,tier,c,r,nu])=>({id:+id,tier,toks:[],nu:clamp(nu|0,0,9),c:Number.isInteger(c)?clamp(c,0,6):null,r:Number.isInteger(r)?clamp(r,0,7):null})):[];
  const selUid=selected&&selected.uid;
  // Cada mensaje trae las fichas otra vez: se reutiliza el mismo objeto (por uid) para que el 3D no destruya y recree el modelo
  // (si no, cada acción de cualquiera reiniciaba la animación y la ficha daba un giro al aparecer de nuevo)
@@ -1929,7 +1949,6 @@ function applyCar(d){
  }
  G.carousel={opts,order,av,rot:+d.rot||0,rotAt:performance.now(),t:+d.t||0,mirror:true};
 }
-function updateNetTag(){ if(HEADLESS) return; const el=$('netTag'); if(NET.mode==='client'){ el.hidden=false; el.textContent=`Sala ${NET.code}`; } else el.hidden=true; }
 // Acción local: en modo cliente se envía al anfitrión; en solitario o como anfitrión se aplica directamente
 function doAct(a,optimistic){
  if(!G||!G.players.length) return;
@@ -2400,7 +2419,7 @@ let hudAugs=[];
 function floorCountSpec(){
  const me=G.me; if(G.phase!=='planning'||!me||!me.alive||viewedPlayer()!==me) return null;
  const n=boardUnits(me).length, max=maxBoard(me), [ax,ay]=cellXY(3,1), [bx,by]=cellXY(3,2);
- return {txt:n+'/'+max,full:n>=max,x:(ax+bx)/2,y:(ay+by)/2};
+ return {txt:n+'/'+max,full:n===max,over:n>max,x:(ax+bx)/2,y:(ay+by)/2}; // over: más fichas que el máximo (en rojo: hay que sacar una o se venderá sola)
 }
 // Aumentos sobre el trofeo: cada uno en un recuadro negro con marco negro (como los objetos sobre un Pokémon) y solo su icono de carta:
 // la silueta del color de su rareza (augSil; mientras se calcula, nada dentro del recuadro)
@@ -2577,12 +2596,13 @@ function bindEvents(){
  $('xpBtn').addEventListener('click',()=>{ if(inGame()){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); } });
  $('rerollBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'reroll'}); });
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
- $('readyBtn').addEventListener('click',onReady);
- $('speedBtn').addEventListener('click',()=>{ if(NET.mode==='client'){ toast('La velocidad la elige el anfitrión'); return; } G.speed=G.speed===1?2:G.speed===2?4:1; S.speed=G.speed; saveSettings(); renderTop(); });
- $('muteBtn').addEventListener('click',()=>{ Music.init(); S.muted=!S.muted; saveSettings(); Music.setVol(); $('muteBtn').innerHTML=muteIcon(); });
- $('recBtn').addEventListener('click',showRecipes);
- $('dexBtn').addEventListener('click',()=>showDex(0));
- $('menuBtn').addEventListener('click',confirmQuit);
+ // Menú ☰ de la partida: Configuración (volumen, tiempo, tema, calidad) y volver al menú. Se cierra con clic fuera o Esc
+ const gm=$('gameMenu'), gmShow=on=>{ gm.hidden=!on; $('menuBtn').setAttribute('aria-expanded',on?'true':'false'); };
+ $('menuBtn').addEventListener('click',e=>{ e.stopPropagation(); gmShow(gm.hidden); });
+ $('gmOpts').addEventListener('click',()=>{ gmShow(false); showOptions(); });
+ $('gmQuit').addEventListener('click',()=>{ gmShow(false); confirmQuit(); });
+ document.addEventListener('pointerdown',e=>{ if(!gm.hidden&&!gm.contains(e.target)&&e.target!==$('menuBtn')) gmShow(false); });
+ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!gm.hidden) gmShow(false); });
  $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
  $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('gachaBtn').addEventListener('click',showGacha);
@@ -2617,7 +2637,6 @@ function bindEvents(){
    if(k==='d') doAct({t:'reroll'});
    else if(k==='f'){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); }
    else if(k==='e'&&hover){ doAct({t:'sell',loc:hover.loc}); if(selected===hover.u) selected=null; hover=null; }
-   else if(k===' '){ e.preventDefault(); onReady(); }
    else if(k==='t'){ greet(); }
    else if(k==='h'){ tacFire(); }
    else if(k>='1'&&k<='3'&&!e.ctrlKey&&!e.metaKey&&!e.altKey) eeveeForm(+k);
@@ -2627,13 +2646,6 @@ function bindEvents(){
  // La tienda y la barra superior cambian de alto (cartas, botones que saltan de línea): el tablero se reajusta
  if(window.ResizeObserver){ const ro=new ResizeObserver(()=>layout()); for(const el of [document.querySelector('.top'),$('shopPanel'),document.querySelector('.boardInfo')]) if(el) ro.observe(el); }
  if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readColors);
-}
-function onReady(){
- if(!G||!G.players.length) return;
- if(G.phase==='planning'&&G.me.alive){ doAct({t:'ready'},()=>{G.me.ready=true;}); if(!G.mp&&!G.mirror) startCombat(); }
- else if(G.phase==='combat'&&((G.combat&&!G.combat.done)||(G.view&&G.view.cb&&!G.view.cb.done))){
-   for(const cb of [G.combat,G.view&&G.view.cb]) if(cb&&!cb.done){ cb.visual=false; simulate(cb); cb.fx=[]; }
- }
 }
 
 /* ---------- tooltips ---------- */
@@ -2760,7 +2772,9 @@ function stepTac(dt){
    if(d<=st){ TAC.x=TAC.tx; TAC.y=TAC.ty; TAC.tx=null; } else { TAC.x+=dx/d*st; TAC.y+=dy/d*st; } }
  tacSync();
  if(!G.me.alive||G.phase==='carousel'||G.view) return;
- for(const o of orbList()) if(o.ready&&!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){ TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } }
+ for(const o of orbList()) if(o.ready&&!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){
+   const src=G.me.orbs.find(q=>q.id===o.id); if(src&&orbBlocked(G.me,src)){ if(TAC.blockT!==o.id){ TAC.blockT=o.id; toast('Banquillo lleno: haz sitio para abrir este orbe (lleva un Pokémon)'); } continue; }
+   if(TAC.blockT===o.id) TAC.blockT=null; TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); if(G.anvils&&G.anvils.length){ const q=G.anvils.map(a=>done=>showAnvil(a,done)); G.anvils=[]; runQueue(q,()=>renderUI()); } }
 }
 // Envía al servidor el tablero que miras y adónde va tu minileyenda (solo cuando cambia: al hacer clic derecho o cambiar de tablero)
 // Al arrastrar con el clic derecho el destino cambia en cada movimiento: como mucho un mensaje cada 150 ms (el último siempre llega)
@@ -2936,7 +2950,7 @@ function tick(){
      if(G.phase==='planning'&&isFinite(G.timer)) G.timer=Math.max(0,G.timer-dt);
      stepVisual(dt,false);
    } else {
-     if(G.phase==='planning'){ if(isFinite(G.timer)&&(G.mp||!modalOpen())){ G.timer-=dt; if(G.timer<=0) startCombat(); } if(G.mp&&G.phase==='planning'&&humansReady()) startCombat(); }
+     if(G.phase==='planning'){ if(isFinite(G.timer)&&(G.mp||!modalOpen())){ G.timer-=dt; if(G.timer<=0) startCombat(); } }
      if(G.phase==='augment'&&G.augDeadline&&Date.now()>G.augDeadline) autoAugs();
      if(G.phase==='carousel'&&(G.mp||!modalOpen())) updateCarousel(dt);
      if(G.phase==='combat') stepVisual(dt,true);
@@ -3015,7 +3029,7 @@ function updatePhase(){
  $('rbTimer').textContent=plan?sec:csec>=0?csec:G.phase==='combat'?'⚔':'·';
  // Reloj circular: se vacía durante la planificación y durante el combate
  const frac=plan?clamp(G.timer/tot,0,1):left>=0?clamp(left/COMBAT_T,0,1):G.phase==='combat'?1:0; $('rbRing').setAttribute('stroke-dashoffset',(100.5*(1-frac)).toFixed(1)); $('roundBar').classList.toggle('hurry',plan&&sec<=5||csec>=0&&csec<=5);
- $('rbPhase').textContent=PHASE_TAG[G.phase]||'Esperando'; const alive=G.players.filter(p=>p.alive).length; $('rbAlive').textContent=`👤 ${alive}/${G.players.length}`;
+ const alive=G.players.filter(p=>p.alive).length; $('rbAlive').textContent=`👤 ${alive}/${G.players.length}`;
  if(plan&&sec<=5&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.hurry(sec); } if(!plan) lastBeep=-1;
  switch(G.phase){
   case 'planning': t=(isFinite(G.timer)?`Planificación · ${Math.max(0,Math.ceil(G.timer))}s`:'Planificación')+(G.mp&&G.me&&G.me.ready?' · esperando al resto':''); break;
@@ -3024,9 +3038,8 @@ function updatePhase(){
   case 'results': t='Resultados'; break; case 'over': t='Fin de la partida'; break; default: t='Esperando al anfitrión…';
  }
  if(!G.me.alive&&G.phase!=='over') t+=' · espectador';
- if(t!==lastPhaseTxt){ $('phase').textContent=t; lastPhaseTxt=t; const rb=$('readyBtn'); const waiting=G.phase==='planning'&&G.me.ready&&G.mp; rb.textContent=G.phase==='combat'?'Saltar combate':waiting?'Esperando…':'¡Listo!'; rb.disabled=!['planning','combat'].includes(G.phase)||waiting||(!G.me.alive&&G.phase==='planning'); }
+ if(t!==lastPhaseTxt){ $('phase').textContent=t; lastPhaseTxt=t; }
 }
-const PHASE_TAG={planning:'Planificación',combat:'Combate',carousel:'Carrusel',augment:'Aumento',results:'Resultados',over:'Fin'};
 // Pokémon principal de una ronda de salvajes (el de más vida) y nombre de cada ronda para el planificador
 const pveBoss=R=>{ const w=pveWave(R.s,R.n); return w.reduce((a,b)=>b.hp>a.hp?b:a,w[0]); };
 function roundName(R){
@@ -3036,11 +3049,14 @@ function roundName(R){
 }
 function renderTop(){
  const R=G.round; if(!R) return;
- $('stage').innerHTML=`Fase ${R.s}-${R.n}: <b>${esc(roundName(R))}</b>`;
- // Una bola por ronda de la fase: las de salvajes llevan el retrato de su Pokémon principal, como los monstruos de TFT
- $('pills').innerHTML=ROUNDS.filter(x=>x.s===R.s).map(x=>{ const boss=x.type==='pve'?pveBoss(x):null;
-   return `<span class="pill rt-${x.type} ${x===R?'cur':''} ${x.n<R.n?'past':''}" title="${x.s}-${x.n}: ${esc(roundName(x))}${x.aug>=0?' · aumento '+TIER_NAME[G.augTiers[x.aug]]:''}">${boss?`<img src="${SPRITE(boss.dex)}" alt="">`:ROUND_SVG[x.type]}${x.aug>=0?'<i class="augDot"></i>':''}</span>`; }).join('');
- $('speedBtn').textContent=`x${G.speed}`; lastPhaseTxt=''; updatePhase(); updateNetTag();
+ $('stage').textContent=`Fase ${R.s}-${R.n}`; // solo la fase (qué ronda es ya lo dicen los iconos y su descripción al pasar el ratón)
+ // Una bola por ronda de la fase: las de salvajes llevan el retrato de su Pokémon principal, como los monstruos de TFT.
+ // Los combates PvP son unas espadas sin círculo: verdes si ganaste ese combate y rojas si lo perdiste (G.me.rres; en multijugador llega en priv.rr)
+ const rres=(G.me&&G.me.rres)||{};
+ $('pills').innerHTML=ROUNDS.filter(x=>x.s===R.s).map(x=>{ const boss=x.type==='pve'?pveBoss(x):null, res=x.type==='pvp'?rres[ROUNDS.indexOf(x)]:null;
+   const ico=boss?`<img src="${SPRITE(boss.dex)}" alt="">`:x.type==='pvp'?`<img class="swd" src="img/ui/espadas-${res==='W'?'gana':res==='L'?'pierde':'neutra'}.webp" alt="">`:ROUND_SVG[x.type];
+   return `<span class="pill rt-${x.type} ${x===R?'cur':''} ${x.n<R.n?'past':''} ${res?'res-'+res:''}" title="${x.s}-${x.n}: ${esc(roundName(x))}${res?(res==='W'?' · ganado':' · perdido'):''}${x.aug>=0?' · aumento '+TIER_NAME[G.augTiers[x.aug]]:''}">${ico}${x.aug>=0?'<i class="augDot"></i>':''}</span>`; }).join('');
+ lastPhaseTxt=''; updatePhase();
 }
 // Iconos de las sinergias: un símbolo de un solo color (SVG 24×24) que va dentro de un hexágono metálico, al estilo de TFT
 const TRAIT_SVG={
@@ -3443,15 +3459,14 @@ function showRecipes(){
  ${ORDER.map(a=>`<tr><th data-tip="item:${a}">${itemHTML(a,40)}</th>${ORDER.map(b=>{ const id=combineKey(a,b); return `<td data-tip="item:${id}">${itemHTML(id,40)}</td>`; }).join('')}</tr>`).join('')}</table></div>`,{closable:true});
 }
 function showOptions(){
- openModal(`<h1>Opciones</h1>
+ openModal(`<h1>Configuración</h1>
  <div class="field"><label for="optVol">Volumen de la música</label><input type="range" id="optVol" min="0" max="100" value="${R0(S.vol*100)}"></div>
- <div class="field"><label for="optTimer">Tiempo de planificación (solo / anfitrión)</label><select id="optTimer">${[[30,'30 segundos'],[45,'45 segundos'],[60,'60 segundos'],[0,'Sin límite (pulsas Listo)']].map(([v,t])=>`<option value="${v}" ${S.timer===v?'selected':''}>${t}</option>`).join('')}</select></div>
- <div class="field"><label for="optSpeed">Velocidad de combate</label><select id="optSpeed">${[1,2,4].map(v=>`<option value="${v}" ${S.speed===v?'selected':''}>x${v}</option>`).join('')}</select></div>
+ <div class="field"><label for="optTimer">Tiempo de planificación (solo / anfitrión)</label><select id="optTimer">${[[30,'30 segundos'],[45,'45 segundos'],[60,'60 segundos']].map(([v,t])=>`<option value="${v}" ${S.timer===v?'selected':''}>${t}</option>`).join('')}</select></div>
  <div class="field"><label for="optTheme">Tema</label><select id="optTheme">${[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']].map(([v,t])=>`<option value="${v}" ${S.theme===v?'selected':''}>${t}</option>`).join('')}</select></div>
  <div class="field"><label for="optGfx">Calidad gráfica (este dispositivo)</label><select id="optGfx">${[['auto','Automática (baja sola si va lento)'],['2','Alta: sombras nítidas y todas las partículas'],['1','Media'],['0','Baja: sin sombras y menos partículas']].map(([v,t])=>`<option value="${v}" ${GFX.q===v?'selected':''}>${t}</option>`).join('')}</select></div>
  <div class="row" style="justify-content:space-between;margin-top:16px"><button class="btn primary" id="saveOpt">Guardar</button><button class="btn ghost" id="logoutBtn">Cerrar sesión</button></div>`,{closable:true});
- $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; Music.init(); Music.setVol(); $('muteBtn').innerHTML=muteIcon(); };
- $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',$('optGfx').value); }catch(e){} applyGfx(); S.timer=+$('optTimer').value; S.speed=+$('optSpeed').value; S.theme=$('optTheme').value; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
+ $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; Music.init(); Music.setVol(); };
+ $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',$('optGfx').value); }catch(e){} applyGfx(); S.timer=+$('optTimer').value; S.theme=$('optTheme').value; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
  $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
 }
 function confirmQuit(){
@@ -3951,7 +3966,6 @@ function showMenu(){ loadFriends(); setTimeout(()=>{ layout.key=''; layout(); pr
  if(NET.rankFx){ const d=NET.rankFx; NET.rankFx=null; setTimeout(()=>showRankChange(d),250); } }
 // Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
 function pxArt(root){ if(window.PX) PX.hydrate(root||document); if(window.MenuScene) MenuScene.ensure(); }
-const muteIcon=()=>window.PX?PX.icon(S.muted?'mute':'sound',20):(S.muted?'Sin sonido':'Sonido');
 /* ---------- escena pixel del menú (estilo Esmeralda) ---------- */
 // Cielo por bandas, nubes grandes, mar con destellos, valla y hierba; Latios y Latias cruzan el cielo.
 const GEN3=d=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/emerald/${d}.png`;
@@ -4044,7 +4058,7 @@ function applyAccount(user){
  ACC=user; S.name=user.name.slice(0,14); if(TACS[user.trainer]) try{ localStorage.setItem('pt_tac',user.trainer); }catch(e){}
  const s=user.settings||{}; for(const k of SYNCED) if(k in s) S[k]=s[k];
  try{ localStorage.setItem(SETTINGS_KEY,JSON.stringify(Object.fromEntries(SYNCED.map(k=>[k,S[k]])))); }catch(e){}
- applyTheme(); Music.setVol(); $('muteBtn').innerHTML=muteIcon();
+ applyTheme(); Music.setVol();
  if(G&&!G.players.length) G.me=makePlayer(0,S.name,false,S.avatar,S.trainer);
 }
 let authMode='login', authBusy=false;
@@ -4092,7 +4106,7 @@ function bindAuth(){
 async function logout(){
  try{ await api('/api/logout',{}); }catch(e){}
  if(G) G.over=true; if(NET.mode!=='sp') leaveRoom(); resetSocket();
- G={phase:'idle',me:makePlayer(0,'Tú',false,'🧢'),players:[],log:[],speed:S.speed,pool:{}};
+ G={phase:'idle',me:makePlayer(0,'Tú',false,'🧢'),players:[],log:[],speed:1,pool:{}};
  showAuth();
 }
 // El socket se abre con la sesión: al entrar o salir de la cuenta hay que rehacerlo
@@ -4117,8 +4131,8 @@ async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');
  cdnAssets();
  loadSettings();
- G={phase:'idle',me:makePlayer(0,S.name,false,S.avatar,S.trainer),players:[],log:[],speed:S.speed,pool:{}};
- $('muteBtn').innerHTML=muteIcon();
+ G={phase:'idle',me:makePlayer(0,S.name,false,S.avatar,S.trainer),players:[],log:[],speed:1,pool:{}};
+
  layout(); applyTheme(); bindEvents(); Scene.init();
  // Sin precarga en el menú: los modelos se piden al entrar en la partida (primero los tuyos)
  if(!window.B3) window.addEventListener('b3ready',()=>sizeB3());
@@ -4134,11 +4148,13 @@ function serverCreate(cfg,emit){
  NET.mode='host'; NET.named={emit:(t,d)=>{ try{ emit(t,d); }catch(e){} return Promise.resolve(); }};
  S.timer=[30,45,60].includes(cfg.timer)?cfg.timer:30; S.speed=[1,2,4].includes(cfg.speed)?cfg.speed:1;
  newGame({mp:true,server:true,diff:DIFF_NAME[cfg.diff]?cfg.diff:'normal',humans:cfg.humans||[],bots:Array.isArray(cfg.bots)?cfg.bots:[],taken:typeof cfg.taken==='function'?cfg.taken:null});
+ // Solo en las pruebas (cfg.fast, que server.js pone con PT_TEST_FAST): «listo» adelanta el combate y vale la velocidad x2/x4. En partida real, nunca
+ G.fast=!!cfg.fast; G.speed=G.fast?S.speed:1;
  netFlush(true);
 }
 function serverTick(dt){
  if(!G||G.over) return;
- if(G.phase==='planning'){ G.timer-=dt; if(G.timer<=0||humansReady()) startCombat(); }
+ if(G.phase==='planning'){ G.timer-=dt; if(G.timer<=0||(G.fast&&humansReady())) startCombat(); } // nadie puede adelantar el inicio de la ronda (ya no hay «¡Listo!»; G.fast solo en pruebas)
  if(G.phase==='augment'&&Date.now()>G.augDeadline) autoAugs();
  if(G.phase==='carousel') updateCarousel(dt);
  if(G.phase==='combat'){ dropKillOrbs(); payCombatGold(false); }

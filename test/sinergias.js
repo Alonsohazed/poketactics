@@ -420,8 +420,8 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   E.applyAugment(p, E.AUG_BY.guardianes_gemelos); const got = combatUnits(p).units.filter(u => u.side === 0);
   ok(got[0].maxHp - base[0] === 100 && got.find(u => u.bk === '3,3').maxHp === base[2], 'Guardianes Gemelos: solo los 2 de la primera fila ganan +100 de vida'); }
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.buscavidas); ok(p.mods.maxInterest === 0, 'Buscavidas: sin intereses'); }
-{ const { G, p } = fresh(); G.round = { s: 2, n: 1 }; const u0 = p.bench.filter(Boolean).length; E.applyAugment(p, E.AUG_BY.reparto); ok(p.bench.filter(Boolean).length === u0 + 3, 'Reparto Pokémon: 3 Pokémon de coste 2');
-  for (let i = 0; i < 6; i++) event(p, 'roundStart', {}); ok(p.bench.filter(Boolean).length === u0 + 6, 'Reparto Pokémon: 3 más a las 6 rondas'); }
+{ const { G, p } = fresh(); G.round = { s: 2, n: 1 }; const copias = () => p.bench.filter(Boolean).reduce((s, u) => s + Math.pow(3, u.star - 1), 0), u0 = copias(); /* copias, no fichas: si salen 3 iguales se fusionan */ E.applyAugment(p, E.AUG_BY.reparto); ok(copias() === u0 + 3, 'Reparto Pokémon: 3 Pokémon de coste 2');
+  for (let i = 0; i < 6; i++) event(p, 'roundStart', {}); ok(copias() === u0 + 6, 'Reparto Pokémon: 3 más a las 6 rondas'); }
 { const { G, p } = fresh(); E.applyAugment(p, E.AUG_BY.vale_la_pena); const k = p.augSt.vale_la_pena.k; const n = () => p.bench.filter(u => u && u.baseId === k).reduce((s, u) => s + Math.pow(3, u.star - 1), 0) + Object.values(p.board).filter(u => u.baseId === k).reduce((s, u) => s + Math.pow(3, u.star - 1), 0);
   const a = n(); event(p, 'roundStart', {}); event(p, 'roundStart', {}); ok(n() === a + 2, 'Vale la Pena Esperar: una copia cada ronda'); }
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.companero); const k = 'pichu'; E.addUnitToBench(p, E.makeInst(k)); event(p, 'buy', { key: k, cost: 1 }); ok(p.bench.some(u => u && u.baseId === k && u.star === 3), 'Construye un Compañero: el siguiente coste 1 llega a 3★'); }
@@ -452,6 +452,25 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.prestamo); ok(p.augShift === -1, 'Préstamo Avanzado: el siguiente aumento baja de rareza'); E.applyAugment(p, E.AUG_BY.poder_aumentado); ok(p.augShift === 0, 'Poder Aumentado compensa'); }
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.arcos_reserva); event(p, 'roundEnd', { pve: false, cs: { atk: 600 } }); ok(/600 \/ 1\.?000/.test(E.augProgress(p, 'arcos_reserva')), 'Plumas de Reserva: progreso visible'); const n0 = p.items.length; event(p, 'roundEnd', { pve: false, cs: { atk: 500 } }); ok(p.items.length === n0 + 2, 'Plumas de Reserva: 2 Plumas al llegar a 1000 ataques'); }
 { const { p } = fresh(); p.mods.lucky = 1; E.applyAugment(p, E.AUG_BY.tirada_magica); const r = p.reveals[p.reveals.length - 1]; ok(Array.isArray(r[6]) && r[6][0] === 6 && p.items.some(k => String(k).startsWith('emb_')), 'Tirada con Dados Cargados: sale 6 (emblema) y la ventana lleva el dado'); }
+
+// Banquillo lleno: orbes con Pokémon que esperan, Pokémon que van al tablero (n+1/n) y venta automática al empezar el combate
+{ const run = s => vm.runInContext(s, ctx), mk = k => run(`makeInst('${k}')`), keys = E.UNIT_LIST.filter(u => u.cost === 1 && !E.DEF[u.key].evoOf).map(u => u.key);
+  const llena = p => { p.bench = keys.slice(0, 9).map(k => mk(k)); p.board = {}; p.level = 3; for (let i = 0; i < 3; i++) p.board[i + ',3'] = mk(keys[(i + 3) % keys.length]); };
+  { const { G, p } = fresh(); G.phase = 'planning'; llena(p); p.orbs = [{ id: 901, tier: 'gold', toks: ['u2'], c: 3, r: 5 }, { id: 902, tier: 'gray', toks: ['g3'], c: 2, r: 5 }];
+    const g0 = p.gold; ok(run('openPlayerOrb')(p, 901, false) === null && p.orbs.some(o => o.id === 901), 'banca llena: un orbe con Pokémon no se puede abrir y sigue en el suelo');
+    ok(!!run('openPlayerOrb')(p, 902, false) && p.gold === g0 + 3, 'banca llena: un orbe sin Pokémon (oro) sí se abre');
+    ok(!E.applyAct(p, { t: 'orb', id: 901 }).ok, 'banca llena: la acción orb tampoco lo abre');
+    p.isBot = false; G.round = E.ROUNDS[G.roundIdx]; run('startCombat')(); ok(p.orbs.some(o => o.id === 901), 'banca llena: al empezar el combate el orbe con Pokémon no se abre solo');
+    const n0 = p.bench.filter(Boolean).length; p.bench[0] = null; G.phase = 'planning'; ok(!!run('openPlayerOrb')(p, 901, false) && p.bench.filter(Boolean).length >= n0, 'banca llena: con un hueco libre ya se abre'); }
+  { const { G, p } = fresh(); G.phase = 'planning'; llena(p); const max = run('maxBoard')(p), nb = () => Object.values(p.board).filter(Boolean).length;
+    const libre = keys.find(k => !p.bench.some(u => u.baseId === k) && !Object.values(p.board).some(u => u.baseId === k));
+    ok(run('giveUnitTo')(p, libre) && nb() === max + 1 && Object.values(p.board).some(u => u.baseId === libre), `banca llena: el Pokémon que te dan va al tablero aunque se pase (${nb()}/${max})`);
+    const meAntes = G.me; G.me = p; const sp = run('floorCountSpec')(); G.me = meAntes;
+    ok(sp && sp.over === true && sp.txt === `${max + 1}/${max}`, `banca llena: el contador marca ${sp && sp.txt} en rojo (over)`);
+    const g0 = p.gold, vals = Object.values(p.board).map(u => run('sellValue')(u)); G.round = E.ROUNDS[G.roundIdx]; run('sellOverflow')(p);
+    ok(nb() === max && vals.includes(p.gold - g0), `banca llena: al empezar el combate se vende uno al azar y cobras su valor (${nb()}/${max}, +${p.gold - g0} de oro)`);
+    ok(run('sellOverflow')(p) === 0 && nb() === max, 'banca llena: con n/n no se vende nada más'); }
+}
 
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }

@@ -75,13 +75,15 @@ test('tres copias se combinan en 2 estrellas', async ({ page }) => {
   expect(units).toEqual([['bulbasaur', 2, 'Ivysaur']]);
 });
 
-test('rondas: Listo inicia el combate automático y la ronda avanza @rapido', async ({ page }) => {
+test('rondas: sin «¡Listo!» ni «Saltar combate»: al acabar el tiempo empieza el combate y la ronda avanza @rapido', async ({ page }) => {
+  // en la partida ya no hay botones para adelantar la ronda, saltar el combate, cambiar la velocidad, la sala, la Pokédex, las recetas ni el volumen
+  for (const id of ['readyBtn', 'speedBtn', 'netTag', 'dexBtn', 'recBtn', 'muteBtn', 'rbPhase']) await expect(page.locator('#' + id)).toHaveCount(0);
+  expect(await page.evaluate(() => [G.speed, document.querySelectorAll('.top > button').length])).toEqual([1, 2]); // velocidad x1 y solo pantalla completa y ☰
   await page.evaluate(() => { G.speed = 4; });
   const r0 = await page.evaluate(() => G.roundIdx);
-  await page.locator('#readyBtn').click();
+  await page.evaluate(() => { G.timer = .3; });
   await expect.poll(() => page.evaluate(() => G.phase)).toBe('combat');
   await expect(page.locator('#phase')).toContainText('Combate');
-  await expect(page.locator('#readyBtn')).toHaveText('Saltar combate');
   // el combate se resuelve solo y empieza la siguiente ronda
   await expect.poll(() => page.evaluate(() => G.roundIdx), { timeout: 60_000 }).toBeGreaterThan(r0);
   await expect(page.locator('#stage')).toContainText('Fase 1-2');
@@ -135,7 +137,7 @@ test('PvP: barras visibles, posibles rivales y ver el combate de otro entrenador
   });
   // fuera del combate se marcan los posibles rivales
   await expect(page.locator('#players .poTag').first()).toBeVisible();
-  await page.locator('#readyBtn').click();
+  await page.evaluate(() => startCombat()); // ya no hay «¡Listo!»: el combate empieza al acabar el tiempo
   await expect.poll(() => page.evaluate(() => G.phase)).toBe('combat');
   // tocar a un entrenador que no es tu rival
   const pid = await page.evaluate(() => { const f = G.fights.find(f => f.a !== G.me && f.b !== G.me); return f.a.id; });
@@ -154,15 +156,23 @@ test('tu minileyenda es la de tu cuenta', async ({ page }) => {
 });
 
 test('planificador de fases: título, rondas, reloj y jugadores vivos @rapido', async ({ page }) => {
-  await expect(page.locator('#stage')).toContainText('Fase 1-1');
-  await expect(page.locator('#stage')).toContainText('Magikarp');
+  await expect(page.locator('#stage')).toHaveText('Fase 1-1');          // solo la fase, sin «Combate PvP», «Carrusel»…
   await expect(page.locator('#pills .pill')).toHaveCount(3);
   await expect(page.locator('#pills .pill.cur img')).toHaveCount(1); // retrato del Pokémon salvaje
+  await expect(page.locator('#pills .pill.cur')).toHaveAttribute('title', /Magikarp/);
   await expect(page.locator('#rbAlive')).toHaveText('👤 8/8');
-  await expect(page.locator('#rbPhase')).toHaveText('Planificación');
   await jumpToRound(page, 6); // 2-4: carrusel
-  await expect(page.locator('#stage')).toContainText('Carrusel');
+  await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1);
   await expect(page.locator('#pills .pill')).toHaveCount(7);
+  // los combates PvP son espadas sin círculo: verdes si ganaste ese combate, rojas si lo perdiste y neutras si aún no se ha jugado
+  await page.evaluate(() => { G.me.rres = { 3: 'W', 4: 'L' }; renderUI(); });
+  const sw = await page.evaluate(() => [...document.querySelectorAll('#pills .pill.rt-pvp img.swd')].map(i => i.getAttribute('src').split('/').pop()));
+  expect(sw.slice(0, 3)).toEqual(['espadas-gana.webp', 'espadas-pierde.webp', 'espadas-neutra.webp']);
+  const fondo = await page.evaluate(() => { const s = getComputedStyle(document.querySelector('#pills .pill.rt-pvp')); return [s.backgroundImage, s.borderTopWidth]; });
+  expect(fondo).toEqual(['none', '0px']);
+  // el menú ☰ abre Configuración y Volver al menú
+  await page.locator('#menuBtn').click(); await expect(page.locator('#gameMenu')).toBeVisible();
+  await page.locator('#gmOpts').click(); await expect(page.locator('#modal h1')).toHaveText('Configuración'); await expect(page.locator('#optVol')).toBeVisible();
 });
 
 // Regresión: con intereses ganados (cristales visibles) al empezar el carrusel el juego dejaba de enviar los intereses y el dibujo lanzaba
@@ -173,7 +183,7 @@ test('con intereses, el carrusel no rompe el dibujo y el escenario por capas sig
   await page.waitForTimeout(1500); // los cristales ganados brotan
   await jumpToRound(page, 6); // 2-4: carrusel (con 50+ de oro: 5 de interés)
   await page.evaluate(() => { G.me.gold = 60; renderUI(); });
-  await expect(page.locator('#stage')).toContainText('Carrusel');
+  await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1);
   await page.waitForTimeout(2500);
   await page.evaluate(() => { G.carousel.t = 40; });
   await expect.poll(() => page.evaluate(() => G.phase), { timeout: 30_000 }).not.toBe('carousel');
@@ -205,7 +215,7 @@ test('en combate nada tiembla: bloque, 3D, imagen, torre y cristales quedan quie
 
 // Regresión: en multijugador cada mensaje del carrusel (cada 160 ms) creaba objetos nuevos y los Pokémon del carrusel se recreaban sin parar (se «reiniciaban»)
 test('carrusel multijugador: los Pokémon no se recrean con cada mensaje del servidor', async ({ page }) => {
-  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel'); await page.waitForTimeout(2500);
+  await jumpToRound(page, 6); await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1); await page.waitForTimeout(2500);
   const r = await page.evaluate(async () => { const C = G.carousel, msg = () => ({ rot: C.rot, t: C.t, opts: C.opts.map(o => [o.key, o.item, -1]), av: C.order.map(p => [p.id, null, null, 0, 0, '', -1]) });
     const m0 = B3.made; for (let i = 0; i < 14; i++) { applyCar(msg()); await new Promise(r => setTimeout(r, 160)); } return { nuevos: B3.made - m0, opciones: C.opts.length }; });
   expect(r.opciones).toBeGreaterThan(5);
@@ -215,7 +225,7 @@ test('carrusel multijugador: los Pokémon no se recrean con cada mensaje del ser
 // Regresión: en multijugador los mensajes del carrusel llegan con retrasos variables; los Pokémon se paraban y volvían a arrancar
 // (la animación de correr se reiniciaba). Se simula un cliente: el carrusel real corre aparte y solo llegan sus mensajes, cada 120-420 ms y con 0-250 ms de retraso
 test('carrusel multijugador: con retrasos de red las animaciones no se reinician', async ({ page }) => {
-  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel'); await page.waitForTimeout(1500);
+  await jumpToRound(page, 6); await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1); await page.waitForTimeout(1500);
   const r = await page.evaluate(async () => {
     const H = G.carousel; H.t = 7; let last = performance.now(), stop = false, s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
     const msg = () => { const { cx, cy, rr } = carGeo(), nx = x => +((x - cx) / rr).toFixed(3), ny = y => +((y - cy) / rr).toFixed(3);
@@ -271,14 +281,14 @@ test('en combate se ven la banca y los cristales de intereses del rival', async 
 
 // El carrusel espera 8 s antes de soltar a la primera pareja: tiempo para ver todos los Pokémon y objetos
 test('carrusel: la primera pareja sale a los 8 s', async ({ page }) => {
-  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
+  await jumpToRound(page, 6); await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1);
   const r = await page.evaluate(() => ({ s0: releaseAt(0), s1: releaseAt(1), s2: releaseAt(2) }));
   expect(r).toEqual({ s0: 8, s1: 8, s2: 11.5 });
 });
 
 // Carrusel: la vista gira para que tu puesto quede abajo, las barreras son azul claro (sin cúpula) y tras coger tu Pokémon sigues caminando
 test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Pokémon', async ({ page }) => {
-  await jumpToRound(page, 6); await expect(page.locator('#stage')).toContainText('Carrusel');
+  await jumpToRound(page, 6); await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1);
   const r = await page.evaluate(async () => {
     // sin cosméticos de barrera, todas azul claro (con uno equipado, cada barrera lleva su color: ver la prueba del catálogo)
     G.players.forEach(p => { p.cs = String(p.cs || '').split('|').filter(k => !k.startsWith('br:')).join('|'); });
