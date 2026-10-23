@@ -162,7 +162,7 @@ const flatSeen=new Set(); function flatFail(e){ const k=String(e&&e.message||e);
 // «coliseo» es la arena de baldosas con piedras negras y brillo morado renderizada en Blender con la cámara del juego (arena-coliseo.py de la skill de recursos)
 const FLAT_SETS={
  rio:{dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:{row:3,dx:1.3,dy:.25},bg:'radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'},
- coliseo:{dir:'arena/coliseo/',w:2880,h:1620,back:[[968,472.4],[1912,472.4]],bench:[805.6,2074.4,1168.8],holes:[[917,562.1],[896.2,630.2],[874.7,705.8],[853.1,778.2],[831,856.2]],totem:{row:3,dx:1.3,dy:.25},bg:'#000'},
+ coliseo:{dir:'arena/coliseo/',w:2880,h:1620,back:[[968,472.4],[1912,472.4]],bench:[805.6,2074.4,1168.8],holes:[[917,562.1],[896.2,630.2],[874.7,705.8],[853.1,778.2],[831,856.2]],totem:{row:3,dx:1.3,dy:.25},totemY:.22,bg:'#000'},
 };
 const FLAT_IMG=FLAT_SETS.coliseo; // totem: junto al borde izquierdo del tablero, a la altura de la fila `row`, `dx` radios de casilla hacia fuera y `dy` hacia abajo
 // Carrusel: plataforma Poké Ball sobre suelo rojo, renderizada en Blender con la misma perspectiva que la cámara del carrusel (carrusel-pokeball.py de la skill de recursos);
@@ -919,7 +919,7 @@ function buildProps(){
 }
 function stepProps(F,now){
  if(!totem) buildProps();
- const T=F.totem; totem.visible=!!T; if(T){ const G=board.G, tt=FLAT_IMG.totem, p=W3(G.ox+G.hw*(.5*(tt.row&1))+G.hw/2-tt.dx*G.R,G.pad+G.R+tt.row*1.5*G.R+tt.dy*G.R); totem.position.set(p.x,0,p.z); } // la ball se queda quieta
+ const T=F.totem; totem.visible=!!T; if(T){ const G=board.G, tt=FLAT_IMG.totem, p=W3(G.ox+G.hw*(.5*(tt.row&1))+G.hw/2-tt.dx*G.R,G.pad+G.R+tt.row*1.5*G.R+tt.dy*G.R); totem.position.set(p.x,FLAT_IMG.totemY||0,p.z); } // la ball se queda quieta
  const I=F.interest, flat=!!flatH;
  if(!I||!flat){ for(const c of crystals){ c.visible=false; if(c.userData.v!=null){ c.userData.v=0; c.userData.want=false; c.userData.from=null; } } return; } // carrusel y menú: sin intereses
  // Solo se ven los cristales ganados: cada uno brota de su hueco (sube, crece y se enciende en 0,7 s) al alcanzar ese interés y se hunde si se pierde
