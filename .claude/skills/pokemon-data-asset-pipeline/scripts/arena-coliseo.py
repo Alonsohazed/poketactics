@@ -165,47 +165,67 @@ for k in range(22):
     for v in o.data.vertices: v.co *= 1 + rnd.uniform(-.18, .18)
     o.scale = (1, rnd.uniform(.7, 1.1), rnd.uniform(.6, .9)); o.rotation_euler = (rnd.uniform(0, 3), rnd.uniform(0, 3), rnd.uniform(0, 3)); o.data.materials.append(M_FL); bpy.ops.object.shade_smooth()
 
-# ---------- pedestales con el trofeo modelado encima (ya no es una imagen aparte): el mío a la izquierda y el del rival, reflejado, a la derecha ----------
-# Mismo diseño que img/trofeo.webp: base octogonal azul marino con ribete dorado, escalón turquesa, tallo azul, anillo dorado,
-# esfera morada con la estrella dorada, una luna, un cristal rosa arriba, un aro dorado inclinado y dos alas lavanda
-TX, TZT, TH = -6.063, -1.426, .22
+# ---------- pedestales con el trofeo modelado encima (dentro de la imagen): el mío a la izquierda y el del rival, reflejado, a la derecha ----------
+# Copia de img/trofeo.webp a escala TFT (más o menos la altura de una ficha): base octogonal azul marino con ribetes dorados y escalón turquesa,
+# tallo azul con collar dorado, gran esfera morada con la estrella dorada de 4 puntas, una luna crema, un cristal rosa arriba,
+# un aro dorado que la rodea en diagonal y dos alas lavanda translúcidas que salen por detrás hacia arriba
+TX, TZT, TH, TS = -6.063, -1.426, .14, .56   # TS: escala del trofeo (1 = 2,4 de alto)
 M_PED = mat('pedestal', '#2a2833', .7); M_PEDT = mat('pedestal_cara', '#3a3747', .6); M_PEDG = mat('pedestal_brillo', '#120f18', .5, '#9b4dff', 2.5)
-M_NAVY = mat('trofeo_base', '#2b2f6e', .55); M_TEAL = mat('trofeo_turquesa', '#3aa59e', .5); M_GOLD = mat('trofeo_oro', '#d9b25a', .3); M_GOLD.node_tree.nodes['Principled BSDF'].inputs['Metallic'].default_value = .8
-M_STEM = mat('trofeo_tallo', '#3c5aa6', .45); M_ORB = mat('trofeo_esfera', '#6b2fb2', .35, '#4a1a8c', .4); M_MOON = mat('trofeo_luna', '#efe6c8', .6)
-M_GEM = mat('trofeo_gema', '#f4a6c0', .25, '#ff9cc4', .6); M_WING = mat('trofeo_ala', '#b9a6e6', .4); M_WING.node_tree.nodes['Principled BSDF'].inputs['Alpha'].default_value = .82
-def cyl(r0, r1, y0, y1, m, cx, cz, n=8, rot=math.pi / 8, bev=.02):
-    bpy.ops.mesh.primitive_cone_add(vertices=n, radius1=r0, radius2=r1, depth=y1 - y0, location=W(cx, (y0 + y1) / 2, cz)); o = bpy.context.object; o.rotation_euler.z = rot; o.data.materials.append(m)
+def pmat(name, col, rough, metal=0.0, emit=None, estr=0.0, coat=0.0):
+    m = mat(name, col, rough, emit, estr); b = m.node_tree.nodes['Principled BSDF']; b.inputs['Metallic'].default_value = metal
+    if coat: b.inputs['Coat Weight'].default_value = coat
+    return m
+M_NAVY = pmat('trofeo_base', '#262a66', .45, coat=.3); M_NAVYT = pmat('trofeo_base_cara', '#343a86', .45, coat=.3); M_TEAL = pmat('trofeo_turquesa', '#3fb3a8', .4, coat=.3)
+M_GOLD = pmat('trofeo_oro', '#e2b85c', .28, .85); M_STEM = pmat('trofeo_tallo', '#3e63b4', .38, coat=.4)
+M_ORB = pmat('trofeo_esfera', '#6a2bb8', .42, emit='#2c0d58', estr=.25, coat=.25); M_MOON = pmat('trofeo_luna', '#efe4c2', .5)
+M_GEM = pmat('trofeo_gema', '#f3a2bd', .2, emit='#ff8fbf', estr=.5, coat=.6)
+M_WING = pmat('trofeo_ala', '#b9a3ea', .45, emit='#6c52b8', estr=.2); M_WING.node_tree.nodes['Principled BSDF'].inputs['Alpha'].default_value = .9
+def prism(r0, r1, y0, y1, m, n=8, bev=.012):
+    bpy.ops.mesh.primitive_cone_add(vertices=n, radius1=r0, radius2=r1, depth=y1 - y0, location=(0, 0, (y0 + y1) / 2)); o = bpy.context.object; o.rotation_euler.z = math.pi / n; o.data.materials.append(m)
     if bev: bv = o.modifiers.new('bisel', 'BEVEL'); bv.width = bev; bv.segments = 3
-    bpy.ops.object.shade_smooth() if n > 12 else None; return o
+    if n > 12: bpy.ops.object.shade_smooth()
+    return o
+def build_trofeo(face):
+    # se modela en el origen (Z arriba, -Y hacia la cámara) y luego se escala y se coloca: así las proporciones son las del dibujo
+    parts = []
+    add = lambda o: parts.append(o) or o
+    add(prism(.5, .5, 0, .2, M_NAVY)); add(prism(.505, .505, .2, .215, M_GOLD, bev=0))                 # base octogonal y ribete dorado
+    add(prism(.47, .45, .215, .27, M_NAVYT)); add(prism(.43, .41, .27, .36, M_TEAL)); add(prism(.415, .415, .36, .372, M_GOLD, bev=0))
+    add(prism(.36, .33, .372, .44, M_NAVY))
+    add(prism(.15, .1, .44, 1.08, M_STEM, n=40, bev=0))                                                 # tallo que se estrecha
+    bpy.ops.mesh.primitive_torus_add(major_radius=.12, minor_radius=.03, location=(0, 0, 1.08)); add(bpy.context.object).data.materials.append(M_GOLD); bpy.ops.object.shade_smooth()
+    add(prism(.1, .2, 1.08, 1.2, M_STEM, n=40, bev=0))                                                  # cáliz bajo la esfera
+    oz = 1.62; bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=.46, location=(0, 0, oz)); add(bpy.context.object).data.materials.append(M_ORB); bpy.ops.object.shade_smooth()
+    # estrella de 4 puntas en relieve, en la cara que mira a la cámara (la cámara está a 40° de elevación)
+    bpy.ops.mesh.primitive_circle_add(vertices=8, radius=.2, fill_type='NGON', location=(0, 0, 0)); st = add(bpy.context.object)
+    for i, v in enumerate(st.data.vertices): v.co *= 1.0 if i % 2 == 0 else .26
+    so = st.modifiers.new('grosor', 'SOLIDIFY'); so.thickness = .025; st.data.materials.append(M_GOLD)
+    d = Vector((0, -math.cos(math.radians(15)), math.sin(math.radians(15)))).normalized(); st.location = Vector((0, 0, oz)) + d * .46; st.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=.075, location=(.27 * face, -.27, oz + .23)); add(bpy.context.object).data.materials.append(M_MOON); bpy.ops.object.shade_smooth()
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=.075, radius2=0, depth=.17, location=(0, 0, oz + .55)); add(bpy.context.object).data.materials.append(M_GEM)
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=.075, radius2=0, depth=.08, location=(0, 0, oz + .43)); o = add(bpy.context.object); o.rotation_euler.x = math.pi; o.data.materials.append(M_GEM)
+    bpy.ops.mesh.primitive_torus_add(major_radius=.6, minor_radius=.018, major_segments=96, location=(0, 0, oz + .02)); o = add(bpy.context.object); o.rotation_euler = (math.radians(80), math.radians(-48 * face), math.radians(18 * face)); o.data.materials.append(M_GOLD); bpy.ops.object.shade_smooth()
+    for sx in (-1, 1):  # alas: pétalos altos que salen por detrás de la esfera, se abren hacia fuera al subir y acaban en punta
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=24, radius=1, location=(0, 0, 0)); w = add(bpy.context.object)
+        w.scale = (.06, .19, .62); bpy.ops.object.transform_apply(scale=True)
+        for v in w.data.vertices:
+            t = (v.co.z + .62) / 1.24                      # 0 abajo → 1 arriba
+            v.co.y *= 1 - .75 * t ** 3                     # punta afilada arriba
+            v.co.x += sx * .3 * t ** 2                     # se abre hacia fuera
+        w.location = (sx * .36, .2, oz + .2); w.rotation_euler = (math.radians(-10), math.radians(-12 * sx), math.radians(-14 * sx)); w.data.materials.append(M_WING); bpy.ops.object.shade_smooth()
+    return parts
 def trofeo(cx, cz, face):
-    # pedestal de piedra con el aro morado
-    for (r, y0, y1, m) in ((.82, 0, .06, M_PEDG), (.78, 0, .12, M_PED), (.66, .12, TH, M_PEDT)):
-        cyl(r, r, y0, y1, m, cx, cz, n=64, rot=0, bev=.03)
-    y = TH; antes = set(bpy.data.objects)
-    cyl(.5, .5, y, y + .2, M_NAVY, cx, cz); cyl(.51, .51, y + .2, y + .225, M_GOLD, cx, cz, bev=0)          # base octogonal y ribete
-    cyl(.42, .4, y + .225, y + .34, M_TEAL, cx, cz); cyl(.41, .41, y + .34, y + .355, M_GOLD, cx, cz, bev=0) # escalón turquesa
-    cyl(.3, .29, y + .355, y + .45, M_NAVY, cx, cz)
-    cyl(.17, .11, y + .45, y + 1.05, M_STEM, cx, cz, n=32, rot=0, bev=0)                                   # tallo
-    bpy.ops.mesh.primitive_torus_add(major_radius=.15, minor_radius=.035, location=W(cx, y + 1.06, cz)); o = bpy.context.object; o.data.materials.append(M_GOLD); bpy.ops.object.shade_smooth()
-    cyl(.12, .2, y + 1.06, y + 1.2, M_STEM, cx, cz, n=32, rot=0, bev=0)
-    oy = y + 1.62; bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, radius=.48, location=W(cx, oy, cz)); o = bpy.context.object; o.data.materials.append(M_ORB); bpy.ops.object.shade_smooth()
-    # estrella dorada de 4 puntas en la cara de la esfera que mira a la cámara
-    bpy.ops.mesh.primitive_circle_add(vertices=8, radius=.24, fill_type='NGON', location=W(cx, oy + .31, cz + .37)); st = bpy.context.object  # en la cara de la esfera que ve la cámara (elevación 40°)
-    for i, v in enumerate(st.data.vertices): v.co *= 1.0 if i % 2 == 0 else .3
-    st.rotation_euler = (math.radians(50), 0, 0); st.data.materials.append(M_GOLD); so = st.modifiers.new('grosor', 'SOLIDIFY'); so.thickness = .03
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=.09, location=W(cx + .28 * face, oy + .26, cz + .3)); o = bpy.context.object; o.data.materials.append(M_MOON); bpy.ops.object.shade_smooth()
-    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=.08, radius2=0, depth=.18, location=W(cx, oy + .56, cz)); o = bpy.context.object; o.data.materials.append(M_GEM)
-    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=.08, radius2=0, depth=.1, location=W(cx, oy + .42, cz)); o = bpy.context.object; o.rotation_euler.x = math.pi; o.data.materials.append(M_GEM)
-    bpy.ops.mesh.primitive_torus_add(major_radius=.62, minor_radius=.022, major_segments=96, location=W(cx, oy + .05, cz)); o = bpy.context.object; o.rotation_euler = (math.radians(70), math.radians(18 * face), 0); o.data.materials.append(M_GOLD); bpy.ops.object.shade_smooth()
-    for sx in (-1, 1):  # alas: pétalos curvos a los lados de la esfera
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1, location=W(cx + sx * .52, oy + .12, cz - .05)); w = bpy.context.object
-        w.scale = (.1, .26, .62); w.rotation_euler = (0, math.radians(-14 * sx), 0); w.data.materials.append(M_WING); bpy.ops.object.shade_smooth()
-    # el trofeo, ×1,3 desde el centro de su base (visto desde arriba lo vertical se acorta)
-    piv = Vector(W(cx, TH, cz))
-    for o in set(bpy.data.objects) - antes: o.location = piv + (o.location - piv) * 1.3; o.scale = o.scale * 1.3
-    bpy.ops.object.light_add(type='POINT', location=W(cx, .5, cz + .4)); lt = bpy.context.object; lt.data.color = lin(hexc('#b07bff')); lt.data.energy = 25; lt.data.shadow_soft_size = .5
-    bpy.ops.object.light_add(type='POINT', location=W(cx + .3, oy + .6, cz + 1.2)); lt = bpy.context.object; lt.data.color = lin(hexc('#fff2dc')); lt.data.energy = 18; lt.data.shadow_soft_size = .4  # luz de relleno: se ve el trofeo
+    # pedestal de piedra (el montículo) con el aro morado, a la escala del trofeo
+    for (r, y0, y1, m) in ((.54, 0, .05, M_PEDG), (.51, 0, .09, M_PED), (.43, .09, TH, M_PEDT)):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=r, depth=y1 - y0, location=W(cx, (y0 + y1) / 2, cz)); o = bpy.context.object; o.data.materials.append(m)
+        bv = o.modifiers.new('bisel', 'BEVEL'); bv.width = .025; bv.segments = 4; bpy.ops.object.shade_smooth()
+    root = bpy.data.objects.new('trofeo', None); sc.collection.objects.link(root)
+    for o in build_trofeo(face): o.parent = root
+    root.scale = (TS, TS, TS); root.location = W(cx, TH, cz)
+    bpy.ops.object.light_add(type='POINT', location=W(cx, .4, cz + .4)); lt = bpy.context.object; lt.data.color = lin(hexc('#b07bff')); lt.data.energy = 14; lt.data.shadow_soft_size = .4
+    bpy.ops.object.light_add(type='POINT', location=W(cx + .5, 1.6, cz + 1.4)); lt = bpy.context.object; lt.data.color = lin(hexc('#fff3e0')); lt.data.energy = 12; lt.data.shadow_soft_size = .5  # luz de relleno: brillo en la esfera
 trofeo(TX, TZT, 1); trofeo(*MIR(TX, TZT), -1)
+TROFEO_TOP = TH + 2.38 * TS   # altura de la punta del cristal: los iconos de aumentos van encima (FLAT_SETS.coliseo.totemTopY)
 
 # ---------- luz: sin lámpara visible; luz suave de arriba y algo de ambiente frío ----------
 wd = bpy.data.worlds.new('espacio'); sc.world = wd; wd.use_nodes = True; wn = wd.node_tree; bgn = wn.nodes['Background']; WN = wn.nodes.new; WL = wn.links.new
@@ -242,6 +262,11 @@ sc.render.engine = 'CYCLES'; sc.cycles.samples = SAMPLES; sc.cycles.use_denoisin
 sc.view_settings.view_transform = 'Standard'; sc.render.image_settings.file_format = 'PNG'; sc.render.filepath = OUT
 bpy.context.view_layer.update()
 px = lambda x, y, z: (lambda v: [round(v.x * WR, 1), round((1 - v.y) * HR, 1)])(world_to_camera_view(sc, cam, Vector(W(x, y, z))))
-out = {'w': WR, 'h': HR, 'back': [px(FX0, 0, FZ0), px(FX1, 0, FZ0)], 'bench': [px(BENCH_X + BENCH_DX * i, TOP, BENCH_Z) for i in range(9)], 'holes': [px(x, 0, z) for x, z in HOLES], 'holes2': [px(x, 0, z) for x, z in HOLES2]}
+out = {'w': WR, 'h': HR, 'back': [px(FX0, 0, FZ0), px(FX1, 0, FZ0)], 'bench': [px(BENCH_X + BENCH_DX * i, TOP, BENCH_Z) for i in range(9)], 'holes': [px(x, 0, z) for x, z in HOLES], 'holes2': [px(x, 0, z) for x, z in HOLES2], 'totemTopY': round(TROFEO_TOP, 3)}
 json.dump(out, open(bpy.path.abspath(OUT).rsplit('.', 1)[0] + '.json', 'w'))
+# opción 'trofeo': solo un recorte alrededor de los trofeos (para revisarlos de cerca sin renderizar todo)
+if len(argv) > 4 and argv[4] == 'trofeo':
+    a, b = px(TX - 1.6, TROFEO_TOP + .4, TZT - .3), px(-TX + 1.6, 0, MIR(TX, TZT)[1] + .8)
+    sc.render.use_border = True; sc.render.use_crop_to_border = True
+    sc.render.border_min_x, sc.render.border_max_x = a[0] / WR, b[0] / WR; sc.render.border_min_y, sc.render.border_max_y = 1 - b[1] / HR, 1 - a[1] / HR
 bpy.ops.render.render(write_still=True); print('PUNTOS', json.dumps(out))

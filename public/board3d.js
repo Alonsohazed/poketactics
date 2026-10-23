@@ -162,7 +162,7 @@ const flatSeen=new Set(); function flatFail(e){ const k=String(e&&e.message||e);
 // «coliseo» es la arena de baldosas con piedras negras y brillo morado renderizada en Blender con la cámara del juego (arena-coliseo.py de la skill de recursos)
 const FLAT_SETS={
  rio:{dir:'arena/',w:1428,h:1080,back:[[424,272],[969,273]],bench:[353,1034.8,585],holes:[[397,315],[387,347],[377,382],[367,415],[357,450]],totem:{row:3,dx:1.3,dy:.25},bg:'radial-gradient(circle at 50% 40%,#5a5d63,#2e3036)'},
- coliseo:{dir:'arena/coliseo/',w:2880,h:1620,back:[[968,472.4],[1912,472.4]],bench:[805.6,2074.4,1168.8],holes:[[917,562.1],[896.2,630.2],[874.7,705.8],[853.1,778.2],[831,856.2]],holes2:[[2083.3,953.9],[2054.2,859.3],[2025.2,770.9],[2002.7,699.1],[1980.9,632.6]],totem:{row:3,dx:1.3,dy:.25},totemY:.22,totemBaked:true,bg:'#000'},
+ coliseo:{dir:'arena/coliseo/',w:2880,h:1620,back:[[968,472.4],[1912,472.4]],bench:[805.6,2074.4,1168.8],holes:[[917,562.1],[896.2,630.2],[874.7,705.8],[853.1,778.2],[831,856.2]],holes2:[[2083.3,953.9],[2054.2,859.3],[2025.2,770.9],[2002.7,699.1],[1980.9,632.6]],totem:{row:3,dx:1.3,dy:.25},totemY:.14,totemBaked:true,totemTopY:1.473,bg:'#000'},
 };
 const FLAT_IMG=FLAT_SETS.coliseo; // totem: junto al borde izquierdo del tablero, a la altura de la fila `row`, `dx` radios de casilla hacia fuera y `dy` hacia abajo
 // Carrusel: plataforma Poké Ball sobre suelo rojo, renderizada en Blender con la misma perspectiva que la cámara del carrusel (carrusel-pokeball.py de la skill de recursos);
@@ -935,7 +935,7 @@ function stepProps(F,now){
    const m=c.userData.m, flash=want&&U.v<1?1+Math.sin(U.v*Math.PI)*.9:1; c.scale.setScalar(.2+.8*e);
    m.material.color.set('#9fe8ff'); m.material.emissive.set('#2aa8ff'); m.material.emissiveIntensity=1*flash; m.material.opacity=.95*e; m.rotation.y=.6+(1-e)*4; c.userData.h.visible=true; c.userData.h.scale.setScalar(1.3*(.6+.4*e)*flash); }); // el rombo gira solo mientras brota y luego se queda quieto
 }
-const totemTop=()=>totem&&totem.visible?projectV(totem.position.clone().setY(TOP+2.2)):null;
+const totemTop=()=>totem&&totem.visible?projectV(totem.position.clone().setY(FLAT_IMG.totemTopY!=null?FLAT_IMG.totemTopY+.15:TOP+2.2)):null; // encima de la punta del trofeo
 
 /* ---------- orbes de botín ---------- */
 // Esfera brillante con halo que flota y gira; la prismática cambia de color. Al abrirla estalla en chispas de su color.
