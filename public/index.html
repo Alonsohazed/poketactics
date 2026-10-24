@@ -446,7 +446,7 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
    sinergias con icono hexagonal a la izquierda, barra inferior con nombre y coste y borde del color del coste */
 /* Con las cartas nuevas la fila crece: retrato más grande y sitio para que las sinergias respiren */
 .cards:has(.card.v2){gap:8px}
-.cards:has(.card.v2) .card,body.fullField .cards:has(.card.v2) .card{--ch:clamp(138px,8.8vw,184px)}
+.cards .card,body.fullField .cards .card{--ch:clamp(138px,8.8vw,184px)}
 .card.v2{border-radius:5px;background:#070b10;border:2px solid var(--ccb)}
 .card.v2:not(.empty){border:2px solid var(--ccb)}
 .card.v2::after{display:none}
@@ -472,9 +472,9 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 .card.v2.owned::before{background:none;box-shadow:inset 0 0 0 2px rgba(255,236,170,.9),inset 0 0 14px rgba(255,205,80,.55)}
 .card.v2 .upStars{left:calc(var(--ch) * .05);right:auto;top:calc(var(--ch) * .03);font-size:calc(var(--ch) * .17);letter-spacing:0;transform-origin:left top}
 /* Pantallas medianas y móviles: la carta nueva se compacta (en el móvil, sinergias solo con su icono) */
-@media (max-width:1100px){ .cards:has(.card.v2) .card,body.fullField .cards:has(.card.v2) .card{--ch:128px} }
+@media (max-width:1100px){ .cards .card,body.fullField .cards .card{--ch:128px} }
 @media (max-width:620px){
-  .cards:has(.card.v2) .card,body.fullField .cards:has(.card.v2) .card{--ch:96px}
+  .cards .card,body.fullField .cards .card{--ch:96px}
   .card.v2{--bar:20px;--ax:58%}
   .card.v2 .cn{font-size:10px;padding:0 26px 0 4px} .card.v2 .cc{font-size:11px;right:4px;gap:3px} .card.v2 .cc::before{width:8px;height:8px}
   .card.v2 .tr{left:3px;bottom:23px;gap:2px} .card.v2 .tr span{font-size:0;gap:0} .card.v2 .tr i{width:14px;height:16px} .card.v2 .tr i svg{width:8px;height:8px}
