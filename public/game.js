@@ -309,6 +309,15 @@ const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,
  mewtwo:{name:"Mewtwo",evo:"no evoluciona",dex:[150,150,150],locked:true,tier:'l'}};
 const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 // Etapa visible: cuántas formas distintas ha pasado (las líneas de 2 formas no «evolucionan» otra vez a nivel 8, ni las de 1 nunca; Mew tampoco)
+// Altura real (m, de la Pokédex vía PokeAPI) de cada forma de minileyenda. Los modelos se normalizan a la misma altura, así que todas las primeras
+// formas se ven iguales; las evoluciones crecen según su altura real respecto a su forma base (raíz 0,35, hasta ×1,45) y los gigantes de una sola
+// forma (≥ 1,5 m: Onix, Snorlax, Lapras…) según su altura respecto a 1 m (raíz 0,35, hasta ×2)
+const TAC_H={1:0.7,2:1,3:2,4:0.6,5:1.1,6:1.7,7:0.5,8:1,9:1.6,10:0.3,11:0.7,12:1.1,13:0.3,14:0.6,15:1,16:0.3,17:1.1,18:1.5,19:0.3,20:0.7,21:0.3,22:1.2,23:2,24:3.5,25:0.4,26:0.8,27:0.6,28:1,29:0.4,30:0.8,31:1.3,32:0.5,33:0.9,34:1.4,35:0.6,36:1.3,37:0.6,38:1.1,39:0.5,40:1,41:0.8,42:1.6,43:0.5,44:0.8,45:1.2,46:0.3,47:1,48:1,49:1.5,50:0.2,51:0.7,52:0.4,53:1,54:0.8,55:1.7,56:0.5,57:1,58:0.7,59:1.9,60:0.6,61:1,62:1.3,63:0.9,64:1.3,65:1.5,66:0.8,67:1.5,68:1.6,69:0.7,70:1,71:1.7,72:0.9,73:1.6,74:0.4,75:1,76:1.4,77:1,78:1.7,79:1.2,80:1.6,81:0.3,82:1,83:0.8,84:1.4,85:1.8,86:1.1,87:1.7,88:0.9,89:1.2,90:0.3,91:1.5,92:1.3,93:1.6,94:1.5,95:8.8,96:1,97:1.6,98:0.4,99:1.3,100:0.5,101:1.2,102:0.4,103:2,104:0.4,105:1,106:1.5,107:1.4,108:1.2,109:0.6,110:1.2,111:1,112:1.9,113:1.1,114:1,115:2.2,116:0.4,117:1.2,118:0.6,119:1.3,120:0.8,121:1.1,122:1.3,123:1.5,124:1.4,125:1.1,126:1.3,127:1.5,128:1.4,129:0.9,130:6.5,131:2.5,132:0.3,133:0.3,134:1,135:0.8,136:0.9,137:0.8,138:0.4,139:1,140:0.5,141:1.3,142:1.8,143:2.1,144:1.7,145:1.6,146:2,147:1.8,148:4,149:2.2,150:2,151:0.4,152:0.9,153:1.2,154:1.8,172:0.3,196:0.9,197:1,470:1,471:0.8,700:1};
+const tacLineOf=d=>Object.values(TACS).find(t=>!t.mimic&&(t.dex.includes(d)||(t.pick&&t.pick.flat().some(k=>DEF[k]&&dexOf(DEF[k],1)===d))))||null;
+function tacSize(p){ const d=+tacDex(p), t=tacLineOf(d)||tacOf(p), b=t.dex[0], h=TAC_H[d]||1, hb=TAC_H[b]||1;
+ if(d!==b){ const i=t.dex.indexOf(d), st=i>0?t.dex.slice(1,i+1):[d]; return Math.max(...st.map(x=>clamp(Math.pow((TAC_H[x]||1)/hb,.35),1,1.45))); } // nunca encoge al evolucionar (Dragonite mide menos que Dragonair)
+ if(new Set(t.dex).size===1&&h>=1.5) return clamp(Math.pow(h,.35),1,2);
+ return 1; }
 const tacStar=p=>{ const t=tacOf(p); if(t.mimic) return 1; if(t.pick) return tacStage(p)+1; return new Set(t.dex.slice(0,tacStage(p)+1)).size; };
 const TAC_KEYS=Object.keys(TACS);
 // Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
@@ -2978,9 +2987,9 @@ function sceneActors(){
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
-   A.push({key:'tac:'+me.id,tac:true,dex:tacDexC(me),trail:trailOf(me),star:tacStar(me),morph:me.mewN|0,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
-   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStar(o.p),morph:o.p.mewN|0,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
- else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStar(p),morph:p.mewN|0,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+   A.push({key:'tac:'+me.id,tac:true,dex:tacDexC(me),trail:trailOf(me),star:tacStar(me),morph:me.mewN|0,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72*tacSize(me),hud:{}});
+   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStar(o.p),morph:o.p.mewN|0,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72*tacSize(o.p),hud:{}}); }
+ else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStar(p),morph:p.mewN|0,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62*tacSize(p),alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
