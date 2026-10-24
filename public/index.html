@@ -1538,7 +1538,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .mbox.tp .tacPick{display:block;margin-top:4px}
 .tpTier{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08);--tc:#a9b8c8}
 .tpTier:last-child{border-bottom:0}
-.tpTier h4{margin:0;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--tc)}
+.tpTier h4{margin:0;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--tc);align-self:start;position:sticky;top:0;padding-top:30px} /* con muchas minileyendas, la rareza queda arriba de su sección y acompaña al desplazar */
 .tpTier.pococomun{--tc:#5fd27f}.tpTier.raro{--tc:#6aa8ff}.tpTier.epico{--tc:#c08cff}.tpTier.legendario{--tc:#ffd75e}
 .tpList{display:flex;flex-wrap:wrap;gap:14px 16px;align-items:flex-start}
 .tpSoon{font-size:13px;color:#8a9bb0;font-weight:700}

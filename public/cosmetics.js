@@ -10,7 +10,7 @@ var COSM = (function () {
     EEVEE: 'tac:eevee',    // claves de inventario de las minileyendas míticas
     MEW: 'tac:mew',
     BIG_DUST: 1500,        // si ya tienes todas las míticas, la mítica da Polvo Estelar
-    LOCKED_TACS: ['eevee', 'mew'],// minileyendas que no son gratuitas
+    LOCKED_TACS: ['eevee', 'mew', 'onix', 'hitmonlee', 'hitmonchan', 'lickitung', 'tangela', 'chansey', 'kangaskhan', 'mrmime', 'jynx', 'electabuzz', 'magmar', 'pinsir', 'tauros', 'porygon', 'omanyte', 'kabuto', 'scyther', 'lapras', 'snorlax', 'ditto', 'aerodactyl', 'articuno', 'zapdos', 'moltres', 'mewtwo'],// minileyendas que no son gratuitas (las raras, épicas y legendarias de 1.ª gen salen en el gacha)
     DEFAULT_TAC: 'charmander', // a la que pasan las cuentas que tenían Eevee sin haberla conseguido
     HIST: 20,              // tiradas que se guardan en el historial
   };
@@ -68,6 +68,8 @@ var COSM = (function () {
   I(C.EEVEE, 'Eevee', 'm', { tac: 'eevee' });
   I(C.MEW, 'Mew', 'm', { tac: 'mew' });
   C.MYTHICS = [C.EEVEE, C.MEW]; // en este orden las da la garantía
+  // ----- Minileyendas de 1.ª gen del gacha (rara, épica o legendaria; repetidas → polvo; también en la tienda de polvo) -----
+  [["onix","Onix","r"],["hitmonlee","Hitmonlee","r"],["hitmonchan","Hitmonchan","r"],["lickitung","Lickitung","r"],["tangela","Tangela","r"],["chansey","Chansey","r"],["kangaskhan","Kangaskhan","r"],["mrmime","Mr. Mime","r"],["jynx","Jynx","r"],["electabuzz","Electabuzz","r"],["magmar","Magmar","r"],["pinsir","Pinsir","r"],["tauros","Tauros","r"],["porygon","Porygon","r"],["omanyte","Omanyte","r"],["kabuto","Kabuto","r"],["scyther","Scyther","r"],["lapras","Lapras","e"],["snorlax","Snorlax","e"],["ditto","Ditto","e"],["aerodactyl","Aerodactyl","e"],["articuno","Articuno","l"],["zapdos","Zapdos","l"],["moltres","Moltres","l"],["mewtwo","Mewtwo","l"]].forEach(function (x) { I('tac:' + x[0], x[1], x[2], { tac: x[0] }); });
   // ----- Títulos de colección (no salen en el gacha ni se compran: se ganan al completar la colección) -----
   C.COLLECTIONS = [['fuego', 'Corazón de Llama'], ['agua', 'Señor de las Mareas'], ['planta', 'Guardián del Bosque'], ['psiquico', 'Mente Maestra'], ['dragon', 'Sangre de Dragón']].map(function (x) {
     var key = 'tt:col_' + x[0]; I(key, x[1], 'x', { text: x[1], col: x[0] });

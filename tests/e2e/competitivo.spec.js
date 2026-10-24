@@ -150,7 +150,7 @@ test('catálogo completo: cada premio tiene miniatura y su efecto real (nombre, 
         case 'br': ok = cosD(me, 'br').c.length === 2; break;
         case 'fn': try { Music.fanfare(it.d.notes); ok = it.d.notes.length >= 4; } catch (e) { ok = false; } break;
         case 'sh': { const t0 = me.tac; me.tac = it.d.tac; ok = String(tacDexC(me)).startsWith('hue:'); me.tac = 'pichu' === it.d.tac ? 'abra' : 'pichu'; ok = ok && !String(tacDexC(me)).startsWith('hue:'); me.tac = t0; break; }
-        case 'tac': ok = COSM.MYTHICS.includes(k) && !!TACS[COSM.BY[k].d.tac]; break;
+        case 'tac': ok = !!TACS[COSM.BY[k].d.tac] && COSM.LOCKED_TACS.includes(COSM.BY[k].d.tac); break;
         default: ok = false;
       }
       if (!ok) out.push(k + ': sin efecto');

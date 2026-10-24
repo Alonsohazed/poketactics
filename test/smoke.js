@@ -374,7 +374,7 @@ ready.then(() => server.listen(0, async () => {
   assert(cosMsgs.length >= 2 && cosMsgs[0].pl.length === 8 && JSON.stringify(cosMsgs[0]).length < 1024, `«cos» al empezar (${JSON.stringify(cosMsgs[0]).length} bytes)`);
   assert(cosMsgs[0].pl.some(x => x[1] === 'nc:fuego|tt:domador') && cosMsgs[0].pl.filter(x => x[1]).length >= 3, 'mi cadena y la de varios rivales (los rivales también llevan cosméticos)');
   assert(!/nc:|tt:|fr:/.test(JSON.stringify(lastPub)), 'pub no lleva cosméticos');
-  assert(lastPub.pl.every(p => ['charmander', 'bulbasaur', 'squirtle', 'dratini', 'pichu', 'abra', 'chikorita', 'eevee'].includes(p[14])), 'todos los jugadores llevan minileyenda');
+  { const gsrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'game.js'), 'utf8'); assert(lastPub.pl.every(p => /^[a-z]+$/.test(p[14]) && new RegExp('[{ ,]' + p[14] + ':{name:').test(gsrc)), 'todos los jugadores llevan una minileyenda que existe'); }
   assert.strictEqual(lastPub.pl.find(p => p[1] === 'Ana')[14], 'squirtle', 'la minileyenda de la partida sale de la cuenta');
   const tpB = lastPub.pl.find(p => p[8] && p[1] !== 'Ana')[16];
   assert.deepStrictEqual(tpB, [idA, 4.5, 9.25], 'la posición de la minileyenda de B llega a todos (y las inválidas se ignoran): ' + JSON.stringify(tpB));

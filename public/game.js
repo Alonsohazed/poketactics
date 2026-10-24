@@ -233,14 +233,88 @@ const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,
  dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154]},
  eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],locked:true,pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]},
  // Mew (mítica del gacha): no evoluciona; al ganar un combate copia la minileyenda del rival (mimic: ver mewWin, tecla 1 y 2)
- mew:{name:'Mew',evo:'copia la minileyenda de quien derrotas',dex:[151,151,151],locked:true,mimic:true}};
+ mew:{name:'Mew',evo:'copia la minileyenda de quien derrotas',dex:[151,151,151],locked:true,mimic:true},
+ // Líneas de 1.ª gen (todas con modelo animado oficial): dex por etapa (niveles 1, 6 y 8; las de 2 formas repiten la 2.ª y las de 1, la única).
+ // tier: c y p gratis; r, e y l solo del gacha (locked, premios 'tac:<clave>' de su rareza en cosmetics.js)
+ caterpie:{name:"Caterpie",evo:"Metapod y Butterfree",dex:[10,11,12],tier:'c'},
+ weedle:{name:"Weedle",evo:"Kakuna y Beedrill",dex:[13,14,15],tier:'c'},
+ pidgey:{name:"Pidgey",evo:"Pidgeotto y Pidgeot",dex:[16,17,18],tier:'c'},
+ rattata:{name:"Rattata",evo:"Raticate",dex:[19,20,20],tier:'c'},
+ spearow:{name:"Spearow",evo:"Fearow",dex:[21,22,22],tier:'c'},
+ ekans:{name:"Ekans",evo:"Arbok",dex:[23,24,24],tier:'c'},
+ sandshrew:{name:"Sandshrew",evo:"Sandslash",dex:[27,28,28],tier:'c'},
+ nidoranf:{name:"Nidoran♀",evo:"Nidorina y Nidoqueen",dex:[29,30,31],tier:'c'},
+ nidoranm:{name:"Nidoran♂",evo:"Nidorino y Nidoking",dex:[32,33,34],tier:'c'},
+ zubat:{name:"Zubat",evo:"Golbat",dex:[41,42,42],tier:'c'},
+ oddish:{name:"Oddish",evo:"Gloom y Vileplume",dex:[43,44,45],tier:'c'},
+ paras:{name:"Paras",evo:"Parasect",dex:[46,47,47],tier:'c'},
+ venonat:{name:"Venonat",evo:"Venomoth",dex:[48,49,49],tier:'c'},
+ diglett:{name:"Diglett",evo:"Dugtrio",dex:[50,51,51],tier:'c'},
+ meowth:{name:"Meowth",evo:"Persian",dex:[52,53,53],tier:'c'},
+ psyduck:{name:"Psyduck",evo:"Golduck",dex:[54,55,55],tier:'c'},
+ mankey:{name:"Mankey",evo:"Primeape",dex:[56,57,57],tier:'c'},
+ poliwag:{name:"Poliwag",evo:"Poliwhirl y Poliwrath",dex:[60,61,62],tier:'c'},
+ bellsprout:{name:"Bellsprout",evo:"Weepinbell y Victreebel",dex:[69,70,71],tier:'c'},
+ tentacool:{name:"Tentacool",evo:"Tentacruel",dex:[72,73,73],tier:'c'},
+ geodude:{name:"Geodude",evo:"Graveler y Golem",dex:[74,75,76],tier:'c'},
+ doduo:{name:"Doduo",evo:"Dodrio",dex:[84,85,85],tier:'c'},
+ seel:{name:"Seel",evo:"Dewgong",dex:[86,87,87],tier:'c'},
+ grimer:{name:"Grimer",evo:"Muk",dex:[88,89,89],tier:'c'},
+ shellder:{name:"Shellder",evo:"Cloyster",dex:[90,91,91],tier:'c'},
+ drowzee:{name:"Drowzee",evo:"Hypno",dex:[96,97,97],tier:'c'},
+ krabby:{name:"Krabby",evo:"Kingler",dex:[98,99,99],tier:'c'},
+ voltorb:{name:"Voltorb",evo:"Electrode",dex:[100,101,101],tier:'c'},
+ koffing:{name:"Koffing",evo:"Weezing",dex:[109,110,110],tier:'c'},
+ horsea:{name:"Horsea",evo:"Seadra",dex:[116,117,117],tier:'c'},
+ goldeen:{name:"Goldeen",evo:"Seaking",dex:[118,119,119],tier:'c'},
+ magikarp:{name:"Magikarp",evo:"Gyarados",dex:[129,130,130],tier:'c'},
+ clefairy:{name:"Clefairy",evo:"Clefable",dex:[35,36,36],tier:'p'},
+ vulpix:{name:"Vulpix",evo:"Ninetales",dex:[37,38,38],tier:'p'},
+ jigglypuff:{name:"Jigglypuff",evo:"Wigglytuff",dex:[39,40,40],tier:'p'},
+ growlithe:{name:"Growlithe",evo:"Arcanine",dex:[58,59,59],tier:'p'},
+ machop:{name:"Machop",evo:"Machoke y Machamp",dex:[66,67,68],tier:'p'},
+ ponyta:{name:"Ponyta",evo:"Rapidash",dex:[77,78,78],tier:'p'},
+ slowpoke:{name:"Slowpoke",evo:"Slowbro",dex:[79,80,80],tier:'p'},
+ magnemite:{name:"Magnemite",evo:"Magneton",dex:[81,82,82],tier:'p'},
+ gastly:{name:"Gastly",evo:"Haunter y Gengar",dex:[92,93,94],tier:'p'},
+ exeggcute:{name:"Exeggcute",evo:"Exeggutor",dex:[102,103,103],tier:'p'},
+ cubone:{name:"Cubone",evo:"Marowak",dex:[104,105,105],tier:'p'},
+ rhyhorn:{name:"Rhyhorn",evo:"Rhydon",dex:[111,112,112],tier:'p'},
+ staryu:{name:"Staryu",evo:"Starmie",dex:[120,121,121],tier:'p'},
+ farfetchd:{name:"Farfetch'd",evo:"no evoluciona",dex:[83,83,83],tier:'p'},
+ onix:{name:"Onix",evo:"no evoluciona",dex:[95,95,95],locked:true,tier:'r'},
+ hitmonlee:{name:"Hitmonlee",evo:"no evoluciona",dex:[106,106,106],locked:true,tier:'r'},
+ hitmonchan:{name:"Hitmonchan",evo:"no evoluciona",dex:[107,107,107],locked:true,tier:'r'},
+ lickitung:{name:"Lickitung",evo:"no evoluciona",dex:[108,108,108],locked:true,tier:'r'},
+ tangela:{name:"Tangela",evo:"no evoluciona",dex:[114,114,114],locked:true,tier:'r'},
+ chansey:{name:"Chansey",evo:"no evoluciona",dex:[113,113,113],locked:true,tier:'r'},
+ kangaskhan:{name:"Kangaskhan",evo:"no evoluciona",dex:[115,115,115],locked:true,tier:'r'},
+ mrmime:{name:"Mr. Mime",evo:"no evoluciona",dex:[122,122,122],locked:true,tier:'r'},
+ jynx:{name:"Jynx",evo:"no evoluciona",dex:[124,124,124],locked:true,tier:'r'},
+ electabuzz:{name:"Electabuzz",evo:"no evoluciona",dex:[125,125,125],locked:true,tier:'r'},
+ magmar:{name:"Magmar",evo:"no evoluciona",dex:[126,126,126],locked:true,tier:'r'},
+ pinsir:{name:"Pinsir",evo:"no evoluciona",dex:[127,127,127],locked:true,tier:'r'},
+ tauros:{name:"Tauros",evo:"no evoluciona",dex:[128,128,128],locked:true,tier:'r'},
+ porygon:{name:"Porygon",evo:"no evoluciona",dex:[137,137,137],locked:true,tier:'r'},
+ omanyte:{name:"Omanyte",evo:"Omastar",dex:[138,139,139],locked:true,tier:'r'},
+ kabuto:{name:"Kabuto",evo:"Kabutops",dex:[140,141,141],locked:true,tier:'r'},
+ scyther:{name:"Scyther",evo:"no evoluciona",dex:[123,123,123],locked:true,tier:'r'},
+ lapras:{name:"Lapras",evo:"no evoluciona",dex:[131,131,131],locked:true,tier:'e'},
+ snorlax:{name:"Snorlax",evo:"no evoluciona",dex:[143,143,143],locked:true,tier:'e'},
+ ditto:{name:"Ditto",evo:"no evoluciona",dex:[132,132,132],locked:true,tier:'e'},
+ aerodactyl:{name:"Aerodactyl",evo:"no evoluciona",dex:[142,142,142],locked:true,tier:'e'},
+ articuno:{name:"Articuno",evo:"no evoluciona",dex:[144,144,144],locked:true,tier:'l'},
+ zapdos:{name:"Zapdos",evo:"no evoluciona",dex:[145,145,145],locked:true,tier:'l'},
+ moltres:{name:"Moltres",evo:"no evoluciona",dex:[146,146,146],locked:true,tier:'l'},
+ mewtwo:{name:"Mewtwo",evo:"no evoluciona",dex:[150,150,150],locked:true,tier:'l'}};
 const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
-const tacStar=p=>tacOf(p).mimic?1:tacStage(p)+1; // Mew no evoluciona: sin efecto de evolución a nivel 6 y 8
+// Etapa visible: cuántas formas distintas ha pasado (las líneas de 2 formas no «evolucionan» otra vez a nivel 8, ni las de 1 nunca; Mew tampoco)
+const tacStar=p=>{ const t=tacOf(p); if(t.mimic) return 1; if(t.pick) return tacStage(p)+1; return new Set(t.dex.slice(0,tacStage(p)+1)).size; };
 const TAC_KEYS=Object.keys(TACS);
 // Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
 const FREE_TACS=TAC_KEYS.filter(k=>!TACS[k].locked);
 // Rarezas del selector de minileyendas (lista seccionada; las vacías salen como «Próximamente»)
-const TAC_TIERS=[['Común','comun',['charmander','bulbasaur','squirtle','pichu','chikorita']],['Poco común','pococomun',['dratini','abra']],['Raro','raro',[]],['Épico','epico',[]],['Legendario','legendario',['eevee','mew']]];
+const TAC_TIERS=[['Común','comun',['charmander','bulbasaur','squirtle','pichu','chikorita','caterpie','weedle','pidgey','rattata','spearow','ekans','sandshrew','nidoranf','nidoranm','zubat','oddish','paras','venonat','diglett','meowth','psyduck','mankey','poliwag','bellsprout','tentacool','geodude','doduo','seel','grimer','shellder','drowzee','krabby','voltorb','koffing','horsea','goldeen','magikarp']],['Poco común','pococomun',['dratini','abra','clefairy','vulpix','jigglypuff','growlithe','machop','ponyta','slowpoke','magnemite','gastly','exeggcute','cubone','rhyhorn','staryu','farfetchd']],['Raro','raro',['onix','hitmonlee','hitmonchan','lickitung','tangela','chansey','kangaskhan','mrmime','jynx','electabuzz','magmar','pinsir','tauros','porygon','omanyte','kabuto','scyther']],['Épico','epico',['lapras','snorlax','ditto','aerodactyl']],['Legendario','legendario',['eevee','mew','articuno','zapdos','moltres','mewtwo']]];
 const tacOwned=k=>!!TACS[k]&&(!TACS[k].locked||!!(typeof ACC!=='undefined'&&ACC&&ACC.cosm&&Array.isArray(ACC.cosm.inv)&&ACC.cosm.inv.includes('tac:'+k)));
 // Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
@@ -3140,7 +3214,7 @@ const ART_V=3;
 let ART_EXT='avif';
 const ART_FOCUS={}, ART_DEF=[68,50,1,.87];   // 4.º valor: escala mínima respecto al ancho (.87 = el retrato entero, sin ampliar de más)
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
-const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mew mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
+const CARD_ART=Object.fromEntries('abra absol aerodactyl articuno bagon beldum bellsprout bulbasaur caterpie chansey charmander chikorita clefairy cleffa cubone darkrai diglett ditto doduo dratini drowzee duskull eevee ekans electabuzz elekid espeon exeggcute farfetchd flareon gastly geodude gible gimmighoul giratina goldeen grimer groudon growlithe hatenna hitmonchan hitmonlee hooh horsea houndour igglybuff jigglypuff jolteon jynx kabuto kangaskhan koffing krabby kyogre lapras larvitar leafeon lickitung litwick lugia machop magikarp magmar magnemite mankey meowth mew mewtwo mimejr misdreavus moltres mrmime munchlax nidoranf nidoranm oddish omanyte onix paras pichu pidgey pinsir poliwag ponyta porygon psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye sandshrew scyther seel shellder shinx slowpoke snorlax spearow squirtle staryu sylveon tangela tauros tentacool timburr togepi turtwig umbreon vaporeon venonat voltorb vulpix weedle zapdos zorua zubat'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 // Cabezas, minimapa y menú usan la miniatura (224 px, ~5 KB; la ilustración completa de la tienda pesa hasta 43 KB). Si falla (CDN y luego nuestro servidor), se muestra el sprite de la Pokédex en vez de una imagen rota o de cargar un modelo 3D
 const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.'+ART_EXT+'?v='+ART_V;
@@ -3156,7 +3230,7 @@ const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
 const portraitWait=new Set();
 if(!HEADLESS) window.addEventListener('b3ready',()=>{ for(const d of portraitWait) portraitImg(d); portraitWait.clear(); });
 // Retratos pequeños (ficha, lista de daño, formas): el sprite de public/dex (~3 KB, instantáneo) en vez de renderizar el modelo 3D, que obligaba a descargar el .glb (50-460 KB) y mostraba una Poké Ball girando hasta entonces. Solo los que no tienen sprite siguen con el 3D
-const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,151,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,532,533,534,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
+const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,532,533,534,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
 function portraitImg(dex){ const n=String(dex).split(/[:/]/).pop(); if(DEX_FILES.has(+n)) return `<img src="${dexUrl(n)}" alt="" decoding="async" data-sp="${n}" class="dexPic">`;
  if(!(window.B3&&B3.portrait)) portraitWait.add(dex);
  const url=window.B3&&B3.portrait?B3.portrait(dex,u=>{ if(u) document.querySelectorAll(`img[data-pdex="${dex}"]`).forEach(im=>{ im.src=u; im.classList.remove('loadingBall'); }); }):null;
@@ -3231,7 +3305,7 @@ const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.name;
 // Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
 let sndWatch={g:null,up:0,tac:0};
-function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join(), stk=me.streak|0;
+function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStar(me), frm=(me.tacForm||[]).join(), stk=me.streak|0;
  if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm,stk,mew:me.mewN|0}; return; }
  if(stk>0&&stk!==sndWatch.stk&&G.round&&G.round.type!=='pve'){ const d=cosD(me,'fn'); if(d) Music.fanfare(d.notes); }
  if(up>sndWatch.up) Music.evolve(me.lastUp[1]>=3?'big':'unit'); // a 3★, la versión larga (la de la minileyenda)
@@ -3385,7 +3459,7 @@ function ucSprite(){ if(document.getElementById('ucSprite')) return; const w=doc
 let UC_CUR=null, tipPinned=false;
 // La misma carta que se compra en la tienda, sin botón, para reconocer al Pokémon en su ficha
 // Retratos de las formas evolucionadas (public/art/f/<n.º>): la ficha muestra la forma de su estrella (Charmeleon a 2★, Charizard a 3★); la tienda sigue con la primera
-const FORM_ART=new Set('2 3 5 6 8 9 20 25 26 35 36 39 40 44 45 51 53 55 59 61 62 64 65 67 68 75 76 78 82 91 93 94 97 112 117 122 125 130 143 148 149 153 154 176 208 212 229 230 248 282 373 376 389 405 429 445 448 462 464 466 468 477 534 571 609 724 858 1000'.split(' ').map(Number));
+const FORM_ART=new Set('2 3 5 6 8 9 11 12 14 15 17 18 20 22 24 25 26 28 30 31 33 34 35 36 38 39 40 42 44 45 47 49 51 53 55 57 59 61 62 64 65 67 68 70 71 73 75 76 78 80 82 85 87 89 91 93 94 97 99 101 103 105 110 112 117 119 121 122 125 130 139 141 143 148 149 153 154 176 208 212 229 230 248 282 373 376 389 405 429 445 448 462 464 466 468 477 534 571 609 724 858 1000'.split(' ').map(Number));
 const formArt=dx=>FORM_ART.has(dx)?`art/f/${dx}.${ART_EXT}?v=${ART_V}`:null;
 function unitCardHTML(d,who,star){
  const sx=star&&Array.isArray(d.dex)?dexOf(d,star):null, fa=sx!=null&&sx!==dexOf(d,1)?formArt(sx):null;
@@ -3944,7 +4018,7 @@ function cosChip(key){ const it=COSM.BY[key], d=it?it.d:{}, ty=COSM.typeOf(key),
   case 'br': return `<span class="cc cc-barrier" style="--c1:${d.c[0]};--c2:${d.c[1]}"></span>`;
   case 'fn': return `<span class="cc cc-icon" style="--c:#ffd23f">${px('sound',30)}</span>`;
   case 'sh': return `<span class="cc cc-shiny" style="--h:${Math.round((d.to-d.from)*360)}deg">${portraitImg(TACS[d.tac].dex[0])}<i>${px('star',14)}</i></span>`;
-  case 'tac': return `<span class="cc cc-mythic">${artImg('eevee')}</span>`;
+  case 'tac': return `<span class="cc cc-mythic">${artImg(d.tac)}</span>`;
  } return ''; }
 function gaCard(r,i){ const t=COSM.TIER[r.t]||cosTier(r.key), it=COSM.BY[r.key], name=r.key==='cd'?'Caramelos de vuelta':r.key==='dust'?'Polvo Estelar':it?it.name:r.key;
  return `<div class="gaCard t-${r.t}" style="--tc:${t.col};--i:${i}"><span class="gaTier">${r.t==='x'?'Colección':t.name}</span>${cosChip(r.key)}<b>${esc(name)}</b><small>${r.key==='cd'?'Caramelos':r.key==='dust'?'Ya tienes las míticas':COSM.TYPES[COSM.typeOf(r.key)]||''}</small>${r.new?'<em class="gaNew">Nuevo</em>':r.dup?`<em class="gaDup">Repetido · +${r.dust} polvo</em>`:''}</div>`; }
