@@ -2726,10 +2726,12 @@ function bindEvents(){
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
  // Engranaje de la partida: abre la ventana de configuración (con Rendirse y Volver al menú abajo)
  $('menuBtn').addEventListener('click',()=>showOptions(true));
+ // Engranaje del acceso y del registro: la misma configuración (volumen, tema, calidad), sin «Cerrar sesión»
+ $('authOptBtn').addEventListener('click',()=>{ Music.init(); showOptions(false); });
  $('playBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showNormal(); });
  $('rankedBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showRanked(); });
  $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('eeveeGacha').addEventListener('click',showGacha); // el Eevee con halo del menú abre el gacha
- $('howBtn').addEventListener('click',showHow);
+ $('howBtn').addEventListener('click',()=>{ guideSeen(); showHow(); });
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
  $('optBtn').addEventListener('click',()=>showOptions(false));
@@ -3611,11 +3613,11 @@ function showOptions(inGame){
  <div class="cfgRow"><b>Volumen de la música</b><div class="cfgVol"><input type="range" id="optVol" min="0" max="100" value="${vol}" aria-label="Volumen de la música"><b id="optVolV">${vol}</b></div></div>
  <div class="cfgRow"><b>Tema</b>${rd('optTheme',[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']],S.theme||'system')}</div>
  <div class="cfgRow"><b>Calidad gráfica</b>${rd('optGfx',[['auto','Automática'],['2','Alta'],['1','Media'],['0','Baja']],GFX.q)}</div>
- <div class="cfgBtns">${inGame?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
+ <div class="cfgBtns">${inGame||!ACC?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
  ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true});
  const val=n=>{ const e=document.querySelector(`input[name="${n}"]:checked`); return e?e.value:''; };
  $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; $('optVolV').textContent=e.target.value; Music.init(); Music.setVol(); };
- $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; saveSettings(); applyTheme(); renderMenu(); closeModal(); };
+ $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; saveSettings(); applyTheme(); if(ACC) renderMenu(); closeModal(); };
  if($('logoutBtn')) $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
  if($('quitBtn')) $('quitBtn').onclick=()=>{ closeModal(); confirmQuit(); };
  if($('surrBtn')) $('surrBtn').onclick=()=>{ if(!canSurrender()) return; closeModal(); confirmSurrender(); };
@@ -3760,6 +3762,12 @@ function showGameOver(late){
 }
 // Ficha del menú (centrada bajo el logo): copa del rango, retrato redondo con marco dorado, nombre, y dos recuadros con marco dorado
 // (la minileyenda, el único que abre el selector —el retrato redondo es solo decorativo—, y la arena); debajo, el rango compacto, los caramelos y «Ver perfil»
+// Jugador nuevo (sin partidas y sin haber abierto la Guía en este navegador): la Guía brilla con un globo «Cosas que debes saber antes de jugar»
+const guideKey=()=>'pt_guia_'+(ACC?ACC.name:'');
+function guideHint(){ const b=$('howBtn'); if(!b) return; let seen=true; try{ seen=!!localStorage.getItem(guideKey()); }catch(e){}
+ const on=!!ACC&&!(ACC.stats&&ACC.stats.games>0)&&!seen; b.classList.toggle('guideNew',on);
+ let t=$('guideTip'); if(on&&!t){ t=document.createElement('span'); t.id='guideTip'; t.className='guideTip'; t.textContent='Cosas que debes saber antes de jugar'; b.appendChild(t); } if(t) t.hidden=!on; } // dentro del botón: el clic abre la Guía y el globo va siempre debajo de él
+function guideSeen(){ try{ localStorage.setItem(guideKey(),'1'); }catch(e){} guideHint(); }
 function renderMenu(){
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], rk=COMP().ranked;
  $('menuWho').classList.add('mnCard');
@@ -3770,7 +3778,7 @@ function renderMenu(){
   <div class="mcEq"><button class="mcBox" id="pickTr" type="button" title="Cambiar minileyenda"><span class="mcImg">${artImg(tk)}</span><span class="tfrom">${esc(t.name)}</span></button><div class="mcBox static" title="Arena"><span class="mcImg"><img src="arena/coliseo/base1x.webp" alt="" decoding="async"></span><span>Arena</span></div></div>
   <div class="mcFoot">${rankMiniHTML()}</div>
   <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="18"></i><span>Ver perfil</span></button></div>`;
- $('pickTr').onclick=()=>showTacPick(false); $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
+ guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
 }
 /* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
 const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
