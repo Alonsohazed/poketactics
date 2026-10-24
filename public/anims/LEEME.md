@@ -1,6 +1,6 @@
 # Animaciones por estados (prueba)
 
-Los 83 modelos de 1.ª gen que usa el juego (Mew, el último, importado con `importar-06wj.mjs`) (`ANIM_SET` en `board3d.js`; 36 MB en total). El resto de generaciones sigue con Pokemon-3D-api.
+Los 151 modelos de 1.ª gen (los 68 que faltaban y Mew, importados con `importar-06wj.mjs`; 23 no traen «sleep» y caen por código) (`ANIM_SET` en `board3d.js`; 36 MB en total). El resto de generaciones sigue con Pokemon-3D-api.
 
 - `<n.º>.glb`: modelo animado de [06wj/pokemon](https://github.com/06wj/pokemon) (clips de Escarlata/Púrpura; los 151 de la 1.ª gen). Lleva solo `idle`, `run`, `attack` (recortado alrededor del golpe), `victory` (su `happy`) y `faint` (su `sleep`, 3 s). Texturas WebP a 512 px y mallas con Draco: 230–600 KB cada uno.
 - `<n.º>.json`: `"glb": true`, el fotograma de impacto de `attack` y `special` (fracción del clip, de 0 a 1) y `alias` (un clip que hace de otro: `special` usa el de ataque). Lo que falte (`hit`) se genera por código sobre el esqueleto o se queda en el destello.
