@@ -179,8 +179,9 @@ AG({id:'maestro',tier:'P',cat:'fast',tags:['fast','trait'],name:'Maestro Pokémo
 AG({id:'crecimiento',tier:'S',cat:'fast',tags:['fast','win'],name:'Crecimiento Acelerado',icon:'📚',desc:'Cada victoria PvP te da 2 de EXP.',on:{win:c=>{ if(!c.d.pve){ c.xp(2); } }}});
 AG({id:'camino_campeon',tier:'G',cat:'fast',tags:['fast'],name:'Camino del Campeón',icon:'🛤️',desc:'Recompensas al subir de nivel: 6 → componente · 7 → 5 de oro · 8 → objeto completo · 9 → Pokémon de coste 5.',
  on:{levelUp:c=>{ const L=c.d.level, R={6:'c',7:'g:5',8:'f',9:'uc:5'}; for(const l in R) if(L>=+l&&c.once('l'+l)) c.say(augGrant(c.p,R[l])); }}});
-AG({id:'regalo_cumple',tier:'G',cat:'fast',tags:['fast'],name:'Regalo de Cumpleaños',icon:'🎁',desc:'Cada vez que subes de nivel recibes un Pokémon de 2★: de coste 1 hasta el nivel 5, de coste 2 en los niveles 6-7 y de coste 3 desde el 8.',
- on:{levelUp:c=>{ const l=c.d.level, k=drawUnitOfCost(l<=5?1:l<=7?2:3,threeStarSet(c.p)); if(k){ giveStar(c.p,k,2,true); c.say(`${nameOf(DEF[k],2)} ★★`); } }}});
+AG({id:'regalo_cumple',tier:'P',cat:'fast',tags:['fast'],req:p=>ST(2)(p),name:'Regalo de Cumpleaños',icon:'🎁',desc:'Cada vez que subes de nivel recibes un Pokémon de 2★. Su coste es tu nivel menos 4 (mínimo coste 1, máximo coste 5).',
+ on:{levelUp:c=>{ const k=drawUnitOfCost(regaloCoste(c.d.level),threeStarSet(c.p)); if(k){ giveStar(c.p,k,2,true); c.say(`${nameOf(DEF[k],2)} ★★`); } }}});
+function regaloCoste(nivel){ return Math.max(1,Math.min(5,nivel-4)); }
 
 // ===== Rachas =====
 AG({id:'invicto',tier:'G',cat:'streak',tags:['win'],ex:'racha',name:'Campeón Invicto',icon:'🏆',desc:'Rachas de victorias: 3 seguidas → 3 de oro · 5 → componente · 7 → objeto completo (cada premio una vez).',
@@ -339,8 +340,16 @@ AG({id:'vanguardia',tier:'S',cat:'carry',tags:['Guardián','Coloso'],name:'Cimie
 
 // ===== Clásicos (estadísticas y recursos directos) =====
 AG({id:'pacto_cruel',tier:'S',cat:'fast',tags:['fast'],name:'Pacto Cruel',icon:'🩸',desc:'Comprar EXP te cuesta 2 de vida en lugar de oro mientras tengas más de 20 de vida.',on:{select:c=>{ c.p.mods.xpHp=2; }}});
-AG({id:'pandora',tier:'S',cat:'risk',name:'Objetos de Pandora',icon:'📦',desc:'Recibes 1 componente. Al empezar cada ronda, los objetos de tu inventario cambian al azar: componentes por componentes y completos por completos (Medallas, insignias y emblemas no cambian).',
- on:{select:c=>c.comp(),roundStart:c=>{ c.p.items=c.p.items.map(k=>BASIC.includes(k)?pick(BASIC):FULL_KEYS.includes(k)?pick(FULL_KEYS):k); }}});
+AG({id:'pandora',tier:'S',cat:'risk',name:'Objetos de Pandora',icon:'📦',desc:'Recibes 1 componente. Al empezar cada ronda, los objetos de tu inventario cambian al azar por otros de su tipo: componentes por componentes, completos por completos, insignias por otras insignias y emblemas por otros emblemas (p. ej. el Emblema Acero puede volverse Emblema Agua).',
+ on:{select:c=>c.comp(),roundStart:c=>{ c.p.items=c.p.items.map(pandoraCambio); }}});
+// Objetos de Pandora: cada objeto cambia por otro de su familia; insignias y emblemas siempre por uno distinto
+function pandoraCambio(k){
+ if(BASIC.includes(k)) return pick(BASIC);
+ if(FULL_KEYS.includes(k)) return pick(FULL_KEYS);
+ const fam=/^em_/.test(k)?'em_':/^emb_/.test(k)?'emb_':null; if(!fam) return k;
+ const otros=Object.keys(ITEMS).filter(x=>x.startsWith(fam)&&x!==k&&!(fam==='em_'&&x.startsWith('emb_')));
+ return otros.length?pick(otros):k;
+}
 AG({id:'ticket_dorado',tier:'S',cat:'reroll',tags:['reroll'],name:'Ticket Dorado',icon:'🎫',desc:'Cada refresco de pago tiene un 40% de probabilidad de salirte gratis (te devuelve los 2 de oro).',
  on:{reroll:c=>{ if(!c.d.free&&Math.random()<.4){ c.p.gold+=2; c.st.n=(c.st.n||0)+1; } }},ui:c=>`Refrescos gratis: ${c.st.n||0}`});
 AG({id:'aguante',tier:'G',cat:'classic',w:.5,name:'Aguante',icon:'🎀',desc:'Cada aliado sobrevive una vez a un golpe letal.',on:{select:c=>{ c.p.mods.allFocus=true; }}});
@@ -513,7 +522,7 @@ const epoch=(id,tier,st,x)=>AG({id,tier,cat:'fast',tags:['fast'],ex:'epoca',req:
 epoch('epoca','G',2,4); epoch('epoca2','P',3,8);
 const growth=(id,tier,st,x)=>AG({id,tier,cat:'fast',tags:['fast'],ex:'crecer',req:ST(st),name:x>7?'Crecimiento Explosivo+':'Crecimiento Explosivo',icon:'💥',desc:`Ahora y al empezar las 3 rondas siguientes: ${x} de EXP.`,
  on:{select:c=>c.xp(x),roundStart:c=>{ c.st.n=(c.st.n||0)+1; if(c.st.n<=3) c.xp(x); }}});
-growth('crecimiento_explosivo','G',3,7); growth('crecimiento_explosivo2','P',4,9);
+growth('crecimiento_explosivo','G',3,7); growth('crecimiento_explosivo2','G',4,9);
 AG({id:'cuatro_veces',tier:'G',cat:'carry',tags:['carry'],req:ST(3),name:'Cuatro Veces Más',icon:'4️⃣',desc:'Recibes un Pokémon de coste 4 al azar. Por cada objeto que lleve, tu equipo gana +100 de vida.',
  on:{select:c=>{ const k=c.unit(4); const u=k&&allUnits(c.p).filter(x=>x.defId===k).sort((a,b)=>b.uid-a.uid)[0]; if(u) c.st.uid=u.uid; }},
  snap:c=>{ const u=allUnits(c.p).find(x=>x.uid===c.st.uid); return u&&u.items.length?u.items.length:null; },combat:(us,n)=>{ for(const u of us) boost(u,{hpf:100*n}); },ui:c=>c.st.uid?`${augUnitName(c.p,c.st.uid)}: +100 de vida al equipo por objeto`:''});
@@ -617,7 +626,7 @@ AG({id:'montones_stats',tier:'P',cat:'rules',req:ST(3,4),name:'Montones de Estad
  combat:us=>{ for(const u of us) boost(u,{hpf:88,ad:.08,ap:8,df:8,as:.08,mana:8}); }});
 AG({id:'movilidad',tier:'P',cat:'fast',tags:['fast'],req:ST(2),name:'Movilidad Ascendente',icon:'🪜',desc:'Comprar EXP cuesta 1 de oro menos. Cada vez que subes de nivel, recuperas 2 de vida y recibes 2 tiendas gratis.',
  on:{select:c=>{ c.p.mods.xpCost=Math.max(1,(c.p.mods.xpCost||4)-1); },levelUp:c=>{ c.p.hp=Math.min(100,c.p.hp+2); c.p.freeRerolls+=2; }}});
-AG({id:'bolsa_urf',tier:'P',cat:'emblem',tags:['emblem'],req:ST(3,4),name:'Bolsa de Urf',icon:'🎁',desc:'Recibes una Medalla, 3 componentes y 5 de oro.',on:{select:c=>{ c.item('medal'); c.comp(); c.comp(); c.comp(); c.p.gold+=5; }}});
+AG({id:'bolsa_urf',tier:'P',cat:'emblem',tags:['emblem'],req:ST(3,4),name:'Bolsa de Mew',icon:'🎁',desc:'Recibes una Medalla, 3 componentes y 5 de oro.',on:{select:c=>{ c.item('medal'); c.comp(); c.comp(); c.comp(); c.p.gold+=5; }}});
 AG({id:'verticalidad3',tier:'P',cat:'trait',tags:['trait'],ex:'vertical',req:ST(3,4),name:'Verticalidad III',icon:'📶',desc:'Cada Pokémon gana +4% de ataque, +4 de poder y +3,5 de defensa y resistencia por cada aliado que comparte una sinergia con él.',
  combat:us=>{ for(const u of us){ const n=sharesTrait(u,us); boost(u,{ad:.04*n,ap:4*n,df:3.5*n}); } }});
 AG({id:'vale_la_pena',tier:'P',cat:'reroll',tags:['reroll'],req:ST(2),name:'Vale la Pena Esperar',icon:'⏳',desc:'Recibes 2 copias de un Pokémon de coste 2 al azar, y otra copia al empezar cada ronda el resto de la partida.',
@@ -771,3 +780,7 @@ const AUG_IMG={"escalera":"up-grade","unidos":"soothe-bell","dados":"lucky-egg",
 // Sprite por categoría para los aumentos sin uno propio
 const CAT_IMG={econ:"amulet-coin",fast:"exp-candy-xl",reroll:"repeat-ball",emblem:"ability-capsule",trait:"prism-scale",rules:"town-map",carry:"luxury-ball",classic:"ultra-ball",quest:"adamant-orb",streak:"comet-shard",slow:"everstone",risk:"smoke-ball",hybrid:"power-weight",chaos:"metronome",evo:"dna-splicers"};
 for(const a of AUGS){ const v=AUG_IMG[a.id]!=null?AUG_IMG[a.id]:CAT_IMG[a.cat]; if(v!=null) a.img=typeof v==='number'?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${v}.png`:/^b\d+$/.test(v)?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${v.slice(1)}.png`:`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${v}.png`; }
+// Icono propio (img/aug/<id>.webp, estilo TFT ya teñido con su rareza; iconos-aumentos-tft.js de la skill de recursos): todos menos los
+// de héroe, que siguen con la ilustración de su Pokémon. Al cambiar iconos o rarezas, regenera y sube AUG_ICO_V (el navegador guarda las imágenes 7 días).
+const AUG_ICO_V=3;
+for(const a of AUGS) if(!a.hero) a.ico=`img/aug/${a.id}.webp?v=${AUG_ICO_V}`;

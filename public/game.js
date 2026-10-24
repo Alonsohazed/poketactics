@@ -3360,7 +3360,8 @@ function renderUps(){
 function upBadge(){ return ''; }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
 // Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
-const augIcon=(a,cls)=>a.img?`<img class="augImg${cls?' '+cls:''}" src="${a.img}" alt="" data-fb="${esc(a.icon)}">`:a.icon;
+// Icono de un aumento: el propio (a.ico, sin teñir) o, en los de héroe, el sprite de siempre
+const augIcon=(a,cls)=>{ const own=a.ico&&!a._icoFail, src=own?a.ico:a.img; return src?`<img class="augImg${own?' own':''}${cls?' '+cls:''}" src="${src}" alt="" data-fb="${esc(a.icon)}">`:a.icon; };
 function renderAugs(){
  const list=viewedPlayer().augments.map(id=>AUG_BY[id]).filter(Boolean), bar=$('augBar'), box=$('augList');
  $('augWrap').innerHTML=''; bar.hidden=true; if(!list.length&&!box.hidden) box.innerHTML='';
@@ -3636,11 +3637,14 @@ function confirmQuit(){
  $('qYes').onclick=()=>{ closeModal(); if(G) G.over=true; if(NET.mode!=='sp') leaveRoom(); showMenu(); };
  $('qNo').onclick=closeModal;
 }
-// Carta de aumento: marco dorado (img/aug-marco.svg) y el icono del aumento como silueta del color de su rareza (plata, oro o prismático),
-// que conserva sus detalles por la luminosidad. Se calcula una vez por aumento en un lienzo (sprite recortado y ampliado sin suavizar)
+// Carta de aumento: marco pintado de su rareza (img/aug-carta-S|G|P.webp, en el CSS) con el icono propio en el medallón; los de héroe usan
+// la silueta del Pokémon del color de su rareza (plata, oro o prismático), que conserva sus detalles por la luminosidad. Se calcula una vez por aumento en un lienzo
+const AUG_FRAMES=['S','G','P'].map(t=>`img/aug-carta-${t}.webp`);
 const AUG_TINT={S:[[134,140,149],[228,231,236]],G:[[146,98,36],[240,208,140]],P:[[150,88,226],[70,196,190],[128,186,255]]}, augSilC={};
 function augSil(a){
  if(augSilC[a.id]) return augSilC[a.id];
+ // icono propio: se usa tal cual; si no carga, se vuelve a la silueta del sprite
+ if(a.ico&&!a._icoFail) return augSilC[a.id]=new Promise(res=>{ const im=new Image(); im.onload=()=>res(a.ico); im.onerror=()=>{ a._icoFail=1; delete augSilC[a.id]; augSil(a).then(res); }; im.src=a.ico; });
  return augSilC[a.id]=new Promise(res=>{
    const paint=im=>{ try{
      let w,h,src=document.createElement('canvas'), c=src.getContext('2d',{willReadFrequently:true});
@@ -3675,7 +3679,7 @@ function fitAugCard(el){
 function augCardHTML(a,i,anim){ return `<button class="augCard3 t${a.tier}${anim!=null?' nuevo':''}" data-i="${i}"${anim!=null?` style="--d:${anim*.12}s"`:''} title="${esc(TIER_NAME[a.tier])}"><span class="ac3Ico" data-aug="${esc(a.id)}"></span><b class="ac3Name"><span>${esc(a.name)}</span></b><span class="ac3Desc">${esc(a.desc)}</span></button>`; }
 function hydrateAugCards(root){
  root.querySelectorAll('.augCard3').forEach(fitAugCard);
- root.querySelectorAll('.ac3Ico[data-aug]').forEach(el=>{ const a=AUG_BY[el.dataset.aug]; if(!a) return; augSil(a).then(u=>{ el.innerHTML=u?`<img src="${u}" alt="">`:`<span class="ac3Emo">${esc(a.icon||'✨')}</span>`; }); });
+ root.querySelectorAll('.ac3Ico[data-aug]').forEach(el=>{ const a=AUG_BY[el.dataset.aug]; if(!a) return; augSil(a).then(u=>{ el.innerHTML=u?`<img src="${u}"${u===a.ico?' class="own"':''} alt="">`:`<span class="ac3Emo">${esc(a.icon||'✨')}</span>`; }); });
 }
 // Aumentos ya mostrados en esta ronda: solo aparecen con efecto los nuevos (al cambiar uno, solo ese)
 let augSeen={round:-1,ids:new Set()};
@@ -4134,6 +4138,7 @@ function gaColl(){ const st=GA.st, own=new Set(st.inv), all=COSM.LIST.filter(i=>
 function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a ${d.k==='mew'?'Mew':'Eevee'}</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
+ AUG_FRAMES.forEach(u=>{ const im=new Image(); im.decoding='async'; im.src=u; });   // los marcos de las cartas de aumento ya están en caché en la 2-1
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }
 function showMenu(){ loadFriends(); setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
  // tras una partida con ascenso, descenso o rango revelado, se celebra al volver al menú

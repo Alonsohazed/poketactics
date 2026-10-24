@@ -103,8 +103,19 @@ for (const [id, k] of Object.entries(HEROES)) { const { G, p } = fresh(); const 
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.corona_maldita); ok(p.mods.boardBonus === 2, 'Corona Maldita: +2 espacios'); p.hp = 80; event(p, 'damaged', { d: 7 }); ok(p.hp === 73, 'Corona Maldita: el doble de daño'); }
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.regalo_cumple); E.addXp(p, 30);
   ok(p.bench.filter(Boolean).some(u => u.star === 2), 'Regalo de Cumpleaños: un Pokémon de 2★ al subir de nivel'); }
-{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.pandora); p.items = ['claw', 'band', 'medal', 'emb_Fuego']; event(p, 'roundStart', {});
-  ok(E.BASIC.includes(p.items[0]) && E.FULL_KEYS.includes(p.items[1]) && p.items[2] === 'medal' && p.items[3] === 'emb_Fuego', 'Objetos de Pandora: cambia componentes y completos, no medallas ni emblemas'); }
+{ const { G, p } = fresh(), a = E.AUG_BY.regalo_cumple, en = s => { G.round = Object.assign({}, G.round, { s }); return a.req(p); };
+  ok(a.tier === 'P' && en(2) && !en(3) && !en(4), 'Regalo de Cumpleaños: Prismático y solo en la elección de 2-1'); }
+for (const [nv, coste] of [[3, 1], [5, 1], [6, 2], [7, 3], [8, 4], [9, 5], [10, 5]]) { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.regalo_cumple); p.bench = p.bench.map(() => null); event(p, 'levelUp', { level: nv });
+  const u = p.bench.find(Boolean); ok(u && u.star === 2 && E.DEF[u.defId].cost === coste, `Regalo de Cumpleaños: a nivel ${nv}, un Pokémon de coste ${coste} a 2★`); }
+// Iconos propios de los aumentos: todos menos los de héroe, con su archivo en public/img/aug
+{ const fs = require('fs'), path = require('path'), A = Object.values(E.AUG_BY);
+  ok(A.filter(a => a.hero).every(a => !a.ico && a.img), 'los aumentos de héroe siguen con la ilustración de su Pokémon');
+  const sin = A.filter(a => !a.hero && !(a.ico && fs.existsSync(path.join(__dirname, '..', 'public', a.ico.split('?')[0]))));
+  ok(!sin.length, 'cada aumento que no es de héroe tiene su icono en public/img/aug' + (sin.length ? ': faltan ' + sin.map(a => a.id).join(' ') : '')); }
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.pandora); p.items = ['claw', 'band', 'medal', 'emb_Acero', 'em_water']; event(p, 'roundStart', {});
+  ok(E.BASIC.includes(p.items[0]) && E.FULL_KEYS.includes(p.items[1]) && p.items[2] === 'medal', 'Objetos de Pandora: componentes por componentes, completos por completos y la Medalla se queda');
+  ok(/^emb_/.test(p.items[3]) && p.items[3] !== 'emb_Acero' && E.ITEMS[p.items[3]], 'Objetos de Pandora: un emblema cambia por otro emblema distinto (p. ej. Acero → Agua)');
+  ok(/^em_/.test(p.items[4]) && !/^emb_/.test(p.items[4]) && p.items[4] !== 'em_water' && E.ITEMS[p.items[4]], 'Objetos de Pandora: una insignia cambia por otra insignia distinta'); }
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.forja_portatil); ok(p.picks.filter(x => x.src === 'forja_portatil').length === 2, 'Forja Portátil: dos elecciones de objeto'); }
 { const { p } = fresh(); E.applyAugment(p, E.AUG_BY.huevo); for (let i = 0; i < 6; i++) event(p, 'roundStart', {}); ok(p.augSt.huevo.once, 'Huevo Misterioso: eclosiona a las 6 rondas'); }
 { const { p } = fresh(); p.board = { '0,0': E.makeInst('ditto') }; E.applyAugment(p, E.AUG_BY.diferente); const sn = E.augSnap(p).find(r => r[0] === 'diferente'); ok(sn && sn[1].includes('0,0'), 'Diferente: detecta al Pokémon sin sinergias activas'); }

@@ -115,10 +115,13 @@ test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page })
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
   await expect(page.locator('#mbox .augCard3')).toHaveCount(3);
   await expect(page.locator('#mbox .augRR')).toHaveCount(3); // un cambio por carta
-  // Cartas nuevas: marco dorado, icono como silueta del color de la rareza, sin apertura de Poké Ball; título y descripción caben siempre
+  // Cartas nuevas: marco pintado de su rareza, icono propio (o silueta del color de la rareza en los de héroe), sin apertura de Poké Ball; título y descripción caben siempre
   await expect(page.locator('#mbox .augCard3 .ac3Ico img')).toHaveCount(3, { timeout: 15000 });
   const c = await page.evaluate(() => ({ ball: document.querySelectorAll('#mbox .augBox,#mbox .lidT').length, sale: [...document.querySelectorAll('#mbox .augCard3')].filter(el => { const b = el.querySelector('.ac3Name'), s = b.firstElementChild, d = el.querySelector('.ac3Desc'); return s.offsetHeight > b.clientHeight + 1 || s.offsetWidth > b.clientWidth + 1 || d.scrollHeight > d.clientHeight + 1; }).length }));
   expect(c).toEqual({ ball: 0, sale: 0 });
+  // cada carta lleva el marco pintado de su rareza (img/aug-carta-S|G|P.webp)
+  const marcos = await page.evaluate(() => [...document.querySelectorAll('#mbox .augCard3')].map(e => getComputedStyle(e).backgroundImage.includes('aug-carta-' + [...e.classList].find(k => /^t[SGP]$/.test(k)).slice(1))));
+  expect(marcos).toEqual([true, true, true]);
   // aparición: empiezan transparentes y escalonadas, y en menos de 1,5 s están todas visibles
   const ap = await page.evaluate(() => [...document.querySelectorAll('#mbox .augCard3')].map(e => e.classList.contains('nuevo') && getComputedStyle(e).animationName));
   expect(ap).toEqual(['augIn', 'augIn', 'augIn']);

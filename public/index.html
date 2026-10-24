@@ -514,31 +514,38 @@ body.fullField .layout{padding-left:84px;padding-bottom:calc(var(--shopH,190px) 
 @keyframes hurry{to{transform:scale(1.18)}}
 .roundBar .phase{display:none}
 /* Selección de aumentos: solo cartas, con el color de su rareza y un refresco debajo de cada una */
-.mbox.bare{background:none;border:0;box-shadow:none;max-width:1000px}
+.mbox.bare{background:none;border:0;box-shadow:none;max-width:1100px}
 /* Menú y acceso con fondo estático: sin campo 3D detrás */
 body:has(#menu:not(.hidden)) #boardStack,body:has(#auth:not(.hidden)) #boardStack{visibility:hidden}
 body:has(#menu:not(.hidden)),body:has(#auth:not(.hidden)){background:radial-gradient(120% 90% at 50% 0%,#24407a 0%,#14224a 45%,#0a1128 100%) fixed,#0a1128}
 body:has(#menu:not(.hidden))::before,body:has(#auth:not(.hidden))::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;background:radial-gradient(circle at 50% 50%,#fff 1.5px,transparent 2px) 0 0/26px 26px}
 .augPick{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
 .augCol{display:flex;flex-direction:column;align-items:center;gap:12px}
-/* Carta de aumento: marco dorado (img/aug-marco.svg, 682×1212) igual para las tres rarezas; la rareza la da el color del icono (plata, oro o prismático) y el brillo al pasar el ratón */
-.augCard3{--tg:rgba(200,205,214,.45);position:relative;width:300px;aspect-ratio:682/1212;padding:0;border:0;cursor:pointer;text-align:center;color:#fff;border-radius:4px;
-  background:#000 url(img/aug-marco.svg) center/100% 100% no-repeat;box-shadow:0 16px 28px rgba(0,0,0,.6);transition:transform .14s,box-shadow .14s;overflow:hidden}
-/* Aparición (solo las cartas nuevas, escalonadas con --d): sube con un pequeño rebote, la cruza un destello dorado y el icono surge con un halo del color de su rareza */
+/* Carta de aumento: marco pintado por rareza (img/aug-carta-S|G|P.webp, 720×1040, carta-aumento.py): pergamino con labio rocoso, medallón oscuro
+   para el icono, aura en remolino con orilla tornasolada y cristales. La imagen es transparente fuera de la carta: sombra y brillo con drop-shadow */
+.augCard3{--tg:rgba(200,205,214,.5);--marco:url(img/aug-carta-S.webp);position:relative;aspect-ratio:720/1040;
+  width:max(220px,min(340px,calc((100vw - 140px) / 3),calc((90vh - 80px) * .692)));   /* las tres caben a lo ancho y a lo alto con su botón de cambio */padding:0;border:0;cursor:pointer;text-align:center;color:#fff;
+  background:var(--marco) center/100% 100% no-repeat;filter:drop-shadow(0 14px 16px rgba(0,0,0,.55));transition:transform .14s,filter .14s}
+.augCard3.tG{--tg:rgba(232,190,110,.6);--marco:url(img/aug-carta-G.webp)}.augCard3.tP{--tg:rgba(150,140,255,.65);--marco:url(img/aug-carta-P.webp)}
+/* Aparición (solo las cartas nuevas, escalonadas con --d): sube con un pequeño rebote, la cruza un destello (recortado a la forma del marco) y el icono surge con un halo del color de su rareza */
 .augCard3.nuevo{animation:augIn .55s cubic-bezier(.2,1.3,.4,1) var(--d,0s) both}
-.augCard3.nuevo::after{content:"";position:absolute;inset:-20% -60%;pointer-events:none;background:linear-gradient(105deg,transparent 42%,rgba(255,236,190,.38) 50%,transparent 58%);transform:translateX(-70%);animation:augSweep .9s ease-out calc(var(--d,0s) + .35s) both}
+.augCard3.nuevo::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 42%,rgba(255,236,190,.38) 50%,transparent 58%) 100% 0/300% 100% no-repeat;
+  -webkit-mask:var(--marco) center/100% 100% no-repeat;mask:var(--marco) center/100% 100% no-repeat;animation:augSweep .9s ease-out calc(var(--d,0s) + .35s) both}
 .augCard3.nuevo .ac3Ico{animation:augIco .6s ease-out calc(var(--d,0s) + .2s) both}
 .augCard3.nuevo .ac3Name,.augCard3.nuevo .ac3Desc{animation:augTxt .45s ease-out calc(var(--d,0s) + .35s) both}
-.augCard3.tG{--tg:rgba(232,190,110,.55)}.augCard3.tP{--tg:rgba(150,140,255,.6)}
-.augCard3:hover{transform:translateY(-6px);box-shadow:0 20px 32px rgba(0,0,0,.65),0 0 22px var(--tg)}
+.augCard3:hover{transform:translateY(-6px);filter:drop-shadow(0 18px 20px rgba(0,0,0,.6)) drop-shadow(0 0 14px var(--tg))}
 .augCard3:focus-visible{outline:3px solid #e9cf95;outline-offset:4px}
-.ac3Ico{position:absolute;left:18%;right:18%;top:17%;height:26%;display:grid;place-items:center}
+/* hueco del icono: un cuadrado del 74 % del diámetro del medallón, centrado en él (centro 49,3 % × 28,6 %) */
+.ac3Ico{position:absolute;left:30.86%;width:36.82%;top:15.81%;height:25.49%;display:grid;place-items:center}
 .ac3Ico img{max-width:100%;max-height:100%;width:auto;height:100%;object-fit:contain;image-rendering:pixelated}
+/* iconos propios de los aumentos (img/aug, 2D liso): sin pixelar en la carta, la barra, los tooltips ni el historial */
+img.own.augImg,.ac3Ico img.own{image-rendering:auto}
 .ac3Emo{font-size:84px;line-height:1;filter:grayscale(1) brightness(1.3)}
-.ac3Name{position:absolute;left:10%;right:10%;top:45%;height:9.5%;display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:27px;line-height:1.05;color:#fff;overflow:hidden}
-.ac3Desc{position:absolute;left:10%;right:10%;top:56%;bottom:11%;display:flex;align-items:flex-start;justify-content:center;font-size:15px;font-weight:700;line-height:1.42;color:#f2f2f2;overflow:hidden}
+/* título y descripción sobre el pergamino (algo a la izquierda del centro, como el cuerpo de la carta) */
+.ac3Name{position:absolute;left:13%;right:16%;top:45.05%;height:9.5%;display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:27px;line-height:1.05;color:#f6f0ff;text-shadow:0 2px 3px rgba(0,0,0,.55);overflow:hidden}
+.ac3Desc{position:absolute;left:12%;right:15%;top:57.5%;bottom:6.5%;display:flex;align-items:flex-start;justify-content:center;font-size:15px;font-weight:600;line-height:1.34;color:#eee8fa;text-shadow:0 1px 2px rgba(0,0,0,.6);overflow:hidden}
 @keyframes augIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
-@keyframes augSweep{to{transform:translateX(70%)}}
+@keyframes augSweep{to{background-position:0 0}}
 @keyframes augIco{0%{opacity:0;transform:scale(.75);filter:drop-shadow(0 0 0 transparent)}50%{opacity:1;filter:drop-shadow(0 0 18px var(--tg))}100%{opacity:1;transform:none;filter:drop-shadow(0 0 0 transparent)}}
 @keyframes augTxt{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* Recetas de un componente (clic derecho en la banca de objetos): panel fijo estilo TFT; las filas posibles en dorado y, a la derecha, el objeto que sale con «Crear objeto» */
