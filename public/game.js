@@ -312,12 +312,16 @@ const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 // Altura real (m, de la Pokédex vía PokeAPI) de cada forma de minileyenda. Los modelos se normalizan a la misma altura, así que todas las primeras
 // formas se ven iguales; las evoluciones crecen según su altura real respecto a su forma base (raíz 0,35, hasta ×1,45) y los gigantes de una sola
 // forma (≥ 1,5 m: Onix, Snorlax, Lapras…) según su altura respecto a 1 m (raíz 0,35, hasta ×2)
-const TAC_H={1:0.7,2:1,3:2,4:0.6,5:1.1,6:1.7,7:0.5,8:1,9:1.6,10:0.3,11:0.7,12:1.1,13:0.3,14:0.6,15:1,16:0.3,17:1.1,18:1.5,19:0.3,20:0.7,21:0.3,22:1.2,23:2,24:3.5,25:0.4,26:0.8,27:0.6,28:1,29:0.4,30:0.8,31:1.3,32:0.5,33:0.9,34:1.4,35:0.6,36:1.3,37:0.6,38:1.1,39:0.5,40:1,41:0.8,42:1.6,43:0.5,44:0.8,45:1.2,46:0.3,47:1,48:1,49:1.5,50:0.2,51:0.7,52:0.4,53:1,54:0.8,55:1.7,56:0.5,57:1,58:0.7,59:1.9,60:0.6,61:1,62:1.3,63:0.9,64:1.3,65:1.5,66:0.8,67:1.5,68:1.6,69:0.7,70:1,71:1.7,72:0.9,73:1.6,74:0.4,75:1,76:1.4,77:1,78:1.7,79:1.2,80:1.6,81:0.3,82:1,83:0.8,84:1.4,85:1.8,86:1.1,87:1.7,88:0.9,89:1.2,90:0.3,91:1.5,92:1.3,93:1.6,94:1.5,95:8.8,96:1,97:1.6,98:0.4,99:1.3,100:0.5,101:1.2,102:0.4,103:2,104:0.4,105:1,106:1.5,107:1.4,108:1.2,109:0.6,110:1.2,111:1,112:1.9,113:1.1,114:1,115:2.2,116:0.4,117:1.2,118:0.6,119:1.3,120:0.8,121:1.1,122:1.3,123:1.5,124:1.4,125:1.1,126:1.3,127:1.5,128:1.4,129:0.9,130:6.5,131:2.5,132:0.3,133:0.3,134:1,135:0.8,136:0.9,137:0.8,138:0.4,139:1,140:0.5,141:1.3,142:1.8,143:2.1,144:1.7,145:1.6,146:2,147:1.8,148:4,149:2.2,150:2,151:0.4,152:0.9,153:1.2,154:1.8,172:0.3,196:0.9,197:1,470:1,471:0.8,700:1};
-const tacLineOf=d=>Object.values(TACS).find(t=>!t.mimic&&(t.dex.includes(d)||(t.pick&&t.pick.flat().some(k=>DEF[k]&&dexOf(DEF[k],1)===d))))||null;
-function tacSize(p){ const d=+tacDex(p), t=tacLineOf(d)||tacOf(p), b=t.dex[0], h=TAC_H[d]||1, hb=TAC_H[b]||1;
- if(d!==b){ const i=t.dex.indexOf(d), st=i>0?t.dex.slice(1,i+1):[d]; return Math.max(...st.map(x=>clamp(Math.pow((TAC_H[x]||1)/hb,.35),1,1.45))); } // nunca encoge al evolucionar (Dragonite mide menos que Dragonair)
- if(new Set(t.dex).size===1&&h>=1.5) return clamp(Math.pow(h,.35),1,2);
+const DEX_H={1:0.7,2:1,3:2,4:0.6,5:1.1,6:1.7,7:0.5,8:1,9:1.6,10:0.3,11:0.7,12:1.1,13:0.3,14:0.6,15:1,16:0.3,17:1.1,18:1.5,19:0.3,20:0.7,21:0.3,22:1.2,23:2,24:3.5,25:0.4,26:0.8,27:0.6,28:1,29:0.4,30:0.8,31:1.3,32:0.5,33:0.9,34:1.4,35:0.6,36:1.3,37:0.6,38:1.1,39:0.5,40:1,41:0.8,42:1.6,43:0.5,44:0.8,45:1.2,46:0.3,47:1,48:1,49:1.5,50:0.2,51:0.7,52:0.4,53:1,54:0.8,55:1.7,56:0.5,57:1,58:0.7,59:1.9,60:0.6,61:1,62:1.3,63:0.9,64:1.3,65:1.5,66:0.8,67:1.5,68:1.6,69:0.7,70:1,71:1.7,72:0.9,73:1.6,74:0.4,75:1,76:1.4,77:1,78:1.7,79:1.2,80:1.6,81:0.3,82:1,83:0.8,84:1.4,85:1.8,86:1.1,87:1.7,88:0.9,89:1.2,90:0.3,91:1.5,92:1.3,93:1.6,94:1.5,95:8.8,96:1,97:1.6,98:0.4,99:1.3,100:0.5,101:1.2,102:0.4,103:2,104:0.4,105:1,106:1.5,107:1.4,108:1.2,109:0.6,110:1.2,111:1,112:1.9,113:1.1,114:1,115:2.2,116:0.4,117:1.2,118:0.6,119:1.3,120:0.8,121:1.1,122:1.3,123:1.5,124:1.4,125:1.1,126:1.3,127:1.5,128:1.4,129:0.9,130:6.5,131:2.5,132:0.3,133:0.3,134:1,135:0.8,136:0.9,137:0.8,138:0.4,139:1,140:0.5,141:1.3,142:1.8,143:2.1,144:1.7,145:1.6,146:2,147:1.8,148:4,149:2.2,150:2,151:0.4,152:0.9,153:1.2,154:1.8,172:0.3,173:0.3,174:0.3,175:0.3,176:0.6,196:0.9,197:1,200:0.7,208:9.2,212:1.8,228:0.6,229:1.4,230:1.8,239:0.6,246:0.6,247:1.2,248:2,249:5.2,250:3.8,280:0.4,281:0.8,282:1.6,302:0.5,355:0.8,356:1.6,359:1.2,371:0.6,372:1.1,373:1.5,374:0.6,375:1.2,376:1.6,382:4.5,383:3.5,384:7,387:0.4,388:1.1,389:2.2,403:0.5,404:0.9,405:1.4,429:0.9,439:0.6,443:0.7,444:1.4,445:1.9,446:0.6,447:0.7,448:1.2,462:1.2,464:2.4,466:1.8,468:1.5,470:1,471:0.8,477:2.2,487:4.5,491:1.5,532:0.6,533:1.2,534:1.4,570:0.7,571:1.6,607:0.3,608:0.6,609:1,700:1,722:0.3,723:0.7,724:1.6,856:0.4,857:0.6,858:2.1,999:0.3,1000:1.2};
+// Tamaño por altura real: 1 en la primera forma; las evoluciones, (altura/altura de la base)^0,35 hasta ×1,45 y sin encoger nunca;
+// los gigantes de una sola forma (≥ 1,5 m), altura^0,35 hasta `cap`
+const dexNum=d=>+String(d).split(/[:/]/).pop();
+function heightSize(chain,d,cap){ const b=chain[0], hb=DEX_H[b]||1, h=DEX_H[d]||1;
+ if(d!==b){ const i=chain.indexOf(d), st=i>0?chain.slice(1,i+1):[d]; return Math.max(...st.map(x=>clamp(Math.pow((DEX_H[x]||1)/hb,.35),1,1.45))); }
+ if(new Set(chain).size===1&&h>=1.5) return clamp(Math.pow(h,.35),1,cap);
  return 1; }
+const tacLineOf=d=>Object.values(TACS).find(t=>!t.mimic&&(t.dex.includes(d)||(t.pick&&t.pick.flat().some(k=>DEF[k]&&dexOf(DEF[k],1)===d))))||null;
+function tacSize(p){ const d=+tacDex(p), t=tacLineOf(d)||tacOf(p); return heightSize(t.dex,d,2); }
 const tacStar=p=>{ const t=tacOf(p); if(t.mimic) return 1; if(t.pick) return tacStage(p)+1; return new Set(t.dex.slice(0,tacStage(p)+1)).size; };
 const TAC_KEYS=Object.keys(TACS);
 // Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
@@ -2825,9 +2829,12 @@ const scr=(x,y,h=0)=>b3On()?B3.project(x,y,h/1):[x,y];
 function bgKind(){ if(G.phase==='carousel') return 'plaza'; return 'glade'; }
 const STAR_SCALE=[1,1.13,1.27];
 // Etapa evolutiva: las primeras formas son más pequeñas y al evolucionar se nota el cambio (líneas de 1, 2 o 3 formas)
-const STAGE_SCALE={2:[.75,1.1],3:[.78,.93,1.08]};
-const stageScale=(d,star)=>{ const n=Array.isArray(d.dex)?d.dex.length:1; return n>1&&STAGE_SCALE[n]?STAGE_SCALE[n][formIdx(d,star,n)]:1; };
-const unitScale=(d,star,o={})=>STAR_SCALE[star-1]*stageScale(d,star)*(d.traits&&d.traits.includes('Legendario')?1.15:1)*(o.boss?1.35:1);
+// Tamaño de las fichas: todas las primeras formas se ven iguales (×0,85: los modelos se normalizan a la misma altura) y, según su altura real,
+// las evoluciones crecen respecto a su base (hasta ×1,45) y los gigantes de una sola forma son más grandes (hasta ×1,6: Rayquaza, Lugia, Kyogre…);
+// los legendarios que no son gigantes, ×1,15. Solo visual
+const UNIT_BASE=.85;
+const stageScale=(d,star)=>{ const ch=[].concat(d.dex).map(dexNum); if(!ch.length) return UNIT_BASE; const n=ch.length, cur=n>1?ch[formIdx(d,star,n)]:ch[0]; return UNIT_BASE*heightSize(ch,cur,1.6); };
+const unitScale=(d,star,o={})=>{ const st=stageScale(d,star), giant=st>UNIT_BASE*1.01&&[].concat(d.dex).length===1; return STAR_SCALE[star-1]*st*(d.traits&&d.traits.includes('Legendario')&&!giant?1.15:1)*(o.boss?1.35:1); };
 // Pokémon bajo el puntero (en pantalla, porque los modelos están de pie)
 function pickActor(test){
  const [px,py]=ptr; let best=null,bd=1e9;
