@@ -29,7 +29,7 @@ const XP_NEED={1:2,2:2,3:6,4:10,5:20,6:36,7:56,8:68,9:68};
 const BASE_INCOME=[0,2,3,4], PASSIVE_XP=[0,2,2]; // 1-2: nivel 2; 1-3: nivel 3 (tres fichas); después +2 por ronda
 const STAGE_DMG={1:1,2:2,3:4,4:6,5:9,6:11,7:15,8:18,9:22};
 const COST_HEX=['#7d8593','#23964a','#2f6fde','#9446cf','#d99a00'];
-const BENCH=9, MAX_ITEMS_BENCH=10;
+const BENCH=9, MAX_ITEMS_BENCH=10, ITEMS_HARD=16;
 
 const T=(icon,color,bp,scope,sum,lv)=>({icon,color,bp,scope,sum,lv});
 const TRAITS={
@@ -521,7 +521,8 @@ function sellOverflow(p){
  if(out.length) note(p,`Tablero lleno: se vendió ${out.join(', ')}`,true);
  return out.length;
 }
-function giveItem(p,it,raw){ it=it||pick(BASIC); if(!raw&&p.mods&&p.mods.anvilBuffet&&ITEMS[it]&&ITEMS[it].comp&&it!=='medal'){ giveAnvil(p,'c'); return it; } if(p.items.length<MAX_ITEMS_BENCH) p.items.push(it); else { p.gold+=2; note(p,'Inventario lleno: objeto convertido en 2 de oro'); } return it; }
+// force: entra aunque el inventario esté lleno (hasta ITEMS_HARD); lo usan los aumentos cuyo efecto depende de tener ese objeto
+function giveItem(p,it,raw,force){ it=it||pick(BASIC); if(!raw&&p.mods&&p.mods.anvilBuffet&&ITEMS[it]&&ITEMS[it].comp&&it!=='medal'){ giveAnvil(p,'c'); return it; } if(p.items.length<(force?ITEMS_HARD:MAX_ITEMS_BENCH)) p.items.push(it); else { p.gold+=2; note(p,'Inventario lleno: objeto convertido en 2 de oro'); } return it; }
 // Guante de Boxeo: objetos que da esta ronda (u.tg). Con Guantes de la Suerte (mods.luckyGloves), los ideales para su rol
 const GLOVE_BIS={r:['band','rage','sharp','expert','razorfang','twin'],a:['band','blood','sharp','hook','justice','expert'],b:['blood','titan','sturdy','band','quick','justice'],
  m:['moon','specs','wise','soothe','energy','expert'],h:['moon','soothe','energy','cure','holy','specs'],t:['vest','leftovers','helmet','scale','royal','sturdy']};
@@ -1721,7 +1722,7 @@ function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
    pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0,interestOf(p)]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
-   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS_BENCH),p.augments])};
+   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,ITEMS_HARD),p.augments])};
 }
 function makePriv(p){ ensureGloves(p);
  const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
@@ -1877,7 +1878,7 @@ function applyPub(d){
    Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000,gn:(+gn|0)%1000});
    if(r.icn!=null&&p!==G.me) p.icn=r.icn;
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
-   if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS_BENCH); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
+   if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,ITEMS_HARD); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
  }
  G.players=list;
@@ -1902,7 +1903,7 @@ function unpackBoard(p,[bo,be]){
 function applyPriv(d){
  const aq=d.aq|0; if(aq<(NET.q|0)&&Date.now()-(NET.qT||0)<1500) return; if(aq>(NET.q|0)) NET.q=aq; // aún no ha procesado tu última acción: este estado es anterior
  const me=G.me;
- Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,MAX_ITEMS_BENCH)});
+ Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,ITEMS_HARD)});
  me.mods=Object.assign(defaultMods(),d.md||{}); me.po=Array.isArray(d.po)?d.po.slice(0,8):null;
  me.agSnap=Array.isArray(d.ag)?d.ag.filter(r=>Array.isArray(r)&&AUG_BY[r[0]]).slice(0,30):[];
  me.loot=d.lt&&typeof d.lt==='object'?{gold:+d.lt.gold||0,units:+d.lt.units||0,items:+d.lt.items||0,value:+d.lt.value||0}:null;
@@ -2594,9 +2595,18 @@ function bindEvents(){
    const hit=itemTargetAt(e);
    if(hit){ doAct({t:'item',idx:d.idx,loc:hit.loc},()=>useItem0(me,d.idx,hit.u,hit.loc)); selected=hit.u; selCombat=null; renderUI(); }
  });
- $('cards').addEventListener('click',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||!inGame()) return; hideTip(); const me=G.me, i=+el.dataset.i, k=me.shop[i];
+ const shopBuy=i=>{ const me=G.me, k=me.shop[i]; hideTip();
    if(k&&DEF[k]&&canBuy(me,i)&&!allUnits(me).some(u=>u.baseId===k)){ const d=DEF[k]; Music.cry(shopName(d),dexOf(d,1)); }
-   doAct({t:'buy',i}); });
+   doAct({t:'buy',i}); };
+ $('cards').addEventListener('click',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||!inGame()) return; if(shopDrag.bought){ shopDrag.bought=false; return; } shopBuy(+el.dataset.i); });
+ // Comprar arrastrando: sacar la carta hacia arriba (SHOP_PULL px) la compra y va a la banca; si se suelta antes, vuelve a su sitio
+ const shopDrag={el:null,y:0,id:0,bought:false}, SHOP_PULL=40, shopReset=()=>{ if(shopDrag.el){ shopDrag.el.style.transform=''; shopDrag.el.style.transition=''; } shopDrag.el=null; };
+ $('cards').addEventListener('dragstart',e=>e.preventDefault());
+ $('cards').addEventListener('pointerdown',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||e.button!==0||!inGame()) return; shopDrag.el=el; shopDrag.y=e.clientY; shopDrag.id=e.pointerId; shopDrag.bought=false; el.style.transition='none'; });
+ addEventListener('pointermove',e=>{ const s=shopDrag; if(!s.el||e.pointerId!==s.id) return; const dy=Math.min(0,e.clientY-s.y); s.el.style.transform=`translateY(${dy}px)`;
+   if(dy<=-SHOP_PULL){ const i=+s.el.dataset.i; s.bought=true; shopReset(); shopBuy(i); } });
+ addEventListener('pointerup',e=>{ if(shopDrag.el&&e.pointerId===shopDrag.id) shopReset(); });
+ addEventListener('pointercancel',shopReset);
  $('xpBtn').addEventListener('click',()=>{ if(inGame()){ if(!$('xpBtn').disabled) Music.xp(); doAct({t:'xp'}); } });
  $('rerollBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'reroll'}); });
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
@@ -2736,7 +2746,7 @@ const FX_EL=new Set(['Fuego','Agua','Planta','Eléctrico','Psíquico','Roca','Dr
 function drawHud(a){
  if(!a.anchor||a.dead) return;
  const R=geo.R, o=a.hud; let [hx,hy]=a.anchor;
- // Como en TFT: barra arriba y, debajo, la fila de objetos (sin estrellas encima: no se quieren sobre la ficha)
+ // Como en TFT: barra arriba y, debajo, la fila de objetos; las estrellas encima de todo, solo en la planificación (en combate no)
  // Los objetos van pegados, marco con marco, y las barras de vida y maná miden exactamente lo mismo que la fila de 3 objetos (marcos incluidos)
  const bsz=Math.max(22,R*.8), bbw=Math.max(2,bsz*.1), slot=bsz+2*bbw, rowW=slot*3;
  const isz=o.items&&o.items.length?bsz:0; let itemsY=hy-isz-4;
@@ -2754,6 +2764,12 @@ function drawHud(a){
    if(shv>0){ ctx.fillStyle='rgba(245,245,245,.95)'; ctx.fillRect(bx+wh*hpK,by,w*shv/tot,hh); }
    ctx.fillStyle='rgba(10,12,24,.7)'; for(let k=300;k<tot;k+=300){ const tx=bx+w*k/tot; ctx.fillRect(tx,by,1,k%1500?hh*.55:hh); }
    if(hasM){ const full=o.mana>=o.maxMana*.9; ctx.fillStyle='#1b2a48'; ctx.fillRect(bx,by+hh+1,w,mh); ctx.fillStyle=full?`hsl(205,100%,${70+15*Math.sin(performance.now()/90)}%)`:'#4aa3ff'; ctx.fillRect(bx,by+hh+1,w*clamp(o.mana/o.maxMana,0,1),mh); }
+   hy=by;
+ } else if(isz) hy=itemsY;
+ if(!o.creep&&o.star&&!a.cu&&(G.phase==='planning'||G.phase==='augment')){
+   ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
+   ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
+   const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
  }
  if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
@@ -3237,7 +3253,7 @@ function renderPlayers(){
  const watching=G.view?G.view.pid:-1;
  $('players').innerHTML=list.map(p=>`<div class="pl ${p===G.me?'me':''} ${p.name===oppName&&!G.view?'opp':''} ${p.id===watching?'watch':''} ${p.alive?'':'dead'} ${p.alive||p===G.me?'click':''}" data-pid="${p.id}" title="${esc(p.name)} · Nivel ${p.level}${p!==G.me?' · Toca para ver '+(combat?'su combate':'su tablero'):''}">
    <div class="plInfo"><span class="nm">${po.has(p.id)?'<span class="poTag" title="Posible rival: aún no te has enfrentado a él en este ciclo">⚔️</span>':''}${p.id===watching?'<span class="poTag" title="Lo estás mirando">👁</span>':''}${nameHTML(p.name,csOfP(p))}${p.remote||(G.mirror&&!p.isBot&&p!==G.me)?' 🌐':''}${p.streak>=2?' 🔥':p.streak<=-2?' 🧊':''}${G.mp&&G.phase==='planning'&&!p.isBot&&p.ready?' ✔':''}</span>
-   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring${csParse(csOfP(p)).fr?' fr':''}" style="--p:${clamp(p.hp,0,100)}${frameVars(csOfP(p))}">${p.alive?`<span class="head tacHead">${artImg(tacKey(p))}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
+   <span class="hp">${p.alive?Math.max(0,R0(p.hp)):'#'+p.place}</span></div><span class="ring${csParse(csOfP(p)).fr?' fr':''}" style="--p:${clamp(p.hp,0,100)}${frameVars(csOfP(p))}">${p.alive?`<span class="head tacHead">${tacArtNow(p)}</span>`:'<span class="head em">💀</span>'}</span></div>`).join('');
  const vi=$('viewInfo');
  if(G.view){ const p=G.players.find(x=>x.id===G.view.pid), o=G.view.opp; vi.hidden=false;
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
@@ -3434,6 +3450,10 @@ function showTacPick(first){
    catch(err){ toast(err.message); $('tacOk').disabled=false; if(err.status===401) showAuth(err.message); }
  };
 }
+// Retrato de la minileyenda de un jugador en su etapa actual (niveles 6 y 8): la forma de Eevee elegida con su carta, las evoluciones con su retrato de forma (art/f)
+function tacArtNow(p){ const t=tacOf(p), st=tacStage(p); if(!st) return artImg(tacKey(p));
+ if(t.pick){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); return k&&CARD_ART[k]?artImg(k):artImg(tacKey(p)); }
+ const dx=t.dex[st], fa=formArt(+dx); return fa?`<img src="${fa}" alt="" class="artPic hF" decoding="async" data-dex="${dx}">`:portraitImg(dx); }
 const tacHeadHTML=(k,s)=>`<span class="head tacHead" style="--hs:${s}px">${artImg(tacKey({tac:k}))}</span>`;
 
 function showHow(){
@@ -3592,8 +3612,8 @@ function rsFriendBtn(b){ if(b.me||NET.mode==='sp'&&!ACC) return ''; const L=FR.l
  if(L&&L.friends.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Amigo</span>';
  if(L&&L.outgoing.some(f=>f.name.toLowerCase()===k)) return '<span class="rsTag">Enviada</span>';
  return `<button class="pxb pxb-sq frIc rsAdd" data-n="${esc(b.n)}" type="button" aria-label="Enviar solicitud de amistad a ${esc(b.n)}" title="Añadir amigo"><i data-i="addfriend" data-s="18"></i></button>`; }
-function rsRow(b){ const pl=b.pl||0, dex=tacDex({tac:TACS[b.tac]?b.tac:'charmander',tacForm:Array.isArray(b.tf)?b.tf:['',''],level:b.lvl|0});
- return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv${csParse(b.cs).fr?' fr':''}" style="${frameVars(b.cs).slice(1)}">${portraitImg(dex)}</span>
+function rsRow(b){ const pl=b.pl||0, tp={tac:TACS[b.tac]?b.tac:'charmander',tacForm:Array.isArray(b.tf)?b.tf:['',''],level:b.lvl|0};
+ return `<div class="rsRow${b.me?' me':''} pl${!pl?0:pl===1?1:pl<=4?2:3}"><div class="rsPl">${pl?ordinal(pl):'—'}</div><span class="frAv rsAv${csParse(b.cs).fr?' fr':''}" style="${frameVars(b.cs).slice(1)}">${tacArtNow(tp)}</span>
   <div class="rsWho"><b>${nameHTML(b.n,b.cs)}</b>${titleOf(b.cs)?`<small class="rsTitle2">«${esc(titleOf(b.cs))}»</small>`:''}<small>Nivel ${b.lvl||'—'} · ${!pl?'En juego':pl===1?'Ganador':'Cae en '+esc(b.rd||'—')}</small></div>
   <div class="hComp rsComp">${(b.u||[]).map(histUnit).join('')||'<span class="small muted">Sin Pokémon</span>'}</div>
   <div class="hTraits rsTr">${(b.t||[]).slice(0,6).map(histTrait).join('')}${(b.a||[]).map(id=>AUG_BY[id]?`<span class="hA" title="${esc(AUG_BY[id].name)}">${augIcon(AUG_BY[id])}</span>`:'').join('')}</div>
@@ -3729,8 +3749,10 @@ function showRankChange(d){
 // ----- historial (6 partidas más recientes, al estilo TFT) -----
 const fmtDate=s=>{ try{ return new Date(s).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
 const fmtDur=s=>s>0?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:'';
-function histUnit(u){ const [key,star,items,dex,name,cost]=u, d=DEF[key];
- return `<div class="hU" style="--cc:${COST_HEX[(cost||(d&&d.cost)||1)-1]}" title="${esc(name||(d?d.name:key))} ${'★'.repeat(star||1)}"><span class="hStars s${star}">${'★'.repeat(star||1)}</span><img src="${SPRITE(dex||(d?dexOf(d,star):0))}" alt="${esc(name||key)}" loading="lazy"><span class="hItems">${(items||[]).map(k=>ITEMS[k]?itemHTML(k,13):'').join('')}</span></div>`; }
+// Con el mismo retrato que la carta de la tienda y la ficha: la forma de su estrella (art/f) o la miniatura de su carta (art/t); el sprite solo si no hay retrato
+function histUnit(u){ const [key,star,items,dex,name,cost]=u, d=DEF[key], dx=dex||(d?dexOf(d,star):0), fa=d&&dx!==dexOf(d,1)?formArt(dx):null;
+ const pic=fa?`<img class="artPic hF" src="${fa}" alt="${esc(name||key)}" loading="lazy" data-dex="${dx}">`:CARD_ART[key]?`<img class="artPic" src="${artThumb(key)}" alt="${esc(name||key)}" loading="lazy" data-dex="${dx}">`:`<img src="${SPRITE(dx)}" alt="${esc(name||key)}" loading="lazy">`;
+ return `<div class="hU" style="--cc:${COST_HEX[(cost||(d&&d.cost)||1)-1]}" title="${esc(name||(d?d.name:key))} ${'★'.repeat(star||1)}"><span class="hStars s${star}">${'★'.repeat(star||1)}</span>${pic}<span class="hItems">${(items||[]).map(k=>ITEMS[k]?itemHTML(k,13):'').join('')}</span></div>`; }
 function histTrait([t,n,tier]){ const Tr=TRAITS[t]; if(!Tr) return ''; const cls=tier>Tr.bp.length?'t4':tier>=Tr.bp.length?'t3':'t'+Math.min(tier,2); return `<span class="hT ${cls}" title="${esc(t)} (${n})">${traitIcon(t)}</span>`; }
 function histRow(m,i){
  const r=m.data||{}, c=r.comp||{units:[],traits:[],augs:[]}, pl=r.place||8, ranked=m.mode==='ranked';

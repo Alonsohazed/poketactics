@@ -219,6 +219,8 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .head.tacHead{background:radial-gradient(circle at 50% 35%,#3a4a7a,#141a30);overflow:hidden}
 .head.tacHead img{width:130%;height:130%;object-fit:cover;margin:-15%}
 .head.tacHead img.artPic{width:100%;height:100%;margin:0;object-position:50% 45%}
+.head.tacHead img.artPic.hF{object-position:97% 45%}
+.rsAv{overflow:hidden}.rsAv img.artPic{width:100%;height:100%;margin:0;object-fit:cover;object-position:50% 45%;image-rendering:auto}.rsAv img.artPic.hF{object-position:97% 45%} /* retrato de forma (art/f, 621×384): el Pokémon está al 68 % del ancho; en un círculo, 97 % lo deja en el centro */
 .pl .lv{position:absolute;right:-4px;bottom:-3px;font-size:10px;font-weight:900;background:#0c1228;border:1px solid var(--line2);border-radius:6px;padding:0 4px}
 .pl.me .ring{--hc:var(--gold);width:52px;height:52px}
 .pl.me .ring .head{--hs:46px}
@@ -1015,6 +1017,9 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .hComp{display:flex;gap:4px;flex-wrap:wrap}
 .hU{position:relative;width:44px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0f1122;clip-path:var(--pxCutS);box-shadow:inset 0 0 0 2px var(--cc)}
 .hU{overflow:hidden}.hU img{width:68px;height:68px;max-width:none;image-rendering:pixelated;margin:-6px -12px -10px}
+/* retratos de las cartas: rellenan el recuadro (la miniatura art/t va centrada; la forma art/f lleva al Pokémon al 68 % del ancho) */
+.hU img.artPic,.rsComp .hU img.artPic{position:absolute;inset:0;width:100%;height:100%;margin:0;object-fit:cover;object-position:50% 45%;image-rendering:auto}.hU img.artPic.hF{object-position:88% 45%}
+.hU .hStars,.hU .hItems{z-index:1}
 .hStars{position:absolute;top:1px;left:0;right:0;text-align:center;font-size:9px;line-height:1;letter-spacing:-1px;color:#cd8f52;text-shadow:1px 1px 0 var(--pxK)}.hStars.s2{color:#d6dde8}.hStars.s3{color:#ffcf33}
 .hItems{position:absolute;bottom:1px;left:0;right:0;display:flex;justify-content:center;gap:1px}
 .hItems .ii{--is:13px}
@@ -1073,11 +1078,11 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .rsAv img{object-fit:contain;transform:none;image-rendering:pixelated}
 .rsWho{display:flex;flex-direction:column;gap:2px;min-width:0}.rsWho b{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rsWho small{font-size:11px;color:var(--pxMut)}
 .rsRow.me .rsWho b{color:var(--pxGold)}
-.rsComp .hU{width:38px;height:46px}.rsComp .hU img{width:60px;height:60px}
+.rsComp{gap:6px}.rsComp .hU{width:38px;height:46px;box-shadow:inset 0 0 0 2px #c9a24a,0 0 0 1px #3a2a0e;border-radius:6px;clip-path:none} /* marco dorado: cada ficha se distingue de la de al lado */.rsComp .hU img{width:60px;height:60px}
 .rsTr{justify-content:flex-end}
 .rsAct{display:grid;place-items:center}.rsAdd{width:34px;height:34px}
 .rsTag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pxMut)}
-.rsFoot{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:16px}.rsFoot .pxb-main{width:min(360px,100%);min-height:60px;justify-content:center}.rsFoot .pxb-main b{font-size:24px;text-transform:uppercase}
+.rsFoot{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:10px}.rsFoot .pxb-main{width:auto;min-width:200px;height:auto;min-height:44px;padding:8px 30px;justify-content:center}.rsFoot .pxb-main b{font-size:18px;text-transform:uppercase}
 @media (max-width:820px){ .rsRow{grid-template-columns:36px 40px minmax(0,1fr) 40px;grid-template-areas:"pl av who act" "comp comp comp comp" "tr tr tr tr"} .rsPl{grid-area:pl} .rsAv{grid-area:av} .rsWho{grid-area:who} .rsAct{grid-area:act} .rsComp{grid-area:comp} .rsTr{grid-area:tr;justify-content:flex-start} .rsHead{flex-direction:column;text-align:center} }
 /* ---------- gacha ---------- */
 .mbox:has(.gaWrap){max-width:980px}
