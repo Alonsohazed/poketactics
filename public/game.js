@@ -231,17 +231,20 @@ const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
 // Etapas: base · nivel 6 · nivel 8 (sin Megaevoluciones). Eevee no tiene línea fija: al llegar a 6 y a 8 eliges su evolución (pick: opciones de cada subida)
 const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,6]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur y Venusaur',dex:[1,2,3]},squirtle:{name:'Squirtle',evo:'Wartortle y Blastoise',dex:[7,8,9]},
  dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154]},
- eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],locked:true,pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]}};
+ eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],locked:true,pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]},
+ // Mew (mítica del gacha): no evoluciona; al ganar un combate copia la minileyenda del rival (mimic: ver mewWin, tecla 1 y 2)
+ mew:{name:'Mew',evo:'copia la minileyenda de quien derrotas',dex:[151,151,151],locked:true,mimic:true}};
 const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
+const tacStar=p=>tacOf(p).mimic?1:tacStage(p)+1; // Mew no evoluciona: sin efecto de evolución a nivel 6 y 8
 const TAC_KEYS=Object.keys(TACS);
 // Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
 const FREE_TACS=TAC_KEYS.filter(k=>!TACS[k].locked);
 // Rarezas del selector de minileyendas (lista seccionada; las vacías salen como «Próximamente»)
-const TAC_TIERS=[['Común','comun',['charmander','bulbasaur','squirtle','pichu','chikorita']],['Poco común','pococomun',['dratini','abra']],['Raro','raro',[]],['Épico','epico',[]],['Legendario','legendario',['eevee']]];
+const TAC_TIERS=[['Común','comun',['charmander','bulbasaur','squirtle','pichu','chikorita']],['Poco común','pococomun',['dratini','abra']],['Raro','raro',[]],['Épico','epico',[]],['Legendario','legendario',['eevee','mew']]];
 const tacOwned=k=>!!TACS[k]&&(!TACS[k].locked||!!(typeof ACC!=='undefined'&&ACC&&ACC.cosm&&Array.isArray(ACC.cosm.inv)&&ACC.cosm.inv.includes('tac:'+k)));
 // Número de Pokédex que se dibuja: el de la línea, o el que haya elegido el jugador con Eevee (tacForm = [forma de nivel 6, forma de nivel 8])
 const tacOf=p=>TACS[p&&p.tac]||TACS.charmander;
-const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.pick&&st>0){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); if(k&&DEF[k]) return dexOf(DEF[k],1); return t.dex[0]; } return t.dex[st]; };
+const tacDex=p=>{ const t=tacOf(p), st=tacStage(p); if(t.mimic) return p.mewF||t.dex[0]; if(t.pick&&st>0){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); if(k&&DEF[k]) return dexOf(DEF[k],1); return t.dex[0]; } return t.dex[st]; };
 // Eevee (prueba): desde el nivel 6 (y para siempre), las teclas 1, 2 y 3 le dan la forma Vaporeon, Flareon o Jolteon (se puede cambiar cuantas veces se quiera)
 const EEVEE_KEYS=['vaporeon','flareon','jolteon'];
 
@@ -1565,6 +1568,12 @@ function growPotential(){
  for(const p of alivePlayers()){ const k=traitTiers(p)['Potencial Evolutivo']||0; if(!k) continue; const hp=[0,12,25,45,80][k], ad=[0,1,2,4,8][k];
    for(const u of boardUnits(p)) if(unitTraits(u).includes('Potencial Evolutivo')){ const m=u.star>=3?2:1; u.stk.hp+=hp*m; u.stk.ad+=ad*m; u.stk.ap=(u.stk.ap||0)+ad*m*AP_PER_AD; } }
 }
+// Mew (minileyenda mítica): al ganar un combate PvP toma la apariencia de la minileyenda del rival (tal como la lleva: evolución y forma)
+// y la desbloquea para esta partida; con la tecla 1 cambia al azar entre las desbloqueadas y con la 2 vuelve a ser Mew (acción mform). Solo visual
+const MEW_MAX=16;
+function mewWin(w,l){ if(!w||!l||!tacOf(w).mimic) return; const d=tacDex(l); if(!d||d===tacOf(w).dex[0]) return;
+ w.mewSk=w.mewSk||[]; if(!w.mewSk.includes(d)&&w.mewSk.length<MEW_MAX) w.mewSk.push(d); w.mewF=d; w.mewN=(w.mewN|0)+1;
+ note(w,`✨ Mew toma la forma de la minileyenda de ${l.name}`); }
 function resolveRound(){
  if(G.phase!=='combat') return;
  const R=G.round, base=STAGE_DMG[R.s]||22, me=G.me; const msgs=new Map(), extraGold={}, gold0=new Map(G.players.map(p=>[p,p.gold]));
@@ -1593,6 +1602,7 @@ function resolveRound(){
    A.lastOpp=B.id; if(!f.ghost) B.lastOpp=A.id;
    // Resultado de cada ronda PvP (las espadas de la barra de fases se pintan de verde o rojo; el empate cuenta como derrota)
    for(const p of f.ghost?[A]:[A,B]) (p.rres=p.rres||{})[G.roundIdx]=won.get(p)?'W':'L';
+   if(!f.ghost){ if(won.get(A)) mewWin(A,B); if(won.get(B)) mewWin(B,A); }
    say(A,c.winner===0?`✅ Victoria contra ${B.name}`:c.winner===1?`❌ Derrota contra ${B.name}: −${A.lastDmg} de vida`:`⏱️ Empate por tiempo con ${B.name}: −${A.lastDmg} de vida`);
    if(!f.ghost) say(B,c.winner===1?`✅ Victoria contra ${A.name}`:c.winner===0?`❌ Derrota contra ${A.name}: −${B.lastDmg} de vida`:`⏱️ Empate por tiempo con ${A.name}: −${B.lastDmg} de vida`);
  }
@@ -1684,6 +1694,11 @@ function applyAct(p,a){
   case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
   case 'pick': return resolvePick(p,a.id|0,idx(a.i));
   case 'tac': { if(!TACS[a.k]) return {ok:false}; p.tac=a.k; return {ok:true}; }
+  case 'mform': { if(!tacOf(p).mimic) return {ok:false}; const k=a.k|0, now=Date.now(); if(now-(p.mewT||0)<900) return {ok:false};
+    if(k===2){ if(!p.mewF) return {ok:false}; p.mewF=0; }
+    else if(k===1){ const o=(p.mewSk||[]).filter(d=>d!==p.mewF); if(!o.length) return {ok:false,why:'Gana un combate para copiar la minileyenda de tu rival'}; p.mewF=pick(o); }
+    else return {ok:false};
+    p.mewT=now; p.mewN=(p.mewN|0)+1; return {ok:true}; }
   case 'tform': { const f=EEVEE_KEYS[(a.k|0)-1]; if(p.tac!=='eevee'||tacStage(p)<1||!f) return {ok:false}; p.tacForm=p.tacForm||['','']; p.tacForm[0]=f; return {ok:true}; }
   case 'orb': { return {ok:!!openPlayerOrb(p,a.id|0,false)}; }
   // Burla de Charmander (H): se cuenta para que todos los que miran su tablero la vean (el contador viaja en pub.pl[i][17])
@@ -1720,7 +1735,7 @@ const interestOf=p=>p.mods&&p!==G.me&&p.icn!=null&&NET.mode==='client'?p.icn:Mat
 function combatOpp(){ const me=G.me, v=G.view; if(G.phase!=='combat'||!G.round||G.round.type==='pve') return null; const o=v?v.opp:G.players.find(p=>p!==me&&G.myOpp&&G.myOpp.replace(' (fantasma)','')===p.name); return o&&o!==me?o:null; }
 function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
-   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0,interestOf(p)]),
+   pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0,interestOf(p),[p.mewF|0,p.mewN|0,(p.mewSk||[]).length]]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,ITEMS_HARD),p.augments])};
 }
@@ -1872,11 +1887,12 @@ function applyPub(d){
  G.timer=d.tl>=0?d.tl:Infinity; G.speed=[1,2,4].includes(d.sp)?d.sp:1; if(Array.isArray(d.at)) G.augTiers=d.at; G.diff=d.dif||'normal';
  const list=[];
  for(const r of d.pl.slice(0,8)){
-   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn,gn,icn]=r;
+   const [id,name,emoji,hp,level,streak,alive,place,peer,bot,ready,bn,tr,up,tac,tf,tp,tn,gn,icn,mw]=r;
    if(Number.isFinite(+icn)) r.icn=clamp(+icn|0,0,5);
    const p=peer&&peer===NET.myPeer?G.me:(G.players.find(x=>x.id===id&&x!==G.me)||makePlayer(id,'',!!bot,''));
    Object.assign(p,{id,name:String(name).slice(0,20),emoji:String(emoji).slice(0,4),tr:TRAINER_BY[tr]?tr:'',hp:+hp,level:+level,streak:+streak,alive:!!alive,place:+place,peer:String(peer||''),isBot:!!bot,ready:!!ready,boardN:+bn||0,lastUp:Array.isArray(up)&&up.length===3?up.map(Number):null,tac:TACS[tac]?tac:p.tac,tacForm:String(tf||',').split(',').slice(0,2).map(k=>DEF[k]?k:''),tp:Array.isArray(tp)&&tp.length===3&&tp.every(Number.isFinite)?tp:null,tn:(+tn|0)%1000,gn:(+gn|0)%1000});
    if(r.icn!=null&&p!==G.me) p.icn=r.icn;
+   if(Array.isArray(mw)){ p.mewF=clamp(mw[0]|0,0,1100); p.mewN=mw[1]|0; p.mewK=clamp(mw[2]|0,0,MEW_MAX); }
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,ITEMS_HARD); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
@@ -2104,6 +2120,14 @@ const Music=(()=>{
    // 3) destellos que caen en cascada sobre el acorde
    for(let i=0;i<(big?9:5);i++) this.chime(root*8*[1,1.25,1.5,2][i%4]*(i%2?1.0:2),hit+.08+i*(big?.09:.07),.05,.5);
    if(mega){ const t2=hit+.55; [523,659,784,1047].forEach((f,i)=>this.chime(f*2,t2+i*.05,.07,.6)); pad(root*4,t2,1.6,.035,'triangle'); } },
+  // Transformación de Mew: zumbido psíquico que ondula (baja y vuelve a subir) y un destello al final, menos de medio segundo
+  morph(){ if(!ac||S.muted) return; const t=ac.currentTime+.01;
+   for(const [f0,det] of [[880,0],[887,9]]){ const o=ac.createOscillator(), lfo=ac.createOscillator(), lg=ac.createGain(), bp=ac.createBiquadFilter(), g=ac.createGain();
+     o.type='triangle'; o.detune.value=det; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(240,t+.2); o.frequency.exponentialRampToValueAtTime(700,t+.42);
+     lfo.frequency.value=22; lg.gain.value=60; lfo.connect(lg); lg.connect(o.frequency); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=.8;
+     g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.07,t+.04); g.gain.exponentialRampToValueAtTime(.0001,t+.46);
+     o.connect(bp); bp.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t+.5); lfo.stop(t+.5); }
+   this.chime(1568,t+.36,.08,.35); this.chime(2093,t+.42,.06,.4); },
   // Comprar EXP: oro que se convierte en energía (barrido ascendente con brillo al final)
   xp(){ if(!ac||S.muted) return; const t=ac.currentTime+.01, o=ac.createOscillator(), f=ac.createBiquadFilter(), g=ac.createGain();
    o.type='sawtooth'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(880,t+.22); f.type='lowpass'; f.frequency.setValueAtTime(600,t); f.frequency.exponentialRampToValueAtTime(3200,t+.22); f.Q.value=6;
@@ -2460,6 +2484,8 @@ function greetText(p,n){ const d=cosD(p,'gr'); return d?d.lines[(n|0)%d.lines.le
 function greet(){ const me=G&&G.me; if(!me||!me.alive||modalOpen()) return; const now=performance.now(); if(now-(TAC.grT||0)<1500) return; TAC.grT=now;
  TAC.grN=(TAC.grN||0)+1; trEmote={t0:now,txt:greetText(me,TAC.grN)}; if(NET.mode==='client') doAct({t:'greet'}); }
 // Teclas 1-3 con la minileyenda Eevee desde el nivel 6: cambia su forma al momento y avisa a los demás
+function mewForm(n){ const me=G&&G.me; if(!me||!me.alive||!tacOf(me).mimic||n>2) return; if(n===2&&!me.mewF) return;
+ if(n===1&&!(me.mewK||(me.mewSk||[]).length)){ toast('Gana un combate para copiar la minileyenda de tu rival'); return; } doAct({t:'mform',k:n}); }
 function eeveeForm(n){ const me=G&&G.me; if(!me||!me.alive||me.tac!=='eevee'||tacStage(me)<1||!EEVEE_KEYS[n-1]) return; if(me.tacForm&&me.tacForm[0]===EEVEE_KEYS[n-1]) return;
  doAct({t:'tform',k:n}); }
 const EMOTES=['¡Vamos!','😤','👍','¡Allá voy!','😎','GG','🔥','¿Eso es todo?'];
@@ -2648,7 +2674,7 @@ function bindEvents(){
    else if(k==='e'&&hover){ doAct({t:'sell',loc:hover.loc}); if(selected===hover.u) selected=null; hover=null; }
    else if(k==='t'){ greet(); }
    else if(k==='h'){ tacFire(); }
-   else if(k>='1'&&k<='3'&&!e.ctrlKey&&!e.metaKey&&!e.altKey) eeveeForm(+k);
+   else if(k>='1'&&k<='3'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ if(G.me&&tacOf(G.me).mimic) mewForm(+k); else eeveeForm(+k); }
  });
  document.addEventListener('pointerover',e=>{ const el=e.target.closest&&e.target.closest('[data-tip]'); if(!el||itemDrag){ if(!itemDrag) hideTip(); return; } if(tipAnchor===el) return; showTip(el.dataset.tip,e,el); });
  window.addEventListener('resize',layout);
@@ -2878,9 +2904,9 @@ function sceneActors(){
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
-   A.push({key:'tac:'+me.id,tac:true,dex:tacDexC(me),trail:trailOf(me),star:tacStage(me)+1,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
-   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStage(o.p)+1,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
- else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStage(p)+1,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
+   A.push({key:'tac:'+me.id,tac:true,dex:tacDexC(me),trail:trailOf(me),star:tacStar(me),morph:me.mewN|0,x:TAC.x,y:TAC.y,face:Math.PI*.85,cast:TAC.castN||0,tx:TAC.fireT&&performance.now()-TAC.fireT<1100?TAC.fx:null,ty:TAC.fy,ring:'#4c8dff',scale:.72,hud:{}});
+   for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStar(o.p),morph:o.p.mewN|0,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72,hud:{}}); }
+ else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStar(p),morph:p.mewN|0,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62,alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
@@ -3114,7 +3140,7 @@ const ART_V=3;
 let ART_EXT='avif';
 const ART_FOCUS={}, ART_DEF=[68,50,1,.87];   // 4.º valor: escala mínima respecto al ancho (.87 = el retrato entero, sin ampliar de más)
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
-const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
+const CARD_ART=Object.fromEntries('abra absol bagon beldum bulbasaur charmander chikorita cleffa darkrai diglett ditto dratini drowzee duskull eevee elekid espeon flareon gastly geodude gible gimmighoul giratina groudon growlithe hatenna hooh horsea houndour igglybuff jolteon kyogre lapras larvitar leafeon litwick lugia machop magikarp magnemite meowth mew mewtwo mimejr misdreavus moltres munchlax oddish onix pichu poliwag ponyta psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye scyther shellder shinx squirtle sylveon tauros timburr togepi turtwig umbreon vaporeon zapdos zorua'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 // Cabezas, minimapa y menú usan la miniatura (224 px, ~5 KB; la ilustración completa de la tienda pesa hasta 43 KB). Si falla (CDN y luego nuestro servidor), se muestra el sprite de la Pokédex en vez de una imagen rota o de cargar un modelo 3D
 const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.'+ART_EXT+'?v='+ART_V;
@@ -3130,7 +3156,7 @@ const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
 const portraitWait=new Set();
 if(!HEADLESS) window.addEventListener('b3ready',()=>{ for(const d of portraitWait) portraitImg(d); portraitWait.clear(); });
 // Retratos pequeños (ficha, lista de daño, formas): el sprite de public/dex (~3 KB, instantáneo) en vez de renderizar el modelo 3D, que obligaba a descargar el .glb (50-460 KB) y mostraba una Poké Ball girando hasta entonces. Solo los que no tienen sprite siguen con el 3D
-const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,532,533,534,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
+const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,151,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,532,533,534,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
 function portraitImg(dex){ const n=String(dex).split(/[:/]/).pop(); if(DEX_FILES.has(+n)) return `<img src="${dexUrl(n)}" alt="" decoding="async" data-sp="${n}" class="dexPic">`;
  if(!(window.B3&&B3.portrait)) portraitWait.add(dex);
  const url=window.B3&&B3.portrait?B3.portrait(dex,u=>{ if(u) document.querySelectorAll(`img[data-pdex="${dex}"]`).forEach(im=>{ im.src=u; im.classList.remove('loadingBall'); }); }):null;
@@ -3206,11 +3232,12 @@ const shopName=d=>Array.isArray(d.names)?d.names[formIdx(d,1,d.dex.length)]:d.na
 // Suena la evolución cuando una ficha tuya sube de estrellas o tu minileyenda cambia de etapa
 let sndWatch={g:null,up:0,tac:0};
 function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join(), stk=me.streak|0;
- if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm,stk}; return; }
+ if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm,stk,mew:me.mewN|0}; return; }
  if(stk>0&&stk!==sndWatch.stk&&G.round&&G.round.type!=='pve'){ const d=cosD(me,'fn'); if(d) Music.fanfare(d.notes); }
  if(up>sndWatch.up) Music.evolve(me.lastUp[1]>=3?'big':'unit'); // a 3★, la versión larga (la de la minileyenda)
- if(tac>sndWatch.tac||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
- sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
+ if((tac>sndWatch.tac&&!tacOf(me).mimic)||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
+ if((me.mewN|0)>(sndWatch.mew|0)) Music.morph();
+ sndWatch.mew=me.mewN|0; sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
 // Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
 let DEX_NAME=null;
 const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
@@ -3438,12 +3465,12 @@ function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
  const opt=k=>{ const t=TACS[k], own=tacOwned(k);
-   if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="${t.name}: solo se consigue en el gacha" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span><span class="tacLock"><i data-i="crystal" data-s="14"></i>Gacha</span><small class="tpPity">Mítica · ${typeof COSM!=='undefined'?`Eevee garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:'Solo en el gacha'}</small></button>`;
+   if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="${t.name}: solo se consigue en el gacha" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span><span class="tacLock"><i data-i="crystal" data-s="14"></i>Gacha</span><small class="tpPity">Mítica · ${typeof COSM!=='undefined'?(COSM.missingMythics(ACC&&ACC.cosm)[0]==='tac:'+k?`${t.name} garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:`${t.name}: tras conseguir la otra mítica`):'Solo en el gacha'}</small></button>`;
    return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}" type="button" title="${t.name}" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span></button>`; };
  openModal(`<div class="tpHead"><h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><span class="tpHelpWrap"><button class="tpHelp" id="tpHelp" type="button" aria-label="Qué es la minileyenda" aria-describedby="tpInfo">?</button><p class="tpInfo" id="tpInfo" role="tooltip">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p></span></div>
   <div class="tacPick">${TAC_TIERS.map(([name,cls,keys])=>`<section class="tpTier ${cls}"><h4>${name}</h4><div class="tpList">${keys.length?keys.map(opt).join(''):'<span class="tpSoon">Próximamente</span>'}</div></section>`).join('')}</div>
   <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="tacOk">Confirmar</button></div>`,{closable:!first,tp:true,onClose:()=>{ if(ACC) showMenu(); }});
- $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast('Eevee solo se consigue en el gacha'); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
+ $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast(`${TACS[b.dataset.k].name} solo se consigue en el gacha`); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
    $('tacOk').disabled=true;
    try{ const {user}=await api('/api/me',{trainer:sel}); applyAccount(user); closeModal(); showMenu(); }
@@ -3451,7 +3478,7 @@ function showTacPick(first){
  };
 }
 // Retrato de la minileyenda de un jugador en su etapa actual (niveles 6 y 8): la forma de Eevee elegida con su carta, las evoluciones con su retrato de forma (art/f)
-function tacArtNow(p){ const t=tacOf(p), st=tacStage(p); if(!st) return artImg(tacKey(p));
+function tacArtNow(p){ const t=tacOf(p), st=tacStage(p); if(!st||t.mimic) return artImg(tacKey(p));
  if(t.pick){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); return k&&CARD_ART[k]?artImg(k):artImg(tacKey(p)); }
  const dx=t.dex[st], fa=formArt(+dx); return fa?`<img src="${fa}" alt="" class="artPic hF" decoding="async" data-dex="${dx}">`:portraitImg(dx); }
 const tacHeadHTML=(k,s)=>`<span class="head tacHead" style="--hs:${s}px">${artImg(tacKey({tac:k}))}</span>`;
@@ -3920,9 +3947,9 @@ function cosChip(key){ const it=COSM.BY[key], d=it?it.d:{}, ty=COSM.typeOf(key),
   case 'tac': return `<span class="cc cc-mythic">${artImg('eevee')}</span>`;
  } return ''; }
 function gaCard(r,i){ const t=COSM.TIER[r.t]||cosTier(r.key), it=COSM.BY[r.key], name=r.key==='cd'?'Caramelos de vuelta':r.key==='dust'?'Polvo Estelar':it?it.name:r.key;
- return `<div class="gaCard t-${r.t}" style="--tc:${t.col};--i:${i}"><span class="gaTier">${r.t==='x'?'Colección':t.name}</span>${cosChip(r.key)}<b>${esc(name)}</b><small>${r.key==='cd'?'Caramelos':r.key==='dust'?'Ya tienes a Eevee':COSM.TYPES[COSM.typeOf(r.key)]||''}</small>${r.new?'<em class="gaNew">Nuevo</em>':r.dup?`<em class="gaDup">Repetido · +${r.dust} polvo</em>`:''}</div>`; }
-function gaPityHTML(st){ if(st.eevee) return '<div class="gaPity owned"><span>Ya tienes a Eevee: si vuelve a salir la mítica, recibes 1.500 de Polvo Estelar</span></div>';
- const done=COSM.PITY-st.pityLeft; return `<div class="gaPity"><span>Eevee garantizado en <b>${st.pityLeft}</b> tirada${st.pityLeft===1?'':'s'}</span><div class="rkBar" role="progressbar" aria-label="Garantía de Eevee" aria-valuemin="0" aria-valuemax="${COSM.PITY}" aria-valuenow="${done}"><i style="width:${done/COSM.PITY*100}%"></i></div></div>`; }
+ return `<div class="gaCard t-${r.t}" style="--tc:${t.col};--i:${i}"><span class="gaTier">${r.t==='x'?'Colección':t.name}</span>${cosChip(r.key)}<b>${esc(name)}</b><small>${r.key==='cd'?'Caramelos':r.key==='dust'?'Ya tienes las míticas':COSM.TYPES[COSM.typeOf(r.key)]||''}</small>${r.new?'<em class="gaNew">Nuevo</em>':r.dup?`<em class="gaDup">Repetido · +${r.dust} polvo</em>`:''}</div>`; }
+function gaPityHTML(st){ if(st.allMythic) return '<div class="gaPity owned"><span>Ya tienes a Eevee y a Mew: si vuelve a salir la mítica, recibes 1.500 de Polvo Estelar</span></div>';
+ const done=COSM.PITY-st.pityLeft; const nx=(COSM.BY[COSM.missingMythics({inv:st.inv||[]})[0]]||{}).name||'Eevee'; return `<div class="gaPity"><span>${nx} garantizado en <b>${st.pityLeft}</b> tirada${st.pityLeft===1?'':'s'}</span><div class="rkBar" role="progressbar" aria-label="Garantía de mítica" aria-valuemin="0" aria-valuemax="${COSM.PITY}" aria-valuenow="${done}"><i style="width:${done/COSM.PITY*100}%"></i></div></div>`; }
 function gaDailyBtn(st){ const l={lista:'Tirada diaria gratis',usada:'Diaria usada hoy',jugar:'Diaria: termina una partida'}[st.daily];
  return `<button class="pxb gaDaily${st.daily==='lista'?' ready':''}" id="gaD" type="button" ${st.daily==='lista'?'':'aria-disabled="true"'}><i data-i="star" data-s="20"></i><span>${l}</span></button>`; }
 function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return;
@@ -3939,7 +3966,7 @@ function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return;
  $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; $('gaColl').onclick=gaColl; $('gaPz').onclick=()=>gaPz(); }
 async function showGacha(){ openModal('<div class="gaWrap" id="gaWrap"><p class="muted">Cargando…</p></div>',{closable:true,kind:'gacha'});
  try{ GA.st=await api('/api/gacha'); }catch(e){ const el=$('gaWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; } renderGacha(); }
-function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pity=o.pity; st.pityLeft=o.pityLeft; for(const r of o.res||[]) if(r.new&&!st.inv.includes(r.key)) st.inv.push(r.key); if((o.res||[]).some(r=>r.key===COSM.EEVEE&&r.new)) st.eevee=true;
+function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pity=o.pity; st.pityLeft=o.pityLeft; for(const r of o.res||[]) if(r.new&&!st.inv.includes(r.key)) st.inv.push(r.key); if((o.res||[]).some(r=>r.key===COSM.EEVEE&&r.new)) st.eevee=true; if(!COSM.missingMythics({inv:st.inv}).length) st.allMythic=true;
  if(ACC){ ACC.comp.candies=o.candies; ACC.cosm=Object.assign(ACC.cosm||{},{inv:st.inv.slice(),pity:o.pity,dust:o.dust,eevee:st.eevee}); renderMenu(); } }
 async function gaDo(op,body){ if(GA.busy) return; const st=GA.st; if(op==='roll'&&st.candies<(body.n===10?st.price10:st.price)){ toast(`Necesitas ${body.n===10?st.price10:st.price} caramelos`); return; }
  GA.busy=true; document.querySelectorAll('#gaWrap .gaBtns .pxb').forEach(b=>b.disabled=true);
@@ -3952,7 +3979,7 @@ async function gaDo(op,body){ if(GA.busy) return; const st=GA.st; if(op==='roll'
  await new Promise(r=>setTimeout(r,650)); GA.busy=false; gaSync(o); if(!$('gaWrap')) return; renderGacha();
  $('gaBall').className='gaBall open t-'+best; $('gaBall').style.setProperty('--tc',tc);
  $('gaRes').innerHTML=`<div class="gaCards n${o.res.length>1?'10':'1'}">${o.res.map(gaCard).join('')}</div>`; hydrate($('gaRes')); PX.hydrate($('gaRes'));
- if(o.eevee) toast('¡Has conseguido a Eevee, la minileyenda mítica!'); }
+ if(o.eevee) toast(o.mythic===COSM.MEW?'¡Has conseguido a Mew, la minileyenda mítica!':'¡Has conseguido a Eevee, la minileyenda mítica!'); }
 function gaBack(){ return '<button class="pxLink" id="gaBack" type="button">← Volver al gacha</button>'; }
 function gaSub(html){ const el=$('gaWrap'); el.innerHTML=gaBack()+html; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; }
 function gaOdds(){ const per=t=>COSM.POOL[t].length;
@@ -3961,7 +3988,7 @@ function gaOdds(){ const per=t=>COSM.POOL[t].length;
  ${COSM.TIERS.map(t=>{ const n=per(t.k), pc=t.k==='c'?t.p*(1-COSM.REFUND_SHARE):t.p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${(t.p*100).toLocaleString('es-ES',{maximumFractionDigits:1})} %</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${(pc/n*100).toLocaleString('es-ES',{maximumFractionDigits:3})} %</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
  </tbody></table>
  <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString('es-ES')} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
- <li><b>Eevee</b> (mítica): 0,1 % fijo por tirada, sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b>. La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
+ <li><b>Eevee y Mew</b> (míticas): 0,1 % fijo por tirada (te toca una de las que te faltan), sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b> (primero Eevee y después Mew). La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
  <li><b>Colecciones:</b> reúne todos los premios de un elemento y ganas su título exclusivo (${COSM.COLLECTIONS.map(c=>'«'+esc(COSM.BY[c.reward].name)+'»').join(', ')}).</li>
  <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`); }
 function gaHist(){ const h=(GA.st.hist||[]).slice().reverse();
@@ -3999,7 +4026,7 @@ function gaColl(){ const st=GA.st, own=new Set(st.inv), all=COSM.LIST.filter(i=>
    return `<h3 class="gaShopH">${COSM.TYPES[ty]} · ${n}/${items.length}</h3><div class="gaShop coGrid">${items.map(i=>{ const t=COSM.TIER[i.t], h=own.has(i.key);
      return `<div class="gaItem${h?'':' locked'}" style="--tc:${t.col}" title="${h?'':'Aún no lo tienes · '}${esc(t.name)}">${cosChip(i.key)}<b>${esc(i.name)}</b><small>${t.name}</small></div>`; }).join('')}</div>`; }).join('')}`); }
 // Anuncio: alguien ha conseguido a Eevee (solo llega a quien está en el menú)
-function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a Eevee</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
+function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a ${d.k==='mew'?'Mew':'Eevee'}</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }

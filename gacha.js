@@ -30,7 +30,7 @@ function rarity(rng) { const r = rng(); let acc = 0; for (const t of COSM.TIERS)
 function grant(c, key) {
   const it = COSM.BY[key], tier = COSM.TIER[it.t];
   if (c.inv.includes(key)) { const d = tier ? tier.dust : 0; c.dust += d; return { key, t: it.t, dup: true, dust: d }; }
-  c.inv.push(key); if (key === COSM.EEVEE) c.eevee = new Date().toISOString().slice(0, 10);
+  c.inv.push(key); if (key === COSM.EEVEE) c.eevee = new Date().toISOString().slice(0, 10); if (key === COSM.MEW) c.mew = new Date().toISOString().slice(0, 10);
   return { key, t: it.t, new: true };
 }
 // Colecciones recién completadas → su título
@@ -38,14 +38,15 @@ function collections(c) { const out = [];
   for (const col of COSM.COLLECTIONS) if (!c.inv.includes(col.reward) && col.items.every(k => c.inv.includes(k))) { c.inv.push(col.reward); out.push({ key: col.reward, t: 'x', new: true, col: col.k }); }
   return out; }
 
-// Una tirada: rareza → premio. Cuenta para la garantía de Eevee (si aún no la tienes)
+// Una tirada: rareza → premio. Cuenta para la garantía de mítica mientras te falte alguna (Eevee, Mew): la garantía da la primera que falte
+// en orden y la mítica al azar, una cualquiera de las que faltan
 function rollOne(comp, c, rng) {
-  const has = COSM.hasEevee(c); if (!has) c.pity++;
+  const miss = COSM.missingMythics(c), has = !miss.length; if (!has) c.pity++;
   let t = rarity(rng); // un solo sorteo: la mítica es el primer tramo (0,1 %)
   if (!has && c.pity >= COSM.PITY) t = 'm'; // garantía
   if (t === 'm') {
     if (has) { c.dust += COSM.BIG_DUST; return { key: 'dust', t: 'm', dust: COSM.BIG_DUST }; } // ya la tienes: Polvo Estelar
-    c.pity = 0; return grant(c, COSM.EEVEE);
+    const k = c.pity >= COSM.PITY ? miss[0] : pick(miss, rng); c.pity = 0; return grant(c, k);
   }
   if (t === 'c' && rng() < COSM.REFUND_SHARE) { comp.candies += COSM.REFUND; return { key: 'cd', t: 'c', candy: COSM.REFUND }; }
   return grant(c, pick(COSM.POOL[t], rng));
@@ -76,7 +77,8 @@ function apply(comp0, cosm0, req, ctx) {
   res = res.concat(collections(c));
   const now = Math.floor(Date.now() / 1000); if (req.op !== 'buy') for (const r of res) if (r.t !== 'x') c.hist.push([now, r.key]);
   c.hist = c.hist.slice(-COSM.HIST);
-  const out = { res, candies: comp.candies, dust: c.dust, pity: c.pity, eevee: res.some(r => r.key === COSM.EEVEE && r.new) };
+  const myth = res.find(r => COSM.MYTHICS.includes(r.key) && r.new);
+  const out = { res, candies: comp.candies, dust: c.dust, pity: c.pity, eevee: !!myth, mythic: myth ? myth.key : '' };
   c.nonce = { id: req.nonce, res: out };
   return { comp, cosm: c, out };
 }
@@ -97,7 +99,7 @@ function equip(comp0, cosm0, { slot, key }) {
 // Estado para la pantalla del gacha (solo lo propio)
 function view(comp0, cosm0, ctx) {
   const comp = normComp(comp0), c = normCosm(cosm0);
-  return { candies: comp.candies, dust: c.dust, pity: c.pity, pityLeft: COSM.pityLeft(c), eevee: COSM.hasEevee(c), inv: c.inv, eq: c.eq, hist: c.hist,
+  return { candies: comp.candies, dust: c.dust, pity: c.pity, pityLeft: COSM.pityLeft(c), eevee: COSM.hasEevee(c), allMythic: !COSM.missingMythics(c).length, inv: c.inv, eq: c.eq, hist: c.hist,
     daily: c.day === ctx.today ? 'usada' : ctx.playedToday ? 'lista' : 'jugar', price: COSM.PRICE, price10: COSM.PRICE10 };
 }
 

@@ -484,6 +484,21 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   ok(!E.applyAct(p, { t: 'surrender' }).ok, 'rendirse: ya eliminado, no se puede repetir');
   ok(G.players.filter(x => x.alive).length === vivos - 1 && !G.over, 'rendirse: la partida sigue para los demás'); }
 
+// Mew (minileyenda mítica): al ganar copia la minileyenda del rival; tecla 1 = una al azar de las copiadas, tecla 2 = vuelve a ser Mew (acción mform)
+{ const { G } = fresh(); const mewWin = vm.runInContext('mewWin', ctx), tacDex = vm.runInContext('tacDex', ctx);
+  const [m, a, b] = G.players; m.tac = 'mew'; a.tac = 'charmander'; a.level = 6; b.tac = 'squirtle'; b.level = 1; m.mewSk = []; m.mewF = 0; m.mewN = 0; m.mewT = 0;
+  ok(tacDex(m) === 151, 'Mew: sin copias se ve como Mew');
+  ok(!E.applyAct(m, { t: 'mform', k: 1 }).ok, 'Mew: la tecla 1 no hace nada sin copias');
+  mewWin(m, a); ok(m.mewF === 5 && tacDex(m) === 5 && m.mewSk.join() === '5' && m.mewN === 1, 'Mew: al ganar a un Charmeleon toma su forma');
+  mewWin(m, b); ok(m.mewF === 7 && m.mewSk.join() === '5,7', 'Mew: al ganar a Squirtle lo añade y lo copia');
+  mewWin(m, a); ok(m.mewSk.length === 2, 'Mew: no repite copias');
+  m.mewT = 0; ok(E.applyAct(m, { t: 'mform', k: 1 }).ok && m.mewF === 7 && m.mewN === 4, 'Mew: la tecla 1 cambia a otra copia');
+  ok(!E.applyAct(m, { t: 'mform', k: 2 }).ok, 'Mew: no se puede cambiar dos veces en menos de un segundo');
+  m.mewT = 0; ok(E.applyAct(m, { t: 'mform', k: 2 }).ok && m.mewF === 0 && tacDex(m) === 151, 'Mew: la tecla 2 vuelve a Mew');
+  m.mewT = 0; ok(!E.applyAct(m, { t: 'mform', k: 2 }).ok && !E.applyAct(m, { t: 'mform', k: 7 }).ok && !E.applyAct(m, { t: 'mform' }).ok, 'Mew: entradas inválidas rechazadas');
+  a.mewT = 0; ok(!E.applyAct(a, { t: 'mform', k: 1 }).ok, 'Mew: quien no lleva a Mew no puede usar mform');
+  mewWin(a, m); ok(!a.mewSk && a.mewF === undefined, 'Mew: los demás no copian nada al ganar a Mew');
+  const m2 = G.players[3]; m2.tac = 'mew'; m2.mewF = 0; mewWin(m2, m); ok(!m2.mewSk || !m2.mewSk.length, 'Mew: ganar a un Mew sin copia no da nada'); }
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');

@@ -342,7 +342,8 @@ ready.then(() => server.listen(0, async () => {
       assert.strictEqual(gnA, 1, 'el saludo llega a todos y el segundo seguido se ignora');
       assert(!/script/.test(JSON.stringify(lastPub)), 'el saludo nunca lleva texto del navegador');
       // Cristales de intereses de cada jugador (para encender los rombos del rival en combate): un entero de 0 a 5 en pub.pl[i][19], nunca el oro exacto
-      assert(lastPub.pl.every(p => Number.isInteger(p[19]) && p[19] >= 0 && p[19] <= 5 && p.length === 20), 'pub.pl[i][19] trae los cristales de intereses (0-5) y nada más');
+      assert(lastPub.pl.every(p => Number.isInteger(p[19]) && p[19] >= 0 && p[19] <= 5 && p.length === 21), 'pub.pl[i][19] trae los cristales de intereses (0-5)');
+      assert(lastPub.pl.every(p => Array.isArray(p[20]) && p[20].length === 3 && p[20].every(Number.isInteger)), 'pub.pl[i][20] trae la forma de Mew [forma, cambios, copias] y nada más');
       // sin partida a medias no se puede «volver»: el usuario A tiene su asiento conectado, así que rejoin le cede el asiento solo a una ventana nueva (no se prueba aquí)
     }
     // Minileyenda de B en el tablero de A: entradas inválidas (jugador inexistente, tipos raros, fuera de rango) y luego una válida

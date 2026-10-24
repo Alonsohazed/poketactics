@@ -253,7 +253,7 @@ function dropQueue(){ for(const dex of queue.splice(0)) if(models[dex]&&models[d
 // Cada uno tiene public/anims/<n.º>.json (fotograma de impacto y, opcional, "glb": true para usar anims/<n.º>.glb con los clips ya
 // renombrados). Para mejorar un clip basta con cambiar ese .glb (mismos huesos, mismos nombres): el código no cambia.
 // Pokémon con modelo animado propio en public/anims (1.ª gen, de 06wj/pokemon); el resto sigue con Pokemon-3D-api
-const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,247,248,250,281,282,356,359,372,373,375,376,382,383,388,389,404,405,429,439,444,445,446,447,448,462,464,466,468,470,477,487,491,533,534,570,571,608,609,700,723,724,857,858]);
+const ANIM_SET=new Set([1,2,3,4,5,6,7,8,9,10,13,16,19,20,21,25,26,35,36,39,40,43,44,45,50,51,52,53,54,55,58,59,60,61,62,63,64,65,66,67,68,74,75,76,77,78,81,82,90,91,92,93,94,95,96,97,98,99,111,112,116,117,122,123,125,128,129,130,131,132,133,134,135,136,142,143,145,146,147,148,149,150,151,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,247,248,250,281,282,356,359,372,373,375,376,382,383,388,389,404,405,429,439,444,445,446,447,448,462,464,466,468,470,477,487,491,533,534,570,571,608,609,700,723,724,857,858]);
 // En producción los modelos animados salen de jsDelivr fijados al commit desplegado (mismos archivos, caché de un año y
 // sin gastar el ancho de banda de Render); si jsDelivr falla, se piden a nuestro servidor. En local, siempre a nuestro servidor.
 let ANIM_BASE='';
@@ -573,6 +573,8 @@ class Actor{
  update(spec,dt,t){
    this.fitH=!!spec.tac; this.ensure();
    if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star,!!spec.tac); this.star=spec.star; }
+   // Transformación de Mew (contador morph): distorsión de 0,7 s con destello rosa al tomar otra forma o volver a la suya
+   if(spec.morph!=null){ if(this.morphN!=null&&spec.morph>this.morphN){ this.morphT=0; burst(this.root.position.clone().setY(TOP+.6),['#ff9ad8','#b48cff','#ffffff'],28,3.4,{up:2,size:.26}); } this.morphN=spec.morph; }
    const p=W3(spec.x,spec.y,0);
    // Solo se gira al caminar: los quietos (tablero y banquillo) miran siempre al frente y un salto grande (soltar una ficha, reajuste del tablero) es un teletransporte
    const dd=this.lastPos?Math.hypot(p.x-this.lastPos.x,p.z-this.lastPos.z):0; this.lastSpeed=dt>0?(this.lastSpeed||0)*.7+.3*(dd/dt):0; const _=0, jump=dd>1.2||this.dragged, moving=!spec.still&&!spec.drag&&!jump&&dd>.004; this.moveT=moving?(spec.hold||.15):(spec.still||spec.drag||jump)?0:Math.max(0,this.moveT-dt);
@@ -597,7 +599,9 @@ class Actor{
    if(this.sm){ this.lastAtk=spec.atk||0; this.lastCast=spec.cast||0; } else if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
    if((spec.cast||0)>this.lastCast){ this.lastCast=spec.cast; this.castT=0; this.play('cast',false); }
    this.atkT+=dt; this.castT+=dt;
-   let lift=TOP, lean=0, fwd=0, breath=0, sway=0;
+   let lift=TOP, lean=0, fwd=0, breath=0, sway=0, mGlow=0;
+   if(this.morphT!=null){ this.morphT+=dt; const k=this.morphT/.7; if(k>=1) this.morphT=null; else { const e=Math.sin(k*Math.PI), w=Math.sin(this.morphT*46)*e; // se estira y aplasta a toda velocidad mientras gira dos vueltas
+     this.body.scale.x*=1+.45*w; this.body.scale.z*=1+.45*w; this.body.scale.y*=1-.3*w+.12*e; sway=k*TAU*2; mGlow=.9*e; lift+=.25*e; } }
    if(spec.dead){
      if(this.deadT<0){ this.deadT=0; if(this.sm) this.smUpdate(spec,dt,0); else if(!this.play('ko',false)) this.noKo=true; }
      this.deadT+=dt; const k=clamp(this.deadT/1.1,0,1);
@@ -624,7 +628,7 @@ class Actor{
    const fl=clamp((spec.flash||0)/.12,0,1), gl=spec.glow||0, hf=this.hitT!=null?Math.max(0,1-this.hitT/.14)*.55*this.hitK:0;
    // Habilidad casi cargada: el Pokémon brilla suavemente con el color de su tipo (se ve qué va a lanzar pronto)
    const ch=!spec.dead&&spec.charge>=.85?(.12+.1*Math.sin(t*9)):0;
-   const eW=Math.max(fl*.12,hf,evoGlow*.9), eC=Math.max(gl*.3,ch), e=Math.max(eW,eC), w=eW>=eC;
+   const eW=Math.max(fl*.12,hf,evoGlow*.9,mGlow), eC=Math.max(gl*.3,ch), e=Math.max(eW,eC), w=eW>=eC;
    if(this.mats&&(e>0||this.eOn)){ this.eOn=e>0; for(const mt of this.mats) if(mt.emissive){ const e0=mt.userData.e0; mt.emissive.setRGB(e0.r+e*(w?1:spec.glowCol.r),e0.g+e*(w?1:spec.glowCol.g),e0.b+e*(w?1:spec.glowCol.b)); } }
    if(this.model&&sq) this.model.scale.set(this.model.userData.k*(1+sq*.5),this.model.userData.k*(1-sq),this.model.userData.k*(1+sq*.5));
    if(this.mixer&&!spec.drag) this.mixer.update(dt*(this.sm?(spec.spd||1):1)*(spec.stun>0&&!spec.dead?.15:1));

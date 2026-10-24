@@ -75,15 +75,20 @@ const opps7 = (mmr, myPlace) => [1, 2, 3, 4, 5, 6, 7, 8].filter(p => p !== myPla
   let comp = { candies: 1e6 }, cosm = {}, at = 0; const never = () => 0.5;
   for (let i = 1; i <= 200; i++) { const r = run(comp, cosm, { op: 'roll', n: 1 }, never); comp = r.comp; cosm = r.cosm; if (r.out.res[0].key === CO.EEVEE) { at = i; break; } }
   ok(at === 200 && cosm.pity === 0 && CO.hasEevee(cosm), `garantía: Eevee en la tirada ${at}`);
-  // con Eevee en la colección, la mítica da Polvo Estelar y ya no hay contador
-  const d0 = cosm.dust, rm = run(comp, cosm, { op: 'roll', n: 1 }, () => 0.0005);
+  // con Eevee en la colección, la mítica da la que falta (Mew); con las dos, Polvo Estelar y ya no hay contador
+  const rw = run(comp, cosm, { op: 'roll', n: 1 }, () => 0.0005);
+  ok(rw.out.res[0].key === CO.MEW && rw.out.mythic === CO.MEW && rw.cosm.pity === 0 && CO.missingMythics(rw.cosm).length === 0, 'mítica con Eevee ya conseguida: sale Mew');
+  const d0 = rw.cosm.dust, rm = run(rw.comp, rw.cosm, { op: 'roll', n: 1 }, () => 0.0005);
   ok(rm.out.res[0].key === 'dust' && rm.cosm.dust === d0 + CO.BIG_DUST && rm.cosm.pity === 0, 'mítica repetida: 1.500 de polvo');
+  // con Eevee y sin Mew, la garantía de la tirada 200 da Mew
+  let cm = { inv: [CO.EEVEE], pity: 199 }, rg = run({ candies: 400 }, cm, { op: 'roll', n: 1 }, never);
+  ok(rg.out.res[0].key === CO.MEW && rg.cosm.pity === 0, 'garantía: con Eevee, la tirada 200 da Mew');
   // la tirada de 10 cuenta 10 y en la 200 sale aunque caiga en medio de un lote
   let c2 = { pity: 195 }, p2 = { candies: 3600 }; const r10 = run(p2, c2, { op: 'roll', n: 10 }, never);
-  ok(r10.out.res[4].key === CO.EEVEE && r10.out.res.filter(x => x.key === CO.EEVEE).length === 1 && r10.cosm.pity === 0 && r10.comp.candies >= 0, 'lote de 10: Eevee en la 5.ª y después ya no hay contador');
+  ok(r10.out.res[4].key === CO.EEVEE && r10.out.res.filter(x => x.key === CO.EEVEE).length === 1 && r10.cosm.pity === 5 && r10.comp.candies >= 0, 'lote de 10: Eevee en la 5.ª y el contador sigue para Mew');
   // distribución con crypto: 300.000 tiradas sin garantía (contador reiniciado) cuadran con la tabla
   const cnt = {}; let refund = 0, cc = { candies: 1e9 }, cs = {};
-  for (let i = 0; i < 30000; i++) { cs.pity = 0; if (cs.inv && cs.inv.length > 60) cs.inv = []; const r = run(cc, cs, { op: 'roll', n: 10 }); cc = r.comp; cs = r.cosm; cs.inv = cs.inv.filter(x => x !== CO.EEVEE); for (const x of r.out.res) { cnt[x.t] = (cnt[x.t] || 0) + 1; if (x.key === 'cd') refund++; } }
+  for (let i = 0; i < 30000; i++) { cs.pity = 0; if (cs.inv && cs.inv.length > 60) cs.inv = []; const r = run(cc, cs, { op: 'roll', n: 10 }); cc = r.comp; cs = r.cosm; cs.inv = cs.inv.filter(x => !CO.MYTHICS.includes(x)); for (const x of r.out.res) { cnt[x.t] = (cnt[x.t] || 0) + 1; if (x.key === 'cd') refund++; } }
   const T = 300000, near = (t, p, tol) => Math.abs((cnt[t] || 0) / T - p) < tol;
   ok(near('c', .6, .006) && near('r', .3, .006) && near('e', .082, .003) && near('l', .017, .0012) && near('m', .001, .0004), `distribución por rarezas (${JSON.stringify(cnt)})`);
   ok(Math.abs(refund / T - .15) < .005, `caramelos de vuelta en el 15 % (${(refund / T * 100).toFixed(2)} %)`);

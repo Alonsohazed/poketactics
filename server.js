@@ -247,8 +247,8 @@ function presenceOf(uid) {
   return online.has(uid) ? { st: 'menu' } : { st: 'off' };
 }
 const friendsOf = uid => { if (!friendCache.has(uid)) friendCache.set(uid, db.friendIds(uid).then(a => new Set(a), () => (friendCache.delete(uid), new Set()))); return friendCache.get(uid); };
-// Alguien ha conseguido a Eevee: aviso a quien está en el menú (no a quien está jugando una partida)
-function onEevee(name) { for (const s of io.sockets.sockets.values()) if (!s.data.room && !inQueue(s.data.user.id)) s.emit('ann', { name: String(name).slice(0, 20) }); }
+// Alguien ha conseguido una mítica (Eevee o Mew): aviso a quien está en el menú (no a quien está jugando una partida)
+function onEevee(name, key) { for (const s of io.sockets.sockets.values()) if (!s.data.room && !inQueue(s.data.user.id)) s.emit('ann', { name: String(name).slice(0, 20), k: key === COSM.MEW ? 'mew' : 'eevee' }); }
 // La lista de alguien cambió (solicitud, aceptar, eliminar…): se olvida su caché y se le pide al navegador que la recargue
 function onFriends(uids) { for (const u of new Set(uids)) { friendCache.delete(u); io.to('u:' + u).emit('friends'); } }
 setInterval(async () => {

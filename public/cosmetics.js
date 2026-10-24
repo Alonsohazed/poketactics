@@ -3,13 +3,14 @@
    Sin imágenes nuevas: cada premio es un color, un degradado, un texto, un icono PX o un efecto existente con otro color. */
 var COSM = (function () {
   var C = {
-    PITY: 200,             // Eevee garantizado en esta tirada (la diaria también cuenta)
+    PITY: 200,             // mítica garantizada en esta tirada (la diaria también cuenta): la primera que te falte de MYTHICS
     MYTHIC_P: 0.001,       // 0,1 % fijo por tirada, sin subida progresiva
     PRICE: 400, PRICE10: 3600,
     REFUND: 75,            // «caramelos de vuelta» (siempre menos que la tirada)
-    EEVEE: 'tac:eevee',    // clave de inventario de la minileyenda mítica
-    BIG_DUST: 1500,        // si ya tienes a Eevee, la mítica da Polvo Estelar
-    LOCKED_TACS: ['eevee'],// minileyendas que no son gratuitas
+    EEVEE: 'tac:eevee',    // claves de inventario de las minileyendas míticas
+    MEW: 'tac:mew',
+    BIG_DUST: 1500,        // si ya tienes todas las míticas, la mítica da Polvo Estelar
+    LOCKED_TACS: ['eevee', 'mew'],// minileyendas que no son gratuitas
     DEFAULT_TAC: 'charmander', // a la que pasan las cuentas que tenían Eevee sin haberla conseguido
     HIST: 20,              // tiradas que se guardan en el historial
   };
@@ -65,6 +66,8 @@ var COSM = (function () {
     .forEach(function (x) { I('sh:' + x[0], x[1] + ' variocolor', 'l', { tac: x[0], from: x[2], to: x[3] }); });
   // ----- Mítica -----
   I(C.EEVEE, 'Eevee', 'm', { tac: 'eevee' });
+  I(C.MEW, 'Mew', 'm', { tac: 'mew' });
+  C.MYTHICS = [C.EEVEE, C.MEW]; // en este orden las da la garantía
   // ----- Títulos de colección (no salen en el gacha ni se compran: se ganan al completar la colección) -----
   C.COLLECTIONS = [['fuego', 'Corazón de Llama'], ['agua', 'Señor de las Mareas'], ['planta', 'Guardián del Bosque'], ['psiquico', 'Mente Maestra'], ['dragon', 'Sangre de Dragón']].map(function (x) {
     var key = 'tt:col_' + x[0]; I(key, x[1], 'x', { text: x[1], col: x[0] });
@@ -92,6 +95,7 @@ var COSM = (function () {
     return out.join('|'); };
   // ¿La cuenta puede usar esta minileyenda? (cosm puede venir vacío o de una cuenta antigua)
   C.ownsTac = function (cosm, k) { return C.LOCKED_TACS.indexOf(k) < 0 || !!(cosm && Array.isArray(cosm.inv) && cosm.inv.indexOf('tac:' + k) >= 0); };
+  C.missingMythics = function (cosm) { var inv = cosm && Array.isArray(cosm.inv) ? cosm.inv : []; return C.MYTHICS.filter(function (k) { return inv.indexOf(k) < 0; }); };
   C.hasEevee = function (cosm) { return !!(cosm && Array.isArray(cosm.inv) && cosm.inv.indexOf(C.EEVEE) >= 0); };
   C.pityLeft = function (cosm) { var p = cosm && Number.isFinite(+cosm.pity) ? Math.max(0, Math.min(C.PITY - 1, +cosm.pity | 0)) : 0; return C.PITY - p; };
   // Lo que ve el propio jugador de su colección (nunca de otros: a los demás solo les llega lo equipado)
