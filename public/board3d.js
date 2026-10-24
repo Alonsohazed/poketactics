@@ -287,6 +287,7 @@ const RX={
  cast:[/attack0?2|special|tokushu/i,/fight_?d/i,/fight_?b/i,/attack/i,/fight/i],
  ko:[/down|faint|\bko\b|_ko|dead|die|lose/i],
 };
+const NO_CLIPS=new Set([302]);
 const BAD_IDLE=/dizzy|faint|down|\bko\b|_ko|sleep|dead|die|lose|damage|hurt/i;
 // Sube las texturas a la GPU y compila sus shaders en cuanto llega el modelo (fuera del fotograma en que aparece)
 function warmModel(m){ if(!renderer||!m.scene) return; try{ m.scene.traverse(o=>{ if(o.isMesh) for(const mt of [].concat(o.material)) for(const k of ['map','normalMap','emissiveMap']) if(mt[k]) renderer.initTexture(mt[k]); }); if(!renderer.compileAsync) return; renderer.compileAsync(m.scene,camera,scene).catch(()=>{});
@@ -305,7 +306,8 @@ function prepModel(m,gl,dex){
  if(m.meta&&m.meta.pose==="tail") root.rotation.x=-(m.meta.tilt||78)*Math.PI/180;
  root.updateMatrixWorld(true);
  root.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt.map) mt.map.colorSpace=THREE.SRGBColorSpace; if(mt.transparent&&mt.opacity>=1) mt.alphaTest=.5; } } });
- const clips=gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
+ // Modelos cuyo único clip no es un reposo (Sableye: "rig|rigAction" es un movimiento entero que, en bucle, parecía dispararse sin parar): se ignoran y se animan por código
+ const clips=NO_CLIPS.has(+String(dex).split(/[:/]/).pop())?[]:gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
  m.clips={idle:pick(RX.idle),walk:pick(RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
  if(!m.clips.idle){ const c2=clips.find(k=>!BAD_IDLE.test(k.name)&&k!==m.clips.attack&&k!==m.clips.ko); m.clips.idle=c2||null; }
  // Sin desplazamiento de la raíz: algunas animaciones mueven el modelo hacia un lado y al repetirse vuelve de golpe (un "tic")
