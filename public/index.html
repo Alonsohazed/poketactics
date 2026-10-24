@@ -1496,7 +1496,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 /* Guía para jugadores nuevos: brilla y lleva un globo que también abre la Guía */
 .mnTool.guideNew{animation:guidePulse 1.6s ease-in-out infinite;color:#ffe08a}
 @keyframes guidePulse{0%,100%{box-shadow:inset 0 0 0 2px #c9a24a,inset 0 0 0 4px #3a2a0e,0 0 0 0 rgba(255,215,94,.7)}50%{box-shadow:inset 0 0 0 2px #ffe08a,inset 0 0 0 4px #5a3f12,0 0 0 10px rgba(255,215,94,0)}}
-#howBtn{position:relative;overflow:visible}.guideTip{position:absolute;left:-6px;top:calc(100% + 12px);z-index:2;white-space:nowrap;background:linear-gradient(180deg,#ffe08a,#e6b84a);color:#2a1a04;border:0;border-radius:12px;padding:9px 14px;font:800 14px var(--pxFont);box-shadow:0 8px 20px rgba(0,0,0,.45);cursor:pointer;animation:guideBob 1.6s ease-in-out infinite}
+#howBtn{position:relative;overflow:visible}.guideTip{pointer-events:none;position:absolute;left:-6px;top:calc(100% + 12px);z-index:2;white-space:nowrap;background:linear-gradient(180deg,#ffe08a,#e6b84a);color:#2a1a04;border:0;border-radius:12px;padding:9px 14px;font:800 14px var(--pxFont);box-shadow:0 8px 20px rgba(0,0,0,.45);cursor:pointer;animation:guideBob 1.6s ease-in-out infinite}
 .guideTip::before{content:"";position:absolute;left:18px;top:-6px;width:12px;height:12px;background:#ffe08a;transform:rotate(45deg)}
 .guideTip[hidden]{display:none}
 @keyframes guideBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
@@ -1682,6 +1682,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 <div id="tip"></div>
 
 <script src="/socket.io/socket.io.min.js"></script>
+<script src="i18n.js"></script>
 <script src="ui-art.js"></script>
 <script src="cosmetics.js"></script>
 <script src="augments.js"></script>

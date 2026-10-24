@@ -15,7 +15,7 @@ const COOKIE = 'pt_sid';
 const SESSION_DAYS = 30;
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const PASS_MIN = 6, PASS_MAX = 72;
-const SETTINGS_KEYS = { vol: 'number', muted: 'boolean', timer: 'number', speed: 'number', theme: 'string', diff: 'string' };
+const SETTINGS_KEYS = { vol: 'number', muted: 'boolean', timer: 'number', speed: 'number', theme: 'string', diff: 'string', lang: 'string' };
 
 async function hashPassword(pass) {
   const salt = crypto.randomBytes(16);

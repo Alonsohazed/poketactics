@@ -17,6 +17,7 @@ module.exports = defineConfig({
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   outputDir: 'test-results',
   use: {
+    locale: 'es-ES', // el juego toma el idioma del navegador si nunca se eligió: las pruebas comprueban textos en español
     baseURL: `http://localhost:${PORT}`,
     viewport: { width: 1280, height: 860 },
     trace: 'retain-on-failure',

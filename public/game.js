@@ -523,7 +523,9 @@ const combineKey=(a,b)=>RECIPE[rk(a,b)];
 
 /* =============================== [CORE] =============================== */
 let G=null, UID=1;
-let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal'};
+let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal',lang:''};
+// Sin DOM (servidor) no hay traducción: TR devuelve el español
+if(typeof TR!=='function'){ var TR=s=>s; var I18N={lang:'es',locale:'es-ES',set(){},pick:(es)=>es}; }
 const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0,xpCost:4,oddsSave:0,cheapCombine:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
@@ -2502,7 +2504,7 @@ function drawTrainer(x0,y0,key,o={}){
    ctx.save(); ctx.font=`900 ${Math.max(11,R*.36)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
    const w=ctx.measureText(o.bubble).width+R*.5, h=R*.55, by=y-s*.98-lift;
    ctx.fillStyle='#fff'; rrPath(ctx,x-w/2,by-h,w,h,R*.2); ctx.fill(); ctx.beginPath(); ctx.moveTo(x-R*.12,by-1); ctx.lineTo(x,by+R*.15); ctx.lineTo(x+R*.12,by-1); ctx.fill();
-   ctx.fillStyle='#16203d'; ctx.fillText(o.bubble,x,by-h/2); ctx.restore();
+   ctx.fillStyle='#16203d'; ctx.fillText(TR(o.bubble),x,by-h/2); ctx.restore();
  }
  return [x,y,s];
 }
@@ -2516,7 +2518,7 @@ function trainerSpots(){
 function drawTacLabel(x,y,p,col,bub){
  const R=geo.R, [sx,sy]=scr(x,y,1.75), nm=p.name.length>14?p.name.slice(0,13)+'…':p.name;
  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
- ctx.font=`900 ${Math.max(11,R*.32)}px Nunito,system-ui,sans-serif`; ctx.lineWidth=4; ctx.lineJoin='round'; ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.fillStyle='#fff'; ctx.strokeText(nm,sx,sy-R*.46); ctx.fillText(nm,sx,sy-R*.46);
+ ctx.font=`900 ${Math.max(11,R*.32)}px Nunito,system-ui,sans-serif`; ctx.lineWidth=4; ctx.lineJoin='round'; ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.fillStyle='#fff'; const nmT=TR(nm); ctx.strokeText(nmT,sx,sy-R*.46); ctx.fillText(nmT,sx,sy-R*.46);
  const bw=R*1.75, bh=Math.max(8,R*.26), rad=bh/2, br=bh*.95, x0=sx-bw/2+br*.6, f=clamp(p.hp/100,0,1);
  // cápsula de la vida
  ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=6; ctx.fillStyle='rgba(10,12,24,.9)'; rrPath(ctx,x0-2,sy-rad-2,bw+4,bh+4,rad+2); ctx.fill(); ctx.shadowBlur=0;
@@ -2526,7 +2528,7 @@ function drawTacLabel(x,y,p,col,bub){
  // nivel en una insignia redonda con aro dorado
  const lx=x0-br*.35; ctx.beginPath(); ctx.arc(lx,sy,br,0,7); const lg=ctx.createRadialGradient(lx-br*.3,sy-br*.3,1,lx,sy,br); lg.addColorStop(0,'#3a4a7a'); lg.addColorStop(1,'#141a30'); ctx.fillStyle=lg; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#ffd75e'; ctx.stroke();
  ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(9,br*1.05)}px Nunito,system-ui,sans-serif`; ctx.fillText(p.level,lx,sy+.5);
- if(bub){ ctx.font=`900 ${Math.max(16,R*.6)}px system-ui`; const w=R*1.1, by=sy-R*1.05; ctx.fillStyle='#fff'; rrPath(ctx,sx-w/2,by-R*.85,w,R*.8,R*.3); ctx.fill(); ctx.beginPath(); ctx.moveTo(sx-R*.12,by-.05*R); ctx.lineTo(sx,by+R*.15); ctx.lineTo(sx+R*.12,by-.05*R); ctx.fill(); ctx.fillStyle='#16203d'; ctx.fillText(bub,sx,by-R*.45); }
+ if(bub){ ctx.font=`900 ${Math.max(16,R*.6)}px system-ui`; const w=R*1.1, by=sy-R*1.05; ctx.fillStyle='#fff'; rrPath(ctx,sx-w/2,by-R*.85,w,R*.8,R*.3); ctx.fill(); ctx.beginPath(); ctx.moveTo(sx-R*.12,by-.05*R); ctx.lineTo(sx,by+R*.15); ctx.lineTo(sx+R*.12,by-.05*R); ctx.fill(); ctx.fillStyle='#16203d'; ctx.fillText(TR(bub),sx,by-R*.45); }
  ctx.restore(); return [sx,sy+R*1.2,R*2.4];
 }
 // Iconos de los aumentos sobre el tótem (con su descripción al pasar el cursor)
@@ -3014,7 +3016,7 @@ function draw(){
  if(!G||!geo.W) return;
  ctx.clearRect(0,0,view.W,view.H);
  const me=G.me; if(!me) return;
- if(!b3On()){ ctx.save(); ctx.fillStyle='#16203d'; ctx.fillRect(0,0,view.W,view.H); ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(14,geo.R*.5)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.fillText('Cargando tablero 3D…',view.W/2,view.H/2); ctx.restore(); return; }
+ if(!b3On()){ ctx.save(); ctx.fillStyle='#16203d'; ctx.fillRect(0,0,view.W,view.H); ctx.fillStyle='#fff'; ctx.font=`900 ${Math.max(14,geo.R*.5)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.fillText(TR('Cargando tablero 3D…'),view.W/2,view.H/2); ctx.restore(); return; }
  const inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel, playing=G.players&&G.players.length;
  const dragBoard=drag&&drag.moved&&G.phase!=='combat'&&!inCar, cell=dragBoard?hitCell(drag.x,drag.y):null, bh=drag&&drag.moved?hitBench(drag.x,drag.y):-1;
  // Menú y acceso: fondo estático (CSS), sin dibujar el campo 3D ni cargar modelos
@@ -3040,9 +3042,9 @@ function drawFxHud(cb){
  for(const f of cb.fx){
    if(f.t<0) continue; const p=f.t/f.life; ctx.save();
    switch(f.type){
-    case 'text': { const [x0,y0]=vXY(f.c,f.r), [x,y]=scr(x0,y0,1.9); ctx.globalAlpha=1-p*p; const pop=f.big?1.45+.5*Math.max(0,1-f.t/.12):1; ctx.font=`900 ${Math.max(10,R*.36*pop)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.fillStyle=f.color; const yy=y-p*R*.9; ctx.strokeText(f.txt,x+f.dx,yy); ctx.fillText(f.txt,x+f.dx,yy); break; }
+    case 'text': { const [x0,y0]=vXY(f.c,f.r), [x,y]=scr(x0,y0,1.9); ctx.globalAlpha=1-p*p; const pop=f.big?1.45+.5*Math.max(0,1-f.t/.12):1; ctx.font=`900 ${Math.max(10,R*.36*pop)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.lineWidth=3; ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.fillStyle=f.color; const yy=y-p*R*.9, tx=TR(f.txt); ctx.strokeText(tx,x+f.dx,yy); ctx.fillText(tx,x+f.dx,yy); break; }
     case 'banner': { if(f.u.dead&&p>.3) break; const [x0,y0]=unitXY(f.u), [x,y]=scr(x0,y0,2.5); const a=p<.1?p/.1:p>.75?(1-p)/.25:1; ctx.globalAlpha=a; ctx.font=`900 ${Math.max(12,R*.44)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-      const txt=(f.icon?f.icon+' ':'')+f.txt, w=ctx.measureText(txt).width+R*.7, h=R*.62, by=y-p*R*.25; ctx.fillStyle='rgba(15,20,40,.88)'; ctx.strokeStyle=f.color; ctx.lineWidth=2.5; rrPath(ctx,x-w/2,by-h/2,w,h,h/2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#fff'; ctx.fillText(txt,x,by+1); break; }
+      const txt=(f.icon?f.icon+' ':'')+TR(f.txt), w=ctx.measureText(txt).width+R*.7, h=R*.62, by=y-p*R*.25; ctx.fillStyle='rgba(15,20,40,.88)'; ctx.strokeStyle=f.color; ctx.lineWidth=2.5; rrPath(ctx,x-w/2,by-h/2,w,h,h/2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#fff'; ctx.fillText(txt,x,by+1); break; }
     case 'flash': { ctx.globalAlpha=(1-p)*.25; ctx.fillStyle=f.color; ctx.fillRect(0,0,view.W,view.H); break; }
    }
    ctx.restore();
@@ -3066,7 +3068,7 @@ function drawCarouselHud(){
  }
  const myIdx=C.order.indexOf(G.me), myAv=C.av[G.me.id];
  const msg=!myAv?'Mirando el carrusel':myAv.done?'Ya tienes tu Pokémon: sigue moviéndote con clic derecho mientras eligen los demás':myAv.rel?'¡Libre! Clic derecho para moverte y pasa por encima de un Pokémon':`Tu barrera se abre en ${Math.max(0,Math.ceil(releaseAt(myIdx)-C.t))}s · menos vida = sales antes`;
- ctx.save(); ctx.font=`900 ${Math.max(12,R*.42)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.fillStyle='#fff'; const mx=view.rect?view.rect.x+view.rect.w/2:view.W/2, my=view.rect?view.rect.y+8:8; ctx.strokeText(msg,mx,my); ctx.fillText(msg,mx,my); ctx.restore();
+ ctx.save(); ctx.font=`900 ${Math.max(12,R*.42)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.fillStyle='#fff'; const mx=view.rect?view.rect.x+view.rect.w/2:view.W/2, my=view.rect?view.rect.y+8:8; const msgT=TR(msg); ctx.strokeText(msgT,mx,my); ctx.fillText(msgT,mx,my); ctx.restore();
 }
 function renderFeed(){ return; // el registro de habilidades ya no se muestra
  const box=$('feed'); const cb=G&&G.phase==='combat'?viewCombat():null;
@@ -3611,13 +3613,14 @@ function showOptions(inGame){
  const can=canSurrender(), vol=R0(S.vol*100);
  openModal(`<h1>Configuración</h1>
  <div class="cfgRow"><b>Volumen de la música</b><div class="cfgVol"><input type="range" id="optVol" min="0" max="100" value="${vol}" aria-label="Volumen de la música"><b id="optVolV">${vol}</b></div></div>
+ <div class="cfgRow"><b>Idioma</b>${rd('optLang',[['es','Español'],['en','English']],S.lang||I18N.lang)}</div>
  <div class="cfgRow"><b>Tema</b>${rd('optTheme',[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']],S.theme||'system')}</div>
  <div class="cfgRow"><b>Calidad gráfica</b>${rd('optGfx',[['auto','Automática'],['2','Alta'],['1','Media'],['0','Baja']],GFX.q)}</div>
  <div class="cfgBtns">${inGame||!ACC?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
  ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true});
  const val=n=>{ const e=document.querySelector(`input[name="${n}"]:checked`); return e?e.value:''; };
  $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; $('optVolV').textContent=e.target.value; Music.init(); Music.setVol(); };
- $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; saveSettings(); applyTheme(); if(ACC) renderMenu(); closeModal(); };
+ $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; S.lang=val('optLang')||S.lang; saveSettings(); applyTheme(); applyLang(); if(ACC) renderMenu(); if(G&&G.players&&G.players.length) renderUI(); closeModal(); };
  if($('logoutBtn')) $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
  if($('quitBtn')) $('quitBtn').onclick=()=>{ closeModal(); confirmQuit(); };
  if($('surrBtn')) $('surrBtn').onclick=()=>{ if(!canSurrender()) return; closeModal(); confirmSurrender(); };
@@ -3876,7 +3879,7 @@ function showRankChange(d){
 }
 
 // ----- historial (6 partidas más recientes, al estilo TFT) -----
-const fmtDate=s=>{ try{ return new Date(s).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
+const fmtDate=s=>{ try{ return new Date(s).toLocaleString(I18N.locale,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
 const fmtDur=s=>s>0?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:'';
 // Con el mismo retrato que la carta de la tienda y la ficha: la forma de su estrella (art/f) o la miniatura de su carta (art/t); el sprite solo si no hay retrato
 function histUnit(u){ const [key,star,items,dex,name,cost]=u, d=DEF[key], dx=dex||(d?dexOf(d,star):0), fa=d&&dx!==dexOf(d,1)?formArt(dx):null;
@@ -3911,7 +3914,7 @@ async function showHistory(){
 }
 // ----- perfil (estilo LoL): minileyenda, nivel de cuenta, rango, mejor rango, estadísticas por modo y las 10 últimas partidas -----
 // Todo sale de /api/profile, que nunca manda MMR, rivales ni ajustes. Desde la pantalla de resultados no se abre ningún perfil.
-const fmtMonth=s=>{ try{ return new Date(s+'-01T12:00:00').toLocaleDateString('es-ES',{month:'long',year:'numeric'}); }catch(e){ return ''; } };
+const fmtMonth=s=>{ try{ return new Date(s+'-01T12:00:00').toLocaleDateString(I18N.locale,{month:'long',year:'numeric'}); }catch(e){ return ''; } };
 function pfRow(m){ const c=m.comp||{}, pl=m.place||8;
  const lp=m.mode!=='ranked'?'':m.revealed?`<span class="rChip up">Rango revelado: ${esc(rankText(m.revealed))}</span>`:m.placement?`<span class="rChip">Posicionamiento ${m.placement.done}/${m.placement.of}</span>`:typeof m.lp==='number'?`<span class="rChip ${m.lp>=0?'up':'down'}">${m.lp>=0?'+':'−'}${Math.abs(m.lp)} LP</span>`:'';
  return `<div class="hRow pfRow pl${pl===1?1:pl<=4?2:3}"><div class="hMain"><div class="hPlace"><b>${ordinal(pl)} lugar</b><small>${MODE_NAME[m.mode]||esc(m.mode)}</small><small>${fmtDate(m.created)}${m.duration?' · '+fmtDur(m.duration):''}</small></div>
@@ -4056,11 +4059,11 @@ function gaDailyBtn(st){ const l={lista:'Tirada diaria gratis',usada:'Diaria usa
  return `<button class="pxb gaDaily${st.daily==='lista'?' ready':''}" id="gaD" type="button" ${st.daily==='lista'?'':'aria-disabled="true"'}><i data-i="star" data-s="20"></i><span>${l}</span></button>`; }
 function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return;
  el.innerHTML=`<div class="gaHead"><div><div class="pxKicker">Gacha cosmético</div><h1>Poké Ball de la suerte</h1><p class="muted small">Solo cosméticos: nada cambia la partida.</p></div>
-  <div class="gaBal"><span title="Caramelos">${PX.icon('candy',22)}<b id="gaCandy">${st.candies.toLocaleString('es-ES')}</b></span><span title="Polvo Estelar">${PX.icon('crystal',22)}<b id="gaDust">${st.dust.toLocaleString('es-ES')}</b></span></div></div>
+  <div class="gaBal"><span title="Caramelos">${PX.icon('candy',22)}<b id="gaCandy">${st.candies.toLocaleString(I18N.locale)}</b></span><span title="Polvo Estelar">${PX.icon('crystal',22)}<b id="gaDust">${st.dust.toLocaleString(I18N.locale)}</b></span></div></div>
  <div class="gaStage"><div class="gaBall" id="gaBall" aria-hidden="true"><i class="gbTop"></i><i class="gbBand"></i><i class="gbBtn"></i></div><div class="gaRes" id="gaRes" aria-live="polite"></div></div>
  ${gaPityHTML(st)}
  <div class="gaBtns"><button class="pxb pxb-main" id="ga1" type="button"><span class="pxbT"><b>Tirada</b><small>${PX.icon('candy',14)} ${st.price}</small></span></button>
-  <button class="pxb pxb-alt" id="ga10" type="button"><span class="pxbT"><b>10 tiradas</b><small>${PX.icon('candy',14)} ${st.price10.toLocaleString('es-ES')}</small></span></button>${gaDailyBtn(st)}</div>
+  <button class="pxb pxb-alt" id="ga10" type="button"><span class="pxbT"><b>10 tiradas</b><small>${PX.icon('candy',14)} ${st.price10.toLocaleString(I18N.locale)}</small></span></button>${gaDailyBtn(st)}</div>
  <div class="gaLinks"><button class="pxb" id="gaOdds" type="button"><span>Probabilidades</span></button><button class="pxb" id="gaHist" type="button"><span>Historial</span></button><button class="pxb" id="gaShop" type="button"><i data-i="crystal" data-s="16"></i><span>Tienda de polvo</span></button><button class="pxb" id="gaColl" type="button"><i data-i="book" data-s="16"></i><span>Colección</span></button><button class="pxb pxb-alt" id="gaPz" type="button"><i data-i="gear" data-s="16"></i><span>Personalizar</span></button></div>`;
  hydrate(el); PX.hydrate(el);
  $('ga1').onclick=()=>gaDo('roll',{n:1}); $('ga10').onclick=()=>gaDo('roll',{n:10});
@@ -4087,9 +4090,9 @@ function gaSub(html){ const el=$('gaWrap'); el.innerHTML=gaBack()+html; hydrate(
 function gaOdds(){ const per=t=>COSM.POOL[t].length;
  gaSub(`<h2 class="pxH">Probabilidades</h2><p class="small muted">Cada tirada sortea primero la rareza y después un premio de esa rareza, todos con la misma probabilidad. La tirada diaria funciona igual.</p>
  <table class="gaOdds"><thead><tr><th>Rareza</th><th>Probabilidad</th><th>Premios</th><th>Cada premio</th><th>Si se repite</th></tr></thead><tbody>
- ${COSM.TIERS.map(t=>{ const n=per(t.k), pc=t.k==='c'?t.p*(1-COSM.REFUND_SHARE):t.p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${(t.p*100).toLocaleString('es-ES',{maximumFractionDigits:1})} %</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${(pc/n*100).toLocaleString('es-ES',{maximumFractionDigits:3})} %</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
+ ${COSM.TIERS.map(t=>{ const n=per(t.k), pc=t.k==='c'?t.p*(1-COSM.REFUND_SHARE):t.p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${(t.p*100).toLocaleString(I18N.locale,{maximumFractionDigits:1})} %</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${(pc/n*100).toLocaleString(I18N.locale,{maximumFractionDigits:3})} %</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
  </tbody></table>
- <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString('es-ES')} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
+ <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString(I18N.locale)} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
  <li><b>Eevee y Mew</b> (míticas): 0,1 % fijo por tirada (te toca una de las que te faltan), sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b> (primero Eevee y después Mew). La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
  <li><b>Colecciones:</b> reúne todos los premios de un elemento y ganas su título exclusivo (${COSM.COLLECTIONS.map(c=>'«'+esc(COSM.BY[c.reward].name)+'»').join(', ')}).</li>
  <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`); }
@@ -4204,8 +4207,10 @@ const Scene={
 };
 
 const SETTINGS_KEY='pokeTactics.settings';
-const SYNCED=['vol','muted','timer','speed','theme','diff'];
-function loadSettings(){ try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(s) for(const k of SYNCED) if(k in s) S[k]=s[k]; }catch(e){} }
+const SYNCED=['vol','muted','timer','speed','theme','diff','lang'];
+function loadSettings(){ try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(s) for(const k of SYNCED) if(k in s) S[k]=s[k]; }catch(e){} applyLang(); }
+// Idioma: el guardado o, si nunca se eligió, el del navegador; cambia todo el DOM al momento (I18N) y repinta lo que no pasa por él
+function applyLang(){ const l=S.lang==='en'||S.lang==='es'?S.lang:I18N.guess(); I18N.set(l); document.title=TR('Poké Tactics'); }
 let settingsTimer=0;
 function saveSettings(){
  const o={}; for(const k of SYNCED) o[k]=S[k];
@@ -4225,7 +4230,7 @@ async function api(path,body){
  if(!res.ok) throw Object.assign(new Error(data.error||'Algo salió mal, inténtalo de nuevo'),{status:res.status,field:data.field});
  return data;
 }
-function applyAccount(user){
+function applyAccount(user){ if(user&&user.settings&&(user.settings.lang==='en'||user.settings.lang==='es')){ S.lang=user.settings.lang; applyLang(); }
  ACC=user; S.name=user.name.slice(0,14); if(TACS[user.trainer]) try{ localStorage.setItem('pt_tac',user.trainer); }catch(e){}
  const s=user.settings||{}; for(const k of SYNCED) if(k in s) S[k]=s[k];
  try{ localStorage.setItem(SETTINGS_KEY,JSON.stringify(Object.fromEntries(SYNCED.map(k=>[k,S[k]])))); }catch(e){}
