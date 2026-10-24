@@ -4284,7 +4284,7 @@ function cdnAssets(){
    const src=el.getAttribute('src')||''; if(src.includes('.avif?')&&!el.dataset.fbw){ el.dataset.fbw=1; el.src=src.replace('.avif?','.webp?'); return; }
    if(el.dataset&&el.dataset.sp&&!el.dataset.fb3){ el.dataset.fb3=1; el.src=SPRITE(el.dataset.sp); }
    else if(el.dataset&&el.dataset.dex&&!el.dataset.fb2){ el.dataset.fb2=1; el.src='dex/'+String(el.dataset.dex).split('/').pop()+'.png'; el.classList.add('artFb'); } },true);
- preloadArt(TAC_KEYS);
+ preloadArt(TAC_KEYS.filter(k=>!TACS[k].tier)); // solo las 9 de siempre: precargar las 80 eran 80 peticiones (146 KB) al abrir el menú; el resto se carga al verse
 }
 async function boot(){
  cv=$('cv'); ctx=cv.getContext('2d');
