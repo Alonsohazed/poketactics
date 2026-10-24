@@ -1678,6 +1678,6 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 <script src="augments.js"></script>
 <script src="game.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
-<script type="module" src="board3d.js"></script>
+<!-- board3d.js (three.js y el tablero) no se carga aquí: lo pide loadB3() en game.js al entrar en una cola, una sala o una partida -->
 </body>
 </html>

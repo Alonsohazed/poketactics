@@ -1493,6 +1493,7 @@ function buildRounds(){
 }
 const ROUNDS=buildRounds();
 function newGame(opts={}){
+ loadB3();
  if(!HEADLESS&&!opts.auto&&typeof guardBack==='function') guardBack();
  if(!HEADLESS&&window.B3&&B3.dropQueue) B3.dropQueue();
  UID=1;
@@ -1875,7 +1876,7 @@ function sock(){
    if(NET.mode==='client'){ connLost(reason,s); }
    else if(NET.mode==='joining'&&NET.lost){ showLostBar(reason); if(reason==='io server disconnect') s.connect(); } // otro corte mientras volvía: sigue intentándolo
    else if(NET.mode==='joining'){ toast('Se perdió la conexión con el servidor ('+reasonText(reason)+')'); if(G&&G.mirror) G.over=true; resetNet(); closeModal(); showMenu(); } });
- s.on('resume',d=>{ NET.resume=d&&typeof d==='object'?{mode:String(d.mode||'').slice(0,12),round:String(d.round||'').slice(0,6)}:null; renderResume(); });
+ s.on('resume',d=>{ if(d) loadB3(); NET.resume=d&&typeof d==='object'?{mode:String(d.mode||'').slice(0,12),round:String(d.round||'').slice(0,6)}:null; renderResume(); });
  s.on('rejoinfail',d=>{ toast(String(d&&d.why||'No se pudo volver a la partida')); giveUpLost(); });
  s.on('rooms',list=>{ NET.rooms=Array.isArray(list)?list.slice(0,50):[]; if(NET.screen==='lobby') renderRoomList(); });
  s.on('err',m=>{ toast(String(m||'Error')); if(NET.queue&&NET.queue.state!=='matched') endQueue(); if(NET.mode==='joining'&&NET.screen!=='room'&&!NET.queue) NET.mode='sp'; });
@@ -1984,7 +1985,7 @@ function applyPub(d){
    if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,ITEMS_HARD); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
  }
- G.players=list;
+ G.players=list; loadB3();
  G.preview=G.round.type==='pve'&&G.phase==='planning'?pveWave(G.round.s,G.round.n):null;
  if(prevPh==='combat'&&G.phase!=='combat'){ G.combat=null; G.view=null; selCombat=null; }
  if(prevPh!=='combat'&&G.phase==='combat') G.prepT=PREP_T; // preparación, igual que en el servidor (f.t0 empieza tras ella)
@@ -2725,8 +2726,8 @@ function bindEvents(){
  $('lockBtn').addEventListener('click',()=>{ if(inGame()) doAct({t:'lock'},()=>{G.me.locked=!G.me.locked;}); });
  // Engranaje de la partida: abre la ventana de configuración (con Rendirse y Volver al menú abajo)
  $('menuBtn').addEventListener('click',()=>showOptions(true));
- $('playBtn').addEventListener('click',()=>{ Music.init(); showNormal(); });
- $('rankedBtn').addEventListener('click',()=>{ Music.init(); showRanked(); });
+ $('playBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showNormal(); });
+ $('rankedBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showRanked(); });
  $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('eeveeGacha').addEventListener('click',showGacha); // el Eevee con halo del menú abre el gacha
  $('howBtn').addEventListener('click',showHow);
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
@@ -2818,6 +2819,9 @@ function hideTip(){ if(!tipOn||tipPinned) return; tipOn=false; tipAnchor=null; $
 // en pantalla y encima se dibuja la capa 2D: barras, estrellas, objetos, textos y entrenadores.
 let ptr=[0,0], hudActors=[], hudItems=[], myTrBox=null;
 const b3On=()=>!HEADLESS&&window.B3&&B3.ready;
+// El tablero 3D (board3d.js + three.js, ~1 MB sin comprimir) no se descarga en el menú ni en el acceso: se pide al pulsar Normal o
+// Clasificatoria (durante la espera de la cola), al empezar la práctica o una partida y si hay una partida a medias. Si falla, se reintenta
+function loadB3(){ if(HEADLESS||window.B3||loadB3.p) return; loadB3.p=import('./board3d.js').catch(()=>{ loadB3.p=null; setTimeout(loadB3,3000); }); }
 function b3Geo(){ const cells=[]; for(let r=0;r<8;r++) for(let c=0;c<7;c++) cells.push(cellXY(c,r)); return {...geo,cells,bench:[...Array(BENCH)].map((_,i)=>benchXY(i))}; }
 function sizeB3(){ if(!window.B3||!geo.W) return; if(!B3.ready){ B3.init($('gl')); applyGfx(); $('gl').addEventListener('webglcontextlost',()=>toast('El navegador perdió el dibujo 3D; intentando recuperarlo… Si se queda gris, recarga (F5)')); $('gl').addEventListener('webglcontextrestored',()=>toast('Dibujo 3D recuperado')); } B3.resize(b3Geo(),window.devicePixelRatio||1,view); }
 // Calidad gráfica y temblor de cámara: preferencias de este dispositivo (no de la cuenta)
@@ -4294,7 +4298,7 @@ async function boot(){
 
  layout(); applyTheme(); bindEvents(); Scene.init();
  // Sin precarga en el menú: los modelos se piden al entrar en la partida (primero los tuyos)
- if(!window.B3) window.addEventListener('b3ready',()=>sizeB3());
+ if(!window.B3) window.addEventListener('b3ready',()=>{ sizeB3(); prefetchForGame(); }); // en cuanto llega el 3D, el escenario y los modelos de la primera ronda
  setInterval(tick,33); requestAnimationFrame(frame); checkBuild(); setInterval(checkBuild,300000);
  try{ const {user}=await api('/api/me'); applyAccount(user); if(!TACS[user.trainer]) showTacPick(true); else showMenu(); }
  catch(err){ showAuth(err.status===401?'':err.message); }
