@@ -2600,7 +2600,7 @@ function bindEvents(){
    doAct({t:'buy',i}); };
  $('cards').addEventListener('click',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||!inGame()) return; if(shopDrag.bought){ shopDrag.bought=false; return; } shopBuy(+el.dataset.i); });
  // Comprar arrastrando: sacar la carta hacia arriba (SHOP_PULL px) la compra y va a la banca; si se suelta antes, vuelve a su sitio
- const shopDrag={el:null,y:0,id:0,bought:false}, SHOP_PULL=40, shopReset=()=>{ if(shopDrag.el){ shopDrag.el.style.transform=''; shopDrag.el.style.transition=''; } shopDrag.el=null; };
+ const shopDrag={el:null,y:0,id:0,bought:false}, SHOP_PULL=80, shopReset=()=>{ if(shopDrag.el){ shopDrag.el.style.transform=''; shopDrag.el.style.transition=''; } shopDrag.el=null; };
  $('cards').addEventListener('dragstart',e=>e.preventDefault());
  $('cards').addEventListener('pointerdown',e=>{ const el=e.target.closest('.card[data-i]'); if(!el||e.button!==0||!inGame()) return; shopDrag.el=el; shopDrag.y=e.clientY; shopDrag.id=e.pointerId; shopDrag.bought=false; el.style.transition='none'; });
  addEventListener('pointermove',e=>{ const s=shopDrag; if(!s.el||e.pointerId!==s.id) return; const dy=Math.min(0,e.clientY-s.y); s.el.style.transform=`translateY(${dy}px)`;
