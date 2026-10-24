@@ -586,7 +586,7 @@ function liveItems(p,inst){
  if(!G.mp){ if(!f.c.done) applyLiveItems(f.c,side,bk,inst.items.slice()); return; }
  const t=Math.max(0,Math.ceil(((Date.now()-f.t0)/1000*G.speed)/DT)*DT), ev={t,side,bk,items:inst.items.slice()};
  (f.ev=f.ev||[]).push(ev); f.c=resimFight(f,G.round);
- G.resolveNotBefore=Math.max(G.resolveNotBefore||0,f.t0+f.c.t/G.speed*1000+5000);
+ G.resolveNotBefore=Math.max(G.resolveNotBefore||0,f.t0+f.c.t/G.speed*1000+5000+END_T*1000);
  if(NET.named) NET.named.emit('cmbev',{seed:f.seed,ev}).catch(()=>{});
 }
 function useItem0(p,idx,u,loc){
@@ -688,7 +688,7 @@ function note(p,msg,toastIt){
 }
 
 /* ============================== [COMBAT] ============================== */
-const DT=0.05, COMBAT_T=40, PREP_T=3; // duración máxima del combate (luego empate) y preparación antes de pelear (las fichas se dan la vuelta hacia el rival)
+const DT=0.05, COMBAT_T=40, PREP_T=3, END_T=3; // duración máxima del combate (luego empate), preparación antes de pelear (las fichas se dan la vuelta hacia el rival) y finalización: segundos de más tras acabar el último combate antes de volver a tu tablero, para ver qué pasó
 const PLAN_T=30, AUG_T=45; // tiempos fijos (no se configuran): planificación de cada ronda y elección de aumento
 function hexDist(c1,r1,c2,r2){ const x1=c1-(r1-(r1&1))/2, x2=c2-(r2-(r2&1))/2; const y1=-x1-r1,y2=-x2-r2; return Math.max(Math.abs(x1-x2),Math.abs(y1-y2),Math.abs(r1-r2)); }
 const dU=(a,b)=>hexDist(a.c,a.r,b.c,b.r);
@@ -1502,7 +1502,7 @@ function startCombat(){
  }
  G.combat=myFight?myFight.c:null; G.flip=false; G.view=null;
  G.myOpp=myFight?oppLabel(myFight,0):''; G.myOppTr=myFight&&!myFight.pve&&myFight.b?myFight.b.tr:'';
- G.resolveNotBefore=G.mp?Date.now()+prepMs+maxRemote/G.speed*1000+5000:0;
+ G.resolveNotBefore=G.mp?Date.now()+prepMs+maxRemote/G.speed*1000+5000+END_T*1000:0;
  if(NET.mode==='host') netSendCombats();
  renderUI();
  if(!G.combat&&!G.mp) later(resolveRound,0);
@@ -2986,7 +2986,7 @@ function stepVisual(dt,isHost){
  const v=G.view&&G.view.cb?G.view:null;
  if(v){ if(!v.cb.done&&!prep){ v.acc+=dt*G.speed; let n=0; while(v.acc>=DT&&n++<200){ stepWithEv(v.cb); v.acc-=DT; if(v.cb.done) break; } }
    if(document.hidden) ageFx(v.cb,dt*Math.min(G.speed,2)); }
- if(isHost&&!G.resolving&&(!cb||cb.done)&&(!v||v.cb.done)&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,cb?5000:300); } // 5 s para recoger orbes y vender
+ if(isHost&&!G.resolving&&(!cb||cb.done)&&(!v||v.cb.done)&&Date.now()>=(G.resolveNotBefore||0)){ G.resolving=true; later(resolveRound,cb?5000+END_T*1000:300); } // 5 s para recoger orbes y vender, más la finalización (END_T)
 }
 // Contador de FPS (F3): media, peor fotograma y calidad del 3D, cada medio segundo
 let fpsOn=false, fpsT=[];
