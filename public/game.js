@@ -3208,7 +3208,7 @@ let sndWatch={g:null,up:0,tac:0};
 function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.lastUp[2]:0, tac=tacStage(me), frm=(me.tacForm||[]).join(), stk=me.streak|0;
  if(sndWatch.g!==G){ sndWatch={g:G,up,tac,frm,stk}; return; }
  if(stk>0&&stk!==sndWatch.stk&&G.round&&G.round.type!=='pve'){ const d=cosD(me,'fn'); if(d) Music.fanfare(d.notes); }
- if(up>sndWatch.up) Music.evolve('unit');
+ if(up>sndWatch.up) Music.evolve(me.lastUp[1]>=3?'big':'unit'); // a 3★, la versión larga (la de la minileyenda)
  if(tac>sndWatch.tac||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
  sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
 // Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
