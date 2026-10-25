@@ -3225,6 +3225,14 @@ function roundName(R){
  if(R.type==='pve'){ const w=pveWave(R.s,R.n), b=pveBoss(R), n=w.filter(c=>c.name===b.name).length; return `${b.name} salvaje${n>1?'s':''}`; }
  return R.aug>=0?'Combate y aumento':'Combate PvP';
 }
+// El render de la Pokédex trae aire transparente desigual (más abajo que arriba): el retrato del salvaje se centra por su silueta real, no por el bitmap, para quedar a la altura de las espadas
+const SPR_OFF=new Map();
+function centerSprite(img){ const apply=()=>{ const k=img.getAttribute('src'); let o=SPR_OFF.get(k);
+  if(o==null){ try{ const w=img.naturalWidth, h=img.naturalHeight; if(!w||!h) return; const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.drawImage(img,0,0); const d=x.getImageData(0,0,w,h).data; let y0=h,y1=-1,x0=w,x1=-1;
+    for(let y=0;y<h;y++) for(let i=0;i<w;i++) if(d[(y*w+i)*4+3]>24){ if(y<y0) y0=y; if(y>y1) y1=y; if(i<x0) x0=i; if(i>x1) x1=i; }
+    o=y1>=y0?[(w/2-(x0+x1+1)/2)/w,(h/2-(y0+y1+1)/2)/h]:[0,0]; }catch(e){ o=[0,0]; } SPR_OFF.set(k,o); }
+  img.style.transform=`translate(calc(-50% + ${(o[0]*100).toFixed(1)}%),calc(-50% + ${(o[1]*100).toFixed(1)}%))`; };
+  if(img.complete&&img.naturalWidth) apply(); else img.addEventListener('load',apply,{once:true}); }
 function renderTop(){
  const R=G.round; if(!R) return;
  $('stage').textContent=`Fase ${R.s}-${R.n}`; // solo la fase (qué ronda es ya lo dicen los iconos y su descripción al pasar el ratón)
@@ -3236,7 +3244,7 @@ function renderTop(){
    // El salvaje con el mismo retrato de la Pokédex que la ficha (public/dex, render de 128 px): el sprite pixelado de PokeAPI no se distinguía a este tamaño
    const dn=boss?String(boss.dex).split('/').pop():'', ico=boss?`<img src="${DEX_FILES.has(+dn)?dexUrl(dn):SPRITE(boss.dex)}" alt="">`:`<img class="ico" src="img/ui/${kind}-${tint}.webp" alt="">`;
    return `<span class="pill rt-${x.type} ${cur?'cur':''} ${x.n<R.n?'past':''} ${res?'res-'+res:''}" title="${x.s}-${x.n}: ${esc(roundName(x))}${res?(res==='W'?' · ganado':' · perdido'):''}${x.aug>=0?' · aumento '+TIER_NAME[G.augTiers[x.aug]]:''}">${ico}</span>`; }).join('');
- lastPhaseTxt=''; updatePhase();
+ $('pills').querySelectorAll('.pill img').forEach(centerSprite); // todos los iconos (espadas, cartas, carrusel y salvaje) centrados por su silueta lastPhaseTxt=''; updatePhase();
 }
 // Iconos de las sinergias: un símbolo de un solo color (SVG 24×24) que va dentro de un hexágono metálico, al estilo de TFT
 const TRAIT_SVG={
