@@ -235,7 +235,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   ok(E.TRAITS.Peleador && E.TRAITS.Peleador.bp.join() === '2,4,6' && E.TRAITS.Peleador.pr[0] === 8, 'Peleador: 2/4/6 y prismático en 8');
   const mem = s => E.UNIT_LIST.filter(u => u.traits.includes(s)).map(u => u.key).sort().join();
   ok(mem('Coloso') === 'beldum,geodude,groudon,magikarp,rhyhorn,tauros', 'Coloso: solo los 6 pesados (' + mem('Coloso') + ')');
-  ok(mem('Peleador') === 'charmander,ditto,eevee,elekid,growlithe,machop,poliwag,timburr', 'Peleador: los 8 melés ágiles (' + mem('Peleador') + ')');
+  ok(mem('Peleador') === 'charmander,ditto,eevee,elekid,growlithe,machop,nidoran,poliwag', 'Peleador: los 8 melés ágiles (' + mem('Peleador') + ')');
   ok(E.DEF.flareon.traits.includes('Peleador') && !E.DEF.flareon.traits.includes('Coloso'), 'Flareon hereda Peleador');
   // el escalón máximo se alcanza con como mucho 1 legendario
   for (const s of ['Tirador', 'Dragón', 'Roca', 'Coloso', 'Peleador']) { const nl = E.UNIT_LIST.filter(u => u.traits.includes(s) && !u.traits.includes('Legendario') && !E.DEF[u.key].evoOf).length; ok(nl + 1 >= E.TRAITS[s].bp[E.TRAITS[s].bp.length - 1], s + ': su último escalón se alcanza con ≤1 legendario (' + nl + ' sin legendario)'); }
@@ -343,7 +343,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'bagon', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'bagon'); E.castAbility(cb, u, u.ab);
     ok(Math.abs(u.shield - u.maxHp * .2) < 1 && u.tdr >= .25 && u.tdrT > 0, 'Bagon: Draco Meteoro le da un escudo del 20 % y un 25 % de reducción de daño'); }
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'ralts', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'ralts'); E.castAbility(cb, u, u.ab); ok(!(u.shield > 0), 'Ralts (también meteoro) no recibe el escudo de Bagon'); }
-  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'machop', 1, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'timburr'), [m, o] = [cb.units.find(x => x.d.key === 'machop'), cb.units.find(x => x.d.key === 'onix')];
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'nidoran', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'machop', 1, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'nidoran'), [m, o] = [cb.units.find(x => x.d.key === 'machop'), cb.units.find(x => x.d.key === 'onix')];
     m.hp = 1; u.target = m; const o0 = o.hp + o.shield; E.castAbility(cb, u, u.ab); ok(m.dead && o.hp + o.shield < o0, 'Timburr: si el objetivo cae, los golpes que sobran van al siguiente enemigo'); }
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'scyther', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'machop', 1, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'scyther'), [m, o] = [cb.units.find(x => x.d.key === 'machop'), cb.units.find(x => x.d.key === 'onix')];
     if (u.ab[0] === 'combo') { m.hp = 1; u.target = m; const o0 = o.hp + o.shield; E.castAbility(cb, u, u.ab); ok(o.hp + o.shield === o0, 'Scyther: sus golpes sobrantes no saltan (solo Timburr lleva spill)'); } }
@@ -351,13 +351,13 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
 
 // Kyogre: poco maná, 3 disparos pequeños a un objetivo y el 4.º lanzamiento es un maremoto en área que no vacía la mesa
 { const k = E.baseCombatUnit(E.DEF.kyogre, 0, 2); ok(k.maxMana <= 40 && k.mana >= k.maxMana, `Kyogre: maná bajo y lanza al empezar (${k.mana}/${k.maxMana})`);
-  const me = { ag: [], m: {}, u: [['3,3', 'kyogre', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0]] }, foe = { ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['4,0', 'beldum', 2, [], 0, 0], ['3,1', 'onix', 2, [], 0, 0], ['2,3', 'ralts', 2, [], 0, 0]] };
+  const me = { ag: [], m: {}, u: [['3,3', 'kyogre', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0]] }, foe = { ag: [], m: {}, u: [['3,0', 'nidoran', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['4,0', 'beldum', 2, [], 0, 0], ['3,1', 'onix', 2, [], 0, 0], ['2,3', 'ralts', 2, [], 0, 0]] };
   const cb = E.createCombatSnap(me, foe, { s: 5, n: 2 }, { seed: 31, visual: true }); E.simulate(cb); const f = cb.feed.filter(x => x.s === 0 && x.n === 'Kyogre');
   ok(f.length >= 3 && f.slice(0, 2).every(x => x.h <= 1 && /marea/.test(x.x)), 'Kyogre: los disparos de marea golpean a un solo enemigo (empieza en 1/4)');
   ok(f[2] && /maremoto/.test(f[2].x) && f[2].h >= 2, `Kyogre: el 3.er lanzamiento es un maremoto en área (${f[2] && f[2].h} golpeados)`);
   ok(f[2] && f[2].k < 5, 'Kyogre: el maremoto no borra la mesa entera'); ok(/maremoto/.test(E.abDesc(E.DEF.kyogre.ab[0], 100, 2)), 'Kyogre: la descripción explica el maremoto'); }
 // Rework de costes 5: cada mecánica nueva hace lo que dice
-{ const foe = { ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['4,0', 'beldum', 2, [], 0, 0], ['3,3', 'rowlet', 2, [], 0, 0], ['2,3', 'ralts', 2, [], 0, 0], ['4,3', 'hatenna', 2, [], 0, 0]] };
+{ const foe = { ag: [], m: {}, u: [['3,0', 'nidoran', 2, [], 0, 0], ['2,0', 'larvitar', 2, [], 0, 0], ['4,0', 'beldum', 2, [], 0, 0], ['3,3', 'rowlet', 2, [], 0, 0], ['2,3', 'ralts', 2, [], 0, 0], ['4,3', 'hatenna', 2, [], 0, 0]] };
   const run = (k, star = 2, items = [], seed = 31) => { const front = ['t', 'b', 'a'].includes(E.DEF[k].role); const me = { ag: [], m: {}, u: [[front ? '3,0' : '3,3', k, star, items, 0, 0], [front ? '2,0' : '3,0', 'lapras', 2, [], 0, 0], ['4,0', 'onix', 2, [], 0, 0], ['2,3', 'rowlet', 2, [], 0, 0]] };
     const cb = E.createCombatSnap(me, foe, { s: 5, n: 2 }, { seed, visual: true }), u = cb.units.find(x => x.d.key === k), hp0 = u.maxHp; E.simulate(cb); return { cb, u, hp0, f: cb.feed.filter(x => x.s === 0 && x.n === u.name) }; };
   // Groudon: tanque, aturde en área al primer lanzamiento, gana vida (para siempre) con las bajas cercanas
@@ -392,7 +392,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     z2.stormBounce = 2; vmStep(fake); const h2 = e2.map(x => x.hp + x.shield); for (const x of e2) x.dodge = 0; z2.target = e2[0]; fake.units.forEach(x => { x.atkCd = 99; x.moveCd = 99; }); z2.atkCd = 0; z2.range = 9; vmStep(fake);
     ok(e2.filter((x, i) => x.hp + x.shield < h2[i]).length === 3, `Zapdos: con 2 rebotes, un ataque alcanza a 3 enemigos distintos (${e2.filter((x, i) => x.hp + x.shield < h2[i]).length})`); }
   // Rayquaza: apunta donde atraviesa a más enemigos y cada lanzamiento suma +15 % (máx. +75 %)
-  { const grupo = { ag: [], m: {}, u: [['0,0', 'onix', 2, [], 0, 0], ['3,1', 'timburr', 2, [], 0, 0], ['3,2', 'larvitar', 2, [], 0, 0], ['3,3', 'beldum', 2, [], 0, 0]] };
+  { const grupo = { ag: [], m: {}, u: [['0,0', 'onix', 2, [], 0, 0], ['3,1', 'nidoran', 2, [], 0, 0], ['3,2', 'larvitar', 2, [], 0, 0], ['3,3', 'beldum', 2, [], 0, 0]] };
     const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'rayquaza', 2, [], 0, 0]] }, grupo, { s: 5, n: 2 }, { seed: 5 }); const r = cb.units.find(x => x.d.key === 'rayquaza'), en = cb.units.filter(x => x.side === 1); r.target = en[0];
     const h0 = en.map(x => x.hp); E.castAbility(cb, r, r.ab); ok(en.filter((x, i) => x.hp < h0[i]).length >= 3, `Rayquaza: el rayo va hacia la fila con más enemigos (${en.filter((x, i) => x.hp < h0[i]).length} alcanzados)`);
     const cb2 = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'rayquaza', 2, [], 0, 0]] }, grupo, { s: 5, n: 2 }, { seed: 5 }); const r2 = cb2.units.find(x => x.d.key === 'rayquaza'), e2 = cb2.units.filter(x => x.side === 1); for (const x of e2) { x.maxHp = x.hp = 1e7; } const dmg = () => { const b = e2.reduce((t, x) => t + x.hp, 0); E.castAbility(cb2, r2, r2.ab); return b - e2.reduce((t, x) => t + x.hp, 0); };
@@ -493,6 +493,13 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   { const { G, p } = fresh(); G.phase = 'planning'; p.bench = keys.slice(0, 9).map(k => mk(k)); p.orbs = [{ id: 923, tier: 'gray', toks: ['ca'], c: 2, r: 5 }];
     ok(run('orbUnits')(p.orbs[0]) === 1 && run('openPlayerOrb')(p, 923, false) === null && p.orbs.some(o => o.id === 923), 'banca llena: el orbe con yunque espera en el suelo');
     p.bench[0] = null; ok(!!run('openPlayerOrb')(p, 923, false) && p.bench.some(u => u && u.defId === 'yunque'), 'con un hueco libre el yunque entra en la banca'); } }
+// Elección pendiente (yunque) abierta al empezar el combate: la persona elige después y recibe el objeto (solo bots y ausentes eligen solos)
+{ const run = s => vm.runInContext(s, ctx);
+  const { G, p } = fresh(); G.phase = 'planning'; p.bench = p.bench.map(() => null); p.bench[0] = run(`makeInst('yunque_oro')`); G.round = E.ROUNDS[G.roundIdx];
+  ok(E.applyAct(p, { t: 'sell', loc: { i: 0 } }).ok && p.picks.length === 1, 'yunque: al venderlo queda la elección pendiente');
+  run('startCombat')(); ok(p.picks.length === 1, 'al empezar el combate la elección de la persona sigue pendiente (no se elige sola)');
+  const quiero = p.picks[0].opts[2].v.slice(3), n0 = p.items.length; ok(E.applyAct(p, { t: 'pick', id: p.picks[0].id, i: 2 }).ok && p.items.length === n0 + 1 && p.items.includes(quiero) && !p.picks.length, 'elegir durante el combate da exactamente ese objeto');
+  const b = G.players.find(q => q.isBot); b.picks = []; run('openAnvil')(b, 'c'); ok(!b.picks.length && b.items.length >= 1, 'los rivales generados eligen solos'); }
 // Rendirse: rechazado antes de 3-1 y en el carrusel; desde 3-1 elimina (último puesto entre los vivos, equipo al pool) y la partida sigue para los demás
 { const { G, p } = fresh(); const run = s => vm.runInContext(s, ctx); G.phase = 'planning'; G.roundIdx = 5; G.round = E.ROUNDS[5];
   ok(G.round.s === 2 && !E.applyAct(p, { t: 'surrender' }).ok && p.alive, 'rendirse: antes de la fase 3-1 se rechaza');
@@ -522,7 +529,7 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   const m2 = G.players[3]; m2.tac = 'mew'; m2.mewF = 0; mewWin(m2, m); ok(!m2.mewSk || !m2.mewSk.length, 'Mew: ganar a un Mew sin copia no da nada'); }
 // Costes 4 de 3 formas: su nombre es el de la forma que sale en la tienda y a 1★ (la 2.ª)
 { const D = E.DEF; ok(D.larvitar.name === 'Pupitar' && D.bagon.name === 'Shelgon' && D.litwick.name === 'Lampent' && D.zorua.name === 'Zorua' && D.charmander.name === 'Charmander', 'costes 4 de 3 formas: se llaman como su 2.ª forma');
-  const fs = require('fs'); ok([247, 281, 444, 356, 404, 388, 375, 372, 533, 608, 723].every(n => fs.statSync(path.join(__dirname, '..', 'public', 'dex', n + '.png')).size !== fs.statSync(path.join(__dirname, '..', 'public', 'dex', (n === 356 ? 355 : n - 1) + '.png')).size), 'los sprites de la 2.ª forma ya no son copia de la 1.ª'); }
+  const fs = require('fs'); ok([247, 281, 444, 356, 404, 388, 375, 372, 33, 608, 723].every(n => fs.statSync(path.join(__dirname, '..', 'public', 'dex', n + '.png')).size !== fs.statSync(path.join(__dirname, '..', 'public', 'dex', (n === 356 ? 355 : n - 1) + '.png')).size), 'los sprites de la 2.ª forma ya no son copia de la 1.ª'); }
 // Carrusel: reparto por fase, sin fichas repetidas, componentes hasta la 4-4 (uno de cada tipo en la 3-4) y objetos completos después
 { const startCarousel = vm.runInContext('startCarousel', ctx), ROUNDS = vm.runInContext('ROUNDS', ctx), BASIC = vm.runInContext('BASIC', ctx), FULL = vm.runInContext('FULL_KEYS', ctx);
   const want = { 2: { 3: 4, 2: 4, 1: 1 }, 3: { 4: 2, 3: 3, 2: 3, 1: 3 }, 4: { 5: 2, 4: 2, 3: 2, 2: 2, 1: 1 }, 5: { 5: 2, 3: 7 }, 7: { 5: 2, 3: 7 } };

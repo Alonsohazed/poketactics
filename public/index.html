@@ -845,8 +845,10 @@ body:has(#menu:not(.hidden)) #boardStack,body:has(#auth:not(.hidden)) #boardStac
   .shop{flex:none;position:relative}
   /* Banca de objetos dentro del tablero, a la izquierda */
   #boardWrap{position:relative}
-  #boardWrap .items{position:absolute;left:0;top:0;z-index:3;display:grid;grid-template-columns:repeat(2,60px);gap:6px;padding:8px;border-radius:14px;background:rgba(8,12,28,.62);border:1px solid var(--line2);min-height:0}
+  #boardWrap .items{position:absolute;left:0;top:0;z-index:3;display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:14px;background:rgba(8,12,28,.62);border:1px solid var(--line2);min-height:0}
   #boardWrap .items .item .ii,#boardWrap .items .islot{--is:60px}
+.items .ibench{display:grid;grid-template-columns:repeat(2,60px);gap:6px}
+.items.multi .ibench+.ibench{border-left:1px solid var(--line2);padding-left:10px}
 }
 /* Campo a pantalla completa (escritorio, lo activa layout() con la clase fullField): el tablero 3D queda detrás de todo
    y los paneles flotan encima, semitransparentes; los huecos vacíos dejan pasar el ratón al tablero */
@@ -1557,7 +1559,9 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .tpInfo{position:absolute;left:-6px;top:calc(100% + 12px);width:min(380px,calc(100vw - 80px));z-index:6;margin:0;background:linear-gradient(160deg,#1d3446,#101c26);border:1px solid #c9a24a;border-radius:12px;padding:10px 14px;color:#dfe8f2;font-size:14px;line-height:1.45;box-shadow:0 12px 30px rgba(0,0,0,.55);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility .15s;pointer-events:none}
 .tpInfo::before{content:"";position:absolute;left:14px;top:-7px;width:12px;height:12px;background:#1d3446;border-left:1px solid #c9a24a;border-top:1px solid #c9a24a;transform:rotate(45deg)}
 .tpHelpWrap:hover .tpInfo,.tpHelp:focus-visible+.tpInfo{opacity:1;visibility:visible;transform:none}
-.mbox.tp .tacPick{display:block;margin-top:4px}
+.mbox.tp .tacPick{display:block;margin-top:4px;overflow:auto;flex:1 1 auto;min-height:0;padding-right:4px}
+.mbox.tp{display:flex;flex-direction:column;overflow:hidden}
+.mbox.tp .tpHead,.mbox.tp .tpFoot{flex:0 0 auto}
 .tpTier{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08);--tc:#a9b8c8}
 .tpTier:last-child{border-bottom:0}
 .tpTier h4{margin:0;font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--tc);align-self:start;position:sticky;top:0;padding-top:30px} /* con muchas minileyendas, la rareza queda arriba de su sección y acompaña al desplazar */
