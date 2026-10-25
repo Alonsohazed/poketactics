@@ -109,7 +109,7 @@ test('rasgos: colocar Pokémon activa sus sinergias en el panel', async ({ page 
 });
 
 // Algunos aumentos (emblemas, héroes…) abren una elección pendiente al elegirlos: se acepta la primera opción hasta que no queden
-async function resolverElecciones(page) { for (let i = 0; i < 6; i++) { if (await page.locator('#mbox .choice').count()) await page.locator('#mbox .choice').first().click(); else if (await page.locator('#rvOk').count()) await page.locator('#rvOk').click(); else return; await page.waitForTimeout(400); } } // elecciones pendientes y ventanas de resultado (p. ej. la Llamada al Caos) hasta que no quede ninguna
+async function resolverElecciones(page) { for (let i = 0; i < 6; i++) { if (await page.locator('#mbox .choice, #mbox .coCard').count()) await page.locator('#mbox .choice, #mbox .coCard').first().click(); else if (await page.locator('#rvOk').count()) await page.locator('#rvOk').click(); else return; await page.waitForTimeout(400); } } // elecciones pendientes y ventanas de resultado (p. ej. la Llamada al Caos) hasta que no quede ninguna
 
 test('aumentos: en la ronda 2-1 se elige uno y queda aplicado', async ({ page }) => {
   await jumpToRound(page, 3); // ROUNDS[3] = 2-1, con aumento
@@ -336,12 +336,12 @@ test('Llamada al Caos: se elige y aparece una ventana con el resultado', async (
   // Ya no hay oferta de aceptar o rechazar: el premio sale directamente (y algunos piden elegir un objeto o emblema)
   await page.evaluate(() => { applyAugment(G.me, AUG_BY.llamada_caos); renderUI(); });
   for (let i = 0; i < 6 && !(await page.locator('#mbox .reveal').isVisible()); i++) {
-    const ch = page.locator('#mbox .choice').first(); if (await ch.isVisible()) await ch.click(); else await page.waitForTimeout(300);
+    const ch = page.locator('#mbox .choice, #mbox .coCard').first(); if (await ch.isVisible()) await ch.click(); else await page.waitForTimeout(300);
   }
   await expect(page.locator('#mbox .reveal')).toBeVisible();
   await expect(page.locator('#mbox .reveal h1')).not.toBeEmpty();
   await page.locator('#rvOk').click();
-  for (let i = 0; i < 6 && await page.locator('#mbox .choice').first().isVisible(); i++) await page.locator('#mbox .choice').first().click();
+  for (let i = 0; i < 6 && await page.locator('#mbox .choice, #mbox .coCard').first().isVisible(); i++) await page.locator('#mbox .choice, #mbox .coCard').first().click();
   await expect(page.locator('#modal')).toBeHidden();
   // también queda en el registro de la partida (sin pestaña visible)
   await expect(page.locator('#log')).toContainText('Llamada al Caos');
@@ -381,7 +381,7 @@ test('pokédex: usa sprites 2D ligeros y no carga ningún modelo 3D', async ({ p
   const glb = []; page.on('request', r => { if (/\.glb|\/anims\//.test(r.url())) glb.push(r.url()); });
   await page.evaluate(() => { performance.clearResourceTimings(); showDex(0); });
   await expect(page.locator('.dexGrid .dexCard')).toHaveCount(await page.evaluate(() => UNIT_LIST.length));
-  const info = await page.evaluate(() => { const im = [...document.querySelectorAll('.dexGrid img')]; return { n: im.length, bad: im.filter(i => !/\/dex\/\d+\.png$/.test(i.src)).length }; });
+  const info = await page.evaluate(() => { const im = [...document.querySelectorAll('.dexGrid img')]; return { n: im.length, bad: im.filter(i => !/\/dex\/\d+\.png(\?v=\d+)?$/.test(i.src)).length }; });
   expect(info.n).toBeGreaterThan(100); expect(info.bad).toBe(0);
   await page.evaluate(() => document.querySelector('#mbox').scrollTo(0, 1e6)); await page.waitForTimeout(1500);
   expect(await page.evaluate(() => [...document.querySelectorAll('.dexGrid img')].filter(i => i.complete && i.naturalWidth === 0).length)).toBe(0); // ningún sprite roto
@@ -446,9 +446,9 @@ test('retratos: miniaturas ligeras y, si fallan, el sprite de la Pokédex en vez
   // si un AVIF no carga, se pide el WebP antes que el sprite de la Pokédex
   const wb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/avif;base64,AAAA#no-existe.avif?v=1'; /* inválida y sin pedir nada a la red */ document.body.appendChild(im);
     await new Promise(r => setTimeout(r, 800)); const o = { probóWebp: im.dataset.fbw === '1', src: im.getAttribute('src') }; im.remove(); return o; });
-  expect(wb.probóWebp).toBe(true); expect(wb.src).toMatch(/dex\/4\.png$/);
+  expect(wb.probóWebp).toBe(true); expect(wb.src).toMatch(/dex\/4\.png(\?v=\d+)?$/);
   const fb = await page.evaluate(async () => { const im = document.createElement('img'); im.className = 'artPic'; im.dataset.dex = '4'; im.src = 'data:image/webp;base64,AAAA'; /* imagen inválida: falla sin pedir nada a la red */ document.body.appendChild(im); await new Promise(r => setTimeout(r, 800)); const o = { src: im.src, ok: im.naturalWidth > 0 }; im.remove(); return o; });
-  expect(fb.src).toMatch(/dex\/4\.png$/); expect(fb.ok).toBe(true);
+  expect(fb.src).toMatch(/dex\/4\.png(\?v=\d+)?$/); expect(fb.ok).toBe(true);
 });
 
 test('botones de la tienda: etiqueta, moneda con el coste e icono; el coste cambia con los modificadores', async ({ page }) => {
@@ -463,7 +463,7 @@ test('botones de la tienda: etiqueta, moneda con el coste e icono; el coste camb
 test('subida de estrellas de otro jugador: recuadro con su nombre, la cara, el nombre del Pokémon y estrellas de plata (2★) u oro (3★)', async ({ page }) => {
   await page.evaluate(() => { const o = G.players.find(p => p !== G.me); o.name = 'Webas'; o.lastUp = [94, 3, 1001]; const q = G.players.filter(p => p !== G.me)[1]; q.lastUp = [8, 2, 1002]; renderUI(); });
   await page.waitForTimeout(700);
-  const r = await page.evaluate(() => [...document.querySelectorAll('#upLayer .upCard')].map(c => ({ n: c.querySelector('.un').textContent, p: c.querySelector('.pn').textContent, s: c.querySelector('.st').textContent, col: getComputedStyle(c.querySelector('.st')).color, img: /dex\/\d+\.png$/.test(c.querySelector('img').src), right: c.getBoundingClientRect().right })));
+  const r = await page.evaluate(() => [...document.querySelectorAll('#upLayer .upCard')].map(c => ({ n: c.querySelector('.un').textContent, p: c.querySelector('.pn').textContent, s: c.querySelector('.st').textContent, col: getComputedStyle(c.querySelector('.st')).color, img: /dex\/\d+\.png(\?v=\d+)?$/.test(c.querySelector('img').src), right: c.getBoundingClientRect().right })));
   expect(r.length).toBe(2);
   const g3 = r.find(x => x.p === 'Gengar'), s2 = r.find(x => x.p === 'Wartortle');
   expect(g3.n).toBe('Webas'); expect(g3.s).toBe('★★★'); expect(g3.col).toBe('rgb(255, 207, 51)'); expect(s2.s).toBe('★★'); expect(s2.col).toBe('rgb(223, 230, 241)'); expect(g3.img && s2.img).toBe(true);
@@ -515,7 +515,7 @@ test('carga: la CDN lenta o caída no retrasa los modelos (petición en carrera 
     const t2 = performance.now(); try { await B3.hedged(U + 'caida', U + 'caida'); res.ambas = 'resolvió'; } catch (e) { res.ambas = 'rechazó'; } res.ambasMs = Math.round(performance.now() - t2); return res; });
   expect(r.lenta[0]).toBe('rapida'); expect(r.lenta[1]).toBeGreaterThan(1300); expect(r.lenta[1]).toBeLessThan(3000);
   expect(r.caida[0]).toBe('rapida'); expect(r.caida[1]).toBeLessThan(800); expect(r.ambas).toBe('rechazó');
-  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.avif?v=' + 3, 'items/water.webp', 'dex/4.png']);
+  expect(await page.evaluate(() => [window.ASSET_BASE, artThumb('abra'), itemSrc('water'), dexUrl(4)])).toEqual([undefined, 'art/t/abra.avif?v=' + 3, 'items/water.webp', 'dex/4.png?v=2']);
 });
 
 test('objetos: el marco dorado es solo de la banca; sobre un Pokémon (lienzo y ficha) el marco es negro', async ({ page }) => {
@@ -549,7 +549,7 @@ test('retratos pequeños: salen del sprite de la Pokédex al instante (sin desca
   const files = fs.readdirSync(dir).map(f => +f.replace('.png', '')).sort((a, b) => a - b);
   const glb = []; page.on('request', r => { if (/\.glb/.test(r.url())) glb.push(r.url()); });
   const r = await page.evaluate(async () => { const have = [...DEX_FILES].sort((a, b) => a - b); const t = performance.now(); const host = document.createElement('div'); host.innerHTML = [4, 25, 'shiny:130', 'y/150', 129, 446].map(d => `<span class="spr" style="--s:48px" data-dex="${d}"></span>`).join(''); document.body.appendChild(host); hydrate(host);
-    const im = [...host.querySelectorAll('img')]; await new Promise(r => setTimeout(r, 600)); const o = { have, n: im.length, sprites: im.filter(i => /dex\/\d+\.png$/.test(i.src) && i.complete && i.naturalWidth > 0).length, ms: Math.round(performance.now() - t) }; host.remove(); return o; });
+    const im = [...host.querySelectorAll('img')]; await new Promise(r => setTimeout(r, 600)); const o = { have, n: im.length, sprites: im.filter(i => /dex\/\d+\.png(\?v=\d+)?$/.test(i.src) && i.complete && i.naturalWidth > 0).length, ms: Math.round(performance.now() - t) }; host.remove(); return o; });
   expect(r.have).toEqual(files); expect(r.n).toBe(6); expect(r.sprites).toBe(6); await page.waitForTimeout(500); expect(glb.filter(u => /\/(4|25|129|130|150|446)\.glb/.test(u))).toEqual([]);
 });
 
@@ -697,4 +697,36 @@ test('minileyenda: al llegar a su destino se queda mirando hacia donde caminaba 
   const dif = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   expect(dif(izq, der)).toBeGreaterThan(2.5);   // mira a lados opuestos
   expect(dif(izq, inicio)).toBeGreaterThan(.3); expect(dif(der, inicio)).toBeGreaterThan(.3);  // y ninguna es la diagonal de partida
+});
+
+test('tienda «Elige uno» (yunque y emblemas), elegir ficha con retrato y carrusel de la 2-4', async ({ page }) => {
+  // yunque de componentes: 4 cartas con el objeto enmarcado y su nombre; al elegir, el objeto va al inventario
+  const n0 = await page.evaluate(() => { openAnvil(G.me, 'c', 4); renderUI(); return G.me.items.length; });
+  await expect(page.locator('#mbox .chooseOne .coCard')).toHaveCount(4);
+  await expect(page.locator('#mbox .coHead')).toContainText('Elige uno');
+  await expect(page.locator('#mbox .coCard .coIco img').first()).toBeVisible();
+  await page.locator('#mbox .coCard').first().click();
+  await expect.poll(() => page.evaluate(() => G.me.items.length)).toBe(n0 + 1);
+  // emblema a elegir: la misma tienda, con los emblemas como cartas
+  await page.evaluate(() => { augOffer(G.me, 'prueba', 'Emblemas de tipo', 'Elige uno', emblemOpts(ELEM_TRAITS, G.me)); renderUI(); });
+  await expect(page.locator('#mbox .chooseOne .coCard')).toHaveCount(3);
+  await page.locator('#mbox .coCard').first().click();
+  await expect.poll(() => page.evaluate(() => G.me.items.some(k => k.startsWith('emb_')))).toBe(true);
+  // elegir una ficha: el panel de siempre, con el retrato de cada Pokémon
+  await page.evaluate(() => { augOffer(G.me, 'prueba', 'Ultra Ball', 'Elige un Pokémon', unitOptions(G.me, u => u.cost === 4)); renderUI(); });
+  await expect(page.locator('#mbox .choice.pkUnit .pkPic img').first()).toBeVisible();
+  await page.locator('#mbox .choice').first().click();
+  await expect(page.locator('#modal')).toBeHidden();
+  // carrusel de la 2-4: 4 de coste 3, 4 de coste 2 y 1 de coste 1, sin repetidos, con halo de su coste; clic en una ficha → su ficha
+  await jumpToRound(page, 6);
+  const car = await page.evaluate(() => { const o = G.carousel.opts, n = {}; for (const x of o) { const c = DEF[x.key].cost; n[c] = (n[c] || 0) + 1; } return { n, uniq: new Set(o.map(x => x.key)).size, len: o.length, halo: sceneActors().filter(a => a.opt != null).every(a => a.halo === COST_HEX[DEF[G.carousel.opts[a.opt].key].cost - 1]) }; });
+  expect(car).toEqual({ n: { 1: 1, 2: 4, 3: 4 }, uniq: 9, len: 9, halo: true });
+  await page.evaluate(() => { selCar = 0; renderCard(); });
+  await expect(page.locator('#ucard')).toBeVisible();
+  await expect(page.locator('#ucard .ucShopCard .cn')).toHaveText(await page.evaluate(() => nameOf(DEF[G.carousel.opts[0].key], 1)));
+});
+
+test('cartas de la tienda: el coste va a la altura del nombre (las miniaturas del gacha también usan .cc y no deben estirarlo)', async ({ page }) => {
+  const r = await page.evaluate(() => [...document.querySelectorAll('#cards .card')].map(card => { const c = card.querySelector('.cc').getBoundingClientRect(), n = card.querySelector('.cn').getBoundingClientRect(); return Math.abs((c.top + c.height / 2) - (n.top + n.height / 2)) <= 2 && c.height < 40; }));
+  expect(r).toEqual([true, true, true, true, true]);
 });

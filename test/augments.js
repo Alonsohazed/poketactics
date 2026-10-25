@@ -70,7 +70,7 @@ for (const [id, big] of [['llamada_caos', true], ['eco_caos', false]]) {
   for (let i = 0; i < 300; i++) { const { G, p } = fresh(); G.round = { s: 4, n: 2 }; const g0 = p.gold, l0 = p.level, x0 = p.xp, r0 = p.freeRerolls, i0 = p.items.length, u0 = p.bench.filter(Boolean).length, hp0 = p.hp;
     E.applyAugment(p, E.AUG_BY[id]); const pk0 = p.picks.length; for (const q of p.picks.slice()) E.resolvePick(p, q.id, 0); const st = p.augSt[id]; seen.add(st.last);
     ok(p.hp === hp0, 'el Caos ya no quita vida'); ok(p.reveals && p.reveals.length > 0, 'el resultado se muestra en una ventana');
-    const v = (p.gold - g0) + (p.level - l0) * 8 + (p.xp !== x0 || p.level !== l0 ? 10 : 0) + (p.freeRerolls - r0) + (p.items.length - i0) * 10 + (p.bench.filter(Boolean).length - u0) * 10 + (st.egg ? 30 : 0); minValue = Math.min(minValue, v); }
+    const v = (p.gold - g0) + (p.level - l0) * 8 + (p.xp !== x0 || p.level !== l0 ? 10 : 0) + (p.freeRerolls - r0) + (p.items.length - i0) * 10 + p.items.filter(k => /^rad_/.test(k)).length * 10 + (p.bench.filter(Boolean).length - u0) * 10 + (st.egg ? 30 : 0); minValue = Math.min(minValue, v); }
   ok(seen.size === 9, `${id}: salen los 9 resultados (${seen.size})`); ok(minValue >= (big ? 20 : 10), `${id}: ningún resultado es pequeño (${minValue})`);
   const { G, p } = fresh(); G.round = { s: 3, n: 2 }; let offered = 0; for (let i = 0; i < 300; i++) offered += E.augmentChoices(p, E.AUG_BY[id].tier).includes(id) ? 1 : 0; ok(offered === 0, `${id}: no sale antes de 4-2`); }
 { let hatched = false; for (let k = 0; k < 300 && !hatched; k++) { const r = fresh(); r.G.round = { s: 4, n: 2 }; E.applyAugment(r.p, E.AUG_BY.llamada_caos); for (const q of r.p.picks.slice()) E.resolvePick(r.p, q.id, 0);

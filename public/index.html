@@ -318,7 +318,7 @@ body.fullField .traitsPanel{background:none;border:0;backdrop-filter:none;paddin
 .card .tr i{flex:none;width:17px;height:17px;display:grid;place-items:center}
 .card .tr i::before{content:none}
 .card .tr i svg{width:16px;height:16px;fill:#fff;stroke:#000;stroke-width:1.6px;paint-order:stroke;filter:drop-shadow(0 1px 1px rgba(0,0,0,.8))}
-.card .cc{position:absolute;right:6px;bottom:6px;z-index:2;font-family:var(--display);color:#ffe18a;font-size:15px;display:flex;align-items:center;gap:4px;padding:1px 7px;border-radius:7px;background:rgba(6,9,22,.82);border:1px solid var(--cc)}
+.card .cc{position:absolute;right:6px;bottom:6px;z-index:2;font-family:var(--display);color:#ffe18a;font-size:15px;display:flex;align-items:center;gap:4px;padding:1px 7px;border-radius:7px;background:rgba(6,9,22,.82);border:1px solid var(--cc);min-height:0;min-width:0} /* sin el mínimo de 56 px de las miniaturas del gacha (también .cc), que subía el coste por encima del nombre */
 .card .cc::before{content:"";width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#f6c544 45%,#c58a12)}
 .c1{--cc:var(--c1)}.c2{--cc:var(--c2)}.c3{--cc:var(--c3)}.c4{--cc:var(--c4)}.c5{--cc:var(--c5)}
 /* Marco por coste al estilo TFT: gris, verde, azul, morado y dorado, bien visibles */
@@ -543,7 +543,28 @@ img.own.augImg,.ac3Ico img.own{image-rendering:auto}
 .ac3Emo{font-size:84px;line-height:1;filter:grayscale(1) brightness(1.3)}
 /* título y descripción sobre el pergamino (algo a la izquierda del centro, como el cuerpo de la carta) */
 .ac3Name{position:absolute;left:13%;right:16%;top:45.05%;height:9.5%;display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:27px;line-height:1.05;color:#f6f0ff;text-shadow:0 2px 3px rgba(0,0,0,.55);overflow:hidden}
-.ac3Desc{position:absolute;left:12%;right:15%;top:57.5%;bottom:6.5%;display:flex;align-items:flex-start;justify-content:center;font-size:15px;font-weight:600;line-height:1.34;color:#eee8fa;text-shadow:0 1px 2px rgba(0,0,0,.6);overflow:hidden}
+.ac3Desc{position:absolute;left:12%;right:15%;top:57.5%;bottom:6.5%;display:flex;white-space:pre-line;align-items:flex-start;justify-content:center;font-size:15px;font-weight:600;line-height:1.34;color:#eee8fa;text-shadow:0 1px 2px rgba(0,0,0,.6);overflow:hidden}
+/* Tienda «Elige uno» (yunques, emblemas y objetos a elegir; showChooseOne): colores medidos en la de TFT. Panel azul noche con borde oscuro, cabecera
+   de pestaña con filo dorado y barra de tiempo, y cartas pardo-doradas con un filo interior claro y el objeto en un marco de bronce que sobresale arriba */
+.chooseOne{position:relative;width:min(1080px,94vw);margin:34px auto 0;padding:54px 26px 26px;background:linear-gradient(180deg,#16283a,#101d2a 60%,#0d1822);border:2px solid #2a3027;border-radius:6px;box-shadow:0 0 0 1px #000,0 24px 50px rgba(0,0,0,.6)}
+.coHead{position:absolute;top:-24px;left:50%;transform:translateX(-50%);min-width:300px;padding:9px 46px 12px;text-align:center;background:linear-gradient(180deg,#1b3a46,#0f2530);border:2px solid #8d885e;border-bottom-color:#5a5a3c;clip-path:polygon(7% 0,93% 0,100% 100%,0 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.coHead b{display:block;font-family:var(--display,Georgia,serif);font-size:25px;color:#e9f0ee;letter-spacing:.5px;text-shadow:0 2px 0 #000}
+.coBar{display:block;width:220px;height:9px;margin:6px auto 0;background:#100f06;border:1px solid #6b5a2c;border-radius:5px;overflow:hidden}
+.coBar>i{display:block;height:100%;background:linear-gradient(180deg,#e6c068,#c79a40 55%,#9c7428);transform-origin:left;animation:coTime linear forwards}
+@keyframes coTime{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.chooseOne .coSub{width:100%;max-width:none;margin:0 0 30px;text-align:center;color:#b9c3c8;font-size:14px}
+.coCards{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+.coCard{position:relative;width:230px;height:150px;padding:52px 14px 14px;border:3px solid #342c18;border-radius:10px;cursor:pointer;color:#fff4da;
+  background:linear-gradient(180deg,#5c5132 0%,#574b2f 22%,#4f432a 45%,#3c3019 70%,#2b2213 88%,#1f180a 100%);box-shadow:inset 0 0 0 2px #1f1708,0 10px 18px rgba(0,0,0,.5);transition:transform .12s,filter .12s,border-color .12s}
+.coCard::before{content:"";position:absolute;inset:12px;border:1.5px solid #6a5c3c;border-radius:6px;pointer-events:none;box-shadow:inset 0 1px 0 rgba(255,236,190,.08)}
+.coCard:hover{transform:translateY(-4px);filter:brightness(1.12);border-color:#7d6a3e}
+.coCard:focus-visible{outline:3px solid #e9cf95;outline-offset:3px}
+.coIco{position:absolute;top:-28px;left:50%;transform:translateX(-50%);width:70px;height:70px;display:grid;place-items:center;background:#0e0904;border:4px solid #978250;border-top-color:#b3a27d;box-shadow:inset 0 0 0 2px #0e0400,0 4px 8px rgba(0,0,0,.55)}
+.coIco .ii{width:58px;height:58px}
+.coCard b{position:relative;display:block;margin-top:14px;font-size:18px;line-height:1.15;text-shadow:0 2px 2px #000}
+/* Elección de una ficha (aumentos que dan o mejoran un Pokémon): su retrato en un círculo del color de su coste */
+.choice.pkUnit .pkPic{display:grid;place-items:center;width:76px;height:76px;margin:0 auto 6px;border-radius:50%;border:3px solid var(--cc);background:radial-gradient(circle at 50% 40%,#22364a,#0b1520);overflow:hidden}
+.choice.pkUnit .pkPic img{width:92%;height:92%;object-fit:contain}
 @keyframes augIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
 @keyframes augSweep{to{background-position:0 0}}
 @keyframes augIco{0%{opacity:0;transform:scale(.75);filter:drop-shadow(0 0 0 transparent)}50%{opacity:1;filter:drop-shadow(0 0 18px var(--tg))}100%{opacity:1;transform:none;filter:drop-shadow(0 0 0 transparent)}}

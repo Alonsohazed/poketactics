@@ -510,6 +510,42 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   a.mewT = 0; ok(!E.applyAct(a, { t: 'mform', k: 1 }).ok, 'Mew: quien no lleva a Mew no puede usar mform');
   mewWin(a, m); ok(!a.mewSk && a.mewF === undefined, 'Mew: los demás no copian nada al ganar a Mew');
   const m2 = G.players[3]; m2.tac = 'mew'; m2.mewF = 0; mewWin(m2, m); ok(!m2.mewSk || !m2.mewSk.length, 'Mew: ganar a un Mew sin copia no da nada'); }
+// Costes 4 de 3 formas: su nombre es el de la forma que sale en la tienda y a 1★ (la 2.ª)
+{ const D = E.DEF; ok(D.larvitar.name === 'Pupitar' && D.bagon.name === 'Shelgon' && D.litwick.name === 'Lampent' && D.zorua.name === 'Zorua' && D.charmander.name === 'Charmander', 'costes 4 de 3 formas: se llaman como su 2.ª forma');
+  const fs = require('fs'); ok([247, 281, 444, 356, 404, 388, 375, 372, 533, 608, 723].every(n => fs.statSync(path.join(__dirname, '..', 'public', 'dex', n + '.png')).size !== fs.statSync(path.join(__dirname, '..', 'public', 'dex', (n === 356 ? 355 : n - 1) + '.png')).size), 'los sprites de la 2.ª forma ya no son copia de la 1.ª'); }
+// Carrusel: reparto por fase, sin fichas repetidas, componentes hasta la 4-4 (uno de cada tipo en la 3-4) y objetos completos después
+{ const startCarousel = vm.runInContext('startCarousel', ctx), ROUNDS = vm.runInContext('ROUNDS', ctx), BASIC = vm.runInContext('BASIC', ctx), FULL = vm.runInContext('FULL_KEYS', ctx);
+  const want = { 2: { 3: 4, 2: 4, 1: 1 }, 3: { 4: 2, 3: 3, 2: 3, 1: 3 }, 4: { 5: 2, 4: 2, 3: 2, 2: 2, 1: 1 }, 5: { 5: 2, 3: 7 }, 7: { 5: 2, 3: 7 } };
+  for (const s of [2, 3, 4, 5, 7]) for (let k = 0; k < 20; k++) {
+    const { G } = fresh(); G.auto = true; G.roundIdx = ROUNDS.findIndex(r => r.s === s && r.type === 'carousel'); G.round = ROUNDS[G.roundIdx]; let opts = null;
+    const fin = vm.runInContext('finishCarousel', ctx); vm.runInContext('finishCarousel=function(){ globalThis.__carOpts=G.carousel.opts.map(o=>({key:o.key,item:o.item})); G.carousel=null; }', ctx);
+    startCarousel(); opts = ctx.__carOpts; vm.runInContext('finishCarousel', ctx); ctx.finishCarousel = fin; vm.runInContext('finishCarousel=' + fin.toString(), ctx);
+    const n = {}; for (const o of opts) { const c = E.DEF[o.key].cost; n[c] = (n[c] || 0) + 1; }
+    if (k === 0) ok(JSON.stringify(n) === JSON.stringify(Object.fromEntries(Object.entries(want[s]).sort((a, b) => a[0] - b[0]))), `carrusel ${s}-4: reparto de costes ${JSON.stringify(n)}`);
+    ok(new Set(opts.map(o => o.key)).size === opts.length, `carrusel ${s}-4: sin fichas repetidas`);
+    if (s <= 4) ok(opts.every(o => BASIC.includes(o.item)), `carrusel ${s}-4: solo componentes`); else ok(opts.every(o => FULL.includes(o.item)) && new Set(opts.map(o => o.item)).size === opts.length, `carrusel ${s}-4: objetos completos distintos`);
+    if (s === 3) ok(BASIC.every(b => opts.some(o => o.item === b)), 'carrusel 3-4: al menos un componente de cada tipo'); } }
+// Botín PvE: 12 componentes en la partida (1-1, 1-2, 1-3, 2-7, 3-7 y 4-7), yunque de componentes en la 4-7, de objeto desde la 5-7 y orbes sin componentes
+{ const pveSpec = vm.runInContext('pveSpec', ctx), ORBS = vm.runInContext('ORBS', ctx), ROUNDS = vm.runInContext('ROUNDS', ctx);
+  const pve = ROUNDS.filter(r => r.type === 'pve'); let comps = 0; for (const R of pve) comps += pveSpec(R).comps;
+  ok(comps === 12, `PvE: 12 componentes en toda la partida (${comps})`);
+  ok(pveSpec({ s: 4, n: 7 }).extra.join() === 'ca' && pveSpec({ s: 4, n: 7 }).comps === 2, 'PvE 4-7: 2 componentes y un yunque de componentes');
+  ok([5, 6, 7, 8, 9].every(s => pveSpec({ s, n: 7 }).extra.join() === 'fa' && !pveSpec({ s, n: 7 }).comps), 'PvE 5-7 en adelante: solo un yunque de objeto completo');
+  ok(Object.values(ORBS).every(o => o.t.every(([, toks]) => !toks.some(t => /^(c|m|ca|fa)$/.test(t)))), 'los orbes ya no traen componentes, Medallas ni yunques');
+  // una persona que no derrota a todos los salvajes recibe igual sus componentes (en el suelo)
+  const { G, p } = fresh(); p.orbs = []; const f = { pve: true, a: p, lootKeys: ['c', 'c', 'gray12'] }; const before = p.orbs.length;
+  vm.runInContext('(function(p,keys){ for(const k of keys.filter(k=>k===\'c\'||k===\'ca\'||k===\'fa\')) dropOrb(p,k); })', ctx)(p, f.lootKeys);
+  ok(p.orbs.length === before + 2, 'PvE: los componentes que no cayeron se dejan en el suelo'); }
+// Llamada al Caos: la carta no dice el premio; 9 premios (con 3 Guantes de Boxeo y 6 componentes distintos)
+{ const A = E.AUG_BY.llamada_caos, CH = vm.runInContext('CHAOS', ctx);
+  ok(A.desc.startsWith('Obtienes una recompensa poderosa y aleatoria.') && A.desc.includes('¿¿??') && !/58|EXP/.test(A.desc), 'Llamada al Caos: la descripción no adelanta el premio');
+  ok(CH.length === 9 && CH.some(o => o.id === 'guantes') && !CH.some(o => o.id === 'cofres'), 'Llamada al Caos: 9 premios con los Guantes de Ladrón');
+  const { G, p } = fresh(); G.round = { s: 4, n: 2 }; CH.find(o => o.id === 'guantes').run(p, true, {}); ok(p.items.filter(k => k === 'zoom').length === 3, 'Guantes de Ladrón: 3 Guantes de Boxeo');
+  const r2 = fresh(); r2.G.round = { s: 4, n: 2 }; CH.find(o => o.id === 'componentes').run(r2.p, true, {}); ok(r2.p.items.length === 6 && new Set(r2.p.items).size === 6, 'Saco de Componentes: 6 componentes distintos');
+  const r3 = fresh(); r3.G.round = { s: 4, n: 2 }; E.applyAugment(r3.p, A); for (const q of r3.p.picks.slice()) E.resolvePick(r3.p, q.id, 0);
+  const pg = vm.runInContext('augProgress', ctx)(r3.p, 'llamada_caos'); ok(/^Recompensa: /.test(pg) && !pg.includes('¿¿??'), 'Llamada al Caos: tras elegirla, su descripción dice la recompensa (' + pg + ')'); }
+// Ticket Prismático: solo prismático
+ok(E.AUG_BY.ticket_dorado.tier === 'P' && E.AUG_BY.ticket_dorado.name === 'Ticket Prismático', 'Ticket Prismático: prismático y con su nombre');
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
 if (fails) { console.log('FALLO: pruebas de sinergias'); process.exit(1); }
 console.log('OK: pruebas de sinergias superadas');

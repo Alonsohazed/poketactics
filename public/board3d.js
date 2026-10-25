@@ -288,6 +288,8 @@ const RX={
  ko:[/down|faint|\bko\b|_ko|dead|die|lose/i],
 };
 const NO_CLIPS=new Set([302]);
+// Al andar usan «walk» antes que «run»: el «run» de Gimmighoul son botes largos con el cofre que se veían mal (sobre todo en el carrusel)
+const WALK_FIRST=new Set([999]);
 const BAD_IDLE=/dizzy|faint|down|\bko\b|_ko|sleep|dead|die|lose|damage|hurt/i;
 // Sube las texturas a la GPU y compila sus shaders en cuanto llega el modelo (fuera del fotograma en que aparece)
 function warmModel(m){ if(!renderer||!m.scene) return; try{ m.scene.traverse(o=>{ if(o.isMesh) for(const mt of [].concat(o.material)) for(const k of ['map','normalMap','emissiveMap']) if(mt[k]) renderer.initTexture(mt[k]); }); if(!renderer.compileAsync) return; renderer.compileAsync(m.scene,camera,scene).catch(()=>{});
@@ -304,14 +306,17 @@ function prepModel(m,gl,dex){
  const root=gl.scene;
  // pose "tail" (en su .json): los alargados se ponen de pie sobre la cola, como Dratini, para ocupar su casilla igual que los demás
  if(m.meta&&m.meta.pose==="tail") root.rotation.x=-(m.meta.tilt||78)*Math.PI/180;
+ // giro [x,y] en grados (en su .json): modelos cuya malla llega tumbada (los de Switch de Unborne-Fetus se veían de pie sobre la cola); primero x y después y
+ else if(m.meta&&m.meta.giro) root.rotation.set(m.meta.giro[0]*Math.PI/180,(m.meta.giro[1]||0)*Math.PI/180,0,'YXZ');
  root.updateMatrixWorld(true);
  root.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false; const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt.map) mt.map.colorSpace=THREE.SRGBColorSpace; if(mt.transparent&&mt.opacity>=1) mt.alphaTest=.5; } } });
  // Modelos cuyo único clip no es un reposo (Sableye: "rig|rigAction" es un movimiento entero que, en bucle, parecía dispararse sin parar): se ignoran y se animan por código
  const clips=NO_CLIPS.has(+String(dex).split(/[:/]/).pop())?[]:gl.animations||[], pick=res=>{ for(const re of res){ const c=clips.find(k=>re.test(k.name)); if(c) return c; } return null; };
- m.clips={idle:pick(RX.idle),walk:pick(RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
+ m.clips={idle:pick(RX.idle),walk:pick(WALK_FIRST.has(+String(dex).split(/[:/]/).pop())?[/walk/i,...RX.walk]:RX.walk),attack:pick(RX.attack),cast:pick(RX.cast),ko:pick(RX.ko)};
  if(!m.clips.idle){ const c2=clips.find(k=>!BAD_IDLE.test(k.name)&&k!==m.clips.attack&&k!==m.clips.ko); m.clips.idle=c2||null; }
  // Sin desplazamiento de la raíz: algunas animaciones mueven el modelo hacia un lado y al repetirse vuelve de golpe (un "tic")
- const roots=new Set(); root.traverse(o=>{ if(o.isBone&&!(o.parent&&o.parent.isBone)) roots.add(o.name); });
+ // (también los huesos «origin»: en los modelos de Switch llevan el avance del paso aunque cuelguen de otro hueso; Gimmighoul saltaba 1,3 casillas y se salía del carrusel)
+ const roots=new Set(); root.traverse(o=>{ if((o.isBone&&!(o.parent&&o.parent.isBone))||/^origin/i.test(o.name)) roots.add(o.name); });
  for(const c of clips) for(const tr of c.tracks){ const i=tr.name.lastIndexOf('.'); if(tr.name.slice(i+1)!=='position'||!roots.has(tr.name.slice(0,i))) continue; const v=tr.values; for(let k=3;k<v.length;k+=3){ v[k]=v[0]; v[k+2]=v[2]; } }
  const body=m.meta?bodyType(root,dex):null;
  // Se mide en la pose de reposo real: la animación de espera o, si no hay, la pose que le damos por código
@@ -482,6 +487,9 @@ function shinyMat(mt){
 const actors=new Map();
 const ringGeo=new THREE.RingGeometry(.52,.64,32); ringGeo.rotateX(-Math.PI/2);
 const blobGeo=new THREE.CircleGeometry(.55,24); blobGeo.rotateX(-Math.PI/2);
+// Halo del carrusel: disco con un anillo brillante y el centro tenue (se tiñe con el color del coste)
+const haloGeo=new THREE.CircleGeometry(.78,40); haloGeo.rotateX(-Math.PI/2);
+const haloTex=canvasTex(128,128,g=>{ const r=g.createRadialGradient(64,64,0,64,64,64); r.addColorStop(0,'rgba(255,255,255,.22)'); r.addColorStop(.55,'rgba(255,255,255,.38)'); r.addColorStop(.78,'rgba(255,255,255,.95)'); r.addColorStop(.88,'rgba(255,255,255,.55)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=r; g.fillRect(0,0,128,128); },false);
 const blobMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.25,depthWrite:false});
 const shieldGeo=new THREE.SphereGeometry(1,20,14);
 const starGeo=new THREE.OctahedronGeometry(.08,0);
@@ -594,6 +602,9 @@ class Actor{
    const ev=this.evoFx?this.evoT:9, evL=this.evoBig?1.6:1, evoGlow=ev<evL?Math.sin(ev/evL*Math.PI):0;
    this.body.scale.setScalar(sc*1.35*(1+(ev<.8*evL?(this.evoBig?.35:.22)*Math.sin(ev/(.8*evL)*Math.PI):0))); this.h=1.35*sc;
    if(this.evoBig&&ev<evL) this.face+=dt*14*Math.sin(ev/evL*Math.PI);
+   // halo redondo del color de su coste bajo las fichas del carrusel (spec.halo), para distinguirlas de un vistazo
+   if(spec.halo){ if(!this.halo){ this.halo=new THREE.Mesh(haloGeo,new THREE.MeshBasicMaterial({map:haloTex,transparent:true,depthWrite:false})); this.halo.position.y=TOP+.012; this.root.add(this.halo); }
+     this.halo.material.color.copy(ccol(spec.halo)); this.halo.material.opacity=.9*(this.alpha==null?1:this.alpha); this.halo.visible=true; } else if(this.halo) this.halo.visible=false;
    const full=!spec.dead&&spec.charge>=.85; this.ring.material.color.set(full?spec.glowCol:ccol(spec.ring||'#ffffff')); this.ring.visible=!spec.hideRing&&!!(spec.drag||spec.sel); // el aro solo al agarrar o seleccionar una ficha this.ring.scale.setScalar(spec.sel?1.25+.06*Math.sin(t*8):full?1.08+.07*Math.sin(t*9):1);
    // ataque y habilidad (contadores que suben en la simulación)
    if(this.sm){ this.lastAtk=spec.atk||0; this.lastCast=spec.cast||0; } else if((spec.atk||0)>this.lastAtk){ this.lastAtk=spec.atk; this.atkT=0; if(!this.play('attack',false)) this.atkT=0; }
@@ -700,7 +711,7 @@ class Actor{
    if(tr.includes('Coloso')) colossusBubble(P,strong,this.h);
    joinBurst(P,el,strong); const cl=tr.find(x=>SYN_CL[x]&&x!==el); if(cl) shock(new THREE.Vector3(P.x,TOP+.06,P.z),SYN_CL[cl],.3,strong?1.9:1.3,.6);
    if(spec.joinTo) for(const q of spec.joinTo){ const w=W3(q[0],q[1],0); joinTrail(P,w,el); } }
- dispose(){ scene.remove(this.root); if(this.model){ this.body.remove(this.model); poolPut(this); } else if(this.mats) for(const m of this.mats) m.dispose(); this.model=null; if(this.shieldM) this.shieldM.material.dispose(); this.ring.material.dispose(); }
+ dispose(){ scene.remove(this.root); if(this.halo) this.halo.material.dispose(); if(this.model){ this.body.remove(this.model); poolPut(this); } else if(this.mats) for(const m of this.mats) m.dispose(); this.model=null; if(this.shieldM) this.shieldM.material.dispose(); this.ring.material.dispose(); }
  // Reacción al recibir un golpe: retroceso en la dirección del impacto, aplastamiento y destello blanco
  hitReact(dx,dz,k,crit){ this.hitT=0; const L=Math.hypot(dx,dz)||1; this.hitDx=dx/L; this.hitDz=dz/L; this.hitK=Math.min(1.4,(.45+.55*k)*(crit?1.35:1)); }
 }

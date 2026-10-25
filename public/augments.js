@@ -298,10 +298,10 @@ AG({id:'equipo_imposible',tier:'P',cat:'trait',tags:['Legendario'],name:'Equipo 
 
 // ===== Caos =====
 // Solo en el 3.er aumento (4-2): premio grande y al azar (ver CHAOS)
-AG({id:'llamada_caos',tier:'P',cat:'chaos',tags:['chaos'],req:()=>!!(G.round&&G.round.s>=4),name:'Llamada al Caos',icon:'🌪️',desc:'Un premio enorme al azar (todos igual de probables): 58 de oro · 64 de EXP · 40 tiendas gratis · objeto completo a elegir y Huevo de Oro · 2 componentes y 2 emblemas a elegir · 3 objetos completos · 3 objetos completos y 10 de oro · 6 componentes · 8 de oro y 2 objetos a elegir.',
- on:{select:c=>chaosRoll(c,true)},ui:c=>c.st.last?`Resultado: ${c.st.last}`+(c.st.egg>0?` · Huevo de Oro en ${c.st.egg} rondas`:''):''});
-AG({id:'eco_caos',tier:'G',cat:'chaos',tags:['chaos'],req:()=>!!(G.round&&G.round.s>=4),name:'Eco del Caos',icon:'🌀',desc:'Un premio grande al azar (todos igual de probables): 30 de oro · 32 de EXP · 20 tiendas gratis · objeto completo a elegir y un Legendario · componente y emblema a elegir · 2 objetos completos · 3 componentes y 5 de oro · 4 componentes · 4 de oro y un objeto a elegir.',
- on:{select:c=>chaosRoll(c,false)},ui:c=>c.st.last?`Resultado: ${c.st.last}`:''});
+AG({id:'llamada_caos',tier:'P',cat:'chaos',tags:['chaos'],req:()=>!!(G.round&&G.round.s>=4),name:'Llamada al Caos',icon:'🌪️',desc:'Obtienes una recompensa poderosa y aleatoria.\nRecompensa: ¿¿??',
+ on:{select:c=>chaosRoll(c,true)},ui:c=>`Recompensa: ${c.st.r||'¿¿??'}`+(c.st.egg>0?` · Huevo de Oro en ${c.st.egg} rondas`:'')});
+AG({id:'eco_caos',tier:'G',cat:'chaos',tags:['chaos'],req:()=>!!(G.round&&G.round.s>=4),name:'Eco del Caos',icon:'🌀',desc:'Obtienes una recompensa grande y aleatoria.\nRecompensa: ¿¿??',
+ on:{select:c=>chaosRoll(c,false)},ui:c=>`Recompensa: ${c.st.r||'¿¿??'}`});
 
 // Sinergias del jugador de más a menos Pokémon (sin Legendario)
 const traitList=p=>{ const c=traitCounts(p); return Object.keys(c).filter(t=>t!=='Legendario'&&TRAITS[t]).sort((a,b)=>c[b]-c[a]); };
@@ -350,7 +350,7 @@ function pandoraCambio(k){
  const otros=Object.keys(ITEMS).filter(x=>x.startsWith(fam)&&x!==k&&!(fam==='em_'&&x.startsWith('emb_')));
  return otros.length?pick(otros):k;
 }
-AG({id:'ticket_dorado',tier:'S',cat:'reroll',tags:['reroll'],name:'Ticket Dorado',icon:'🎫',desc:'Cada refresco de pago tiene un 40% de probabilidad de salirte gratis (te devuelve los 2 de oro).',
+AG({id:'ticket_dorado',tier:'P',cat:'reroll',tags:['reroll'],name:'Ticket Prismático',icon:'🎫',desc:'Cada refresco de pago tiene un 40% de probabilidad de salirte gratis (te devuelve los 2 de oro).',
  on:{reroll:c=>{ if(!c.d.free&&Math.random()<.4){ c.p.gold+=2; c.st.n=(c.st.n||0)+1; } }},ui:c=>`Refrescos gratis: ${c.st.n||0}`});
 AG({id:'aguante',tier:'G',cat:'classic',w:.5,name:'Aguante',icon:'🎀',desc:'Cada aliado sobrevive una vez a un golpe letal.',on:{select:c=>{ c.p.mods.allFocus=true; }}});
 // Antes daban un solo Pokémon de coste 4 (o un Legendario): poco para un aumento. Ahora eliges y llega casi formado
@@ -700,7 +700,8 @@ AG({id:'inesperado',tier:'P',cat:'chaos',tags:['chaos'],req:ST(2),name:'Lo Esper
  on:{select:c=>roll3(c,'Lo Esperado de lo Inesperado'),roundStart:c=>{ if(stageStart()&&(c.st.n||0)<2){ c.st.n=(c.st.n||0)+1; roll3(c,'Lo Esperado de lo Inesperado'); } }},ui:c=>c.st.last?`Última tirada: ${c.st.last} · quedan ${2-(c.st.n||0)}`:''});
 
 /* ---------- Llamada al Caos ---------- */
-// Solo en el 3.er aumento (4-2): un premio enorme y al azar, sin maldiciones. 9 resultados con la misma probabilidad.
+// Solo en el 3.er aumento (4-2): un premio enorme y al azar, sin maldiciones. 9 resultados con la misma probabilidad (11 %, la tabla del parche 18.5 de TFT;
+// los cofres de la suerte, que aquí no existen, son objetos completos). La carta no dice cuál: al elegirla, su descripción muestra la recompensa.
 // La versión de oro (Eco del Caos) tiene los mismos resultados, más pequeños.
 const CHAOS=[
  {id:'oro',name:'Lluvia de Oro',P:'58 de oro',G:'30 de oro',run:(p,big)=>augGrant(p,'g:'+(big?58:30))},
@@ -711,9 +712,9 @@ const CHAOS=[
  {id:'forja',name:'Forja del Caos',P:'2 componentes y 2 emblemas a elegir',G:'un componente y un emblema a elegir',
   run:(p,big)=>{ for(let i=0;i<(big?2:1);i++){ augOffer(p,'__chaos','Forja del Caos','Elige un componente',shuffle(BASIC.filter(k=>k!=='medal')).slice(0,3).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k}))); augOffer(p,'__chaos','Forja del Caos','Elige un emblema',emblemOpts([...ELEM_TRAITS,...CLASS_TRAITS],p)); } return big?'2 componentes y 2 emblemas a elegir':'un componente y un emblema a elegir'; }},
  {id:'botin',name:'Botín del Team Rocket',P:'3 objetos completos al azar',G:'2 objetos completos al azar',run:(p,big)=>Array.from({length:big?3:2},()=>augGrant(p,'f')).join(', ')},
- {id:'cofres',name:'Cofres de la Suerte',P:'3 objetos completos al azar y 10 de oro',G:'3 componentes y 5 de oro',run:(p,big)=>big?[augGrant(p,'f'),augGrant(p,'f'),augGrant(p,'f'),augGrant(p,'g:10')].join(', '):[augGrant(p,'c'),augGrant(p,'c'),augGrant(p,'c'),augGrant(p,'g:5')].join(', ')},
- {id:'componentes',name:'Saco de Componentes',P:'6 componentes',G:'4 componentes',run:(p,big)=>Array.from({length:big?6:4},()=>augGrant(p,'c')).join(', ')},
- {id:'radiante',name:'Cofre Radiante',P:'8 de oro y 2 objetos completos a elegir',G:'4 de oro y un objeto completo a elegir',run:(p,big)=>{ augGrant(p,'g:'+(big?8:4)); chaosItems(p,big?2:1); return big?'8 de oro y 2 objetos a elegir':'4 de oro y un objeto a elegir'; }},
+ {id:'guantes',name:'Guantes de Ladrón',P:'3 Guantes de Boxeo',G:'un Guante de Boxeo y 5 de oro',run:(p,big)=>big?[augGrant(p,'it:zoom'),augGrant(p,'it:zoom'),augGrant(p,'it:zoom')].join(', '):[augGrant(p,'it:zoom'),augGrant(p,'g:5')].join(', ')},
+ {id:'componentes',name:'Saco de Componentes',P:'6 componentes distintos',G:'4 componentes distintos',run:(p,big)=>shuffle(BASIC.slice()).slice(0,big?6:4).map(k=>augGrant(p,'it:'+k)).join(', ')},
+ {id:'radiante',name:'Cofre Radiante',P:'8 de oro y un objeto radiante al azar',G:'4 de oro y un objeto completo a elegir',run:(p,big)=>{ augGrant(p,'g:'+(big?8:4)); if(big) return '8 de oro y '+augGrant(p,'it:'+pick(RADIANT_KEYS.filter(k=>k!=='rad_zoom'))); chaosItems(p,1); return '4 de oro y un objeto a elegir'; }},
 ];
 const chaosItems=(p,n)=>{ for(let i=0;i<n;i++) augOffer(p,'__chaos','Llamada al Caos','Elige un objeto completo',shuffle(FULL_KEYS.slice()).slice(0,4).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k}))); };
 // Resultados que el jugador debe ver aunque no esté mirando: se muestran en una ventana (también en multijugador, vía priv.rv)
@@ -722,7 +723,7 @@ function revealTo(p,icon,title,name,text,kind,dice){
 }
 function chaosRoll(c,big){
  const o=pick(CHAOS), txt=o.run(c.p,big,c.st); const title=big?'Llamada al Caos':'Eco del Caos';
- c.st.last=o.name; (c.p.chaosLog=c.p.chaosLog||[]).push([G.round?G.round.s+'-'+G.round.n:'',o.id]);
+ c.st.last=o.name; c.st.r=big?o.P:o.G; (c.p.chaosLog=c.p.chaosLog||[]).push([G.round?G.round.s+'-'+G.round.n:'',o.id]);
  c.say(`${o.name}: ${txt}`); revealTo(c.p,'🌪️',title,o.name,`${big?o.P:o.G}.`,'bueno');
 }
 const AUG_EVENTS={
@@ -782,5 +783,5 @@ const CAT_IMG={econ:"amulet-coin",fast:"exp-candy-xl",reroll:"repeat-ball",emble
 for(const a of AUGS){ const v=AUG_IMG[a.id]!=null?AUG_IMG[a.id]:CAT_IMG[a.cat]; if(v!=null) a.img=typeof v==='number'?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${v}.png`:/^b\d+$/.test(v)?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${v.slice(1)}.png`:`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${v}.png`; }
 // Icono propio (img/aug/<id>.webp, estilo TFT ya teñido con su rareza; iconos-aumentos-tft.js de la skill de recursos): todos menos los
 // de héroe, que siguen con la ilustración de su Pokémon. Al cambiar iconos o rarezas, regenera y sube AUG_ICO_V (el navegador guarda las imágenes 7 días).
-const AUG_ICO_V=3;
+const AUG_ICO_V=4;
 for(const a of AUGS) if(!a.hero) a.ico=`img/aug/${a.id}.webp?v=${AUG_ICO_V}`;
