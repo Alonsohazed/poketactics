@@ -609,7 +609,7 @@ function canBuy(p,i){
  if(p.bench.some(x=>!x)) return true;
  return p.bench.filter(u=>u&&u.baseId===k&&u.star===1).length+(G.phase!=='combat'?boardUnits(p).filter(u=>u.baseId===k&&u.star===1).length:0)>=2;
 }
-function buy(p,i){ if(!canBuy(p,i)) return false; const k=p.shop[i]; p.gold-=DEF[k].cost; p.shop[i]=null; augFire(p,'buy',{key:k,cost:DEF[k].cost}); const u=makeInst(k); if(Math.random()<SHINY_P){ u.shiny=true; note(p,`✦ ¡${DEF[k].name} variocolor!`,false); } addUnitToBench(p,u); return true; }
+function buy(p,i){ if(!canBuy(p,i)) return false; const k=p.shop[i]; p.gold-=DEF[k].cost; p.shop[i]=null; augFire(p,'buy',{key:k,cost:DEF[k].cost}); const u=makeInst(k); if(Math.random()<(G.shinyP||SHINY_P)){ u.shiny=true; note(p,`✦ ¡${DEF[k].name} variocolor!`,false); } addUnitToBench(p,u); return true; }
 function addUnitToBench(p,inst){
  const dup=allUnits(p).some(u=>u.baseId===inst.baseId);
  augFire(p,'gain',{key:inst.baseId,dup});
@@ -3882,7 +3882,9 @@ function showNormal(){
  $('rmJoin').onclick=()=>{ const c=$('rmCode').value.trim().toLowerCase(); if(!/^[a-z0-9]{5}$/.test(c)){ toast('El código tiene 5 letras o números'); return; } if(NET.queue) return toast('Sal de la cola antes de unirte'); NET.mode='joining'; s.emit('join',{code:c}); };
  $('practiceBtn').onclick=startPractice;
 }
-function startPractice(){ closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:'normal'}); }
+function startPractice(){ closeModal(); $('menu').classList.add('hidden'); selected=null; selCombat=null; newGame({diff:'normal'}); practiceParams(); }
+// Solo en local y solo en la práctica: ?oro=200 da ese oro y ?shiny=0.5 cambia la probabilidad de variocolor al comprar, para probar sin esperar
+function practiceParams(){ if(!/^(localhost|127.0.0.1)$/.test(location.hostname)||!G||G.mp) return; const q=new URLSearchParams(location.search), o=+q.get('oro'), s=+q.get('shiny'); if(o>0) G.me.gold=Math.min(999,o|0); if(s>0&&s<=1) G.shinyP=s; if(o>0||s>0) renderUI(); }
 function leaguesHTML(rk){ const cur=rk.placing?'':rk.league;
  return [['iron','Hierro'],['bronze','Bronce'],['silver','Plata'],['gold','Oro'],['platinum','Platino'],['emerald','Esmeralda'],['diamond','Diamante'],['master','Maestro'],['grandmaster','Gran Maestro'],['challenger','Retador']]
   .map(([k,n],i)=>`<div class="lgItem ${k===cur?'on':''}">${window.PX?PX.badge(k,34+i*2.4|0):''}<span>${n}</span></div>`).join(''); } // cada liga, un poco más grande
