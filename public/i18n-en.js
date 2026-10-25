@@ -789,6 +789,7 @@ Object.assign(I18N.EN, {
 Object.assign(I18N.EN, { '🔥 Racha de {0} victorias': '🔥 {0}-win streak', 'Racha de {0} derrotas': '{0}-loss streak' });
 Object.assign(I18N.EN, { 'Tu equipo': 'Your team', 'Rival': 'Enemy', 'equipo rival': 'enemy team', 'daño infligido': 'damage dealt', 'daño recibido (con escudos)': 'damage taken (with shields)', 'curación y escudos dados': 'healing and shields given' });
 Object.assign(I18N.EN, { '✦ ¡{0} variocolor!': '✦ Shiny {0}!', 'Variocolor': 'Shiny', 'variocolor': 'shiny' });
+Object.assign(I18N.EN, { 'Dragonite variocolor': 'Shiny Dragonite', 'Gyarados variocolor': 'Shiny Gyarados' });
 // Patrones genéricos (van los últimos: solo entran si nada más encaja): «Fuego (3)», «Mítica · X»
 Object.assign(I18N.EN, { '{0}-{1}: {2}': '{0}-{1}: {2}' }); // rótulo de ronda: la parte {2} se traduce sola
 Object.assign(I18N.EN, { '{0} ({1})': '{0} ({1})', '{0} · {1}': '{0} · {1}' });

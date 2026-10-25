@@ -562,6 +562,7 @@ const makeInst=key=>({uid:UID++,defId:key,baseId:DEF[key].evoOf||key,star:1,kill
 // ≈ 42 % de tener al menos uno por partida, 23 % cayendo pronto y 82 % ganando: raro, pero se ve). No cambia el pool ni las estadísticas: hereda al fusionar (ver combine)
 const SHINY_P=.0125;
 const shinyDex=(u,dx)=>u&&u.shiny&&SHINY_RC[dx]?SHINY_RC[dx]+':'+dx:dx; // dex del modelo recoloreado (board3d.js, recolorMat)
+const creepDex=c=>!c.shiny?c.dex:+c.dex===130||!SHINY_RC[c.dex]?'shiny:'+c.dex:SHINY_RC[c.dex]+':'+c.dex; // salvajes variocolor: el Gyarados con su tinte de siempre, los demás con sus reglas
 const boardUnits=p=>Object.values(p.board);
 const allUnits=p=>[...boardUnits(p),...p.bench.filter(Boolean)];
 const maxBoard=p=>p.mods.soloLevel?1:p.level+p.mods.boardBonus+boardUnits(p).reduce((s,u)=>s+u.items.filter(i=>i==='master').length,0);
@@ -939,6 +940,7 @@ function pveWave(s,n){
  if(s===4) return [CREEP(142,'Aerodactyl',1800,105,2,0,{as:.8,big:2.4}),CREEP(142,'Aerodactyl',1800,105,4,0,{as:.8,big:2.4}),CREEP(142,'Aerodactyl',1800,105,3,2,{as:.8,range:3,big:2.4})]; // grandes e imponentes (solo tamaño del modelo)
  const m=Math.pow(1.3,Math.max(0,s-5));
  // Desde la fase 5: un único Gyarados variocolor grande (la vida y el daño de los tres jefes de antes juntos)
+ if(s===6) return [CREEP(149,'Dragonite variocolor',11500*m,300*m,3,1,{boss:true,shiny:true,big:1.9,as:.7})]; // en la 6-7, un Dragonite variocolor gigante (mismos números)
  return [CREEP(130,'Gyarados variocolor',11500*m,300*m,3,1,{boss:true,shiny:true,big:1.9,as:.7})];
 }
 function addCreeps(cb,R){
@@ -2912,11 +2914,11 @@ function drawHud(a){
  // Como en TFT: barra arriba y, debajo, la fila de objetos; las estrellas encima de todo, solo en la planificación (en combate no)
  // Los objetos van pegados, marco con marco, y las barras de vida y maná miden exactamente lo mismo que la fila de 3 objetos (marcos incluidos)
  const bsz=Math.max(22,R*.8), bbw=Math.max(2,bsz*.1), slot=bsz+2*bbw, rowW=slot*3;
- const isz=o.items&&o.items.length?bsz:0; let itemsY=hy-isz-4;
+ const isz=o.items&&o.items.length?bsz:0; let itemsY=hy-isz-4, barBox=null;
  ctx.save();
  if(o.hp!==undefined){
    const w=rowW-3, bx=hx-w/2, hh=Math.max(5,R*.17), mh=Math.max(3,R*.1), hasM=o.maxMana<9999, by=Math.round(hy-hh-(hasM?mh+1:0)-6-(isz?isz+1.5+2*bbw:0));
-   itemsY=by+hh+(hasM?mh+1:0)+1.5+bbw;
+   itemsY=by+hh+(hasM?mh+1:0)+1.5+bbw; barBox=[bx-1.5,by-1.5,hh+(hasM?mh+1:0)+3];
    ctx.fillStyle='rgba(10,12,24,.85)'; ctx.fillRect(bx-1.5,by-1.5,w+3,hh+(hasM?mh+1:0)+3);
    // Como en TFT, el escudo es un tramo blanco a continuación de la vida; si vida + escudo pasan del máximo, la barra se comprime para que quepa (wh = ancho de la vida máxima)
    const hpK=clamp(o.hp/o.maxHp,0,1), shv=Math.max(0,o.shield||0), tot=Math.max(o.maxHp,o.hp+shv), wh=w*o.maxHp/tot;
@@ -2929,12 +2931,14 @@ function drawHud(a){
    if(hasM){ const full=o.mana>=o.maxMana*.9; ctx.fillStyle='#1b2a48'; ctx.fillRect(bx,by+hh+1,w,mh); ctx.fillStyle=full?`hsl(205,100%,${70+15*Math.sin(performance.now()/90)}%)`:'#4aa3ff'; ctx.fillRect(bx,by+hh+1,w*clamp(o.mana/o.maxMana,0,1),mh); }
    hy=by;
  } else if(isz) hy=itemsY;
+ // Variocolor: los destellos dorados a la izquierda de la barra de vida, centrados con ella (también en combate)
+ if(o.shiny&&barBox){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), sz=Math.max(13,barBox[2]*1.9); if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=2; ctx.drawImage(im.img,barBox[0]-sz-2,barBox[1]+barBox[2]/2-sz*.53,sz,sz); ctx.restore(); } }
  if(!o.creep&&o.star&&!a.cu&&(G.phase==='planning'||G.phase==='augment')){
    ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
    const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
-   if(o.shiny){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), m=ctx.measureText(st), fz=Math.max(9,R*.32), up=m.actualBoundingBoxAscent||fz*.8, dn=m.actualBoundingBoxDescent||0, s=(up+dn)*1.3, cy=hy-2+(dn-up)/2; // el destello grande (≈ 77 % del icono) del alto real de la estrella y centrado con ella (su centro está al 53 % del alto del icono)
-     if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=2; ctx.drawImage(im.img,hx+m.width/2+fz*.05,cy-s*.53,s,s); ctx.restore(); } } // con la misma sombra oscura que el contorno de las estrellas // marca de variocolor (destellos dorados) junto a las estrellas
+   if(o.shiny&&!barBox){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), m=ctx.measureText(st), fz=Math.max(9,R*.32), up=m.actualBoundingBoxAscent||fz*.8, dn=m.actualBoundingBoxDescent||0, s=(up+dn)*1.3, cy=hy-2+(dn-up)/2; // en la banca (sin barra): a la izquierda de las estrellas
+     if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=2; ctx.drawImage(im.img,hx-m.width/2-fz*.15-s,cy-s*.53,s,s); ctx.restore(); } }
  }
  if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
@@ -3020,9 +3024,9 @@ function sceneActors(){
      const [x,y]=unitXY(u), t=u.target&&!u.target.dead?unitXY(u.target):null, mine=u.side===mySide;
      // Para la animación: cuánto falta para el próximo golpe (el impacto del clip se alinea con el daño), cada cuánto ataca y si ganó
      const tg=u.target&&!u.target.dead?u.target:null, inR=!!tg&&!u.dead&&!(u.stun>0)&&dU(u,tg)<=u.range, sp=G.speed||1;
-     A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),charge:u.maxMana<9999?u.mana/u.maxMana:0,ranged:u.range>1,dex:u.creep?(u.d.shiny?'shiny:':'')+u.d.dex:shinyDex(u,dexOf(u.d,u.star)),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
+     A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),charge:u.maxMana<9999?u.mana/u.maxMana:0,ranged:u.range>1,dex:u.creep?creepDex(u.d):shinyDex(u,dexOf(u.d,u.star)),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
        alpha:u.stealth>0?.35:1,scale:unitScale(u.d,u.star,{boss:u.maxMana===120&&u.creep})*(u.d.big||1),ring:u.creep?'#8a8a8a':mine?'#3fd27a':'#ff5a5f',sel:u===selCombat,
-       hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
+       hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,shiny:!!u.shiny&&!u.creep,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
  } else if(inCar){
    const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=carV(...optPos(C,i)); A.push({key:'co'+i+':'+o.key,opt:i,hold:.5,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],halo:COST_HEX[DEF[o.key].cost-1],sel:selCar===i,scale:1,hud:{items:[o.item]}}); });
@@ -3039,7 +3043,7 @@ function sceneActors(){
    for(const i of info){ const {u,k,x,y,syn,m}=i, st=mine?planStats(u):null, d=DEF[u.defId];
      if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
      A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:shinyDex(u,dexOf(d,u.star)),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,shiny:!!u.shiny,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
- if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:unitScale({dex:cr.dex,traits:[]},1,{boss:!!cr.boss})*(cr.big||1),hud:{creep:true}}); }); // misma escala que en combate (2980) // clave estable: en multijugador la lista llega nueva en cada mensaje
+ if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:creepDex(cr),x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:unitScale({dex:cr.dex,traits:[]},1,{boss:!!cr.boss})*(cr.big||1),hud:{creep:true}}); }); // misma escala que en combate (2980) // clave estable: en multijugador la lista llega nueva en cada mensaje
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
