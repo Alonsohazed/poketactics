@@ -2932,7 +2932,8 @@ function drawHud(a){
  if(!o.creep&&o.star&&!a.cu&&(G.phase==='planning'||G.phase==='augment')){
    ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
-   const st='★'.repeat(o.star)+(o.shiny?'✦':''); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2); // ✦: variocolor
+   const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
+   if(o.shiny){ const im=loadImg('ui:variocolor','img/ui/variocolor.webp'), s=R*.5, w=ctx.measureText(st).width; if(im.status==='ok') ctx.drawImage(im.img,hx+w/2+R*.06,hy-2-s*.78,s,s); } // marca de variocolor (icono prismático) junto a las estrellas
  }
  if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
@@ -3561,7 +3562,7 @@ function renderCard(){
  const slots=[0,1,2].map(i=>{ const it=inst?inst.items[i]:cu.items&&cu.items[i]; if(!ITEMS[it]) return '<div class="ucIt empty"></div>'; return '<button class="ucIt" data-pop="it:'+it+'">'+itemHTML(it)+(cu.cnt&&cu.cnt[it]?'<b>'+cu.cnt[it]+'</b>':'')+'</button>'; }).join('');
 
  const html='<button class="uc-x" aria-label="Cerrar ficha">✕</button>'
-  +'<div class="ucStars s'+star+'"><span>'+'★'.repeat(star)+(sh?'<i class="ucShiny" title="Variocolor">✦</i>':'')+'</span></div>'
+  +'<div class="ucStars s'+star+'"><span>'+'★'.repeat(star)+(sh?'<img class="ucShiny" src="img/ui/variocolor.webp" alt="" title="Variocolor">':'')+'</span></div>'
   +unitCardHTML(d,who,star,sh)
   +'<div class="ucBar hp"><i style="width:'+clamp(hp/cu.maxHp*100,0,100)+'%"></i><span>'+hpTxt+'</span></div>'
   +'<div class="ucBar mp"><i style="width:'+(noMana?0:clamp(cu.mana/cu.maxMana*100,0,100))+'%"></i><span>'+mpTxt+'</span></div>'

@@ -482,10 +482,10 @@ function recolorMat(mt,rules){
     float hh=${th<0?'h':th.toFixed(3)}; float ss=clamp(s*${sat.toFixed(3)},0.,1.); float vv=mx*${val.toFixed(3)};
     vec3 k=clamp(abs(mod(hh*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.); c=mix(c,vv*mix(vec3(1.),k,ss),in_); }`).join('\n');
  mt.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-  { vec3 c=diffuseColor.rgb; float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.;
+  { vec3 c=pow(max(diffuseColor.rgb,vec3(0.)),vec3(1./2.2)); float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.; // las reglas se midieron en sRGB: se aplican ahí y se vuelve a lineal
     float h=0.; if(d>1e-4){ if(mx==c.r) h=mod((c.g-c.b)/d,6.); else if(mx==c.g) h=(c.b-c.r)/d+2.; else h=(c.r-c.g)/d+4.; h/=6.; }
     ${body}
-    diffuseColor.rgb=c; }`); };
+    diffuseColor.rgb=pow(c,vec3(2.2)); }`); };
  mt.customProgramCacheKey=()=>'rc'+rules; mt.needsUpdate=true;
 }
 function shinyMat(mt){
