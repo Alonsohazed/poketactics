@@ -600,7 +600,7 @@ function giveUnitTo(p,key){
  if(!key) return false;
  if(p.bench.some(x=>!x)||p.bench.filter(u=>u&&u.baseId===key&&u.star===1).length>=2){ addUnitToBench(p,makeInst(key)); return true; }
  // Banquillo lleno (carrusel, aumentos…): va al tablero aunque se pase del máximo (el contador sale en rojo, n+1/n); si al empezar el combate sigue sobrando, se vende uno al azar (sellOverflow)
- if(!p.isBot&&G.phase!=='combat'){ const k=freeBoardCell(p,DEF[key]); if(k){ augFire(p,'gain',{key,dup:allUnits(p).some(u=>u.baseId===key)}); p.board[k]=makeInst(key); combine(p); note(p,`Banquillo lleno: ${DEF[key].name} va al tablero. Si sobra al empezar el combate se venderá uno al azar`,true); return true; } }
+ if(!p.isBot&&G.phase!=='combat'){ const k=freeBoardCell(p,DEF[key]); if(k){ augFire(p,'gain',{key,dup:allUnits(p).some(u=>u.baseId===key)}); p.board[k]=makeInst(key); combine(p); note(p,`Banquillo lleno: ${DEF[key].name} va al tablero. Si sobra al empezar el combate se venderá uno al azar`,false); return true; } }
  p.gold+=DEF[key].cost; returnToPool(key,1); note(p,`Banquillo lleno: ${DEF[key].name} se convirtió en oro`); return false;
 }
 // Casilla libre de tu mitad del tablero (tanques y luchadores delante), en el mismo orden que autoFill
@@ -610,7 +610,7 @@ function sellOverflow(p){
  const out=[]; let extra=boardUnits(p).length-maxBoard(p);
  while(extra-->0){ const ks=Object.keys(p.board).filter(k=>p.board[k]); if(!ks.length) break; const k=pick(ks), u=p.board[k], g=sellValue(u);
    p.gold+=g; returnToPool(u.baseId,Math.pow(3,u.star-1)); augFire(p,'sell',{key:u.baseId,star:u.star,cost:DEF[u.defId].cost}); for(const it of u.items) giveItem(p,it); delete p.board[k]; out.push(`${DEF[u.defId].name} (+${g} de oro)`); }
- if(out.length) note(p,`Tablero lleno: se vendió ${out.join(', ')}`,true);
+ if(out.length) note(p,`Tablero lleno: se vendió ${out.join(', ')}`,false);
  return out.length;
 }
 // force: entra aunque el inventario esté lleno (hasta ITEMS_HARD); lo usan los aumentos cuyo efecto depende de tener ese objeto
@@ -686,7 +686,7 @@ function useItem0(p,idx,u,loc){
  if(ITEMS[it]&&ITEMS[it].dup){ const d=DEF[u.defId];
    if(d.anvil) return {ok:false,why:'Eso no se puede duplicar'}; if(d.cost>ITEMS[it].dup) return {ok:false,why:`El ${ITEMS[it].name} solo copia Pokémon de coste 1 a ${ITEMS[it].dup}`};
    if(!p.bench.some(x=>!x)&&countSame(p,u.baseId,1)<2) return {ok:false,why:'No te cabe la copia en el banquillo'};
-   p.items.splice(idx,1); addUnitToBench(p,makeInst(u.baseId)); combine(p); note(p,`🧬 Copia de ${DEF[u.baseId].name}`,true); return {ok:true,removed:true}; }
+   p.items.splice(idx,1); addUnitToBench(p,makeInst(u.baseId)); combine(p); note(p,`🧬 Copia de ${DEF[u.baseId].name}`,false); return {ok:true,removed:true}; }
  if(it==='magnet'){
    if(!u.items.length) return {ok:false,why:'Ese Pokémon no lleva objetos'};
    if(p.items.length-1+u.items.length>MAX_ITEMS_BENCH) return {ok:false,why:'No caben sus objetos en tu inventario'};
@@ -1414,7 +1414,7 @@ const orbBlocked=(p,o)=>!p.isBot&&orbUnits(o)>benchFree(p); // los rivales gener
 function openPlayerOrb(p,id,quick){
  const i=p.orbs.findIndex(o=>o.id===id); if(i<0||orbBlocked(p,p.orbs[i])) return null;
  const o=p.orbs.splice(i,1)[0], out=[]; NO_ANVIL=!!quick; for(const t of o.toks) grant(p,t,out); NO_ANVIL=false;
- note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,true); return o;
+ note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,false); return o;
 }
 function openOrb(p,key,out){ const O=ORBS[key]; const sub=[]; for(const t of weighted(O.t)) grant(p,t,sub); out.push(`${O.icon} ${sub.join(', ')}`); }
 // Botín de una ronda PvE como lista de orbes (para soltarlos uno a uno al derrotar a cada salvaje)
@@ -1569,7 +1569,7 @@ function startCombat(){
  const R=G.round, me=G.me;
  for(const p of alivePlayers()) for(const o of p.orbs.slice()) openPlayerOrb(p,o.id,true);
  for(const p of alivePlayers()) sellOverflow(p);
- for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
+ for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,false); }
  G.phase='combat'; G.acc=0; G.resolving=false;
  const alive=alivePlayers(); G.fights=[];
  if(R.type==='pve') for(const p of alive) G.fights.push({a:p,b:null,pve:true});
@@ -1700,9 +1700,9 @@ function resolveRound(){
      augFire(p,'roundEnd',{won:w,pve:!!f.pve,cs,firstKill:c.firstKill?c.firstKill[side]:null}); } }
  // Cazatesoros: botín tras cada combate (apuntado para la ficha de la sinergia)
  for(const p of alivePlayers()){ const tier=traitTiers(p)['Cazatesoros']||0; if(!tier) continue; const w=won.get(p);
-   lootTrack(p,()=>{ if(p.mods.lucky) p.gold+=2; if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),true); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
- for(const [p,m] of msgs) if(isHuman(p)) note(p,m,true);
- for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,true);
+   lootTrack(p,()=>{ if(p.mods.lucky) p.gold+=2; if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),false); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
+ for(const [p,m] of msgs) if(isHuman(p)) note(p,m,false);
+ for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,false);
  const dead=G.players.filter(p=>p.alive&&p.hp<=0).sort((a,b)=>a.hp-b.hp);
  let n=alivePlayers().length;
  for(const p of dead){
@@ -1719,7 +1719,7 @@ function resolveRound(){
  const queue=[];
  mewtwoUnstable();
  for(const p of alivePlayers()) for(const u of allUnits(p)) if(u.defId==='eevee'&&u.kills>=p.mods.eeveeKills){
-   if(G.auto||p.isBot){ u.defId=pick(EVOS).key; p.eeveeForm=u.defId; note(p,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,true); }
+   if(G.auto||p.isBot){ u.defId=pick(EVOS).key; p.eeveeForm=u.defId; note(p,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,false); }
    else if(!u.evoOffer){ u.evoOffer=1; augOffer(p,'__eevee','🌀 ¡Eevee va a evolucionar!','Ha derrotado a suficientes enemigos. Elige su evolución: conserva todo lo que ha acumulado y gana una habilidad nueva.',shuffle(EVOS.slice()).slice(0,3).map(e=>({t:e.name,i:'🌀',d:e.traits.join(' · '),v:'ev:'+u.uid+'|'+e.key}))); }
  }
  renderUI();
@@ -1754,7 +1754,7 @@ function startCarousel(){
  note(null,'🎠 Carrusel: salen primero los entrenadores con menos vida (de 2 en 2). Muévete con clic derecho y pasa por encima del Pokémon que quieras');
  renderUI();
 }
-function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return false; o.taken=p; giveUnitTo(p,o.key); giveItem(p,o.item); note(p,`🎠 Elegiste ${DEF[o.key].name} con ${ITEMS[o.item].name}`,true); return true; }
+function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return false; o.taken=p; giveUnitTo(p,o.key); giveItem(p,o.item); note(p,`🎠 Elegiste ${DEF[o.key].name} con ${ITEMS[o.item].name}`,false); return true; }
 function finishCarousel(){ const C=G.carousel; for(const o of C.opts) if(!o.taken) returnToPool(o.key,1); G.carousel=null; renderUI(); later(nextRound,400); }
 const releaseAt=idx=>8+3.5*Math.floor(idx/2); // la primera pareja sale a los 8 s (da tiempo a ver todos los Pokémon y objetos y elegir); las demás, cada 3,5 s
 // Cada pareja que sale a la vez empieza en lados opuestos (misma distancia a todos los Pokémon)
@@ -1777,7 +1777,7 @@ function applyAct(p,a){
   case 'lock': p.locked=!p.locked; return {ok:true};
   case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:firstRound()?'En la primera ronda no se puede vender':'No puedes vender eso ahora'}; }
   case 'move': { const f=normLoc(a.from), to=normLoc(a.to); if(!f||!to) return {ok:false}; if((ph==='combat'||ph==='carousel')&&(f.b!==undefined||to.b!==undefined)) return {ok:false}; return {ok:moveTo(p,f,to)}; }
-  case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
+  case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,false); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,false); return r; }
   case 'pick': return resolvePick(p,a.id|0,idx(a.i));
   case 'tac': { if(!TACS[a.k]) return {ok:false}; p.tac=a.k; return {ok:true}; }
   case 'mform': { if(!tacOf(p).mimic) return {ok:false}; const k=a.k|0, now=Date.now(); if(now-(p.mewT||0)<900) return {ok:false};
@@ -1792,7 +1792,7 @@ function applyAct(p,a){
   case 'taunt': { if((TACS[p.tac]?p.tac:'charmander')!=='charmander') return {ok:false}; const t=Date.now(); if(t-(p.tauntAt||0)<1400) return {ok:false}; p.tauntAt=t; p.tn=((p.tn||0)+1)%1000; return {ok:true}; }
   // Dónde está tu minileyenda para los demás: tablero que miras y destino (en radios de casilla desde la esquina del tablero)
   case 'tpos': { const b=idx(a.b), q=v=>Math.round(clamp(+v||0,-3,20)*100)/100; if(!G.players.some(o=>o.id===b)) return {ok:false}; p.tp=[b,q(a.x),q(a.y)]; return {ok:true}; }
-  case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,true); return r; }
+  case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,false); return r; }
   case 'rmitem': return {ok:false,why:'Para quitar objetos usa un 🧲 Imán Removedor'};
   case 'ready': if(ph==='planning') p.ready=true; return {ok:true};
   case 'surrender': { if(!p.alive||G.over||!G.round||G.round.s<3||ph==='carousel'||ph==='over') return {ok:false,why:'Rendirse solo se puede desde la fase 3-1'}; return {ok:surrenderPlayer(p)}; }
@@ -2605,7 +2605,7 @@ function updateCarousel(dt){
    if(a.done){ if(isHuman(p)&&!p.away){ if(a.tx!=null) toward(a,a.tx,a.ty); } else toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
    if(p.away){ a.rel=true; return; } // desconectado: no camina; al final se le da uno de los que sobran (más abajo)
-   if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Se abre tu barrera! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
+   if(!a.rel){ a.rel=true; a.relT=C.t; if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',false); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
    if(a.target!=null&&C.opts[a.target].taken) a.target=null;
    if(a.tx==null&&a.target==null&&(!isHuman(p)?C.t-a.relT>a.delay:C.t-a.relT>10)) a.target=carouselChoice(p);
@@ -3690,7 +3690,7 @@ function showAugment(){
  let k=0; const anim=choices.map(a=>augSeen.ids.has(a.id)?null:k++); choices.forEach(a=>augSeen.ids.add(a.id));
  openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol">${augCardHTML(a,i,anim[i])}<button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
  hydrateAugCards($('mbox'));
- $('mbox').querySelectorAll('.augCard3').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
+ $('mbox').querySelectorAll('.augCard3').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });
 }
 // Elecciones pendientes de los aumentos (emblemas, recompensas, Llamada al Caos…)
