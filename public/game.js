@@ -3438,6 +3438,7 @@ function renderItems(){
  // Bancas de 10 huecos: con más de 10 objetos se abre otra al lado (los objetos nunca se pierden)
  const benches=[]; for(let i=0;i<Math.max(1,Math.ceil(groups.length/MAX_ITEMS_BENCH));i++){ const g=groups.slice(i*MAX_ITEMS_BENCH,(i+1)*MAX_ITEMS_BENCH); benches.push(`<div class="ibench">${g.map(row).join('')}${'<span class="islot"></span>'.repeat(MAX_ITEMS_BENCH-g.length)}</div>`); }
  $('items').classList.toggle('multi',slots&&benches.length>1);
+ document.body.style.setProperty('--itemsW',slots&&benches.length>1?(benches.length*(parseFloat(getComputedStyle($('items')).getPropertyValue('--is'))||50)+benches.length*10+40)+'px':'0px'); // con 2 bancas, el panel de sinergias se aparta a la derecha
  $('items').innerHTML=slots?benches.join(''):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
 }
 // Registro de daño: daño hecho, daño recibido y curación (con escudos) de cada Pokémon del último combate
