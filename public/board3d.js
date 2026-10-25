@@ -474,6 +474,20 @@ function hueMat(mt,from,to){
     diffuseColor.rgb=mix(c,mx*mix(vec3(1.),k,s),w); }`); };
  mt.customProgramCacheKey=()=>'hue'+from+to; mt.needsUpdate=true;
 }
+// Variocolor por reglas (dex 'rc:<reglas>:<n.º>'): cada regla «h0-h1/s0/toH/val/sat» recolorea los píxeles con tono entre h0 y h1 y saturación ≥ s0:
+// tono toH (−1 = el suyo), brillo ×val y saturación ×sat. Para los variocolor que no son un giro de tono (Charizard: cuerpo naranja → negro, alas azul verdoso → rojas). Hasta 4 reglas, un programa por cadena.
+function recolorMat(mt,rules){
+ const R=String(rules).split(',').slice(0,4).map(r=>{ const p=r.split('/'); const [h0,h1]=String(p[0]).split('-').map(Number); return [h0,h1,...p.slice(1).map(Number)]; }).filter(r=>r.length===6&&r.every(x=>!isNaN(x)));
+ const body=R.map(([h0,h1,s0,th,val,sat])=>`{ float in_=step(${h0.toFixed(3)},h)*step(h,${h1.toFixed(3)})*smoothstep(${Math.max(0,s0-.1).toFixed(3)},${s0.toFixed(3)},s);
+    float hh=${th<0?'h':th.toFixed(3)}; float ss=clamp(s*${sat.toFixed(3)},0.,1.); float vv=mx*${val.toFixed(3)};
+    vec3 k=clamp(abs(mod(hh*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.); c=mix(c,vv*mix(vec3(1.),k,ss),in_); }`).join('\n');
+ mt.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+  { vec3 c=diffuseColor.rgb; float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.;
+    float h=0.; if(d>1e-4){ if(mx==c.r) h=mod((c.g-c.b)/d,6.); else if(mx==c.g) h=(c.b-c.r)/d+2.; else h=(c.r-c.g)/d+4.; h/=6.; }
+    ${body}
+    diffuseColor.rgb=c; }`); };
+ mt.customProgramCacheKey=()=>'rc'+rules; mt.needsUpdate=true;
+}
 function shinyMat(mt){
  mt.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
   { vec3 c=diffuseColor.rgb; float mx=max(c.r,max(c.g,c.b)), mn=min(c.r,min(c.g,c.b)), d=mx-mn, s=mx>0.?d/mx:0.;
@@ -519,7 +533,7 @@ class Actor{
  }
  // 'shiny:130' = el mismo modelo con los azules teñidos de rojo (Pokemon-3D-api no tiene todos los variocolor)
  setDex(dex){
-   if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(String(dex).replace(/^(shiny|hue:[\d.]+,[\d.]+):/,''));
+   if(dex===this.dex) return; this.dex=dex; this.clearModel(); this.m=wantModel(String(dex).replace(/^(shiny|hue:[\d.]+,[\d.]+|rc:[^:]+):/,''));
  }
  clearModel(){ this.sm=null; this.noKo=false; if(this.ball){ this.body.remove(this.ball); this.ball=null; } if(this.model){ this.body.remove(this.model); poolPut(this); this.model=null; this.smActs=null; this.mixer=null; this.cur=null; this.mats=null; this.acts=null; this.proc=null; } if(this.sprite){ this.body.remove(this.sprite); this.sprite=null; } }
  ensure(){
@@ -530,8 +544,8 @@ class Actor{
      const kk=this.fitH&&m.kh?Math.min(m.kh,m.k*1.6):m.k, pk=this.dex+'|'+kk, pooled=poolGet(pk);
      if(pooled){ Object.assign(this,pooled); this.poolKey=pk; this.body.add(this.model); this.alpha=undefined; if(m.sm&&this.smActs){ this.sm={st:'',act:null,atkStarted:-1,castSeen:this.lastCast,flash:0,won:false}; this.go('idle'); } else this.play('idle',true); return; }
      const inst=SkeletonUtils.clone(m.scene); const holder=new THREE.Group(); inst.position.copy(m.off); holder.add(inst); holder.scale.setScalar(kk); holder.userData.k=kk; this.poolKey=pk;
-     const shiny=String(this.dex).startsWith('shiny:'), hue=/^hue:([\d.]+),([\d.]+):/.exec(String(this.dex));
-     this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); if(shiny) shinyMat(mt); else if(hue) hueMat(mt,+hue[1],+hue[2]); this.mats.push(mt); } } });
+     const shiny=String(this.dex).startsWith('shiny:'), hue=/^hue:([\d.]+),([\d.]+):/.exec(String(this.dex)), rc=/^rc:([^:]+):/.exec(String(this.dex));
+     this.mats=[]; inst.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone(); for(const mt of [].concat(o.material)){ mt.userData.wasT=mt.transparent; if(mt.emissive) mt.userData.e0=mt.emissive.clone(); if(shiny) shinyMat(mt); else if(hue) hueMat(mt,+hue[1],+hue[2]); else if(rc) recolorMat(mt,rc[1]); this.mats.push(mt); } } });
      this.model=holder; this.body.add(holder); this.mixer=new THREE.AnimationMixer(inst); this.acts={};
      // Movimiento por código: cada hueso oscila alrededor de su pose de reposo
      this.proc=m.proc?m.proc.map(p=>{ const b=inst.getObjectByName(p.n); return b&&{b,rest:b.quaternion.clone(),ax:new THREE.Vector3().fromArray(p.ax),amp:p.amp,f:p.f,ph:p.ph,w:p.w}; }).filter(Boolean):null;

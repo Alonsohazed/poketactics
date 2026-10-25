@@ -378,6 +378,7 @@ test('minimapa: no se puede arrastrar ni mover la minileyenda desde él, y un cl
 });
 
 test('pokédex: usa sprites 2D ligeros y no carga ningún modelo 3D', async ({ page }) => {
+  await page.evaluate(() => { B3.dropQueue(); }); await page.waitForTimeout(500); // la precarga de la primera ronda (4 modelos a la vez) no cuenta: solo lo que pida la Pokédex
   const glb = []; page.on('request', r => { if (/\.glb|\/anims\//.test(r.url())) glb.push(r.url()); });
   await page.evaluate(() => { performance.clearResourceTimings(); showDex(0); });
   await expect(page.locator('.dexGrid .dexCard')).toHaveCount(await page.evaluate(() => UNIT_LIST.length));

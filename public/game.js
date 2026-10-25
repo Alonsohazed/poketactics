@@ -165,7 +165,7 @@ const UNIT_LIST=[
  U('bagon',['Bagon','Shelgon','Salamence'],[371,372,373],4,'t',['Dragón','Hechicero','Potencial Evolutivo'],[['burn','Ascuas',{m:1.2}],['harden','Fortaleza',{df:40,heal:1}],['meteor','Draco Meteoro',{m:.6,sh:.2,dr:.25}]],{scale:'ap'}),
  U('lapras',['Lapras'],[131],4,'t',['Agua','Sanador'],[['wave','Surf',{m:.6,w:1.6,stun:.4,healTeam:.25}]]),
  U('zorua',['Zorua','Zoroark'],[570,571],4,'a',['Siniestro','Asesino','Team Rocket'],[['dash','Finta',{m:1.4,to:'low',stealth:1}],['dash','Juego Sucio',{m:1.8,to:'low',stealth:2,r:1}]]),
- U('nidoran',['Nidoran♂','Nidorino','Nidoking'],[32,33,34],4,'b',['Lucha','Peleador'],[['empower','Ultrapuño',{n:3,m:.6}],['nova','Martillazo',{r:1,m:1.6,stun:1.2}],['combo','Ultrapuño',{n:5,m:.6,stun:1.2,spill:1}]]),
+ U('cubone',['Cubone','Marowak'],[104,105],4,'b',['Lucha','Peleador'],[['empower','Ultrapuño',{n:3,m:.6}],['nova','Martillazo',{r:1,m:1.6,stun:1.2}],['combo','Ultrapuño',{n:5,m:.6,stun:1.2,spill:1}]]),
  U('hatenna',['Hatenna','Hattrem','Hatterene'],[856,857,858],4,'m',['Psíquico','Hada','Hechicero'],[['bolt','Confusión',{m:1.4}],['blast','Brillo Mágico',{r:1,m:1}],['meteor','Velo Mental',{m:.7,stun:.5,mana0:40}]]),
  U('litwick',['Litwick','Lampent','Chandelure'],[607,608,609],4,'m',['Fuego','Fantasma','Hechicero'],[['drain','Infortunio',{m:1.1,h:.6}],['burn','Fuego Fatuo',{m:1,r:1}],['zone','Infierno',{r:2,m:2,dur:3,burn:.03}]]),
  U('rowlet',['Rowlet','Dartrix','Decidueye'],[722,723,724],4,'r',['Planta','Fantasma','Tirador'],[['multi','Hoja Afilada',{selfAs:0.1,n:3,m:.6}],['multi','Hoja Aguda',{selfAs:0.15,n:4,m:.6}],['line','Puntada Sombría',{selfAs:0.25,m:1.5,shred:.4,mana0:10}]]),
@@ -526,6 +526,7 @@ let G=null, UID=1;
 let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal',lang:''};
 // Sin DOM (servidor) no hay traducción: TR devuelve el español
 if(typeof TR!=='function'){ var TR=s=>s; var I18N={lang:'es',locale:'es-ES',set(){},pick:(es)=>es}; }
+if(typeof SHINY_RC==='undefined'){ var SHINY_RC={}, SHINY_ART=new Set(); } // shiny.js solo se carga en el navegador: el servidor no dibuja
 const defaultMods=()=>({income:0,maxInterest:5,winStreakMult:1,lossStreakMult:1,lossBonus:0,xpRound:0,xpBuy:0,freeRerolls:0,hpPct:0,adPct:0,ap:0,asPct:0,def:0,mr:0,allFocus:false,extraTrait:{},winGold:0,winHeal:0,boardBonus:0,eeveeKills:3,legend:0,xpCost:4,oddsSave:0,cheapCombine:0});
 function makePlayer(id,name,isBot,emoji,tr){
  return {id,name,isBot,emoji,tr:TRAINER_BY[tr]?tr:'',hp:100,gold:0,level:1,xp:0,bench:Array(BENCH).fill(null),board:{},shop:[null,null,null,null,null],locked:false,
@@ -534,6 +535,10 @@ function makePlayer(id,name,isBot,emoji,tr){
 // stk: lo ganado para siempre (vida, ataque y poder). Los escalados infinitos dan ataque y poder a la par para que sirvan a cualquier ficha
 const AP_PER_AD=1.5;
 const makeInst=key=>({uid:UID++,defId:key,baseId:DEF[key].evoOf||key,star:1,kills:0,items:[],stk:{hp:0,ad:0,ap:0}});
+// Variocolor: solo al comprar en la tienda, 1 de cada 40 (medido: un jugador compra unas 43 fichas por partida de mediana, 21 si cae pronto y 135 el campeón:
+// ≈ 66 % de tener al menos uno por partida, 41 % cayendo pronto y 97 % ganando). No cambia el pool ni las estadísticas: hereda al fusionar (ver combine)
+const SHINY_P=.025;
+const shinyDex=(u,dx)=>u&&u.shiny&&SHINY_RC[dx]?SHINY_RC[dx]+':'+dx:dx; // dex del modelo recoloreado (board3d.js, recolorMat)
 const boardUnits=p=>Object.values(p.board);
 const allUnits=p=>[...boardUnits(p),...p.bench.filter(Boolean)];
 const maxBoard=p=>p.mods.soloLevel?1:p.level+p.mods.boardBonus+boardUnits(p).reduce((s,u)=>s+u.items.filter(i=>i==='master').length,0);
@@ -579,7 +584,7 @@ function canBuy(p,i){
  if(p.bench.some(x=>!x)) return true;
  return p.bench.filter(u=>u&&u.baseId===k&&u.star===1).length+(G.phase!=='combat'?boardUnits(p).filter(u=>u.baseId===k&&u.star===1).length:0)>=2;
 }
-function buy(p,i){ if(!canBuy(p,i)) return false; const k=p.shop[i]; p.gold-=DEF[k].cost; p.shop[i]=null; augFire(p,'buy',{key:k,cost:DEF[k].cost}); addUnitToBench(p,makeInst(k)); return true; }
+function buy(p,i){ if(!canBuy(p,i)) return false; const k=p.shop[i]; p.gold-=DEF[k].cost; p.shop[i]=null; augFire(p,'buy',{key:k,cost:DEF[k].cost}); const u=makeInst(k); if(Math.random()<SHINY_P){ u.shiny=true; note(p,`✦ ¡${DEF[k].name} variocolor!`,false); } addUnitToBench(p,u); return true; }
 function addUnitToBench(p,inst){
  const dup=allUnits(p).some(u=>u.baseId===inst.baseId);
  augFire(p,'gain',{key:inst.baseId,dup});
@@ -714,7 +719,7 @@ function combine(p){
      const arr=groups[g], need=p.mods.cheapCombine&&DEF[arr[0].u.baseId].cost===1?2:3; if(arr.length<need||arr[0].u.star>=3) continue;
      const three=arr.slice(0,need), keep=three[0], evolved=three.find(x=>DEF[x.u.defId].evoOf);
      const before=nameOf(DEF[keep.u.defId],keep.u.star);
-     keep.u.star++; if(evolved) keep.u.defId=evolved.u.defId;
+     keep.u.star++; if(evolved) keep.u.defId=evolved.u.defId; if(three.some(x=>x.u.shiny)) keep.u.shiny=true; // un variocolor entre las copias: la fusión queda variocolor (y su siguiente fusión también)
      for(const o of three.slice(1)){
        // Los aumentos que siguen a un Pokémon concreto (p. ej. «Pokémon favorito») pasan a la copia que queda
        for(const st of Object.values(p.augSt||{})) if(st&&st.uid===o.u.uid) st.uid=keep.u.uid;
@@ -838,7 +843,7 @@ function baseCombatUnit(d,side,star,rand=Math.random){
    atkCd:.25+rand()*.35,moveCd:rand()*.2,target:null,burns:[],dead:false,kills:0,flash:0,mt:1,role:d.role,items:[],ref:null,sp:{},atkN:0,titanN:0};
 }
 function makeCombatUnit(inst,p,Tt,side,rand){
- const d=DEF[inst.defId]; const u=baseCombatUnit(d,side,inst.star,rand);
+ const d=DEF[inst.defId]; const u=baseCombatUnit(d,side,inst.star,rand); u.shiny=!!inst.shiny;
  if(inst.stk){ u.maxHp+=inst.stk.hp; u.ad+=inst.stk.ad; u.ap+=inst.stk.ap||0; }
  applyTraits(u,unitTraits(inst),Tt,p.mods);
  const m=p.mods; u.maxHp*=1+m.hpPct; u.ad*=1+m.adPct; u.ap+=m.ap; u.as*=1+m.asPct; u.df+=m.def; u.mr+=m.mr; if(m.allFocus) u.focus=true;
@@ -865,14 +870,14 @@ function abilPower(u){
 
 // Instantánea compacta de un equipo: es lo que se envía por red y lo que usa la simulación
 function teamSnap(p){ ensureGloves(p); const m=p.mods; let ent=Object.entries(p.board); if(m.soloLevel&&ent.length>1) ent=[ent.sort((a,b)=>DEF[b[1].defId].cost*Math.pow(3,b[1].star)-DEF[a[1].defId].cost*Math.pow(3,a[1].star))[0]];
- return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:ent.map(([k,u])=>[k,u.defId,u.star,u.items.concat(u.tg||[]),R0(u.stk.hp),R0(u.stk.ad),R0(u.stk.ap||0)])}; }
+ return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:ent.map(([k,u])=>[k,u.defId,u.star,u.items.concat(u.tg||[]),R0(u.stk.hp),R0(u.stk.ad),R0(u.stk.ap||0),u.shiny?1:0])}; }
 function snapPlayer(snap){
  const m=snap&&snap.m||{}; const mods=Object.assign(defaultMods(),{hpPct:+m.hp||0,adPct:+m.ad||0,ap:+m.ap||0,asPct:+m.as||0,def:+m.df||0,mr:+m.mr||0,allFocus:!!m.f,legend:+m.lg||0,extraTrait:(m.x&&typeof m.x==='object')?m.x:{}});
  const board={};
  for(const row of (snap&&Array.isArray(snap.u)?snap.u:[])){
-   const [k,defId,star,items,sh,sa,sp]=row;
+   const [k,defId,star,items,sh,sa,sp,shn]=row;
    if(typeof k!=='string'||!/^[0-6],[0-3]$/.test(k)||!DEF[defId]||![1,2,3].includes(star)) continue;
-   board[k]={defId,baseId:DEF[defId].evoOf||defId,star,items:(Array.isArray(items)?items:[]).filter(i=>ITEMS[i]).slice(0,3),stk:{hp:+sh||0,ad:+sa||0,ap:+sp||0}};
+   board[k]={defId,baseId:DEF[defId].evoOf||defId,star,items:(Array.isArray(items)?items:[]).filter(i=>ITEMS[i]).slice(0,3),stk:{hp:+sh||0,ad:+sa||0,ap:+sp||0},shiny:!!shn};
  }
  return {mods,board};
 }
@@ -1813,8 +1818,8 @@ const NET={mode:'sp',sock:null,rooms:[],owner:'',named:null,code:'',isHost:false
 const TOPICS=['act','pub','priv','cmb','car','start','lobby','bye'];
 function randomCode(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let s=''; for(let i=0;i<5;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
 function myPeerOf(room){ const me=room.peers().find(p=>p.sameTab); return me?me.peer:''; }
-function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0]; }
-function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined}; }
+function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0,u.shiny?1:0]; }
+function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined,shiny:!!a[11]}; }
 // Cristales de intereses de un jugador (1 por cada 10 de oro, hasta su máximo y 5): el propio se calcula; el de los demás llega en pub.pl[i][19]
 const interestOf=p=>p.mods&&p!==G.me&&p.icn!=null&&NET.mode==='client'?p.icn:Math.min(p.mods?p.mods.maxInterest:5,5,Math.floor((p.gold||0)/10));
 // Rival del combate que se está viendo (null en salvajes): su banca y sus cristales se ven en su lado del campo
@@ -1823,7 +1828,7 @@ function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
    pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0,interestOf(p),[p.mewF|0,p.mewN|0,(p.mewSk||[]).length]]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
-   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS),p.augments])};
+   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items,u.shiny?1:0]),p.bench.map(u=>u?[u.defId,u.star,u.items,u.shiny?1:0]:0),p.items.slice(0,MAX_ITEMS),p.augments])};
 }
 function makePriv(p){ ensureGloves(p);
  const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
@@ -1995,12 +2000,12 @@ function applyPub(d){
 }
 // Tablero y banquillo de otro jugador (solo para mirarlos); se valida todo lo que llega
 function unpackBoard(p,[bo,be]){
- const mk=(defId,star,items)=>DEF[defId]?{uid:'v'+p.id+defId+Math.random(),defId,baseId:DEF[defId].evoOf||defId,star:clamp(star|0,1,3),items:(Array.isArray(items)?items:[]).filter(i=>ITEMS[i]).slice(0,3),stk:{hp:0,ad:0},kills:0}:null;
- const old=new Map(allUnits(p).map(u=>[u.defId+'|'+u.star+'|'+u.items.join(),u]));
+ const mk=(defId,star,items,shiny)=>DEF[defId]?{uid:'v'+p.id+defId+Math.random(),defId,baseId:DEF[defId].evoOf||defId,star:clamp(star|0,1,3),items:(Array.isArray(items)?items:[]).filter(i=>ITEMS[i]).slice(0,3),stk:{hp:0,ad:0},kills:0,shiny:!!shiny}:null;
+ const old=new Map(allUnits(p).map(u=>[u.defId+'|'+u.star+'|'+u.items.join()+'|'+(u.shiny?1:0),u]));
  // Reutiliza los objetos ya creados para que el 3D no recargue los modelos en cada mensaje
- const keep=u=>{ if(!u) return null; const k=u.defId+'|'+u.star+'|'+u.items.join(), o=old.get(k); if(o){ old.delete(k); return o; } return u; };
- p.board={}; for(const row of Array.isArray(bo)?bo.slice(0,12):[]){ if(Array.isArray(row)&&/^[0-6],[0-3]$/.test(row[0])){ const u=keep(mk(row[1],row[2],row[3])); if(u) p.board[row[0]]=u; } }
- p.bench=Array(BENCH).fill(null).map((_,i)=>{ const r=Array.isArray(be)&&be[i]; return Array.isArray(r)?keep(mk(r[0],r[1],r[2])):null; });
+ const keep=u=>{ if(!u) return null; const k=u.defId+'|'+u.star+'|'+u.items.join()+'|'+(u.shiny?1:0), o=old.get(k); if(o){ old.delete(k); return o; } return u; };
+ p.board={}; for(const row of Array.isArray(bo)?bo.slice(0,12):[]){ if(Array.isArray(row)&&/^[0-6],[0-3]$/.test(row[0])){ const u=keep(mk(row[1],row[2],row[3],row[4])); if(u) p.board[row[0]]=u; } }
+ p.bench=Array(BENCH).fill(null).map((_,i)=>{ const r=Array.isArray(be)&&be[i]; return Array.isArray(r)?keep(mk(r[0],r[1],r[2],r[3])):null; });
 }
 function applyPriv(d){
  const aq=d.aq|0; if(aq<(NET.q|0)&&Date.now()-(NET.qT||0)<1500) return; if(aq>(NET.q|0)) NET.q=aq; // aún no ha procesado tu última acción: este estado es anterior
@@ -2892,7 +2897,7 @@ function drawHud(a){
  if(!o.creep&&o.star&&!a.cu&&(G.phase==='planning'||G.phase==='augment')){
    ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
-   const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
+   const st='★'.repeat(o.star)+(o.shiny?'✦':''); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2); // ✦: variocolor
  }
  if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
@@ -2978,7 +2983,7 @@ function sceneActors(){
      const [x,y]=unitXY(u), t=u.target&&!u.target.dead?unitXY(u.target):null, mine=u.side===mySide;
      // Para la animación: cuánto falta para el próximo golpe (el impacto del clip se alinea con el daño), cada cuánto ataca y si ganó
      const tg=u.target&&!u.target.dead?u.target:null, inR=!!tg&&!u.dead&&!(u.stun>0)&&dU(u,tg)<=u.range, sp=G.speed||1;
-     A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),charge:u.maxMana<9999?u.mana/u.maxMana:0,ranged:u.range>1,dex:u.creep?(u.d.shiny?'shiny:':'')+u.d.dex:dexOf(u.d,u.star),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
+     A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),charge:u.maxMana<9999?u.mana/u.maxMana:0,ranged:u.range>1,dex:u.creep?(u.d.shiny?'shiny:':'')+u.d.dex:shinyDex(u,dexOf(u.d,u.star)),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
        alpha:u.stealth>0?.35:1,scale:unitScale(u.d,u.star,{boss:u.maxMana===120&&u.creep})*(u.d.big||1),ring:u.creep?'#8a8a8a':mine?'#3fd27a':'#ff5a5f',sel:u===selCombat,
        hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
@@ -2996,7 +3001,7 @@ function sceneActors(){
      for(const p of par){ if(p.m.t===now) continue; p.m.n++; p.m.t=now; p.m.tr=sh.filter(t=>p.syn.includes(t)); p.m.from=[i.x,i.y]; p.m.to=null; } }
    for(const i of info){ const {u,k,x,y,syn,m}=i, st=mine?planStats(u):null, d=DEF[u.defId];
      if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
-     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
+     A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:shinyDex(u,dexOf(d,u.star)),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,shiny:!!u.shiny,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
  if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:unitScale({dex:cr.dex,traits:[]},1,{boss:!!cr.boss})*(cr.big||1),hud:{creep:true}}); }); // misma escala que en combate (2980) // clave estable: en multijugador la lista llega nueva en cada mensaje
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
@@ -3005,10 +3010,10 @@ function sceneActors(){
    for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStar(o.p),morph:o.p.mewN|0,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72*tacSize(o.p),hud:{}}); }
  else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStar(p),morph:p.mewN|0,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62*tacSize(p),alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
- (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
+ (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:shinyDex(u,dexOf(d,u.star)),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star,shiny:!!u.shiny}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
- const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star,still:true,dex:dexOf(d,u.star),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); }); }
- if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:0,drag:true,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
+ const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star+(u.shiny?':s':''),still:true,dex:shinyDex(u,dexOf(d,u.star)),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star,shiny:!!u.shiny}}); }); }
+ if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:shinyDex(drag.u,dexOf(d,drag.u.star)),x:drag.x,y:drag.y,face:0,drag:true,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star,shiny:!!drag.u.shiny}}); }
  return A;
 }
 function draw(){
@@ -3240,7 +3245,7 @@ const ART_V=3;
 let ART_EXT='avif';
 const ART_FOCUS={}, ART_DEF=[68,50,1,.87];   // 4.º valor: escala mínima respecto al ancho (.87 = el retrato entero, sin ampliar de más)
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
-const CARD_ART=Object.fromEntries('abra absol aerodactyl articuno bagon beldum bellsprout bulbasaur caterpie chansey charmander chikorita clefairy cleffa cubone darkrai diglett ditto doduo dratini drowzee duskull eevee ekans electabuzz elekid espeon exeggcute farfetchd flareon gastly geodude gible gimmighoul giratina goldeen grimer groudon growlithe hatenna hitmonchan hitmonlee hooh horsea houndour igglybuff jigglypuff jolteon jynx kabuto kangaskhan koffing krabby kyogre lapras larvitar leafeon lickitung litwick lugia machop magikarp magmar magnemite mankey meowth mew mewtwo mimejr misdreavus moltres mrmime munchlax nidoranf nidoranm oddish omanyte onix paras pichu pidgey pinsir poliwag ponyta porygon psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye sandshrew scyther seel shellder shinx slowpoke snorlax spearow squirtle staryu sylveon tangela tauros tentacool nidoran togepi turtwig umbreon vaporeon venonat voltorb vulpix weedle zapdos zorua zubat'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
+const CARD_ART=Object.fromEntries('abra absol aerodactyl articuno bagon beldum bellsprout bulbasaur caterpie chansey charmander chikorita clefairy cleffa cubone darkrai diglett ditto doduo dratini drowzee duskull eevee ekans electabuzz elekid espeon exeggcute farfetchd flareon gastly geodude gible gimmighoul giratina goldeen grimer groudon growlithe hatenna hitmonchan hitmonlee hooh horsea houndour igglybuff jigglypuff jolteon jynx kabuto kangaskhan koffing krabby kyogre lapras larvitar leafeon lickitung litwick lugia machop magikarp magmar magnemite mankey meowth mew mewtwo mimejr misdreavus moltres mrmime munchlax nidoranf nidoranm oddish omanyte onix paras pichu pidgey pinsir poliwag ponyta porygon psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye sandshrew scyther seel shellder shinx slowpoke snorlax spearow squirtle staryu sylveon tangela tauros tentacool togepi turtwig umbreon vaporeon venonat voltorb vulpix weedle zapdos zorua zubat'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 // Cabezas, minimapa y menú usan la miniatura (224 px, ~5 KB; la ilustración completa de la tienda pesa hasta 43 KB). Si falla (CDN y luego nuestro servidor), se muestra el sprite de la Pokédex en vez de una imagen rota o de cargar un modelo 3D
 const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.'+ART_EXT+'?v='+ART_V;
@@ -3467,8 +3472,8 @@ let UC_CUR=null, tipPinned=false;
 // Retratos de las formas evolucionadas (public/art/f/<n.º>): la ficha muestra la forma de su estrella (Charmeleon a 2★, Charizard a 3★); la tienda sigue con la primera
 const FORM_ART=new Set('2 3 5 6 8 9 11 12 14 15 17 18 20 22 24 25 26 28 30 31 33 34 35 36 38 39 40 42 44 45 47 49 51 53 55 57 59 61 62 64 65 67 68 70 71 73 75 76 78 80 82 85 87 89 91 93 94 97 99 101 103 105 110 112 117 119 121 122 125 130 139 141 143 148 149 153 154 176 208 212 229 230 248 282 373 376 389 405 429 445 448 462 464 466 468 477 34 571 609 724 858 1000'.split(' ').map(Number));
 const formArt=dx=>FORM_ART.has(dx)?`art/f/${dx}.${ART_EXT}?v=${ART_V}`:null;
-function unitCardHTML(d,who,star){
- const sx=star&&Array.isArray(d.dex)?dexOf(d,star):null, fa=sx!=null&&sx!==dexOf(d,1)?formArt(sx):null;
+function unitCardHTML(d,who,star,shiny){
+ const sx=star&&Array.isArray(d.dex)?dexOf(d,star):null, fa0=sx!=null&&sx!==dexOf(d,1)?formArt(sx):null, sdx=sx!=null?sx:dexOf(d,1), fa=shiny&&SHINY_ART.has(sdx)?`art/s/${sdx}.${ART_EXT}?v=${ART_V}`:fa0; // variocolor: su propio retrato (mismo encuadre que los de forma)
  const ak=DEF[d.key]?shopArtKey(d.key):d.key, fo=fa?ART_DEF:CARD_ART[ak]&&(ART_FOCUS[ak]||ART_DEF), cn=fa?nameOf(d,star):(DEF[ak]||d).name;
  const art=fo?'<span class="art v2art"><img src="'+(fa||CARD_ART[ak])+'" alt="" style="--fx:'+fo[0]/100+';--fy:'+fo[1]/100+';--z:'+fo[2]+';--zr:'+(fo[3]||Math.min(1.6,Math.max(1,52/fo[0]))).toFixed(2)+'"></span>':'<span class="art bg-'+elemOf(d)+'"><i class="fx"></i></span><span class="pic">'+portraitImg(dexOf(d,1))+'</span>';
  return '<div class="card c'+(d.cost||1)+' '+(fo?'v2':'')+' ucShopCard" title="'+esc(who)+'">'+art+'<span class="cn">'+esc(cn)+'</span><span class="tr">'+(d.traits||[]).map(t=>'<span title="'+t+'"><i>'+traitIcon(t)+'</i>'+t+'</span>').join('')+'</span>'+(d.cost?'<span class="cc">'+d.cost+'</span>':'')+'</div>';
@@ -3508,12 +3513,12 @@ function renderCard(){
  const stk=inst&&inst.stk&&(inst.stk.hp||inst.stk.ad||inst.stk.ap)?`<p class="small">Acumulado para siempre: +${R0(inst.stk.hp)} vida · +${R0(inst.stk.ad)} ataque · +${R0(inst.stk.ap||0)} poder</p>`:'';
  const front=d.role==='t'||d.role==='b', sc=scaleOf(cu), role={hp:['Tanque','Su habilidad escala sobre todo con la vida máxima'],ad:['Tirador','Su habilidad escala sobre todo con el ataque'],ap:[d.role==='t'?'Mago tanque':'Mago',d.role==='t'?'Aguanta en primera fila y su habilidad escala sobre todo con el poder':'Su habilidad escala sobre todo con el poder']}[sc];
  const hpTxt=R0(hp)+' / '+R0(cu.maxHp), mpTxt=noMana?'Sin maná':R0(cu.mana)+' / '+cu.maxMana;
- UC_CUR={cu,inst,star,ab,live,stats,role};
+ UC_CUR={cu,inst,star,ab,live,stats,role}; const sh=!!((inst&&inst.shiny)||(cu&&cu.shiny));
  const slots=[0,1,2].map(i=>{ const it=inst?inst.items[i]:cu.items&&cu.items[i]; if(!ITEMS[it]) return '<div class="ucIt empty"></div>'; return '<button class="ucIt" data-pop="it:'+it+'">'+itemHTML(it)+(cu.cnt&&cu.cnt[it]?'<b>'+cu.cnt[it]+'</b>':'')+'</button>'; }).join('');
 
  const html='<button class="uc-x" aria-label="Cerrar ficha">✕</button>'
-  +'<div class="ucStars s'+star+'"><span>'+'★'.repeat(star)+'</span></div>'
-  +unitCardHTML(d,who,star)
+  +'<div class="ucStars s'+star+'"><span>'+'★'.repeat(star)+(sh?'<i class="ucShiny" title="Variocolor">✦</i>':'')+'</span></div>'
+  +unitCardHTML(d,who,star,sh)
   +'<div class="ucBar hp"><i style="width:'+clamp(hp/cu.maxHp*100,0,100)+'%"></i><span>'+hpTxt+'</span></div>'
   +'<div class="ucBar mp"><i style="width:'+(noMana?0:clamp(cu.mana/cu.maxMana*100,0,100))+'%"></i><span>'+mpTxt+'</span></div>'
   +'<div class="ucTrio">'
