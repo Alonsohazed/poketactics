@@ -460,31 +460,35 @@ test('botones de la tienda: etiqueta, moneda con el coste e icono; el coste camb
   expect(await page.evaluate(() => [document.getElementById('rrCostTxt').textContent, getComputedStyle(document.getElementById('rrCoin')).display, document.getElementById('xpCostTxt').textContent])).toEqual(['Gratis ×2', 'none', '3']);
 });
 
-test('subida de estrellas de otro jugador: recuadro con su nombre, la cara, el nombre del Pokémon y estrellas de plata (2★) u oro (3★)', async ({ page }) => {
-  await page.evaluate(() => { const o = G.players.find(p => p !== G.me); o.name = 'Webas'; o.lastUp = [94, 3, 1001]; const q = G.players.filter(p => p !== G.me)[1]; q.lastUp = [8, 2, 1002]; renderUI(); });
-  await page.waitForTimeout(700);
-  const r = await page.evaluate(() => [...document.querySelectorAll('#upLayer .upCard')].map(c => ({ n: c.querySelector('.un').textContent, p: c.querySelector('.pn').textContent, s: c.querySelector('.st').textContent, col: getComputedStyle(c.querySelector('.st')).color, img: /dex\/\d+\.png(\?v=\d+)?$/.test(c.querySelector('img').src), right: c.getBoundingClientRect().right })));
-  expect(r.length).toBe(2);
-  const g3 = r.find(x => x.p === 'Gengar'), s2 = r.find(x => x.p === 'Wartortle');
-  expect(g3.n).toBe('Webas'); expect(g3.s).toBe('★★★'); expect(g3.col).toBe('rgb(255, 207, 51)'); expect(s2.s).toBe('★★'); expect(s2.col).toBe('rgb(223, 230, 241)'); expect(g3.img && s2.img).toBe(true);
-  expect(await page.evaluate(() => { const lefts = [...document.querySelectorAll('#players .pl .plInfo')].map(e => e.getBoundingClientRect().left); return [...document.querySelectorAll('#upLayer .upCard')].every(c => c.getBoundingClientRect().right <= Math.max(...lefts) + 1); })).toBe(true);
+test('subida de estrellas de otro jugador: ya no sale ninguna tarjeta ni píldora flotante (solo queda en el registro)', async ({ page }) => {
+  await page.evaluate(() => { const o = G.players.find(p => p !== G.me); o.lastUp = [94, 3, 1001]; renderUI(); });
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => ({ layer: !!document.querySelector('#upLayer'), cards: document.querySelectorAll('.upCard').length, fn: typeof renderUps, toasts: document.querySelectorAll('#toast > *').length }))).toEqual({ layer: false, cards: 0, fn: 'undefined', toasts: 0 });
+});
+
+test('registro de daño: el botón «Rival» muestra el mismo registro pero del otro lado del combate', async ({ page }) => {
+  await jumpToRound(page, 2); await page.evaluate(() => { G.timer = 1; });
+  await page.waitForFunction(() => G.phase === 'combat' && G.combat && G.combat.t > 2, null, { timeout: 30000 });
+  await page.evaluate(() => { sideTab = 'dmg'; document.querySelector('.sideTabs [data-tab="dmg"]').click(); renderDmg(); });
+  const mine = await page.evaluate(() => [...document.querySelectorAll('#dmgList .dmgRow .nm span')].map(e => e.textContent.trim()));
+  await page.click('.dmgSide [data-s="opp"]');
+  const r = await page.evaluate(() => ({ title: document.getElementById('dmgTitle').textContent, rows: [...document.querySelectorAll('#dmgList .dmgRow .nm span')].map(e => e.textContent.trim()), pressed: document.querySelector('.dmgSide [data-s="opp"]').getAttribute('aria-pressed'), opp: G.combat.units.filter(u => u.side !== (curFlip() ? 1 : 0)).map(u => u.name) }));
+  expect(r.pressed).toBe('true'); expect(r.title).toContain('equipo rival'); expect(r.rows.length).toBe(r.opp.length); expect(r.rows.every(n => r.opp.some(o => n.startsWith(o)))).toBe(true); expect(r.rows.join()).not.toBe(mine.join());
+  await page.click('.dmgSide [data-s="me"]'); expect(await page.evaluate(() => document.getElementById('dmgTitle').textContent)).not.toContain('equipo rival');
+});
+
+test('orbes de botín: Poké Ball en imagen (plateada, dorada y prismática), sprite visible y las tres imágenes servidas', async ({ page }) => {
+  await page.evaluate(() => { G.phase = 'planning'; for (const k of ['gray3', 'gold4', 'prism']) dropOrb(G.me, k, { c: 3, r: 1 }); renderUI(); });
+  await page.waitForTimeout(1800);
+  const r = await page.evaluate(() => B3.orbs);
+  expect(r.map(o => o.tier).sort()).toEqual(['gold', 'gray', 'prism']); expect(r.every(o => o.sprite && o.vis)).toBe(true);
+  for (const f of ['orbe-plata', 'orbe-oro', 'orbe-prisma']) { const res = await page.request.get('/img/fx/' + f + '.webp'); expect(res.status(), f).toBe(200); }
 });
 
 test('trofeo de aumentos: es una imagen (no decenas de mallas) y sin aumentos no hay recuadro con «?»', async ({ page }) => {
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => ({ esc: B3.debugInfo().escenario, hud: (() => { G.me.augments = []; hudAugs = []; ctx.save(); const spy = []; const fr = ctx.fillText; ctx.fillText = function (t) { spy.push(t); return fr.apply(this, arguments); }; drawTotemIcons(); ctx.fillText = fr; ctx.restore(); return { qs: spy.includes('?'), icons: hudAugs.length }; })(), tex: !!(B3.flatInfo && B3.flatInfo.totem) }));
   expect(r.esc).toBeLessThan(10); expect(r.hud).toEqual({ qs: false, icons: 0 }); expect(r.tex).toBe(true);
-});
-
-test('subida de estrellas de todos a la vez: los 7 recuadros caben sin solaparse en cualquier altura', async ({ page }) => {
-  for (const [w, h] of [[1400, 900], [1280, 720], [1920, 1080], [1366, 640]]) {
-    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(600);
-    await page.evaluate(() => { const n = Date.now(); G.players.filter(p => p !== G.me).forEach((p, i) => { p.lastUp = [[94, 3, 8][i % 3], 2 + (i % 2), n + i + Math.random()]; }); renderUI(); });
-    await page.waitForTimeout(800);
-    const r = await page.evaluate(() => { const b = [...document.querySelectorAll('#upLayer .upCard')].map(c => c.getBoundingClientRect()).sort((a, c) => a.top - c.top); const gaps = b.slice(1).map((x, i) => Math.round(x.top - b[i].bottom)); return { n: b.length, minGap: Math.min(...gaps), left: Math.min(...b.map(x => x.left)), top: Math.min(...b.map(x => x.top)), bottom: Math.max(...b.map(x => x.bottom)), vh: innerHeight }; });
-    expect(r.n, w + 'x' + h).toBe(7); expect(r.minGap, 'solapan en ' + w + 'x' + h).toBeGreaterThanOrEqual(0); expect(r.left).toBeGreaterThan(0); expect(r.top).toBeGreaterThanOrEqual(0); expect(r.bottom).toBeLessThanOrEqual(r.vh);
-    await page.evaluate(() => { G.players.forEach(p => { p.lastUp = null; }); UP_CARDS.forEach(c => c.remove()); UP_CARDS.clear(); });
-  }
 });
 
 test('objetos: los 47 sprites son WebP ligeros propios (no se pide PokeAPI) y se ven nítidos', async ({ page }) => {

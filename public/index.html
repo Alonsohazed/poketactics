@@ -1316,20 +1316,6 @@ body.fullField #players{flex:1;display:flex;flex-direction:column;justify-conten
 .sbBtn:active{transform:translateY(2px)}
 .sbBtn:disabled{filter:grayscale(.85) brightness(.65)}
 @media (max-width:640px){.sbtns .btn.sbBtn{grid-template-columns:1fr;justify-items:center;padding:3px}.sbBtn .sbTxt b{display:none}.sbBtn .sbIco{width:auto;height:26px;justify-self:center}.sbBtn .sbCost em{font-size:13px}}
-/* Aviso de subida de estrellas (recuadro que sale del círculo de la minileyenda) */
-#upLayer{position:fixed;inset:0;pointer-events:none;z-index:7}
-#upLayer[hidden]{display:none}
-.upCard{position:fixed;display:grid;grid-template-columns:auto auto;column-gap:calc(10px*var(--cs,1));row-gap:1px;align-items:center;padding:calc(5px*var(--cs,1)) calc(16px*var(--cs,1)) calc(7px*var(--cs,1)) calc(8px*var(--cs,1));border-radius:calc(10px*var(--cs,1));background:rgba(9,15,36,.45);border:1.5px solid rgba(220,206,168,.7);box-shadow:0 3px 12px rgba(0,0,0,.3),inset 0 0 0 1px rgba(255,255,255,.04);transform-origin:var(--ox,100%) 50%;animation:upOut .5s cubic-bezier(.2,1.1,.3,1) both,upFade .45s ease-in calc(var(--life) - .45s) forwards}
-.upCard .un{grid-column:1/-1;font-size:calc(11px*var(--cs,1));font-weight:800;color:#aab3c8;line-height:1.1;margin-bottom:calc(2px*var(--cs,1))}
-.upCard .face{width:calc(46px*var(--cs,1));height:calc(46px*var(--cs,1));border-radius:calc(7px*var(--cs,1));overflow:hidden;background:radial-gradient(circle at 50% 30%,#4a3f7a,#141a30);border:1px solid rgba(255,255,255,.2)}
-.upCard .face img{width:100%;height:100%;object-fit:cover;object-position:50% 10%;transform:scale(1.75);transform-origin:50% 20%}
-.upCard .pi{display:flex;flex-direction:column;gap:calc(3px*var(--cs,1));min-width:0}
-.upCard .pn{font-family:var(--display);font-weight:400;font-size:calc(21px*var(--cs,1));line-height:1;color:#fff;text-shadow:0 1px 0 #000;white-space:nowrap}
-.upCard .st{font-style:normal;font-size:calc(15px*var(--cs,1));letter-spacing:calc(3px*var(--cs,1));line-height:1}
-.upCard.s2 .st{color:#dfe6f1;text-shadow:0 0 6px rgba(190,205,235,.7),0 1px 0 #000}
-.upCard.s3 .st{color:#ffcf33;text-shadow:0 0 9px #ffb400,0 1px 0 #000}
-@keyframes upOut{from{transform:scale(.04,.5);opacity:0}to{transform:none;opacity:1}}
-@keyframes upFade{to{opacity:0;transform:translateX(14px)}}
 /* Recuadro dorado de los objetos en la banca (componentes y completos): marco metálico grueso, opaco y bien definido */
 .items .item .ii,#boardWrap .items .item .ii{border:4px solid transparent;border-radius:5px;background:radial-gradient(circle at 50% 38%,#2a3150,#0a0e1c 82%) padding-box,linear-gradient(145deg,#fff2b8,#e6b84e 32%,#a8741a 68%,#f3d27a) border-box;background-origin:border-box;background-clip:padding-box,border-box;box-shadow:inset 0 0 0 1px rgba(0,0,0,.7),inset 0 0 7px rgba(0,0,0,.55),0 0 0 1px #2b1f08,0 3px 6px rgba(0,0,0,.65)}
 .items .item .ii img{filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
@@ -1634,6 +1620,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
       <div class="tabBody" id="tabPl"><div id="players"></div></div>
       <div class="tabBody" id="tabDmg" hidden>
         <div class="dmgModes"><button data-m="dmg" aria-pressed="true">Daño</button><button data-m="tank" aria-pressed="false">Recibido</button><button data-m="heal" aria-pressed="false">Curación</button></div>
+        <div class="dmgModes dmgSide"><button data-s="me" aria-pressed="true">Tu equipo</button><button data-s="opp" aria-pressed="false">Rival</button></div>
         <p class="small muted" id="dmgTitle"></p><div id="dmgList"></div>
       </div>
       <div class="tabBody" id="tabLog" hidden><ul class="log" id="log"></ul></div>

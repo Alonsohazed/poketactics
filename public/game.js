@@ -904,7 +904,7 @@ function pveWave(s,n){
  if(k==='1-3') return [CREEP(21,'Spearow',300,20,2,0),CREEP(21,'Spearow',300,20,4,0),CREEP(16,'Pidgey',260,18,3,2,{range:3})];
  if(s===2) return [CREEP(98,'Krabby',560,36,2,0),CREEP(98,'Krabby',560,36,4,0),CREEP(98,'Krabby',560,36,3,1),CREEP(99,'Kingler',950,55,3,0)];
  if(s===3) return [CREEP(143,'Snorlax',2900,85,3,0,{as:.55,boss:true}),CREEP(446,'Munchlax',620,40,1,1),CREEP(446,'Munchlax',620,40,5,1)];
- if(s===4) return [CREEP(142,'Aerodactyl',1800,105,2,0,{as:.8}),CREEP(142,'Aerodactyl',1800,105,4,0,{as:.8}),CREEP(142,'Aerodactyl',1800,105,3,2,{as:.8,range:3})];
+ if(s===4) return [CREEP(142,'Aerodactyl',1800,105,2,0,{as:.8,big:2.4}),CREEP(142,'Aerodactyl',1800,105,4,0,{as:.8,big:2.4}),CREEP(142,'Aerodactyl',1800,105,3,2,{as:.8,range:3,big:2.4})]; // grandes e imponentes (solo tamaño del modelo)
  const m=Math.pow(1.3,Math.max(0,s-5));
  // Desde la fase 5: un único Gyarados variocolor grande (la vida y el daño de los tres jefes de antes juntos)
  return [CREEP(130,'Gyarados variocolor',11500*m,300*m,3,1,{boss:true,shiny:true,big:1.9,as:.7})];
@@ -1400,7 +1400,7 @@ function grant(p,tok,out){
  else if(k==='mag'){ giveItem(p,'magnet'); out.push('🧲 Imán Removedor'); }
  else if(k==='dup'){ const own=allUnits(p).filter(u=>!DEF[u.baseId].evoOf&&u.star<3&&G.pool[u.baseId]>0); if(own.length){ const u=pick(own); G.pool[u.baseId]--; giveUnitTo(p,u.baseId); out.push('🧬 Copia de '+DEF[u.baseId].name); } else { p.gold+=3; out.push('3 de oro'); } }
  // Yunque: las personas eligen 1 de 4 en la tienda «Elige uno» (también en multijugador); los rivales generados y los orbes abiertos de golpe, al azar
- else if(k==='ca'||k==='fa'){ if(!p.isBot&&!G.auto&&!NO_ANVIL){ openAnvil(p,k==='ca'?'c':'f',4); out.push(k==='ca'?'⚒️ Yunque de componentes':'⚒️ Yunque de objeto'); }
+ else if(k==='ca'||k==='fa'){ if(!p.isBot&&!G.auto&&(!NO_ANVIL||benchFree(p))) out.push('⚒️ '+giveAnvil(p,k==='ca'?'c':'f')); // el yunque va a la banca y se abre al venderlo (E o arrastrándolo a la tienda), nunca solo
    else { const it=giveItem(p,pick(k==='ca'?BASIC:FULL_KEYS)); out.push('⚒️ '+ITEMS[it].name); } }
 }
 let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques eligen solos
@@ -1408,7 +1408,7 @@ let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques 
 const ORB_TIER=k=>k==='prism'?'prism':/^(gray|c$|mag$)/.test(k)?'gray':'gold';
 function dropOrb(p,key,at){ const toks=ORBS[key]?weighted(ORBS[key].t):[key]; G.orbSeq=(G.orbSeq||0)+1; p.orbs.push({id:G.orbSeq,tier:ORB_TIER(key),toks,c:at?at.c:null,r:at?at.r:null}); }
 // Un orbe con Pokémon dentro no se abre (ni a mano ni solo al empezar el combate) si no caben en el banquillo: espera en el suelo a que hagas sitio
-const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(u\d|dup$)/.test(t)).length:(o.nu|0);
+const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(u\d|dup|ca|fa)$/.test(t)).length:(o.nu|0); // los yunques también ocupan banquillo
 const benchFree=p=>p.bench.filter(x=>!x).length;
 const orbBlocked=(p,o)=>!p.isBot&&orbUnits(o)>benchFree(p); // los rivales generados los abren siempre (si no cabe, oro): así no se les acumulan
 function openPlayerOrb(p,id,quick){
@@ -2737,6 +2737,7 @@ function bindEvents(){
  bindAuth();
  $('players').addEventListener('click',e=>{ const row=e.target.closest('.pl[data-pid]'); if(row&&G&&G.players.length) spectate(+row.dataset.pid); });
  document.querySelector('.sideTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
+ document.querySelector('.dmgSide').addEventListener('click',e=>{ const b=e.target.closest('[data-s]'); if(!b) return; dmgWho=b.dataset.s; document.querySelectorAll('.dmgSide [data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false')); renderDmg(); });
  document.querySelector('.dmgModes').addEventListener('click',e=>{ const b=e.target.closest('[data-m]'); if(!b) return; dmgMode=b.dataset.m; document.querySelectorAll('.dmgModes [data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderDmg(); });
  // Pantalla completa (el navegador puede negarse si no viene de un clic)
  $('augBar').addEventListener('contextmenu',e=>{ e.preventDefault(); const b=$('augList'); b.hidden=!b.hidden; });
@@ -2852,8 +2853,9 @@ function drawItemBadge(k,x,y,sz,n){
  const I=ITEMS[k]; if(!I) return;
  ctx.save(); const col=itemColor(I);
  const fxc=itemFxRGB(k), pu=.5+.5*Math.sin(performance.now()/1000*2.4+k.length*1.7), g=ctx.createRadialGradient(x,y+sz*.04,0,x,y,sz*.74); g.addColorStop(0,`rgba(${fxc},${(.85+.12*pu).toFixed(2)})`); g.addColorStop(.48,`rgba(${fxc},${(.42+.12*pu).toFixed(2)})`); g.addColorStop(.76,`rgba(${fxc},.1)`); g.addColorStop(1,`rgba(${fxc},0)`); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#04090c'; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
- const e=getItemImg(k);
- if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
+ const e=I.emblem&&!I.badge&&TRAIT_SVG[I.emblem]?null:getItemImg(k);
+ if(!e) drawTraitGlyph(I.emblem,x,y,sz*.62); // emblema sin imagen propia: el mismo logo que en la banca (la silueta blanca de traitIcon), nunca el emoji
+ else if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
  // Contador de acumulaciones dentro del objeto, como en TFT (cargas de la Cinta Furia, poder ganado con la Piedra Lunar…)
  if(n){ const t=String(n), fs=Math.max(8,sz*.4), bh=fs*.95; ctx.globalAlpha=.78; ctx.fillStyle='#05070f'; ctx.fillRect(x-sz/2,y+sz/2-bh,sz,bh); ctx.globalAlpha=1; ctx.font=`900 ${fs}px Nunito,system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=2.5; ctx.strokeStyle='#000'; ctx.fillStyle='#ffd75e'; ctx.strokeText(t,x,y+sz/2-bh/2+.5); ctx.fillText(t,x,y+sz/2-bh/2+.5); }
@@ -2995,7 +2997,7 @@ function sceneActors(){
    for(const i of info){ const {u,k,x,y,syn,m}=i, st=mine?planStats(u):null, d=DEF[u.defId];
      if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
      A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
- if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:(cr.boss?1.35:1)*(cr.big||1),hud:{creep:true}}); }); // clave estable: en multijugador la lista llega nueva en cada mensaje
+ if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:unitScale({dex:cr.dex,traits:[]},1,{boss:!!cr.boss})*(cr.big||1),hud:{creep:true}}); }); // misma escala que en combate (2980) // clave estable: en multijugador la lista llega nueva en cada mensaje
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
@@ -3006,7 +3008,7 @@ function sceneActors(){
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
  const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star,still:true,dex:dexOf(d,u.star),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); }); }
- if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:0,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
+ if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:0,drag:true,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
 function draw(){
@@ -3225,6 +3227,9 @@ const TRAIT_SVG={
  'Team Rocket':'M5.5 3H13a5.5 5.5 0 0 1 2.2 10.5L19.5 21h-4.2l-3.8-7H9.2v7H5.5zm3.7 3.3v4.5H13a2.25 2.25 0 0 0 0-4.5z',
 };
 const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="${TRAIT_SVG[t]}"/></svg>`:(TRAITS[t]?TRAITS[t].icon:'');
+// La misma silueta en el lienzo 2D (objetos sobre las fichas, combate y carrusel): el path de TRAIT_SVG en blanco al tamaño w con una sombra de 1 px, como el CSS de .ii .isvg
+const TRAIT_PATH={};
+function drawTraitGlyph(t,x,y,w){ if(!TRAIT_SVG[t]) return; const p=TRAIT_PATH[t]||(TRAIT_PATH[t]=new Path2D(TRAIT_SVG[t])); ctx.save(); ctx.translate(x-w/2,y-w/2); ctx.scale(w/24,w/24); ctx.fillStyle='rgba(0,0,0,.7)'; ctx.translate(0,24/w); ctx.fill(p,'evenodd'); ctx.translate(0,-24/w); ctx.fillStyle='#fff'; ctx.fill(p,'evenodd'); ctx.restore(); }
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
 // Retratos (public/art): sprites de Pokémon GO compuestos con un aura de sus colores, el Pokémon a la derecha (centro en el 68 % del ancho y el 52 % del alto) y la izquierda oscura para sinergias y nombre (retrato.js en la skill de recursos). Sin cargar modelos 3D
@@ -3319,8 +3324,6 @@ function renderTraits(){
  }).join(''):'<p class="muted small">Coloca Pokémon en el tablero para activar sinergias. Pasa el cursor por una sinergia para ver qué le da a tu equipo.</p>';
  renderAugs();
 }
-// Avisos de subida de estrellas: se ven unos segundos junto al nombre
-const UPS={}, UP_MS=7000;
 const POGO='https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Sounds/';
 const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 // Nombre de la forma que sale en la tienda (para su grito)
@@ -3334,28 +3337,6 @@ function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.last
  if((tac>sndWatch.tac&&!tacOf(me).mimic)||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
  if((me.mewN|0)>(sndWatch.mew|0)) Music.morph();
  sndWatch.mew=me.mewN|0; sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
-// Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
-let DEX_NAME=null;
-const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
-const UP_CARDS=new Map(); let UP_NAT=0; // altura natural del recuadro (con escala 1)
-function renderUps(){
- if(HEADLESS||!G||!G.players) return; let L=$('upLayer'); if(!L){ L=document.createElement('div'); L.id='upLayer'; document.body.appendChild(L); }
- const now=performance.now(), live=new Set(); L.hidden=!liveGame();
- // Si suben varios a la vez, todos los recuadros se reducen lo justo (--cs) para que quepan en la separación entre filas sin tocarse
- const rc=[...document.querySelectorAll('#players .pl')].map(e=>{ const b=e.getBoundingClientRect(); return b.top+b.height/2; }).sort((a,b)=>a-b), pitch=rc.length>1?Math.min(...rc.slice(1).map((y,i)=>y-rc[i])):90;
- if(!L.hidden) for(const p of G.players){ const u=p.lastUp; if(!u||p===G.me||!p.alive) continue; const [dex,star,seq]=u;
-   let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderUps(); },UP_MS+50); }
-   if(now-r.t>=UP_MS) continue; const row=document.querySelector('#players .pl[data-pid="'+p.id+'"]'); if(!row) continue;
-   let c=UP_CARDS.get(p.id); if(!c||c.dataset.seq!==String(seq)){ if(c) c.remove(); c=document.createElement('div'); c.className='upCard s'+star; c.dataset.seq=seq; c.style.setProperty('--life',UP_MS+'ms');
-     c.innerHTML=`<span class="un">${esc(p.name)}</span><span class="face"><img src="${dexUrl(dex)}" alt="" data-sp="${String(dex).split('/').pop()}" decoding="async"></span><span class="pi"><b class="pn">${esc(dexName(dex)||'Pokémon')}</b><i class="st" title="Subió a ${star} estrellas">${'★'.repeat(star)}</i></span>`; c.style.visibility='hidden'; L.appendChild(c); UP_CARDS.set(p.id,c); c._new=true; }
-   if(!UP_NAT){ c.style.setProperty('--cs',1); UP_NAT=c.offsetHeight||76; } c.style.setProperty('--cs',clamp((pitch-6)/UP_NAT,.45,1).toFixed(3));
-   const info=row.querySelector('.plInfo').getBoundingClientRect(), ring=row.querySelector('.ring').getBoundingClientRect(), h=c.offsetHeight;
-   c.style.right=(innerWidth-info.left+10)+'px'; c.style.top=(ring.top+ring.height/2-h/2)+'px';
-   if(c._new){ c._new=false; const l=c.getBoundingClientRect().left; c.style.setProperty('--ox',(ring.left+ring.width/2-l)+'px'); c.style.visibility=''; }
-   live.add(p.id); }
- for(const [id,c] of UP_CARDS) if(!live.has(id)){ c.remove(); UP_CARDS.delete(id); }
-}
-function upBadge(){ return ''; }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
 // Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
 // Icono de un aumento: el propio (a.ico, sin teñir) o, en los de héroe, el sprite de siempre
@@ -3383,7 +3364,6 @@ function renderPlayers(){
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
    $('viewBack').onclick=()=>spectate(G.me.id); }
  else vi.hidden=true;
- renderUps();
 }
 // Banca de objetos: en escritorio, casillas fijas (las vacías punteadas) a la izquierda del tablero
 // Recetas de un componente (clic derecho en la banca de objetos, como en TFT): las 9 combinaciones; resaltadas las que puedes hacer ya
@@ -3418,13 +3398,13 @@ function renderItems(){
  $('items').innerHTML=slots?it+'<span class="islot"></span>'.repeat(Math.max(0,MAX_ITEMS_BENCH-groups.length)):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
 }
 // Registro de daño: daño hecho, daño recibido y curación (con escudos) de cada Pokémon del último combate
-let dmgMode='dmg', statsCb=null, statsSide=0, sideTab='pl', lastDmgT=0;
+let dmgMode='dmg', dmgWho='me', statsCb=null, statsSide=0, sideTab='pl', lastDmgT=0; // dmgWho: 'me' (tu lado) u 'opp' (el mismo registro, pero del rival)
 function renderDmg(){
  if(HEADLESS||sideTab!=='dmg') return;
  const cb=statsCb; if(!cb){ $('dmgTitle').textContent='Aparecerá cuando empiece el primer combate.'; $('dmgList').innerHTML=''; return; }
- const side=statsSide, f={dmg:'sDmg',tank:'sTank',heal:'sHeal'}[dmgMode];
+ const side=dmgWho==='opp'?1-statsSide:statsSide, f={dmg:'sDmg',tank:'sTank',heal:'sHeal'}[dmgMode];
  const us=cb.units.filter(u=>u.side===side).map(u=>({u,v:R0(u[f]||0)})).sort((a,b)=>b.v-a.v), max=Math.max(1,...us.map(x=>x.v));
- $('dmgTitle').textContent=(G.phase==='combat'?'Combate en curso':'Último combate')+' · '+{dmg:'daño infligido',tank:'daño recibido (con escudos)',heal:'curación y escudos dados'}[dmgMode];
+ $('dmgTitle').textContent=(G.phase==='combat'?'Combate en curso':'Último combate')+' · '+{dmg:'daño infligido',tank:'daño recibido (con escudos)',heal:'curación y escudos dados'}[dmgMode]+(dmgWho==='opp'?' · equipo rival':'');
  $('dmgList').innerHTML=us.map(({u,v})=>`<div class="dmgRow ${dmgMode}" style="--cc:${u.creep?'#8a8a8a':COST_HEX[(u.d.cost||1)-1]}"><span class="pic">${portraitImg(u.creep?u.d.dex:dexOf(u.d,u.star))}</span>
    <div><div class="nm"><span>${esc(u.name)} ${u.creep?'':'★'.repeat(u.star)}</span><b>${v}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div></div>`).join('');
 }
@@ -3715,10 +3695,10 @@ function showPick(){
  if(pk.src==='__tac'){ showTacEvolve(pk); return; }
  const items=pk.opts.map(pickItem);
  if(items.every(Boolean)){ showChooseOne(pk,items); return; }
- openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>{ const pu=pickUnit(o);
+ openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>{ const pu=pickUnit(o), ik=pickItem(o);
    // si la opción es una ficha, su retrato (con el color de su coste) y su descripción al pasar el ratón
    return pu?`<button class="choice pkUnit" data-i="${i}" data-tip="shop:${pu.d.key}" style="--cc:${COST_HEX[(pu.d.cost||1)-1]}"><span class="pkPic">${portraitImg(dexOf(pu.d,pu.star))}</span><b>${esc(nameOf(pu.d,pu.star))} ${'★'.repeat(pu.star)}</b><span class="small">${pu.d.traits.map(t=>TRAITS[t].icon+' '+t).join(' · ')}${o.d?'<br>'+esc(o.d):''}</span></button>`
-     :`<button class="choice" data-i="${i}"><span class="big">${esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`; }).join('')}</div>`,{kind:'pick'});
+     :`<button class="choice" data-i="${i}"><span class="big">${ik?itemHTML(ik,48):esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`; }).join('')}</div>`,{kind:'pick'});
  $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
 }
 // Opciones que son un objeto (it:<objeto>) o un emblema (em:<sinergia>): se eligen en la tienda «Elige uno»
@@ -3982,7 +3962,7 @@ const FR_ST={game:'En partida',lobby:'En una sala',queue:'Buscando partida',menu
 const frStatus=f=>f.st==='game'?`En partida${f.r?' · Ronda '+f.r:''}`:FR_ST[f.st]||'Desconectado';
 async function loadFriends(){ if(!ACC) return; let d; try{ d=await api('/api/friends'); }catch(e){ return; }
  const prev=FR.list?new Set(FR.list.incoming.map(x=>x.name)):null; FR.list=d;
- if(prev) for(const x of d.incoming) if(!prev.has(x.name)) toast(`${x.name} quiere ser tu amigo`);
+ if(prev&&!liveGame()) for(const x of d.incoming) if(!prev.has(x.name)) toast(`${x.name} quiere ser tu amigo`); // en partida no: ninguna píldora por acciones de otros
  renderFriends(); }
 function onFriendUpd(d){ if(!FR.list||!d||typeof d.name!=='string') return; const f=FR.list.friends.find(x=>x.name===d.name); if(!f) return;
  f.st=FR_ST[d.st]?d.st:'off'; f.r=String(d.r||'').slice(0,6); f.mode=String(d.mode||'').slice(0,10); renderFriends(); }

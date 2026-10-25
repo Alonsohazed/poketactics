@@ -483,6 +483,16 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
     ok(run('sellOverflow')(p) === 0 && nb() === max, 'banca llena: con n/n no se vende nada más'); }
 }
 
+// Yunques del PvE: el orbe los deja en la banca (nunca se abren solos), ocupan banquillo como un Pokémon y se abren al venderlos (E o arrastrándolos a la tienda)
+{ const run = s => vm.runInContext(s, ctx), mk = k => run(`makeInst('${k}')`), keys = E.UNIT_LIST.filter(u => u.cost === 1 && !E.DEF[u.key].evoOf).map(u => u.key);
+  { const { G, p } = fresh(); G.phase = 'planning'; p.bench = p.bench.map(() => null); p.orbs = [{ id: 921, tier: 'gold', toks: ['ca'], c: 3, r: 5 }];
+    ok(!!run('openPlayerOrb')(p, 921, false) && p.bench.some(u => u && u.defId === 'yunque') && !p.picks.length, 'yunque del orbe: va a la banca sin abrirse');
+    const i = p.bench.findIndex(u => u && u.defId === 'yunque'); const r = E.applyAct(p, { t: 'sell', loc: { i } });
+    ok(r.ok && !p.bench[i] && p.picks.length === 1 && /Yunque/.test(JSON.stringify(p.picks[0])), 'yunque: al venderlo (E o tienda) se abre la elección');
+    p.picks = []; p.orbs = [{ id: 922, tier: 'gold', toks: ['fa'], c: 3, r: 5 }]; ok(!!run('openPlayerOrb')(p, 922, false) && p.bench.some(u => u && u.defId === 'yunque_oro') && !p.picks.length, 'yunque de objetos del orbe: también a la banca'); }
+  { const { G, p } = fresh(); G.phase = 'planning'; p.bench = keys.slice(0, 9).map(k => mk(k)); p.orbs = [{ id: 923, tier: 'gray', toks: ['ca'], c: 2, r: 5 }];
+    ok(run('orbUnits')(p.orbs[0]) === 1 && run('openPlayerOrb')(p, 923, false) === null && p.orbs.some(o => o.id === 923), 'banca llena: el orbe con yunque espera en el suelo');
+    p.bench[0] = null; ok(!!run('openPlayerOrb')(p, 923, false) && p.bench.some(u => u && u.defId === 'yunque'), 'con un hueco libre el yunque entra en la banca'); } }
 // Rendirse: rechazado antes de 3-1 y en el carrusel; desde 3-1 elimina (último puesto entre los vivos, equipo al pool) y la partida sigue para los demás
 { const { G, p } = fresh(); const run = s => vm.runInContext(s, ctx); G.phase = 'planning'; G.roundIdx = 5; G.round = E.ROUNDS[5];
   ok(G.round.s === 2 && !E.applyAct(p, { t: 'surrender' }).ok && p.alive, 'rendirse: antes de la fase 3-1 se rechaza');

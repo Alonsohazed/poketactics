@@ -787,6 +787,7 @@ Object.assign(I18N.EN, {
   'Historial de partidas': 'Match history', 'Tus {0} partidas más recientes. Toca una para ver los detalles.': 'Your {0} most recent games. Tap one to see the details.', 'Aún no has jugado ninguna partida de Normal, Clasificatoria o sala informal.': 'You have not played any Normal, Ranked or casual room game yet.', 'Nadie por aquí ahora mismo.': 'Nobody around right now.', 'Cargando…': 'Loading…',
 });
 Object.assign(I18N.EN, { '🔥 Racha de {0} victorias': '🔥 {0}-win streak', 'Racha de {0} derrotas': '{0}-loss streak' });
+Object.assign(I18N.EN, { 'Tu equipo': 'Your team', 'Rival': 'Enemy', 'equipo rival': 'enemy team', 'daño infligido': 'damage dealt', 'daño recibido (con escudos)': 'damage taken (with shields)', 'curación y escudos dados': 'healing and shields given' });
 // Patrones genéricos (van los últimos: solo entran si nada más encaja): «Fuego (3)», «Mítica · X»
 Object.assign(I18N.EN, { '{0}-{1}: {2}': '{0}-{1}: {2}' }); // rótulo de ronda: la parte {2} se traduce sola
 Object.assign(I18N.EN, { '{0} ({1})': '{0} ({1})', '{0} · {1}': '{0} · {1}' });
