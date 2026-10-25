@@ -558,9 +558,9 @@ function makePlayer(id,name,isBot,emoji,tr){
 // stk: lo ganado para siempre (vida, ataque y poder). Los escalados infinitos dan ataque y poder a la par para que sirvan a cualquier ficha
 const AP_PER_AD=1.5;
 const makeInst=key=>({uid:UID++,defId:key,baseId:DEF[key].evoOf||key,star:1,kills:0,items:[],stk:{hp:0,ad:0,ap:0}});
-// Variocolor: solo al comprar en la tienda, 1 de cada 40 (medido: un jugador compra unas 43 fichas por partida de mediana, 21 si cae pronto y 135 el campeón:
-// ≈ 66 % de tener al menos uno por partida, 41 % cayendo pronto y 97 % ganando). No cambia el pool ni las estadísticas: hereda al fusionar (ver combine)
-const SHINY_P=.025;
+// Variocolor: solo al comprar en la tienda, 1 de cada 80 (medido: un jugador compra unas 43 fichas por partida de mediana, 21 si cae pronto y 135 el campeón:
+// ≈ 42 % de tener al menos uno por partida, 23 % cayendo pronto y 82 % ganando: raro, pero se ve). No cambia el pool ni las estadísticas: hereda al fusionar (ver combine)
+const SHINY_P=.0125;
 const shinyDex=(u,dx)=>u&&u.shiny&&SHINY_RC[dx]?SHINY_RC[dx]+':'+dx:dx; // dex del modelo recoloreado (board3d.js, recolorMat)
 const boardUnits=p=>Object.values(p.board);
 const allUnits=p=>[...boardUnits(p),...p.bench.filter(Boolean)];
