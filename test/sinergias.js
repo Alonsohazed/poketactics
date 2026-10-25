@@ -74,9 +74,11 @@ ok(TRAITS.every(t => E.ITEMS['emb_' + t] && Object.keys(E.ITEMS['emb_' + t].s).l
 { const { p } = fresh(); E.lootTrack(p, () => { p.gold += 3; E.giveItem(p, 'claw'); }); ok(p.loot.gold === 3 && p.loot.items === 1 && p.loot.value === 6, 'botín: 3 de oro y un objeto (valor 6)'); }
 { const { G, p } = fresh(); for (const q of G.players) q.board = {}; const u = E.makeInst('charmander'); p.board['0,0'] = u; p.mods.extraTrait = { 'Potencial Evolutivo': 7 }; u.items = ['emb_Potencial Evolutivo'];
   // charmander ya es Potencial Evolutivo: el emblema no cuenta, así que se queda en nivel 3
-  E.growPotential(); ok(u.stk.hp === 45 && u.stk.ad === 4, `Potencial Evolutivo 8 sin emblema válido: +45/+4 (${u.stk.hp}/${u.stk.ad})`);
+  // 1 estrella en el tablero (+4 %) y el emblema duplica el crecimiento de su portador aunque no cuente para la sinergia
+  E.growPotential(); ok(Math.abs(u.stk.hp - 45 * 1.04 * 2) < .01 && Math.abs(u.stk.ad - 4 * 1.04 * 2) < .01, `Potencial Evolutivo 8 sin emblema válido: +45/+4 ×1,04 ×2 (${u.stk.hp}/${u.stk.ad})`);
   const v = E.makeInst(keyWithout('Potencial Evolutivo')); v.items = ['emb_Potencial Evolutivo']; p.board['1,0'] = v; u.stk = { hp: 0, ad: 0 }; v.stk = { hp: 0, ad: 0 };
-  E.growPotential(); ok(u.stk.hp === 80 && v.stk.hp === 80 && v.stk.ad === 8, 'Potencial Evolutivo prismático: +80/+8 por ronda'); }
+  E.growPotential(); const k2 = 1.08 * 2; ok(Math.abs(u.stk.hp - 80 * k2) < .01 && Math.abs(v.stk.hp - 80 * k2) < .01 && Math.abs(v.stk.ad - 8 * k2) < .01, 'Potencial Evolutivo prismático: +80/+8 por ronda (×1,08 por 2 estrellas y ×2 del emblema)');
+  u.items = []; v.items = []; u.star = 3; u.stk = { hp: 0, ad: 0 }; v.stk = { hp: 0, ad: 0 }; E.growPotential(); ok(Math.abs(u.stk.hp - 45 * 2.5 * 1.16) < .01 && v.stk.hp === 0, `Potencial Evolutivo (sin emblemas ya no es prismático: +45; sin la sinergia no crece): a 3★ crece ×2,5 y todo el tablero suma +4 % por estrella (${u.stk.hp}/${v.stk.hp})`); }
 
 // 7. Aumentos de héroe: dan el Pokémon y su efecto funciona en combate
 const HEROES = { h_gengar: 'gastly', h_gyarados: 'magikarp', h_clefable: 'cleffa', h_alakazam: 'abra', h_raichu: 'pichu', h_machamp: 'machop', h_lucario: 'riolu', h_charizard: 'charmander', h_meowth: 'meowth', h_ditto: 'ditto', h_dusknoir: 'duskull' };
@@ -170,7 +172,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     const got = p.bench.filter(Boolean).slice(u0); ok(got.length === 2 && got[0].defId === got[1].defId && E.DEF[got[0].defId].cost === 4, 'Ultra Ball: 2 copias del coste 4 elegido'); }
   { const p = take('master'); const i0 = items(p); ok(p.picks.length === 1, 'Master Ball: elección de Legendario'); E.resolvePick(p, p.picks[0].id, 0); ok(p.bench.filter(Boolean).some(u => E.DEF[u.defId].cost === 5), 'Master Ball: recibes el Legendario elegido'); }
   { const p = take('escalera'); ok(p.items.some(k => String(k).startsWith('emb_')), 'Escalera: emblema al elegir');
-    p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('growlithe'), '2,0': E.makeInst('squirtle'), '3,0': E.makeInst('psyduck') };
+    p.board = { '0,0': E.makeInst('charmander'), '1,0': E.makeInst('growlithe'), '2,0': E.makeInst('squirtle'), '3,0': E.makeInst('slowpoke') };
     event(p, 'roundEnd', { pve: true }); ok(!p.items.includes('magnet'), 'Escalera: el PvE no cuenta');
     event(p, 'roundEnd', { pve: false }); ok(p.items.includes('magnet') && p.augSt.escalera.need === 3, 'Escalera: 2 sinergias → Imán Removedor y pide 3');
     const g0 = p.gold; event(p, 'roundEnd', { pve: false }); ok(p.gold - g0 === 3 && p.augSt.escalera.need === 4, 'Escalera: 3 sinergias → 3 de oro y pide 4');
@@ -234,8 +236,8 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
 { for (const s of ['Tirador', 'Dragón', 'Roca', 'Coloso']) ok(E.TRAITS[s].bp.join() === '2,3,4,5' && E.TRAITS[s].pr[0] === 7 && E.TRAITS[s].lv.length === 4, s + ': escalones 2/3/4/5, prismático en 7 y un texto por escalón');
   ok(E.TRAITS.Peleador && E.TRAITS.Peleador.bp.join() === '2,4,6' && E.TRAITS.Peleador.pr[0] === 8, 'Peleador: 2/4/6 y prismático en 8');
   const mem = s => E.UNIT_LIST.filter(u => u.traits.includes(s)).map(u => u.key).sort().join();
-  ok(mem('Coloso') === 'beldum,geodude,groudon,magikarp,rhyhorn,tauros', 'Coloso: solo los 6 pesados (' + mem('Coloso') + ')');
-  ok(mem('Peleador') === 'charmander,ditto,eevee,elekid,growlithe,machop,poliwag,timburr', 'Peleador: los 8 melés ágiles (' + mem('Peleador') + ')');
+  ok(mem('Coloso') === 'beldum,geodude,grimer,groudon,magikarp,magmar,rhyhorn', 'Coloso: solo los 7 pesados (' + mem('Coloso') + ')');
+  ok(mem('Peleador') === 'charmander,ditto,eevee,elekid,growlithe,machop,nidoranm,poliwag,timburr', 'Peleador: los 9 melés ágiles (' + mem('Peleador') + ')');
   ok(E.DEF.flareon.traits.includes('Peleador') && !E.DEF.flareon.traits.includes('Coloso'), 'Flareon hereda Peleador');
   // el escalón máximo se alcanza con como mucho 1 legendario
   for (const s of ['Tirador', 'Dragón', 'Roca', 'Coloso', 'Peleador']) { const nl = E.UNIT_LIST.filter(u => u.traits.includes(s) && !u.traits.includes('Legendario') && !E.DEF[u.key].evoOf).length; ok(nl + 1 >= E.TRAITS[s].bp[E.TRAITS[s].bp.length - 1], s + ': su último escalón se alcanza con ≤1 legendario (' + nl + ' sin legendario)'); }
@@ -341,7 +343,7 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
   const bx = Object.assign({}, b2, { ap: 50 }), bh = Object.assign({}, b2, { maxHp: b2.maxHp * 2 }); ok(E.abilPower(bx) > E.abilPower(b2) * 1.4 && Math.abs(E.abilPower(bh) - E.abilPower(b2)) < 1, 'Bagon: su habilidad escala con el poder, no con la vida');
   const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0]] };
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'bagon', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'bagon'); E.castAbility(cb, u, u.ab);
-    ok(Math.abs(u.shield - u.maxHp * .2) < 1 && u.tdr >= .25 && u.tdrT > 0, 'Bagon: Draco Meteoro le da un escudo del 20 % y un 25 % de reducción de daño'); }
+    ok(Math.abs(u.shield - u.maxHp * .35) < 1 && u.tdr >= .35 && u.tdrT > 0, 'Bagon: Draco Meteoro le da un escudo del 35 % y un 35 % de reducción de daño'); }
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'ralts', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'ralts'); E.castAbility(cb, u, u.ab); ok(!(u.shield > 0), 'Ralts (también meteoro) no recibe el escudo de Bagon'); }
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', 'timburr', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'machop', 1, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 3 }); const u = cb.units.find(x => x.d.key === 'timburr'), [m, o] = [cb.units.find(x => x.d.key === 'machop'), cb.units.find(x => x.d.key === 'onix')];
     m.hp = 1; u.target = m; const o0 = o.hp + o.shield; E.castAbility(cb, u, u.ab); ok(m.dead && o.hp + o.shield < o0, 'Timburr: si el objetivo cae, los golpes que sobran van al siguiente enemigo'); }
@@ -544,6 +546,20 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   const r2 = fresh(); r2.G.round = { s: 4, n: 2 }; CH.find(o => o.id === 'componentes').run(r2.p, true, {}); ok(r2.p.items.length === 6 && new Set(r2.p.items).size === 6, 'Saco de Componentes: 6 componentes distintos');
   const r3 = fresh(); r3.G.round = { s: 4, n: 2 }; E.applyAugment(r3.p, A); for (const q of r3.p.picks.slice()) E.resolvePick(r3.p, q.id, 0);
   const pg = vm.runInContext('augProgress', ctx)(r3.p, 'llamada_caos'); ok(/^Recompensa: /.test(pg) && !pg.includes('¿¿??'), 'Llamada al Caos: tras elegirla, su descripción dice la recompensa (' + pg + ')'); }
+// Reajuste de octubre de 2026
+// Pacto Cruel: la vida por compra sube con el nivel y hay un máximo de compras por ronda (de 4 se llega a 6, no a 7)
+{ const { p } = fresh(); E.applyAugment(p, E.AUG_BY.pacto_cruel); p.level = 4; p.xp = 0; p.hp = 100; p.gold = 0; p.xpHpN = 0;
+  for (let i = 0; i < 20; i++) E.applyAct(p, { t: 'xp' }); ok(p.level === 6 && p.hp === 84 && p.xpHpN === 8, `Pacto Cruel: 8 compras con vida por ronda, de nivel 4 a 6 por 16 de vida (nivel ${p.level}, vida ${p.hp})`);
+  p.level = 7; p.xpHpN = 0; const h = p.hp; E.applyAct(p, { t: 'xp' }); ok(h - p.hp === 4, 'Pacto Cruel: a nivel 7 cada compra cuesta 4 de vida'); }
+// Zapdos: la Tormenta Creciente se guarda en la ficha y el siguiente combate empieza con ella
+{ const { p } = fresh(); const z = E.makeInst('zapdos'); z.sk = 11; p.board = { '3,3': z }; const row = E.teamSnap(p).u[0]; ok(row[7] === 11, 'Zapdos: las bajas de la tormenta viajan en teamSnap');
+  const cb = E.createCombatSnap(E.teamSnap(p), null, { s: 1, n: 1 }, { seed: 7 }); const u = cb.units.find(x => x.side === 0); ok(u.stormBounce === 2 && u.stormK === 11, `Zapdos: empieza el combate con 2 rebotes por 11 bajas guardadas (${u.stormBounce})`);
+  ok(E.unpackInst(E.packInst(z)).sk === 11, 'Zapdos: las bajas viajan en packInst'); }
+// Remates: el umbral sube con las estrellas (12/18/24 % para Absol)
+{ const ab = E.DEF.absol.ab[0][2]; ok(E.abDesc(E.DEF.absol.ab[0], 100, 1).includes('12%') && E.abDesc(E.DEF.absol.ab[0], 100, 3).includes('24%'), 'Absol: remata por debajo del 12 % a 1★ y del 24 % a 3★'); }
+// Emblemas con efecto propio
+ok(E.ITEMS['emb_Hechicero'].sp.echo3 === 1 && E.ITEMS['em_spoon'].sp.echo3 === 1 && E.ITEMS['emb_Tirador'].s.range === 1 && E.ITEMS['emb_Asesino'].sp.execute === .15, 'emblemas: cada uno lleva su efecto (también la insignia forjada)');
+for (const t in E.TRAITS) if (t !== 'Legendario') ok(/. [^.]+./.test(E.ITEMS['emb_' + t].desc), `Emblema ${t}: la descripción explica su efecto propio`);
 // Ticket Prismático: solo prismático
 ok(E.AUG_BY.ticket_dorado.tier === 'P' && E.AUG_BY.ticket_dorado.name === 'Ticket Prismático', 'Ticket Prismático: prismático y con su nombre');
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);

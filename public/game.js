@@ -34,7 +34,7 @@ const BENCH=9, MAX_ITEMS_BENCH=10, ITEMS_HARD=16;
 const T=(icon,color,bp,scope,sum,lv)=>({icon,color,bp,scope,sum,lv});
 const TRAITS={
  'Fuego':T('🔥','#ee6b2f',[2,4,6],'Afecta a tus Pokémon Fuego','Sus ataques queman y el fuego se propaga: cuando un enemigo muere quemado, la quemadura salta a otro.',['Quemadura del 2% de vida máx./s · se propaga al morir','Quemadura del 4%/s · se propaga','Quemadura del 7%/s, +20% de daño · al propagarse explota (150 de daño mágico alrededor)']),
- 'Agua':T('💧','#3b8fe8',[2,4,6],'Afecta a tus Pokémon Agua; las oleadas, a TODO tu equipo','Cargan antes su habilidad y, cada 4 habilidades de tu equipo, una oleada cura a tus aliados y golpea a los enemigos.',['+3 de maná por ataque · oleada: cura 4% y 60 de daño','+6 de maná por ataque · oleada: cura 7% y 120 de daño','+10 de maná por ataque · oleada: cura 12% y 220 de daño']),
+ 'Agua':T('💧','#3b8fe8',[2,4,6],'Afecta a tus Pokémon Agua; las oleadas, a TODO tu equipo','Cargan antes su habilidad y, cada pocas habilidades de tu equipo, una oleada cura a tus aliados y golpea a los enemigos (más fuerte cuanto más poder tenga quien la lanza).',['+5 de maná por ataque · cada 4 habilidades, oleada: cura 6% y 100 de daño (+15% del poder de la habilidad)','+8 de maná por ataque · cada 3 habilidades: cura 10% y 180 de daño (+25%)','+10 de maná por ataque · cada 2 habilidades: cura 14% y 280 de daño (+35%)']),
  'Planta':T('🌿','#4caf50',[2,4],'Afecta a tus Pokémon Planta','Se curan solos durante el combate.',['Regeneran 1.5% de vida máx. por segundo','Regeneran 3.5% de vida máx. por segundo']),
  'Eléctrico':T('⚡','#d9b400',[2,4],'Afecta a tus Pokémon Eléctrico','Sobrecarga: sus habilidades cargan al equipo y, al completar la carga, sale un rayo en cadena gratis.',['+20% de vel. de ataque · cada 3 habilidades eléctricas, rayo a 3 enemigos','+40% de vel. de ataque · cada 2 habilidades, rayo a 5 enemigos que aturde 0,5 s']),
  'Psíquico':T('🔮','#e0569b',[2,4,6],'Afecta a tus Pokémon Psíquico (y a todo tu equipo con 6)','Ciclos de maná: al lanzar su habilidad, regalan maná al aliado que más lo necesita.',['+15 de poder · regalan 10 de maná','+30 de poder · regalan 20 de maná','+60 de poder · regalan 35 de maná · Todo tu equipo: +15 de poder']),
@@ -43,9 +43,9 @@ const TRAITS={
  'Fantasma':T('👻','#7b62a3',[2,4,6],'Afecta a tus Pokémon Fantasma','Esquivan ataques físicos.',['Esquivan el 15%','Esquivan el 30%','Esquivan el 45%']),
  'Hada':T('🧚','#e27bb9',[2,4,6],'Afecta a TODO tu equipo','Todo tu equipo empieza el combate con escudo.',['Escudo de 100 (8s)','Escudo de 220 (8s)','Escudo de 400 (8s)']),
  'Normal':T('⭕','#9a987f',[2,4,6],'Afecta a tus Pokémon Normal','Más resistentes y algo más rápidos.',['+120 de vida y +8% de vel. de ataque','+300 de vida y +15%','+550 de vida y +25%']),
- 'Acero':T('🔩','#8a9bb0',[2,4],'Afecta a tus Pokémon Acero','Fortaleza: reciben menos daño y absorben parte del que va a los aliados que tienen al lado.',['10% menos de daño · absorben el 25% del daño de los aliados adyacentes','20% menos de daño · absorben el 40%']),
+ 'Acero':T('🔩','#8a9bb0',[2,4],'Afecta a tus Pokémon Acero','Fortaleza: más defensa y resistencia, reciben menos daño y absorben parte del que va a los aliados que tienen al lado.',['+25 de defensa y resistencia · 15% menos de daño · absorben el 25% del daño de los aliados adyacentes','+50 de defensa y resistencia · 25% menos de daño · absorben el 40%']),
  'Siniestro':T('🌑','#4b3f5c',[2,4],'Afecta a tus Pokémon Siniestro','Ejecuciones: rematan a los enemigos heridos y cada remate envalentona a todo tu equipo.',['Rematan por debajo del 12% de vida · cada remate: equipo +4% de daño (máx. 5)','Rematan por debajo del 20% · cada remate: equipo +8% de daño (máx. 5)']),
- 'Lucha':T('🥋','#b5462f',[2,4],'Afecta a tus Pokémon Lucha','Se curan con el daño que hacen.',['12% de robo de vida','25% de robo de vida']),
+ 'Lucha':T('🥋','#b5462f',[2,4],'Afecta a tus Pokémon Lucha','Pegan más fuerte (ataque y poder) y se curan con el daño que hacen.',['15% de robo de vida · +12% de ataque y +12 de poder','25% de robo de vida · +25% de ataque y +25 de poder']),
  'Guardián':T('🛡️','#5d7a8c',[2,4,6,8],'Afecta a tus Guardianes','Aguantan en primera fila y, a los 1,5 s de combate, provocan a los enemigos cercanos y se cubren con un escudo.',['+20 de defensa y resistencia · escudo del 10% de su vida al provocar','+40 · escudo del 15%','+70 · escudo del 22%','+110 · escudo del 30%']),
  'Coloso':T('🦍','#c0392b',[2,3,4,5],'Afecta a TODO tu equipo (doble para Colosos)','Los pesos pesados: más vida para todo tu equipo; los Colosos reciben el doble.',['Equipo +100 de vida · Colosos +200','Equipo +160 · Colosos +320','Equipo +220 · Colosos +440','Equipo +320 · Colosos +640']),
  'Peleador':T('🥊','#e67e22',[2,4,6],'Afecta a tus Peleadores','Cuerpo a cuerpo ágiles con mucha vida: al bajar del 50% de vida entran en furia y atacan más rápido.',['+18% de vida máx. · furia: +20% de vel. de ataque','+35% de vida máx. · furia: +35%','+55% de vida máx. · furia: +55% y +10% de daño']),
@@ -56,13 +56,13 @@ const TRAITS={
  'Cazatesoros':T('💎','#e0a800',[2,3],'Afecta a tu economía','Consiguen botín al ganar combates, más con rachas de victorias. Toca la sinergia para ver todo lo que te han dado.',['Al ganar: 2 de oro (+1 por cada victoria seguida, máx. +3) · al perder: 1 de oro','Al ganar: un orbe de botín y oro de racha · al perder: 2 de oro']),
  'Legendario':T('👑','#c79400',[1],'Afecta a cada Legendario','Resonancia: cada Legendario se hace más fuerte con los niveles activos de sus OTRAS sinergias, contando solo a tus Pokémon no legendarios (vida, ataque y habilidad). Sin apoyo, se debilita.',['Sin sinergias activas −8% · 1 nivel +0% · 2 niveles +12% · 3 niveles +25% · 4 niveles +40% · 5 o más +50%']),
  'Depredadores':T('🩸','#e8572a',[2,4,6],'Afecta a tus Depredadores','Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná: una baja puede encadenar otra.',['+15% de vel. de ataque · al matar: acelerón +40% 2 s y 30% de maná','+30% · acelerón +60% 2,5 s y 50% de maná','+50% · acelerón +90% 3 s y reinicia su habilidad']),
- 'Potencial Evolutivo':T('🌱','#5bbf6a',[2,4,6],'Afecta a tus Pokémon con Potencial Evolutivo','Crecen para siempre: al terminar cada ronda en el tablero ganan vida y ataque permanentes (el doble a 3★).',['+12 de vida, +1 de ataque y +1,5 de poder por ronda','+25 de vida, +2 de ataque y +3 de poder por ronda','+45 de vida, +4 de ataque y +6 de poder por ronda']),
+ 'Potencial Evolutivo':T('🌱','#5bbf6a',[2,4,6],'Afecta a tus Pokémon con Potencial Evolutivo','Crecen para siempre: al terminar cada ronda en el tablero ganan vida, ataque y poder permanentes. Crecen más con sus estrellas (×1,5 a 2★ y ×2,5 a 3★) y con las de todo tu tablero (+4% por cada estrella).',['+12 de vida, +1 de ataque y +1,5 de poder por ronda','+25 de vida, +2 de ataque y +3 de poder por ronda','+45 de vida, +4 de ataque y +6 de poder por ronda']),
  'Team Rocket':T('🚀','#b8203c',[3,5],'Afecta a tus miembros del Team Rocket','La primera vez que bajan del 60% de vida se ponen serios durante 4 s.',['25% menos de daño, +50% de vel. de ataque y regeneran 3% de vida/s','45% menos de daño, +80% de vel. de ataque y regeneran 5% de vida/s']),
 };
 // Nivel prismático: un escalón más allá del máximo que solo se alcanza si al menos un emblema cuenta para la sinergia
 const PRISM={
  'Fuego':[8,'Quemadura del 10%/s, +35% de daño · al propagarse explota por 300'],
- 'Agua':[8,'+14 de maná por ataque · oleada cada 2 habilidades: cura 18% y 320 de daño'],
+ 'Agua':[8,'+14 de maná por ataque · oleada cada 2 habilidades: cura 20% y 380 de daño (+50% del poder de la habilidad)'],
  'Planta':[6,'Regeneran 6% de vida máx./s · todo tu equipo regenera 2%/s'],
  'Eléctrico':[6,'+70% de vel. de ataque · cada habilidad eléctrica lanza un rayo a 7 enemigos que aturde 1 s'],
  'Psíquico':[8,'+100 de poder · regalan 60 de maná · Todo tu equipo: +40 de poder'],
@@ -71,9 +71,9 @@ const PRISM={
  'Fantasma':[8,'Esquivan el 60% de los ataques físicos'],
  'Hada':[8,'Escudo de 700 (8s) para todo tu equipo'],
  'Normal':[8,'+900 de vida y +40% de vel. de ataque'],
- 'Acero':[6,'35% menos de daño · absorben el 60% del daño de los aliados adyacentes'],
+ 'Acero':[6,'+90 de defensa y resistencia · 40% menos de daño · absorben el 60% del daño de los aliados adyacentes'],
  'Siniestro':[6,'Rematan por debajo del 30% · cada remate: equipo +12% de daño (máx. 5)'],
- 'Lucha':[6,'45% de robo de vida y +20% de daño'],
+ 'Lucha':[6,'45% de robo de vida, +40% de ataque, +40 de poder y +20% de daño'],
  'Guardián':[10,'+170 de defensa y resistencia · protegen con el 45%'],
  'Coloso':[7,'+650 de vida para todo tu equipo (el doble para Colosos)'],
  'Peleador':[8,'+85% de vida máx. · furia: +80% de vel. de ataque y +25% de daño'],
@@ -105,7 +105,7 @@ const STAR=[1,1.8,3.24];
 // Tanques a 2★: +20% de vida y +15 de defensa y resistencia, para que aguanten lo que cuestan sin ser inmortales con objetos
 const TANK2={hp:1.2,res:15};
 // A 3★ los costes altos se disparan: los costes 4 y 5 de 3 estrellas son casi una victoria asegurada (como en TFT)
-const STAR3_BY_COST=[3.24,3.24,3.4,5,8], ABIL3_BY_COST=[3,3.1,3.3,6,11];
+const STAR3_BY_COST=[3.24,3.24,3.4,5,10], ABIL3_BY_COST=[3,3.1,3.3,6,15];
 const ABIL_BASE=[180,250,330,520,600], ABIL_STAR=[1,1.5,2.6];
 const ROLE_NAME={t:'Tanque',b:'Cuerpo a cuerpo',a:'Asesino',r:'Tirador',m:'Mago',h:'Soporte'};
 
@@ -121,26 +121,30 @@ const UNIT_LIST=[
  U('gastly',['Gastly','Haunter','Gengar'],[92,93,94],1,'m',['Fantasma','Hechicero','Team Rocket'],[['bolt','Lengüetazo',{m:1.2,stun:1}],['mark','Maldición',{m:.9,amp:.3,dur:4}],['blast','Bola Sombra',{r:1,m:1.15,shred:.3}]]),
  U('abra',['Abra','Kadabra','Alakazam'],[63,64,65],1,'m',['Psíquico','Hechicero'],[['bolt','Confusión',{m:1.3}],['pull','Telequinesis',{r:2,m:.8,stun:.8}],['strike','Premonición',{r:1,m:1.6,delay:1.2,stun:.5,ghost:1}]]),
  U('cleffa',['Cleffa','Clefairy','Clefable'],[173,35,36],1,'h',['Hada','Sanador'],[['heal','Encanto',{n:1,m:1.4}],['zone','Luz Lunar',{r:1,m:1.6,dur:3,ally:1}],['teamShield','Deseo',{m:.55,heal:.3}]]),
- U('rattata',['Rattata','Raticate'],[19,20],1,'a',['Normal','Asesino','Depredadores'],[['dash','Ataque Rápido',{m:1.3,to:'low'}],['execute','Hipercolmillo',{m:1.4,th:.25}]]),
+ U('rattata',['Rattata','Raticate'],[19,20],1,'a',['Normal','Asesino','Depredadores'],[['dash','Ataque Rápido',{m:1.3,to:'low'}],['execute','Hipercolmillo',{m:1.4,th:.12}]]),
  U('dratini',['Dratini','Dragonair','Dragonite'],[147,148,149],1,'r',['Dragón','Tirador','Potencial Evolutivo'],[['bolt','Furia Dragón',{m:1.4}],['frenzy','Danza Dragón',{as:.2,ad:.15}],['line','Hiperrayo',{m:2,stunSelf:1}]]),
  U('meowth',['Meowth','Persian'],[52,53],1,'r',['Normal','Cazatesoros','Team Rocket'],[['gold','Día de Pago',{m:1,g:1}],['gold','Día de Pago',{m:1.1,g:1,r:1}]]),
  U('machop',['Machop','Machoke','Machamp'],[66,67,68],1,'b',['Lucha','Peleador','Depredadores'],[['empower','Golpe Kárate',{n:3,m:.5}],['knock','Sísmico',{m:1.15,k:2,stun:1}],['combo','Puño Dinámico',{n:4,m:.55,stun:1.5}]]),
  U('magikarp',['Magikarp','Gyarados'],[129,130],1,'b',['Agua','Coloso','Team Rocket'],[['splash','Salpicadura',{}],['wave','Cascada',{m:.85,w:1.2,stun:.5}],['line','Hiperrayo',{m:2.2}]]),
+ U('voltorb',['Voltorb','Electrode'],[100,101],1,'t',['Eléctrico','Guardián'],[['nova','Chispa',{r:1,m:.7,stun:.6}],['nova','Autodestrucción',{r:2,m:1.2,stun:.8,selfDmg:.25}]]),
  U('diglett',['Diglett','Dugtrio'],[50,51],1,'a',['Roca','Asesino'],[['dash','Excavar',{m:1.4,to:'far',stealth:1}],['nova','Terremoto',{r:2,m:.8}]]),
  U('eevee',['Eevee'],[133],2,'b',['Normal','Peleador'],[['stack','Adaptación',{m:.6,hp:25,ad:3,mm:50}]]),
- U('growlithe',['Growlithe','Arcanine'],[58,59],2,'b',['Fuego','Peleador','Depredadores'],[['dash','Colmillo Ígneo',{m:1.2,to:'target',burn:.03}],['dash','Velocidad Extrema',{m:1.5,to:'low',r:1,burn:.03}]]),
- U('psyduck',['Psyduck','Golduck'],[54,55],2,'m',['Agua','Hechicero'],[['sing','Confusión',{r:0,s:1.5,m:.85}],['wave','Hidropulso',{m:.8,w:1,stun:.6}]]),
+ U('growlithe',['Growlithe','Arcanine'],[58,59],2,'b',['Fuego','Peleador','Depredadores'],[['dash','Colmillo Ígneo',{m:.95,to:'target',burn:.03}],['dash','Velocidad Extrema',{m:1.05,to:'low',r:1,burn:.03}]]),
+ // Slowpoke: mago tanque (casilla y stats de tanque, habilidad que escala con poder) para los Hechiceros
+ U('slowpoke',['Slowpoke','Slowbro'],[79,80],2,'t',['Agua','Psíquico','Hechicero'],[['harden','Amnesia',{df:30,heal:.8}],['meteor','Paz Mental',{m:.6,r:1,sh:.2}]],{scale:'ap'}),
+ U('nidoranf',['Nidoran♀','Nidorina','Nidoqueen'],[29,30,31],2,'t',['Roca','Guardián','Potencial Evolutivo'],[['knock','Doble Patada',{m:1,k:1}],['slam','Golpe Cuerpo',{r:1,m:.9,stun:1}],['zone','Tierra Viva',{r:1,m:1.4,dur:3,self:1,root:.8,v:'sand'}]]),
+ U('nidoranm',['Nidoran♂','Nidorino','Nidoking'],[32,33,34],2,'b',['Roca','Peleador','Potencial Evolutivo'],[['combo','Doble Patada',{n:2,m:.7}],['dash','Cornada',{m:1.5,to:'target',stun:.5}],['cone','Megacuerno',{m:1.45,len:2}]]),
  U('chikorita',['Chikorita','Bayleef','Meganium'],[152,153,154],2,'t',['Planta','Sanador'],[['heal','Síntesis',{n:2,m:.9}],['teamShield','Pantalla de Luz',{m:.5,heal:.2}],['zone','Aromaterapia',{r:2,m:1.4,dur:4,ally:1}]]),
  U('magnemite',['Magnemite','Magneton','Magnezone'],[81,82,462],2,'r',['Eléctrico','Acero','Tirador'],[['bolt','Onda Voltio',{selfAs:0.08,m:1.1,stun:.5}],['chain','Bomba Imán',{selfAs:0.08,n:3,m:.6}],['line','Cañón Destello',{selfAs:0.2,m:1.6,shred:.3}]]),
- U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
+ U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Acero','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
  U('drowzee',['Drowzee','Hypno'],[96,97],2,'t',['Psíquico','Guardián','Team Rocket'],[['sing','Hipnosis',{r:0,s:2,m:.6}],['sing','Come Sueños',{r:1,s:1.5,m:.8,drain:.5}]]),
  U('igglybuff',['Igglybuff','Jigglypuff','Wigglytuff'],[174,39,40],2,'t',['Hada','Normal','Sanador'],[['heal','Encanto',{n:2,m:.8}],['sing','Canto',{r:1,s:2,m:.35,healTeam:.25}],['sing','Voz Cautivadora',{r:2,s:2,m:.6,healTeam:.3}]]),
- U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:1.8,th:.25}]]),
+ U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:1.6,th:.12}]]),
  U('poliwag',['Poliwag','Poliwhirl','Poliwrath'],[60,61,62],2,'b',['Agua','Lucha','Peleador'],[['bolt','Burbuja',{m:1.2}],['sing','Hipnosis',{r:1,s:1.2,m:.6}],['combo','Puño Dinámico',{n:3,m:.7,stun:1.2}]]),
  U('sableye',['Sableye'],[302],2,'a',['Siniestro','Cazatesoros','Team Rocket'],[['dash','Ladrón',{m:1.6,to:'low',g:1,stealth:1}]]),
- U('houndour',['Houndour','Houndoom'],[228,229],2,'m',['Fuego','Siniestro','Hechicero'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:1,len:4,burn:.04}]]),
- U('riolu',['Riolu','Lucario'],[447,448],2,'r',['Lucha','Acero','Tirador'],[['bolt','Palmeo',{selfAs:0.12,m:1.3,stun:.6}],['multi','Esfera Aural',{selfAs:0.2,n:3,m:.75}]]),
- U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:1.2,to:'far',burn:.03,selfAs:.15}],['dash','Envite Ígneo',{m:1.45,to:'low',r:1,burn:.04}]]),
+ U('houndour',['Houndour','Houndoom'],[228,229],2,'m',['Fuego','Siniestro','Hechicero'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:.8,len:4,burn:.04,ground:3,gm:.8}]]),
+ U('riolu',['Riolu','Lucario'],[447,448],2,'r',['Lucha','Acero','Tirador'],[['bolt','Palmeo',{selfAs:0.12,m:1.3,stun:.6}],['empower','Esfera Aural',{n:4,m:.42,selfAs:.25}]]),
+ U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:1.2,to:'far',burn:.03,selfAs:.15}],['dash','Envite Ígneo',{m:1.3,to:'low',r:1,burn:.04}]]),
  U('shellder',['Shellder','Cloyster'],[90,91],3,'t',['Agua','Guardián'],[['harden','Refugio',{df:35,heal:.6}],['multi','Carámbano',{n:4,m:.38,chill:3,el:'Hielo'}]]),
  U('oddish',['Oddish','Gloom','Vileplume'],[43,44,45],3,'m',['Planta','Hechicero'],[['zone','Somnífero',{r:1,m:.5,dur:2,sleep:1.2}],['poison','Polvo Veneno',{m:1.1,dur:5,r:1,el:'Veneno'}],['zone','Danza Pétalo',{r:2,m:1.2,dur:3}]]),
  U('elekid',['Elekid','Electabuzz','Electivire'],[239,125,466],3,'b',['Eléctrico','Peleador'],[['empower','Puño Trueno',{n:3,m:.55,stun:.3}],['chain','Puño Trueno',{n:3,m:.9}],['slam','Voltio Cruel',{r:1,m:1.4,stun:1}]]),
@@ -149,36 +153,39 @@ const UNIT_LIST=[
  U('mimejr',['Mime Jr.','Mr. Mime'],[439,122],3,'t',['Psíquico','Hada','Guardián'],[['teamShield','Pantalla de Luz',{m:.4}],['reflect','Barrera',{m:1,pct:.4}]]),
  U('horsea',['Horsea','Seadra','Kingdra'],[116,117,230],3,'m',['Dragón','Hechicero'],[['bolt','Pistola Agua',{m:1.4}],['line','Hidrobomba',{m:1.3}],['blast','Pulso Dragón',{r:2,m:.9}]]),
  U('togepi',['Togepi','Togetic','Togekiss'],[175,176,468],3,'h',['Hada','Sanador'],[['metro','Metrónomo',{}],['heal','Deseo',{n:3,m:1.3}],['buff','Gracia Divina',{as:.3,heal:.6}]]),
- U('tauros',['Tauros'],[128],3,'b',['Normal','Coloso'],[['dash','Derribo',{m:1.3,to:'target',stun:1,r:1}]]),
+ U('hitmonchan',['Hitmonchan'],[107],3,'t',['Lucha','Guardián'],[['combo','Puños Elementales',{n:3,m:.6,stun:1}]]),
+ U('magmar',['Magmar'],[126],3,'t',['Fuego','Coloso','Hechicero'],[['zone','Infierno',{r:1,m:1.5,dur:3,self:1,burn:.03}]],{scale:'ap'}),
+ U('grimer',['Grimer','Muk'],[88,89],3,'t',['Siniestro','Coloso','Team Rocket'],[['poison','Residuos',{m:1,r:1,dur:4,el:'Veneno'}],['poison','Bomba Lodo',{m:1.3,r:1,dur:5,el:'Veneno'}]]),
  U('gimmighoul',['Gimmighoul','Gholdengo'],[999,1000],3,'m',['Fantasma','Cazatesoros'],[['gold','Moneda Oculta',{m:1.1,g:1}],['gold','Fiebre Dorada',{m:.75,g:2,all:1}]]),
  U('munchlax',['Munchlax','Snorlax'],[446,143],3,'t',['Normal','Guardián'],[['rest','Engullir',{m:1}],['rest','Descanso',{m:2,sleep:1.5}],['slam','Golpe Cuerpo',{r:1,m:1.05,stun:1.3}]]),
- U('absol',['Absol'],[359],3,'a',['Siniestro','Asesino','Depredadores'],[['execute','Tajo Umbrío',{m:1.5,th:.3}]]),
+ U('absol',['Absol'],[359],3,'a',['Siniestro','Asesino','Depredadores'],[['execute','Tajo Umbrío',{m:1.3,th:.12}]]),
  U('ditto',['Ditto'],[132],3,'b',['Normal','Peleador'],[['copy','Transformación',{}]]),
  U('larvitar',['Larvitar','Pupitar','Tyranitar'],[246,247,248],4,'t',['Roca','Guardián','Potencial Evolutivo'],[['harden','Endurecimiento',{df:40,heal:.6}],['shield','Fortaleza',{m:1.6}],['zone','Tormenta Arena',{r:2,m:1.8,dur:4,self:1,root:1,chill:1,v:'sand'}]]),
  U('ralts',['Ralts','Kirlia','Gardevoir'],[280,281,282],4,'h',['Psíquico','Hada','Sanador'],[['heal','Encanto',{n:2,m:1.1}],['teamShield','Paz Mental',{m:.55,ap:10}],['meteor','Fuerza Lunar',{m:.4,healAll:1.6,mana0:60,mm:70}]]),
- U('gible',['Gible','Gabite','Garchomp'],[443,444,445],4,'a',['Dragón','Asesino','Depredadores'],[['dash','Garra Dragón',{m:1.3,to:'far'}],['execute','Carga Dragón',{m:1.5,th:.25}],['slam','Terremoto',{r:2,m:.95,stun:.5}]]),
+ U('gible',['Gible','Gabite','Garchomp'],[443,444,445],4,'a',['Dragón','Asesino','Depredadores'],[['dash','Garra Dragón',{m:1.3,to:'far'}],['execute','Carga Dragón',{m:1.25,th:.12}],['slam','Terremoto',{r:2,m:.95,stun:.5}]]),
  U('duskull',['Duskull','Dusclops','Dusknoir'],[355,356,477],4,'t',['Fantasma','Guardián'],[['sing','Mal de Ojo',{r:0,s:1.5,m:.6}],['taunt','Anulación',{m:1.2}],['pull','Mundo Sombrío',{r:2,m:.9,stun:1.2,self:1}]]),
- U('shinx',['Shinx','Luxio','Luxray'],[403,404,405],4,'a',['Eléctrico','Asesino','Depredadores'],[['dash','Placaje',{m:1.3,to:'far'}],['chain','Chispa',{n:3,m:1}],['execute','Colmillo Rayo',{m:1.8,th:.25,stun:1,reset:.4}]]),
- U('turtwig',['Turtwig','Grotle','Torterra'],[387,388,389],4,'t',['Planta','Guardián','Potencial Evolutivo'],[['harden','Refugio',{df:35,heal:.7}],['drain','Gigadrenado',{m:1.2,h:1.2}],['nova','Terremoto',{r:2,m:1,stun:1}]]),
- U('beldum',['Beldum','Metang','Metagross'],[374,375,376],4,'b',['Acero','Coloso','Potencial Evolutivo'],[['dash','Derribo',{m:1.3,to:'target'}],['empower','Puño Meteoro',{n:3,m:.7}],['slam','Puño Meteoro',{r:1,m:1,stun:.6}]]),
+ U('shinx',['Shinx','Luxio','Luxray'],[403,404,405],4,'a',['Eléctrico','Asesino','Depredadores'],[['dash','Placaje',{m:1.3,to:'far'}],['chain','Chispa',{n:3,m:.75,every:3,alt:.85}],['execute','Colmillo Rayo',{m:1.15,th:.11,stun:.8,reset:.3}]]),
+ U('turtwig',['Turtwig','Grotle','Torterra'],[387,388,389],4,'t',['Planta','Guardián'],[['harden','Refugio',{df:35,heal:.7}],['drain','Gigadrenado',{m:1.2,h:1.2}],['nova','Terremoto',{r:2,m:1,stun:1}]]),
+ U('beldum',['Beldum','Metang','Metagross'],[374,375,376],4,'b',['Acero','Coloso'],[['dash','Derribo',{m:1.3,to:'target'}],['empower','Puño Meteoro',{n:3,m:.7}],['slam','Puño Meteoro',{r:1,m:1,stun:.6}]]),
  // Bagon: mago tanque (stats y casilla de tanque, alcance 1) cuya habilidad escala con poder (scale:'ap')
- U('bagon',['Bagon','Shelgon','Salamence'],[371,372,373],4,'t',['Dragón','Hechicero','Potencial Evolutivo'],[['burn','Ascuas',{m:1.2}],['harden','Fortaleza',{df:40,heal:1}],['meteor','Draco Meteoro',{m:.6,sh:.2,dr:.25}]],{scale:'ap'}),
+ U('bagon',['Bagon','Shelgon','Salamence'],[371,372,373],4,'t',['Dragón','Hechicero','Potencial Evolutivo'],[['burn','Ascuas',{m:1.2}],['harden','Fortaleza',{df:40,heal:1}],['meteor','Draco Meteoro',{m:.5,r:1,sh:.35,dr:.35}]],{scale:'ap',hpm:1.3}),
+ U('staryu',['Staryu','Starmie'],[120,121],4,'r',['Agua','Psíquico','Tirador'],[['chain','Rapidez',{n:3,m:.7,selfAs:.1}],['line','Psicorrayo',{m:1.4,aim:1,w:.65,selfAs:.15}]]),
  U('lapras',['Lapras'],[131],4,'t',['Agua','Sanador'],[['wave','Surf',{m:.6,w:1.6,stun:.4,healTeam:.25}]]),
- U('zorua',['Zorua','Zoroark'],[570,571],4,'a',['Siniestro','Asesino','Team Rocket'],[['dash','Finta',{m:1.4,to:'low',stealth:1}],['dash','Juego Sucio',{m:1.8,to:'low',stealth:2,r:1}]]),
+ U('zorua',['Zorua','Zoroark'],[570,571],4,'a',['Siniestro','Asesino','Team Rocket'],[['dash','Finta',{m:1.05,to:'low',stealth:1}],['dash','Juego Sucio',{m:1.25,to:'low',stealth:2,r:1}]]),
  U('timburr',['Timburr','Gurdurr','Conkeldurr'],[532,533,534],4,'b',['Lucha','Peleador'],[['empower','Ultrapuño',{n:3,m:.6}],['nova','Martillazo',{r:1,m:1.6,stun:1.2}],['combo','Ultrapuño',{n:5,m:.6,stun:1.2,spill:1}]]),
  U('hatenna',['Hatenna','Hattrem','Hatterene'],[856,857,858],4,'m',['Psíquico','Hada','Hechicero'],[['bolt','Confusión',{m:1.4}],['blast','Brillo Mágico',{r:1,m:1}],['meteor','Velo Mental',{m:.7,stun:.5,mana0:40}]]),
  U('litwick',['Litwick','Lampent','Chandelure'],[607,608,609],4,'m',['Fuego','Fantasma','Hechicero'],[['drain','Infortunio',{m:1.1,h:.6}],['burn','Fuego Fatuo',{m:1,r:1}],['zone','Infierno',{r:2,m:2,dur:3,burn:.03}]]),
  U('rowlet',['Rowlet','Dartrix','Decidueye'],[722,723,724],4,'r',['Planta','Fantasma','Tirador'],[['multi','Hoja Afilada',{selfAs:0.1,n:3,m:.6}],['multi','Hoja Aguda',{selfAs:0.15,n:4,m:.6}],['line','Puntada Sombría',{selfAs:0.25,m:1.5,shred:.4,mana0:10}]]),
  // Mewtwo (rework): daño 500/750/4500 (m=.833 y m3=.682 sobre la potencia de coste 5), maná 0/45 y radio 1 (con 30 de maná y radio 2 ganaba el 90 % de los combates contra los demás coste 5 y los vaciaba en 2-3 s con objetos de maná); ver el caso 'psy' de castAbility
- U('mewtwo',['Mewtwo'],[150],5,'m',['Psíquico','Hechicero','Legendario'],[['psy','Onda Mental',{r:1,m:.833,m3:.682,mana0:0,mm:45,charge:.04,judge:4,th:[.10,.15,1],judgeDmg:.6,mega:MEW_NEED}]]),
+ U('mewtwo',['Mewtwo'],[150],5,'m',['Psíquico','Hechicero','Legendario'],[['psy','Onda Mental',{r:1,r3:2,m:.833,m3:.682,mana0:0,mm:45,charge:.04,judge:4,th:[.10,.15,1],judgeDmg:.6,mega:MEW_NEED}]]),
  // Rayquaza (balance): apunta el rayo hacia donde atraviesa a más enemigos (aim), cada lanzamiento suma un +rise de daño (máx. riseCap, aditivo) y a 3★ el rayo es más ancho (w3)
  U('rayquaza',['Rayquaza'],[384],5,'r',['Dragón','Tirador','Legendario'],[['line','Ascenso Draco',{m:1.1,refundKill:.25,fall:.3,mm:85,mana0:40,aim:1,w:.65,w3:1.1,rise:.15,riseCap:.75}]]),
  // Zapdos (rework): Electrocución igual que antes (cadena de 6, +15 % por salto, híbrida) pero solo aturde al primero; Tormenta Creciente: +1 % de vel. de ataque cada 2 bajas y un rebote más en sus ataques cada 5 (todo el combate, sin límite)
  U('zapdos',['Zapdos'],[145],5,'r',['Eléctrico','Tirador','Legendario'],[['chain','Electrocución',{n:6,m:.55,amp:.15,stun:.6,stunFirst:1,adExp:1.35,mm:65,mana0:15,storm:[2,.01,5,.35]}]]),
  U('moltres',['Moltres'],[146],5,'m',['Fuego','Hechicero','Legendario'],[['meteor','Sofoco',{m:.18,burn:.02,wound:5,mm:45,mana0:20,revive:.5,nova:1}]]),
- U('kyogre',['Kyogre'],[382],5,'m',['Agua','Hechicero','Legendario'],[['tide','Pulso Primigenio',{m:.5,big:1.5,r:2,n:4,tide0:1,chill:1.5,mm:35,mana0:35}]]),
+ U('kyogre',['Kyogre'],[382],5,'m',['Agua','Hechicero','Legendario'],[['tide','Pulso Primigenio',{m:.5,big:1.5,r:2,n:4,n3:2,tide0:1,chill:1.5,mm:35,mana0:35}]]),
  U('groudon',['Groudon'],[383],5,'t',['Roca','Coloso','Legendario'],[['titan','Filo del Abismo',{hp:.5,m:.22,n:5,r:1,dr:.3,dur:5,stun:1.2,quake:15,mm:200,mana0:170,v:'rocks'}]]),
- U('giratina',['Giratina'],[487],5,'a',['Fantasma','Dragón','Asesino','Legendario'],[['devour','Mundo Distorsión',{m:2.6,dur:2,ghp:120,gad:11,mm:60,mana0:20}]]),
+ U('giratina',['Giratina'],[487],5,'a',['Fantasma','Dragón','Asesino','Legendario'],[['devour','Mundo Distorsión',{m:2.6,dur:2,ghp:120,gad:11,mm:60,mana0:20,aoe3:.5}]]),
  U('lugia',['Lugia'],[249],5,'t',['Psíquico','Guardián','Legendario'],[['wave','Aerochorro',{m:.38,w:1.8,push:2,stun:.6,healTeam:.16,asTeam:.2,mm:110}]]),
  // Ho-Oh (rework): 300/450/3300 de daño a un objetivo, le quita armadura y cura 270/405/2970 a todos sus aliados; renace el primer aliado que cae y otro cada 3 lanzamientos
  U('hooh',['Ho-Oh'],[250],5,'h',['Fuego','Sanador','Legendario'],[['sacred','Fuego Sagrado',{m:.5,arm:.4,armT:5,healAll:.45,phoenix:.4,rebirth:3,mm:65,mana0:20}]]),
@@ -190,12 +197,12 @@ const EVOS=[
  U('flareon',['Flareon'],[136],2,'b',['Fuego','Peleador'],[['burn','Envite Ígneo',{m:1.2,r:1,stk:1}]]),
  U('espeon',['Espeon'],[196],2,'m',['Psíquico','Hechicero'],[['blast','Psicocarga',{r:1,m:1.2,stun:.5,stk:1}]]),
  U('umbreon',['Umbreon'],[197],2,'t',['Siniestro','Guardián'],[['reflect','Luz Lunar',{m:1,pct:.4,heal:.5,stk:1}]]),
- U('leafeon',['Leafeon'],[470],2,'a',['Planta','Asesino'],[['execute','Hoja Aguda',{m:1.6,th:.25,stk:1}]]),
+ U('leafeon',['Leafeon'],[470],2,'a',['Planta','Asesino'],[['execute','Hoja Aguda',{m:1.6,th:.12,stk:1}]]),
  U('sylveon',['Sylveon'],[700],2,'h',['Hada','Sanador'],[['teamShield','Voz Cautivadora',{m:.4,heal:.3,stk:1}]]),
 ].map(e=>({...e,evoOf:'eevee',mult:1.3}));
 // Formas Mega: no salen en la tienda; Mewtwo se transforma en Mega Mewtwo Y DENTRO de un combate al reunir energía psíquica (caso 'psy' de castAbility) y vuelve a ser Mewtwo en el siguiente
 const MEGAS=[
- U('megamewtwo',['Mega Mewtwo Y'],['y/150'],5,'m',['Psíquico','Hechicero','Legendario'],[['psy','Onda Mental',{r:1,m:.833,m3:.682,mana0:0,mm:45,charge:.04,judge:4,th:[.10,.15,1],judgeDmg:.6,mega:MEW_NEED,megaStart:1}]]),
+ U('megamewtwo',['Mega Mewtwo Y'],['y/150'],5,'m',['Psíquico','Hechicero','Legendario'],[['psy','Onda Mental',{r:1,r3:2,m:.833,m3:.682,mana0:0,mm:45,charge:.04,judge:4,th:[.10,.15,1],judgeDmg:.6,mega:MEW_NEED,megaStart:1}]]),
 ].map(e=>({...e,evoOf:'mewtwo',mult:1.4}));
 // Yunques: fichas del banquillo que no pelean; al venderlas eliges 1 de 6 componentes (o de 6 objetos completos el dorado)
 const ANVILS=[{key:'yunque',name:'Yunque de componentes',names:null,dex:'anvil',cost:1,role:'t',traits:[],ab:[['shield','—',{m:0}]],anvil:'c'},
@@ -209,6 +216,8 @@ const formIdx=(d,star,len)=>Math.max(0,Math.min(d.cost===4&&len===3?star:star-1,
 const dexOf=(d,star)=>Array.isArray(d.dex)?d.dex[formIdx(d,star,d.dex.length)]:d.dex;
 const nameOf=(d,star)=>d.names?d.names[formIdx(d,star,d.names.length)]:d.name;
 const abOf=(d,star)=>d.ab[formIdx(d,star,d.ab.length)];
+// Umbral de remate de las habilidades 'execute': bajo a 1★ y fuerte a 3★ (×1 / ×1,5 / ×2)
+const execTh=(p,star)=>p.th*[1,1.5,2][Math.min(3,Math.max(1,star))-1];
 const typeColor=d=>d&&d.traits&&d.traits[0]&&TRAITS[d.traits[0]]?TRAITS[d.traits[0]].color:'#e9d27a';
 const METRO=[['bolt','Hiperrayo',{m:1.8}],['nova','Explosión',{r:2,m:1}],['heal','Recuperación',{n:3,m:.8}],['meteor','Cometa Draco',{m:.6}],['sing','Canto',{r:1,s:2,m:.3}],['splash','Salpicadura',{}],['teamShield','Protección',{m:.5}],['chain','Rayo',{n:4,m:.8}]];
 const KIND_NAME={psy:'Juicio Psíquico',sacred:'Golpe y cura',tide:'Marea',lunar:'Daño y curación',titan:'Coloso',devour:'Devorar',bolt:'Disparo',burn:'Fuego',blast:'Área',nova:'Área propia',line:'Rayo en línea',chain:'Cadena',multi:'Proyectiles',combo:'Combo',dash:'Salto',execute:'Remate',meteor:'Golpe global',shield:'Escudo',taunt:'Provocación',reflect:'Reflejo',harden:'Endurecer',rest:'Descanso',heal:'Curación',teamShield:'Escudo de equipo',buff:'Mejora de equipo',frenzy:'Frenesí',empower:'Potenciar ataques',sing:'Sueño',drain:'Drenaje',gold:'Oro',stack:'Acumulación infinita',splash:'¿?',copy:'Copia',metro:'Aleatoria',
@@ -378,14 +387,14 @@ function abDesc(ab,P,star){
   case 'blast': t=`Explosión en el objetivo (radio ${p.r}): ${d(p.m)} de daño mágico${e}.`; break;
   case 'nova': t=`Golpea a los enemigos a ${p.r} casilla${p.r>1?'s':''} a su alrededor: ${d(p.m)} de daño${e}.${p.selfDmg?` Pierde un ${R0(p.selfDmg*100)}% de su vida (nunca muere por ello).`:''}`; break;
   case 'line': t=`Rayo en línea recta${p.aim?' hacia donde atraviesa a más enemigos':''}${star>=3&&p.w3?' (más ancho a 3★)':''}: ${d(p.m)} de daño${e}${p.fall?` (cada enemigo atravesado recibe un ${R0(p.fall*100)}% menos que el anterior, mín. 40 %)`:''}.${p.stunSelf?` Después se recarga ${p.stunSelf}s.`:''}${p.rise?` Cada lanzamiento hace los siguientes un ${R0(p.rise*100)}% más fuertes (hasta +${R0((p.riseCap||1)*100)}% en el combate).`:''}`; break;
-  case 'chain': t=`Rebota entre ${p.n} enemigos: ${d(p.m)} de daño a cada uno${p.amp?`, y cada salto pega un ${R0(p.amp*100)}% más`:''}${e}.`; break;
+  case 'chain': t=(p.every?`Golpea al objetivo por ${d(p.alt||p.m)}. Cada ${p.every} lanzamientos, en su lugar, `:'')+`${p.every?'r':'R'}ebota entre ${p.n} enemigos: ${d(p.m)} de daño a cada uno${p.amp?`, y cada salto pega un ${R0(p.amp*100)}% más`:''}${e}.`; break;
   case 'multi': t=`Lanza ${p.n} proyectiles a enemigos al azar: ${d(p.m)} de daño cada uno${e}.`; break;
   case 'combo': t=`Golpea ${p.n} veces seguidas al objetivo: ${d(p.m)} por golpe${p.stun?`; el último aturde ${p.stun}s`:''}.${p.spill?' Si el objetivo cae, los golpes que sobran van al enemigo más cercano.':''}`; break;
   case 'dash': t=`Salta junto al enemigo ${p.to==='far'?'más alejado a 3 casillas o menos':p.to==='low'?'con menos vida a 3 casillas o menos':'objetivo'} y le inflige ${d(p.m)}${p.r?` (y ${d(p.m*.6)} a los cercanos)`:''}${e}.${p.stealth?` Se vuelve invisible ${p.stealth}s.`:''}${p.selfAs?` Gana +${R0(p.selfAs*100)}% de vel. de ataque.`:''}`; break;
-  case 'execute': t=`Inflige ${d(p.m)} al objetivo${e}. Si queda por debajo del ${R0((p.th+.05*(star-1))*100)}% de vida, lo remata.${p.reset?` Si lo derrota, recupera el ${R0(p.reset*100)}% de su maná.`:''}`; break;
+  case 'execute': t=`Inflige ${d(p.m)} al objetivo${e}. Si queda por debajo del ${R0(execTh(p,star)*100)}% de vida, lo remata.${p.reset?` Si lo derrota, recupera el ${R0(p.reset*100)}% de su maná.`:''}`; break;
   case 'tide': t=`Dispara al objetivo: ${d(p.m)} de daño mágico. Cada ${p.n} lanzamientos desata un maremoto en la zona con más enemigos (radio ${p.r}): ${d(p.big)} de daño mágico${e}.`; break;
-  case 'meteor': t=`Golpea a TODOS los enemigos por ${d(p.m)}${e}.${p.sh?` Se cubre con un escudo del ${R0(p.sh*100)}% de su vida máxima (4s)`:''}${p.dr?`${p.sh?' y':' Después'} recibe un ${R0(p.dr*100)}% menos de daño 3s.`:p.sh?'.':''}${p.healAll?` Cura ${d(p.healAll)} a todos sus aliados.`:''}${p.manaTeam?` Da ${p.manaTeam} de maná a sus aliados.`:''}`; break;
-  case 'psy': t=`Onda mental en el objetivo (radio ${p.r}): ${d(star>=3&&p.m3?p.m3:p.m)} de daño mágico. Cada lanzamiento le da una carga psíquica: +${R0((p.charge||0)*100)}% de daño de esta habilidad durante el combate. Cada ${p.judge} lanzamientos, Juicio Psíquico: ${star>=3?'ejecuta al enemigo con menos vida (salvo escudos y renacimientos)':`ejecuta al enemigo con menos vida si le queda menos del ${R0((p.th||[])[Math.min(2,star-1)]*100)}%; si no, le lanza otra descarga de ${d((star>=3&&p.m3?p.m3:p.m)*(p.judgeDmg||.6))}`}. Con ${p.mega} de energía psíquica (1 por lanzamiento y 1 por baja) se vuelve Mega Mewtwo Y hasta el final del combate: radio ${p.r+1} y una segunda descarga en otro grupo.`; break;
+  case 'meteor': t=`${p.r?`Hace caer meteoros sobre la zona con más enemigos (radio ${p.r})`:'Golpea a TODOS los enemigos'} por ${d(p.m)}${e}.${p.sh?` Se cubre con un escudo del ${R0(p.sh*100)}% de su vida máxima (4s)`:''}${p.dr?`${p.sh?' y':' Después'} recibe un ${R0(p.dr*100)}% menos de daño 3s.`:p.sh?'.':''}${p.healAll?` Cura ${d(p.healAll)} a todos sus aliados.`:''}${p.manaTeam?` Da ${p.manaTeam} de maná a sus aliados.`:''}`; break;
+  case 'psy': t=`Onda mental en el objetivo (radio ${star>=3&&p.r3?p.r3:p.r}): ${d(star>=3&&p.m3?p.m3:p.m)} de daño mágico. Cada lanzamiento le da una carga psíquica: +${R0((p.charge||0)*100)}% de daño de esta habilidad durante el combate. Cada ${p.judge} lanzamientos, Juicio Psíquico: ${star>=3?'ejecuta al enemigo con menos vida (salvo escudos y renacimientos)':`ejecuta al enemigo con menos vida si le queda menos del ${R0((p.th||[])[Math.min(2,star-1)]*100)}%; si no, le lanza otra descarga de ${d((star>=3&&p.m3?p.m3:p.m)*(p.judgeDmg||.6))}`}. Con ${p.mega} de energía psíquica (1 por lanzamiento y 1 por baja) se vuelve Mega Mewtwo Y hasta el final del combate: radio ${p.r+1} y una segunda descarga en otro grupo.`; break;
   case 'sacred': t=`Golpea a su objetivo con ${d(p.m)} de daño mágico y le quita un ${R0((p.arm||0)*100)}% de armadura durante ${p.armT||5}s (no se acumula: se renueva). Cura ${d(p.healAll)} a todos sus aliados.`; break;
   case 'shield': t=`Se cubre con un escudo de ${d(p.m)} durante 4s.`; break;
   case 'taunt': t=`Provoca a los enemigos cercanos para que le ataquen, gana un escudo de ${d(p.m*.6)} y recibe un 30% menos de daño 3s.${p.heal?` Se cura ${d(p.heal)}.`:''}${p.teamShield?` Sus aliados ganan un escudo de ${d(p.teamShield)}.`:''}`; break;
@@ -405,7 +414,7 @@ function abDesc(ab,P,star){
   case 'splash': t='Salpica… pero no pasa nada. ¡Súbelo a 2★!'; break;
   case 'copy': t='Se transforma: copia la habilidad del enemigo más caro y la usa durante el resto del combate.'; break;
   case 'metro': t='Usa un movimiento aleatorio: desde Hiperrayo y Explosión hasta… Salpicadura.'; break;
-  case 'cone': t=`Lanza un cono de ${p.len||2} casillas hacia el objetivo: ${d(p.m)} de daño a cada enemigo dentro${e}.`; break;
+  case 'cone': t=`Lanza un cono de ${p.len||2} casillas hacia el objetivo: ${d(p.m)} de daño a cada enemigo dentro${e}.${p.ground?` El suelo alrededor del objetivo arde ${p.ground}s: ${d(p.gm)} de daño en total y quemadura a quien lo pise.`:''}`; break;
   case 'wave': t=`Una ola de ${R0((p.w||1.3)*2)} casillas de ancho cruza el tablero hacia el objetivo: ${d(p.m)} de daño a cada enemigo${e}${p.push?` y los empuja ${p.push} casilla hacia atrás`:''}.${p.healTeam?` Cura ${d(p.healTeam)} a sus aliados.`:''}`; break;
   case 'strike': t=`Marca el suelo bajo el objetivo y ${p.delay||.6}s después cae sobre ${p.r?`la zona (radio ${p.r})`:'esa casilla'}: ${d(p.m)} de daño a quien siga ahí${e}.`; break;
   case 'zone': t=p.ally?`Crea una zona curativa (radio ${p.r||1}) durante ${p.dur||3}s: cura ${d(p.m)} en total a los aliados que estén dentro.`:`Crea una zona (radio ${p.r||1}) ${p.self?'a su alrededor':'en el objetivo'} durante ${p.dur||3}s: ${d(p.m)} de daño en total a los enemigos dentro${p.root?`; al aparecer los enraíza ${p.root}s`:''}${p.sleep?`; al aparecer los duerme ${p.sleep}s`:''}${p.burn?'; además los quema':''}${p.chill?'; además los ralentiza':''}.`; break;
@@ -429,9 +438,11 @@ function abDesc(ab,P,star){
  if(p.rebirth) t+=` Cada ${p.rebirth} lanzamientos devuelve al combate al aliado caído más valioso con el ${R0((p.phoenix||.4)*100)}% de su vida.`;
  if(p.quake) t+=` Pasiva: cada Pokémon que cae a 2 casillas o menos le da +${p.quake*star} de vida PARA SIEMPRE.`;
  if(p.tide0) t+=` Empieza el combate con la marea en ${p.tide0}/${p.n}.`;
+ if(p.n3&&star>=3) t+=` ★★★: el maremoto sale cada ${p.n3} lanzamientos.`;
+ if(p.aoe3&&star>=3) t+=` ★★★: el Mundo Distorsión también golpea a los enemigos a 2 casillas de su presa (${R0(p.aoe3*100)}% del daño).`;
  if(p.adExp) t+=' Hipercarry: el ataque extra (objetos, sinergias) potencia su habilidad más que proporcionalmente.';
  if(p.stunFirst) t=t.replace(/ \(aturde ([\d.]+)s/,' (aturde $1s solo al primero');
- if(p.storm) t+=` Tormenta Creciente: cada ${p.storm[0]} bajas gana +${R0(p.storm[1]*100)}% de velocidad de ataque y cada ${p.storm[2]} bajas sus ataques rebotan a un enemigo más (${R0(p.storm[3]*100)}% del daño, sin efectos de objetos), hasta el final del combate y sin límite.`;
+ if(p.storm) t+=` Tormenta Creciente: cada ${p.storm[0]} bajas gana +${R0(p.storm[1]*100)}% de velocidad de ataque y cada ${p.storm[2]} bajas sus ataques rebotan a un enemigo más (${R0(p.storm[3]*100)}% del daño, sin efectos de objetos, máx. ${STORM_MAX}). Es PARA SIEMPRE: lo acumulado se conserva entre combates.`;
  if(p.grow) t+=` Cada vez que la lanza, su poder crece un ${R0(p.grow*100)}% durante el resto del combate.`;
  if(p.mega) t+=` Forma Mega: cada lanzamiento le da +6% de vida máxima, +8 de poder y +8% de ataque durante el combate.`;
  if(p.selfAs&&k!=='dash') t+=` Gana +${R0(p.selfAs*100)}% de vel. de ataque (se acumula durante el combate).`;
@@ -497,19 +508,30 @@ const EMBLEM_STATS={Fuego:{adPct:.15,ap:15},Agua:{hp:150,mana:15},Planta:{hp:250
  Fantasma:{hp:150,crit:.15},Hada:{hp:200,ap:10},Normal:{hp:250},Acero:{df:30,hp:100},Siniestro:{crit:.2,critM:.1},Lucha:{adPct:.2,hp:100},
  'Guardián':{df:30,mr:30},Coloso:{hp:300},Peleador:{hp:250,adPct:.1},Tirador:{asPct:.2},Hechicero:{ap:25},Asesino:{crit:.2,critM:.15},Sanador:{mana:20,mr:20},
  Cazatesoros:{hp:150,crit:.1},Depredadores:{adPct:.15,omni:.08},'Team Rocket':{asPct:.15,df:15},'Potencial Evolutivo':{hp:200}};
-const STAT_TXT={adPct:v=>`+${R0(v*100)}% daño de ataque`,asPct:v=>`+${R0(v*100)}% vel. de ataque`,ap:v=>`+${v} poder`,mana:v=>`+${v} maná inicial`,df:v=>`+${v} defensa`,mr:v=>`+${v} resistencia`,hp:v=>`+${v} vida`,crit:v=>`+${R0(v*100)}% prob. crítica`,critM:v=>`+${R0(v*100)}% daño crítico`,dmg:v=>`+${R0(v*100)}% daño`,omni:v=>`+${R0(v*100)}% robo de vida`,mpa:v=>`+${v} maná por ataque`,manaRegen:v=>`+${v} maná/s`,regen:v=>`+${(v*100).toFixed(1)}% vida/s`,dodge:v=>`+${R0(v*100)}% esquiva`,range:v=>`+${v} alcance`};
+// Efecto propio de cada emblema (además de su sinergia y sus estadísticas): que valga la pena el hueco de objeto sin romper el juego
+const EMBLEM_SP={Fuego:[{abilBurn:.02},'Sus habilidades queman un 2% de vida máx./s (5 s).'],Agua:[{mpa:4},'+4 de maná por ataque.'],Planta:[{regen:.02},'Regenera un 2% de vida máx./s.'],'Eléctrico':[{zap:60},'Cada 3 ataques, un rayo golpea a 3 enemigos (60 de daño mágico).'],
+ 'Psíquico':[{manaCut:.15},'Necesita un 15% menos de maná para su habilidad.'],Roca:[{thorns:25},'Devuelve 25 de daño (+3% de su vida máx.) a quien le ataca.'],'Dragón':[{rampAp:1.5},'Gana +1,5 de poder por segundo de combate.'],Fantasma:[{focus:1},'Aguanta un golpe mortal con 1 de vida (una vez por combate).'],
+ Hada:[{veil:150},'Al empezar el combate, los aliados adyacentes ganan un escudo de 150.'],Normal:[{berry:1},'Al bajar del 50% de vida se cura un 35% (una vez).'],Acero:[{dr:.1},'Recibe un 10% menos de daño.'],Siniestro:[{execute:.1},'Remata a los enemigos que bajen del 10% de vida.'],Lucha:[{omni:.12},'+12% de robo de vida.'],
+ 'Guardián':[{startShieldPct:.25},'Empieza el combate con un escudo del 25% de su vida máx.'],Coloso:[{hpPct:.12},'+12% de vida máx.'],Peleador:[{blood:1},'Al bajar del 40% de vida gana un escudo del 25% de su vida máx. (una vez).'],Tirador:[{range:1},'+1 de alcance.'],
+ 'Hechicero':[{echo3:1},'Cada 3.er lanzamiento, su habilidad se lanza dos veces.'],Asesino:[{execute:.15},'Remata a los enemigos que bajen del 15% de vida.'],Sanador:[{aura:.05},'Cada 5 s cura un 5% de vida máx. a todo su equipo.'],Cazatesoros:[{goldCast:2},'Su primera habilidad de cada combate genera 2 de oro.'],
+ Depredadores:[{rage:.03},'Cada ataque le da +3% de vel. de ataque durante el combate.'],'Team Rocket':[{kgold:1},'Cada enemigo que derrota da 1 de oro (máx. 3 por combate).'],'Potencial Evolutivo':[{},'Su crecimiento de Potencial Evolutivo es el doble.']};
+// Las estadísticas van a «s» (applyStats); el resto, a «sp» (efectos de combate)
+const STAT_KEYS=new Set(['adPct','asPct','ap','mana','df','mr','hp','hpPct','crit','critM','dmg','omni','mpa','manaRegen','regen','dodge','range']);
+const embParts=t=>{ const [o]=EMBLEM_SP[t]||[{}], s={...(EMBLEM_STATS[t]||{})}, sp={}; for(const k in o) (STAT_KEYS.has(k)?s:sp)[k]=(STAT_KEYS.has(k)?(s[k]||0):0)+o[k]; return {s,sp}; };
+const embTxt=t=>EMBLEM_SP[t]?' '+EMBLEM_SP[t][1]:'';
+const STAT_TXT={hpPct:v=>`+${R0(v*100)}% vida máx.`,adPct:v=>`+${R0(v*100)}% daño de ataque`,asPct:v=>`+${R0(v*100)}% vel. de ataque`,ap:v=>`+${v} poder`,mana:v=>`+${v} maná inicial`,df:v=>`+${v} defensa`,mr:v=>`+${v} resistencia`,hp:v=>`+${v} vida`,crit:v=>`+${R0(v*100)}% prob. crítica`,critM:v=>`+${R0(v*100)}% daño crítico`,dmg:v=>`+${R0(v*100)}% daño`,omni:v=>`+${R0(v*100)}% robo de vida`,mpa:v=>`+${v} maná por ataque`,manaRegen:v=>`+${v} maná/s`,regen:v=>`+${(v*100).toFixed(1)}% vida/s`,dodge:v=>`+${R0(v*100)}% esquiva`,range:v=>`+${v} alcance`};
 const sumStats=(...ss)=>{ const o={}; for(const s of ss) for(const k in s) o[k]=(o[k]||0)+s[k]; return o; };
 const ITEMS={}, RECIPE={};
 for(const k of ORDER) ITEMS[k]={...COMPS[k],key:k,comp:true,sp:{},desc:k==='medal'?'Combínala con un componente para forjar su Insignia (cada componente graba siempre la misma sinergia), o con otra Medalla para una Medalla Maestra. Los emblemas desbloquean el nivel prismático de las sinergias.':'Componente. Combínalo con otro para crear un objeto.'};
 for(const [a,b,id,name,icon,desc,s,sp] of FULL){ ITEMS[id]={key:id,name,icon,desc,s:sumStats(COMPS[a].s,COMPS[b].s,s||{}),sp:sp||{},from:[a,b]}; RECIPE[rk(a,b)]=id; }
 // Cada insignia lleva el arte de una medalla de gimnasio afín a su sinergia (número de sprite en PokeAPI)
 const BADGE_OF={claw:[18,'Puño'],wing:[22,'Pluma'],spoon:[6,'Pantano'],water:[2,'Cascada'],coat:[1,'Roca'],goggles:[4,'Arcoíris'],club:[16,'Dragón'],lens:[5,'Alma']};
-for(const c of BASIC){ const t=FORGE_OF[c][0], id='em_'+c; ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.`,s:{...EMBLEM_STATS[t]},sp:{},emblem:t,from:[c,'medal'],forge:c}; RECIPE[rk(c,'medal')]=id; }
+for(const c of BASIC){ const t=FORGE_OF[c][0], id='em_'+c; ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.${embTxt(t)}`,...embParts(t),emblem:t,from:[c,'medal'],forge:c}; RECIPE[rk(c,'medal')]=id; }
 // Herramienta: no se equipa; devuelve al inventario todos los objetos de un Pokémon (es la única forma de quitarlos)
 ITEMS.magnet={key:'magnet',name:'Imán Removedor',icon:'🧲',desc:'Arrástralo sobre un Pokémon: todos sus objetos vuelven a tu inventario. Se gasta al usarlo. Recibes uno en cada fase contra Pokémon salvajes.',s:{},sp:{},tool:true};
 // Emblema de cada sinergia: el Pokémon que lo lleve cuenta para ella (sin contar dos veces el mismo rasgo)
 const CRAFTABLE_EMB=new Set(Object.values(FORGE_OF).map(l=>l[0]));
-for(const t in TRAITS) if(t!=='Legendario') ITEMS['emb_'+t]={key:'emb_'+t,name:'Emblema '+t,icon:TRAITS[t].icon,desc:`El portador gana la sinergia ${t}. No se combina.${CRAFTABLE_EMB.has(t)?'':' Este emblema no se craftea: solo sale de aumentos y recompensas.'}`,s:{...(EMBLEM_STATS[t]||{})},sp:{},emblem:t};
+for(const t in TRAITS) if(t!=='Legendario') ITEMS['emb_'+t]={key:'emb_'+t,name:'Emblema '+t,icon:TRAITS[t].icon,desc:`El portador gana la sinergia ${t}.${embTxt(t)} No se combina.${CRAFTABLE_EMB.has(t)?'':' Este emblema no se craftea: solo sale de aumentos y recompensas.'}`,...embParts(t),emblem:t};
 // Duplicadores: se sueltan sobre un Pokémon y te dan otra copia suya (se crea aunque no quede en el pool)
 ITEMS.dup_menor={key:'dup_menor',name:'Duplicador menor',icon:'🧬',desc:'Suéltalo sobre un Pokémon de coste 1 a 3: recibes otra copia suya. Se gasta al usarlo.',s:{},sp:{},tool:true,dup:3};
 ITEMS.dup_mayor={key:'dup_mayor',name:'Duplicador',icon:'🧪',desc:'Suéltalo sobre cualquier Pokémon (coste 1 a 5): recibes otra copia suya. Se gasta al usarlo.',s:{},sp:{},tool:true,dup:5};
@@ -568,8 +590,10 @@ function tacOffer(p){ const t=TACS[p.tac]; if(!t||!t.pick) return; p.tacOff=p.ta
  for(let st=1;st<=2;st++){ if(tacStage(p)<st||p.tacOff[st-1]||(p.tacForm&&p.tacForm[st-1])) continue; if(!p.isBot&&!G.auto) continue; p.tacOff[st-1]=1;
    augOffer(p,'__tac',st===1?'🌀 Tu Eevee evoluciona':'🌀 Tu Eevee vuelve a evolucionar','Elige la forma de tu minileyenda.',t.pick[st-1].map(k=>({t:DEF[k].name,i:'🌀',d:DEF[k].traits.join(' · '),v:'te:'+st+'|'+k}))); } }
 const xpCost=p=>p.mods.xpCost||4;
-const xpByHp=p=>!!(p.mods.xpHp&&p.hp>20);
-function buyXp(p){ if(p.level<10&&xpByHp(p)){ p.hp-=p.mods.xpHp; addXp(p,4+p.mods.xpBuy); return true; } if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
+const XP_HP_MAX=8; // compras con vida por ronda
+const xpHpCost=p=>Math.max(p.mods.xpHp||0,p.level-3);
+const xpByHp=p=>!!(p.mods.xpHp&&p.hp>20&&(p.xpHpN|0)<XP_HP_MAX);
+function buyXp(p){ if(p.level<10&&xpByHp(p)){ p.hp-=xpHpCost(p); p.xpHpN=(p.xpHpN|0)+1; addXp(p,4+p.mods.xpBuy); return true; } if(p.level>=10||p.gold<xpCost(p)) return false; p.gold-=xpCost(p); addXp(p,4+p.mods.xpBuy); return true; }
 function reroll(p){ const free=p.freeRerolls>0; if(free) p.freeRerolls--; else { if(p.gold<2) return false; p.gold-=2; } refreshShop(p); augFire(p,'reroll',{free}); return true; }
 function countSame(p,base,star){ return allUnits(p).filter(u=>u.baseId===base&&u.star===star).length; }
 // Ronda 1-1: se juega con el Pokémon que te tocó (no se compra ni se vende)
@@ -718,7 +742,7 @@ function combine(p){
      for(const o of three.slice(1)){
        // Los aumentos que siguen a un Pokémon concreto (p. ej. «Pokémon favorito») pasan a la copia que queda
        for(const st of Object.values(p.augSt||{})) if(st&&st.uid===o.u.uid) st.uid=keep.u.uid;
-       keep.u.kills+=o.u.kills; keep.u.goldGen=(keep.u.goldGen||0)+(o.u.goldGen||0); keep.u.stk.hp+=o.u.stk.hp; keep.u.stk.ad+=o.u.stk.ad; keep.u.stk.ap=(keep.u.stk.ap||0)+(o.u.stk.ap||0);
+       keep.u.kills+=o.u.kills; keep.u.goldGen=(keep.u.goldGen||0)+(o.u.goldGen||0); keep.u.stk.hp+=o.u.stk.hp; keep.u.stk.ad+=o.u.stk.ad; keep.u.stk.ap=(keep.u.stk.ap||0)+(o.u.stk.ap||0); keep.u.sk=(keep.u.sk|0)+(o.u.sk|0);
        for(const it of o.u.items){ const r=addItemToUnit(keep.u,it); if(!r.ok) giveItem(p,it); }
        setAt(p,o.loc,null);
      }
@@ -793,7 +817,7 @@ function applyTraits(u,traits,Tt,mods){
  const has=t=>traits.includes(t), leg=traits.includes('Legendario'), tv=(t,arr)=>{ let k=Tt[t]||0; if(leg&&TRAITS[t]&&TRAITS[t].legOld) k=LEG_OLD_TIER[k]; return arr[Math.min(k,arr.length-1)]||0; };
  // Tipos con identidad propia: incendio, oleadas, sobrecarga, ciclos de maná, escalado dracónico, fortaleza y ejecuciones
  if(has('Fuego')){ u.burnPct+=tv('Fuego',[0,.02,.04,.07,.1]); u.dmgBonus+=tv('Fuego',[0,0,0,.2,.35]); if(Tt['Fuego']){ u.fireSpread=true; u.fireBoom=tv('Fuego',[0,0,0,150,300]); } }
- if(has('Agua')) u.manaPerAtk+=tv('Agua',[0,3,6,10,14]);
+ if(has('Agua')) u.manaPerAtk+=tv('Agua',[0,5,8,10,14]);
  u.waterTier=Tt['Agua']||0;
  if(has('Planta')) u.regen+=tv('Planta',[0,.015,.035,.06]);
  u.regen+=tv('Planta',[0,0,0,.02]);
@@ -806,9 +830,9 @@ function applyTraits(u,traits,Tt,mods){
  if(has('Fantasma')) u.dodge+=tv('Fantasma',[0,.15,.3,.45,.6]);
  u.startShield+=tv('Hada',[0,100,220,400,700]);
  if(has('Normal')){ u.maxHp+=tv('Normal',[0,120,300,550,900]); u.as*=1+tv('Normal',[0,.08,.15,.25,.4]); }
- if(has('Acero')){ u.dr+=tv('Acero',[0,.1,.2,.35]); u.fort=tv('Acero',[0,.25,.4,.6]); }
+ if(has('Acero')){ const r=tv('Acero',[0,25,50,90]); u.df+=r; u.mr+=r; u.dr+=tv('Acero',[0,.15,.25,.4]); u.fort=tv('Acero',[0,.25,.4,.6]); }
  if(has('Siniestro')&&Tt['Siniestro']){ u.execTh=tv('Siniestro',[0,.12,.2,.3]); u.execBuff=tv('Siniestro',[0,.04,.08,.12]); }
- if(has('Lucha')){ u.omni+=tv('Lucha',[0,.12,.25,.45]); u.dmgBonus+=tv('Lucha',[0,0,0,.2]); }
+ if(has('Lucha')){ u.omni+=tv('Lucha',[0,.15,.25,.45]); u.ad*=1+tv('Lucha',[0,.12,.25,.4]); u.ap+=tv('Lucha',[0,12,25,40]); u.dmgBonus+=tv('Lucha',[0,0,0,.2]); }
  // Clases (inspiradas en TFT): Guardaespaldas, Matones, Tiradores, Académicos, Asesinos, Encantadores, Retadores, Quimtech
  if(has('Guardián')){ const g=tv('Guardián',[0,20,40,70,110,170]); u.df+=g; u.mr+=g; u.bodyguard=tv('Guardián',[0,.1,.15,.22,.3,.45]); }
  u.maxHp+=tv('Coloso',[0,100,160,220,320,650])*(has('Coloso')?2:1);
@@ -825,7 +849,7 @@ function applyTraits(u,traits,Tt,mods){
 }
 function applyStats(u,s){
  for(const k in s){ const v=s[k]; switch(k){
-  case 'adPct':u.ad*=1+v;break; case 'asPct':u.as*=1+v;break; case 'ap':u.ap+=v;break; case 'mana':u.mana+=v;break;
+  case 'adPct':u.ad*=1+v;break; case 'hpPct':u.maxHp*=1+v;break; case 'asPct':u.as*=1+v;break; case 'ap':u.ap+=v;break; case 'mana':u.mana+=v;break;
   case 'df':u.df+=v;break; case 'mr':u.mr+=v;break; case 'hp':u.maxHp+=v;break; case 'crit':u.critC+=v;break;
   case 'critM':u.critM+=v;break; case 'dmg':u.dmgBonus+=v;break; case 'omni':u.omni+=v;break; case 'mpa':u.manaPerAtk+=v;break;
   case 'manaRegen':u.manaRegen+=v;break; case 'regen':u.regen+=v;break; case 'dodge':u.dodge+=v;break; case 'range':u.range+=v;break; } }
@@ -844,6 +868,8 @@ function makeCombatUnit(inst,p,Tt,side,rand){
  const m=p.mods; u.maxHp*=1+m.hpPct; u.ad*=1+m.adPct; u.ap+=m.ap; u.as*=1+m.asPct; u.df+=m.def; u.mr+=m.mr; if(m.allFocus) u.focus=true;
  for(const it of [...inst.items,...(inst.tg||[])]){ const I=ITEMS[it]; if(!I) continue; applyStats(u,I.s); for(const k in I.sp) u.sp[k]=(u.sp[k]||0)+I.sp[k]; }
  if(u.sp.focus) u.focus=true; if(u.sp.berry) u.berry=true;
+ if(u.sp.manaCut&&u.maxMana<9999) u.maxMana=Math.round(u.maxMana*(1-Math.min(.4,u.sp.manaCut)));
+ const st=u.ab&&u.ab[2].storm; if(st&&inst.sk>0){ u.stormK=inst.sk; u.as*=1+st[1]*Math.floor(inst.sk/st[0]); u.stormBounce=Math.min(STORM_MAX,Math.floor(inst.sk/st[2])); }
  if(u.sp.blood&&u.range===1) u.omni+=.1;
  u.items=inst.items.slice(); u.traits=unitTraits(inst); u.hp=u.maxHp; u.as=Math.min(u.as,3);
  return u;
@@ -865,14 +891,14 @@ function abilPower(u){
 
 // Instantánea compacta de un equipo: es lo que se envía por red y lo que usa la simulación
 function teamSnap(p){ ensureGloves(p); const m=p.mods; let ent=Object.entries(p.board); if(m.soloLevel&&ent.length>1) ent=[ent.sort((a,b)=>DEF[b[1].defId].cost*Math.pow(3,b[1].star)-DEF[a[1].defId].cost*Math.pow(3,a[1].star))[0]];
- return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:ent.map(([k,u])=>[k,u.defId,u.star,u.items.concat(u.tg||[]),R0(u.stk.hp),R0(u.stk.ad),R0(u.stk.ap||0)])}; }
+ return {ag:augSnap(p),m:{hp:m.hpPct,ad:m.adPct,ap:m.ap,as:m.asPct,df:m.def,mr:m.mr,f:m.allFocus?1:0,lg:m.legend,x:m.extraTrait},u:ent.map(([k,u])=>[k,u.defId,u.star,u.items.concat(u.tg||[]),R0(u.stk.hp),R0(u.stk.ad),R0(u.stk.ap||0),u.sk|0])}; }
 function snapPlayer(snap){
  const m=snap&&snap.m||{}; const mods=Object.assign(defaultMods(),{hpPct:+m.hp||0,adPct:+m.ad||0,ap:+m.ap||0,asPct:+m.as||0,def:+m.df||0,mr:+m.mr||0,allFocus:!!m.f,legend:+m.lg||0,extraTrait:(m.x&&typeof m.x==='object')?m.x:{}});
  const board={};
  for(const row of (snap&&Array.isArray(snap.u)?snap.u:[])){
-   const [k,defId,star,items,sh,sa,sp]=row;
+   const [k,defId,star,items,sh,sa,sp,sk]=row;
    if(typeof k!=='string'||!/^[0-6],[0-3]$/.test(k)||!DEF[defId]||![1,2,3].includes(star)) continue;
-   board[k]={defId,baseId:DEF[defId].evoOf||defId,star,items:(Array.isArray(items)?items:[]).filter(i=>ITEMS[i]).slice(0,3),stk:{hp:+sh||0,ad:+sa||0,ap:+sp||0}};
+   board[k]={defId,baseId:DEF[defId].evoOf||defId,star,items:(Array.isArray(items)?items:[]).filter(i=>ITEMS[i]).slice(0,3),stk:{hp:+sh||0,ad:+sa||0,ap:+sp||0},sk:Math.max(0,Math.min(999,sk|0))};
  }
  return {mods,board};
 }
@@ -1008,14 +1034,15 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
    else if(!t.creep&&(t.revive>0||(cb.phoenix&&cb.phoenix[t.side]>0))){ const pct=t.revive>0?t.revive:cb.phoenix[t.side]; if(t.revive>0) t.revive=0; else cb.phoenix[t.side]=0;
      t.hp=t.maxHp*pct; t.stun=0; t.burns=[]; t.mana=Math.max(t.mana,t.maxMana*.5); fxText(cb,t,'¡Renace!','#ffb347'); fx(cb,{type:'area',c:t.c,r:t.r,rad:1.8,color:'#ff8a3a',life:.9,el:'Fuego'});
      if(t.rebirthNova) for(const e of foesOf(cb,t)) if(dU(t,e)<=2) dealDamage(cb,t,e,abilPower(t)*t.rebirthNova,'magic',false); }
-   else { t.hp=0; t.dead=true; if(src&&!t.creep&&src.side!==t.side){ cb.firstKill=cb.firstKill||[null,null]; if(cb.firstKill[src.side]==null) cb.firstKill[src.side]=t.d.key; } spreadFire(cb,t); if(src&&src.rocket>=3&&!t.creep&&cb.gold[src.side]<12){ cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(t.creep) (cb.deaths=cb.deaths||[]).push([cb.t,t.c,t.r]); if(src&&src.side!==t.side){ src.kills++; if(src.ab&&src.ab[2].storm) stormKill(cb,src,t); if(src.rival&&src.target===t&&!src.dead){ src.rushMul=1+src.rival[0]; src.rushT=src.rival[1]; if(src.maxMana<9999) src.mana+=src.maxMana*(src.rival[2]||0); const n=nearestEnemy(cb,src,t); if(n){ teleportNear(cb,src,n); src.target=n; } } if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; quakeFeed(cb,t); }
+   else { t.hp=0; t.dead=true; if(src&&!t.creep&&src.side!==t.side){ cb.firstKill=cb.firstKill||[null,null]; if(cb.firstKill[src.side]==null) cb.firstKill[src.side]=t.d.key; } spreadFire(cb,t); if(src&&src.rocket>=3&&!t.creep&&cb.gold[src.side]<12){ cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(src&&src.sp.kgold&&src.side!==t.side&&!t.creep&&(src.kg|0)<3&&cb.gold[src.side]<12){ src.kg=(src.kg|0)+1; cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(t.creep) (cb.deaths=cb.deaths||[]).push([cb.t,t.c,t.r]); if(src&&src.side!==t.side){ src.kills++; if(src.ab&&src.ab[2].storm) stormKill(cb,src,t); if(src.rival&&src.target===t&&!src.dead){ src.rushMul=1+src.rival[0]; src.rushT=src.rival[1]; if(src.maxMana<9999) src.mana+=src.maxMana*(src.rival[2]||0); const n=nearestEnemy(cb,src,t); if(n){ teleportNear(cb,src,n); src.target=n; } } if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; quakeFeed(cb,t); }
  }
  return true;
 }
-// Zapdos, Tormenta Creciente: storm=[bajas por +vel., +vel. por paso, bajas por rebote, daño del rebote]. Todo dura hasta el final del combate (la unidad se crea de nuevo en cada combate)
-function stormKill(cb,u,t){ const [per,as,bEvery]=u.ab[2].storm; u.stormSeen=u.stormSeen||new Set(); if(u.stormSeen.has(t)) return; u.stormSeen.add(t); u.stormK=(u.stormK||0)+1;
+// Zapdos, Tormenta Creciente: storm=[bajas por +vel., +vel. por paso, bajas por rebote, daño del rebote]. Es PARA SIEMPRE: las bajas se guardan en la ficha (inst.sk, viaja en teamSnap) y cada combate empieza con lo acumulado (máx. STORM_MAX rebotes)
+const STORM_MAX=6;
+function stormKill(cb,u,t){ const [per,as,bEvery]=u.ab[2].storm; u.stormSeen=u.stormSeen||new Set(); if(u.stormSeen.has(t)) return; u.stormSeen.add(t); u.stormK=(u.stormK||0)+1; if(u.ref&&!NO_PERMA) u.ref.sk=(u.ref.sk||0)+1;
  if(u.stormK%per===0){ u.as=Math.min(5,u.as*(1+as)); u.stormAs=(u.stormAs||0)+as; }
- const b=Math.floor(u.stormK/bEvery); if(b>(u.stormBounce||0)){ u.stormBounce=b; fxText(cb,u,'¡Rebote +1!','#ffe066'); } }
+ const b=Math.min(STORM_MAX,Math.floor(u.stormK/bEvery)); if(b>(u.stormBounce||0)){ u.stormBounce=b; fxText(cb,u,'¡Rebote +1!','#ffe066'); } }
 // Rebotes del ataque básico de Zapdos: daño reducido a enemigos distintos (el más cercano al anterior; empates por orden de unidades). Sin efectos de objetos ni maná: no se multiplican
 function stormBounces(cb,u,t,dmg,crit){ let prev=t; const hit=new Set([t]); for(let i=0;i<u.stormBounce;i++){ const e=cb.units.filter(x=>!x.dead&&x.side!==u.side&&!hit.has(x)&&!(x.stealth>0)).sort((a,b)=>dU(prev,a)-dU(prev,b)||cb.units.indexOf(a)-cb.units.indexOf(b))[0]; if(!e) break; hit.add(e);
   fx(cb,{type:'zap',fc:prev.c,fr:prev.r,tc:e.c,tr:e.r,color:'#ffe066',life:.25,el:'Eléctrico'}); dealDamage(cb,u,e,dmg*u.ab[2].storm[3],'phys',false,crit); prev=e; } }
@@ -1091,7 +1118,7 @@ function typeOnCast(cb,u){
  if(u.elecTier){ cb.eC=cb.eC||[0,0]; const need=[3,3,2,1][Math.min(3,u.elecTier)]; if(++cb.eC[s]>=need){ cb.eC[s]=0; const n=[3,3,5,7][Math.min(3,u.elecTier)]; let prev=u; const hit=new Set();
    for(let i=0;i<n;i++){ const e=cb.units.filter(x=>!x.dead&&x.side!==s&&!hit.has(x)).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; if(!e) break; hit.add(e); fx(cb,{type:'zap',fc:prev.c,fr:prev.r,tc:e.c,tr:e.r,color:'#ffe066',life:.4,el:'Eléctrico'}); dealDamage(cb,u,e,P*(u.elecTier>=2?.6:.4),'magic',false); if(u.elecTier>=2&&!e.dead) stunUnit(e,u.elecTier>=3?1:.5); prev=e; }
    fxText(cb,u,'¡Sobrecarga!','#ffe066'); } }
- if(u.waterTier){ cb.wN=cb.wN||[0,0]; if(++cb.wN[s]%(u.waterTier>=4?2:4)===0){ const k=u.waterTier, hl=[0,.04,.07,.12,.18][k], dm=[0,60,120,220,320][k];
+ if(u.waterTier){ cb.wN=cb.wN||[0,0]; if(++cb.wN[s]%[4,4,3,2,2][u.waterTier]===0){ const k=u.waterTier, hl=[0,.06,.1,.14,.2][k], dm=[0,100,180,280,380][k]+P*[0,.15,.25,.35,.5][k];
    for(const a of cb.units) if(!a.dead){ if(a.side===s) heal(a,a.maxHp*hl); else dealDamage(cb,u,a,dm,'magic',true); }
    fx(cb,{type:'flash',color:'#3b8fe8',life:.4}); fxText(cb,u,'¡Oleada!','#7fc8ff'); } }
  if(u.psyMana){ const a=cb.units.filter(x=>!x.dead&&x.side===s&&x!==u&&x.maxMana<9999).sort((x,y)=>x.mana/x.maxMana-y.mana/y.maxMana)[0]; if(a){ a.mana+=u.psyMana; fx(cb,{type:'proj',fc:u.c,fr:u.r,tc:a.c,tr:a.r,color:'#e0569b',life:.35,heal:true}); } }
@@ -1119,23 +1146,26 @@ function castAbility(cb,u,ab,depth=0){
   // fall: cada enemigo atravesado recibe ese porcentaje menos que el anterior (mín. 40 %): el rayo no borra una fila entera
   case 'line': if(t){ const w=u.star>=3&&p.w3?p.w3:p.w||.65; if(p.aim) t=aoeDir(cb,u,t,{w}); const rise=p.rise?1+Math.min(p.riseCap||1,p.rise*((u.castN||1)-1)):1; let k=1;
     for(const e of dirTargets(cb,u,t,{w})){ hitFx(cb,u,e,P*p.m*k*rise,p); if(p.fall) k=Math.max(.4,k-p.fall); } FX({type:'beam',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.5,w}); if(rise>1) cb.cExtra+=` · +${R0((rise-1)*100)}% de daño`; } if(p.stunSelf){ u.stun=Math.max(u.stun,p.stunSelf); cb.cExtra=' · se recarga'; } break;
-  case 'chain': { let cur=t, prev=u; const hit=new Set(); for(let i=0;i<p.n&&cur;i++){ FX({type:'zap',fc:prev.c,fr:prev.r,tc:cur.c,tr:cur.r,life:.4}); hitFx(cb,u,cur,P*p.m*(1+(p.amp||0)*i),i&&p.stunFirst?{...p,stun:0}:p); hit.add(cur); prev=cur; cur=foes.filter(e=>!e.dead&&!hit.has(e)&&dU(prev,e)<=3).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; } break; }
+  // every: solo cada N lanzamientos sale el rayo en cadena; los demás son un golpe al objetivo (alt)
+  case 'chain': { if(p.every&&(u.castN||1)%p.every){ if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true}); hitFx(cb,u,t,P*(p.alt||p.m),{...p,stun:0}); } cb.cExtra=` · rayo ${(u.castN||1)%p.every}/${p.every}`; break; }
+   let cur=t, prev=u; const hit=new Set(); for(let i=0;i<p.n&&cur;i++){ FX({type:'zap',fc:prev.c,fr:prev.r,tc:cur.c,tr:cur.r,life:.4}); hitFx(cb,u,cur,P*p.m*(1+(p.amp||0)*i),i&&p.stunFirst?{...p,stun:0}:p); hit.add(cur); prev=cur; cur=foes.filter(e=>!e.dead&&!hit.has(e)&&dU(prev,e)<=3).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; } break; }
   case 'multi': for(let i=0;i<p.n;i++){ const live=foes.filter(e=>!e.dead); if(!live.length) break; const e=pickR(cb,live); FX({type:'proj',fc:u.c,fr:u.r,tc:e.c,tr:e.r,life:.25+i*.04}); hitFx(cb,u,e,P*p.m,p); } if(p.chill) cb.cExtra=' · ralentiza'; break;
   // spill: si el objetivo cae, los golpes que sobran van al enemigo vivo más cercano (Timburr; Scyther, Machop y Poliwag no lo llevan)
   case 'combo': if(t){ let tg=t; for(let i=0;i<p.n;i++){ if(tg.dead){ if(!p.spill) break; tg=foesOf(cb,u).filter(e=>!(e.stealth>0)).sort((a,b)=>dU(u,a)-dU(u,b)||cb.units.indexOf(a)-cb.units.indexOf(b))[0]; if(!tg) break; cb.cExtra=' · los golpes saltan al siguiente'; } hitFx(cb,u,tg,P*p.m,i===p.n-1?p:{...p,stun:0}); } FX({type:'hits',c:t.c,r:t.r,n:p.n,life:.6}); } break;
   case 'dash': { const nearF=foes.filter(e=>!(e.stealth>0)&&dU(u,e)<=3); const tg=p.to==='far'?nearF.sort((a,b)=>dU(u,b)-dU(u,a))[0]||t:p.to==='low'?nearF.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0]||t:t;
     if(tg){ teleportNear(cb,u,tg); u.target=tg; hitFx(cb,u,tg,P*p.m,p); FX({type:'hits',c:tg.c,r:tg.r,n:2,life:.5}); if(p.r){ for(const e of foes) if(e!==tg&&dU(tg,e)<=p.r) hitFx(cb,u,e,P*p.m*.6,p); FX({type:'area',c:tg.c,r:tg.r,rad:p.r+.5,life:.6}); } if(p.stealth){ u.stealth=p.stealth; for(const e of foes) if(e.target===u) e.target=null; cb.cExtra=' · invisible'; } if(p.selfAs) u.as=Math.min(3,u.as*(1+p.selfAs)); } break; }
-  case 'execute': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:3,color:'#ff5a5a',life:.6}); if(!t.dead&&t.hp<t.maxHp*(p.th+.05*(u.star-1))){ dealDamage(cb,u,t,t.hp+t.shield+1,'true',true); fxText(cb,t,'¡Rematado!','#ff6b6b'); }
+  case 'execute': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:3,color:'#ff5a5a',life:.6}); if(!t.dead&&t.hp<t.maxHp*execTh(p,u.star)){ dealDamage(cb,u,t,t.hp+t.shield+1,'true',true); fxText(cb,t,'¡Rematado!','#ff6b6b'); }
     if(t.dead&&p.reset&&u.maxMana<9999){ u.mana+=u.maxMana*p.reset; cb.cExtra+=' · ¡recupera maná!'; } } break;
-  case 'meteor': for(const e of foes){ FX({type:'meteor',c:e.c,r:e.r,life:.7}); hitFx(cb,u,e,P*p.m,p); } if(p.sh) SH(u,u.maxHp*p.sh,4); if(p.dr){ u.tdr=Math.max(u.tdr,p.dr); u.tdrT=Math.max(u.tdrT,3); } if(p.healAll) for(const a of allies) H(a,P*p.healAll); if(p.manaTeam) for(const a of allies) if(a!==u) a.mana+=p.manaTeam; FX({type:'flash',life:.4});
+  // r: solo cae sobre la zona con más enemigos (radio r) en vez de en todo el tablero
+  case 'meteor': { const mc=p.r&&t?aoeTarget(cb,u,t,p.r):null; for(const e of mc?foes.filter(e=>dU(mc,e)<=p.r):foes){ FX({type:'meteor',c:e.c,r:e.r,life:.7}); hitFx(cb,u,e,P*p.m,p); } } if(p.sh) SH(u,u.maxHp*p.sh,4); if(p.dr){ u.tdr=Math.max(u.tdr,p.dr); u.tdrT=Math.max(u.tdrT,3); } if(p.healAll) for(const a of allies) H(a,P*p.healAll); if(p.manaTeam) for(const a of allies) if(a!==u) a.mana+=p.manaTeam; FX({type:'flash',life:.4});
     if(p.rebirth&&(u.rbN=(u.rbN||0)+1)>=p.rebirth){ u.rbN=0; rebirthAlly(cb,u,p.phoenix||.4); } else if(p.rebirth) cb.cExtra+=` · renacer ${u.rbN}/${p.rebirth}`; break;
   // Kyogre: disparos pequeños que cargan la marea; el n.º lanzamiento desata un maremoto en área (radio y daño acotados para no vaciar la mesa)
-  case 'tide': { u.tideN=(u.tideN||0)+1; if(u.tideN<p.n){ if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true}); hitFx(cb,u,t,P*p.m,{}); } cb.cExtra=` · marea ${u.tideN}/${p.n}`; break; }
+  case 'tide': { const tn=u.star>=3&&p.n3?p.n3:p.n; u.tideN=(u.tideN||0)+1; if(u.tideN<tn){ if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true}); hitFx(cb,u,t,P*p.m,{}); } cb.cExtra=` · marea ${u.tideN}/${tn}`; break; }
     u.tideN=0; if(t) t=aoeTarget(cb,u,t,p.r); if(t){ for(const e of foes) if(dU(t,e)<=p.r) hitFx(cb,u,e,P*p.big,p); FX({type:'area',c:t.c,r:t.r,rad:p.r+.5,life:.8}); FX({type:'flash',life:.4}); fxText(cb,u,'¡Maremoto!','#7fc8ff'); } cb.cExtra=' · ¡maremoto!'; break; }
   // Mewtwo: Onda Mental en área; cada lanzamiento le da una carga psíquica (+4 % de daño de esta habilidad, todo el combate).
   // Cada 4.º lanzamiento, Juicio Psíquico sobre el enemigo con menos % de vida: lo ejecuta si está por debajo del umbral de sus estrellas; si no, otra descarga.
   // Energía psíquica = lanzamientos + bajas de Mewtwo: con 10 se vuelve Mega Mewtwo Y hasta el final del combate (radio +1 y una segunda descarga)
-  case 'psy': { if(p.megaStart&&!u.megaOn) u.megaOn=true; const rad=p.r+(u.megaOn?1:0), dm=P*(u.star>=3&&p.m3?p.m3:p.m)*(1+(p.charge||0)*(u.psyC||0)), live=()=>foes.filter(e=>!e.dead);
+  case 'psy': { if(p.megaStart&&!u.megaOn) u.megaOn=true; const rad=(u.star>=3&&p.r3?p.r3:p.r)+(u.megaOn?1:0), dm=P*(u.star>=3&&p.m3?p.m3:p.m)*(1+(p.charge||0)*(u.psyC||0)), live=()=>foes.filter(e=>!e.dead);
     let c1=null; if(t){ c1=aoeTarget(cb,u,t,rad); FX({type:'proj',fc:u.c,fr:u.r,tc:c1.c,tr:c1.r,life:.28,big:true}); for(const e of live()) if(dU(c1,e)<=rad) hitFx(cb,u,e,dm,p); FX({type:'area',c:c1.c,r:c1.r,rad:rad+.5,life:.65}); }
     if(u.megaOn&&c1){ const rest=live().filter(e=>!(e.stealth>0)&&dU(c1,e)>rad); const c2=rest.length?aoeTarget(cb,u,rest[0],rad,c=>rest.filter(e=>dU(c,e)<=rad).length):null;
       if(c2&&dU(c1,c2)>rad){ for(const e of live()) if(dU(c2,e)<=rad) hitFx(cb,u,e,dm,p); FX({type:'area',c:c2.c,r:c2.r,rad:rad+.5,life:.65}); cb.cExtra+=' · doble descarga'; } }
@@ -1162,7 +1192,7 @@ function castAbility(cb,u,ab,depth=0){
   case 'teamShield': for(const a of allies){ SH(a,P*p.m,4); if(p.heal) H(a,P*p.heal); if(p.ap) a.ap+=p.ap; } FX({type:'flash',color:'#ffd6f0',life:.35}); break;
   case 'buff': for(const a of allies){ a.as=Math.min(3,a.as*(1+p.as)); if(p.heal) H(a,P*p.heal); FX({type:'arrows',c:a.c,r:a.r,life:.8}); } cb.cExtra=` · equipo +${R0(p.as*100)}% vel.`; break;
   case 'frenzy': u.as=Math.min(3,u.as*(1+p.as)); u.ad*=1+p.ad; u.ap+=p.ad*100; FX({type:'arrows',c:u.c,r:u.r,life:.8}); FX({type:'aura',u,life:1.2}); cb.cExtra=' · más rápido y fuerte'; break;
-  case 'empower': u.empN=p.n; u.empDmg=P*p.m; u.empStun=p.stun||0; FX({type:'aura',u,life:1.2,color:'#ffd23f'}); cb.cExtra=` · próximos ${p.n} golpes potenciados`; break;
+  case 'empower': u.empN=depth>0?u.empN+p.n:p.n; // un doble lanzamiento (eco) suma golpes potenciados u.empDmg=P*p.m; u.empStun=p.stun||0; FX({type:'aura',u,life:1.2,color:'#ffd23f'}); cb.cExtra=` · próximos ${p.n} golpes potenciados`; break;
   case 'sing': { if(!p.all&&!p.pick&&p.r) t=aoeTarget(cb,u,t,p.r);
     // pick: duerme a N enemigos al azar (N = pick + estrellas − 1); sStar alarga el sueño por estrella
     let tg; if(p.pick){ const pool=foes.filter(e=>!(e.stealth>0)); tg=[]; for(let i=0,n=p.pick+u.star-1;i<n&&pool.length;i++) tg.push(pool.splice(Math.floor(cb.rng()*pool.length),1)[0]); } else tg=p.all?foes:t?foes.filter(e=>dU(t,e)<=(p.r||0)):[];
@@ -1174,7 +1204,9 @@ function castAbility(cb,u,ab,depth=0){
   case 'copy': { if(!u.copied){ const src=foes.filter(e=>!e.creep).sort((a,b)=>b.cost-a.cost||b.star-a.star)[0]; u.copied=src&&src.ab[0]!=='copy'?src.ab:['nova','Golpe',{r:1,m:.8}]; } cb.cExtra=` → copia ${u.copied[1]}`; if(depth<2) castAbility(cb,u,u.copied,depth+1); break; }
   case 'metro': { const m=pickR(cb,METRO); cb.cExtra=` → ${m[1]}`; if(depth<2) castAbility(cb,u,m,depth+1); break; }
   // ---- mecánicas nuevas ----
-  case 'cone': if(t){ t=aoeDir(cb,u,t,{len:p.len||2,half:.55}); for(const e of dirTargets(cb,u,t,{len:p.len||2,half:.55})) hitFx(cb,u,e,P*p.m,p); FX({type:'cone',fc:u.c,fr:u.r,tc:t.c,tr:t.r,len:p.len||2,life:.7}); } break;
+  case 'cone': if(t){ t=aoeDir(cb,u,t,{len:p.len||2,half:.55}); for(const e of dirTargets(cb,u,t,{len:p.len||2,half:.55})) hitFx(cb,u,e,P*p.m,p); FX({type:'cone',fc:u.c,fr:u.r,tc:t.c,tr:t.r,len:p.len||2,life:.7});
+    // ground: el fuego se queda en el suelo (radio 1 alrededor del objetivo): daño por tics y quema a quien lo pise
+    if(p.ground){ const c=t.c, r=t.r, n=Math.round(p.ground/.5); FX({type:'zone',c,r,rad:1.5,life:p.ground,el:'Fuego'}); for(let i=1;i<=n;i++) later2(cb,i*.5,()=>{ if(u.dead) return; for(const e of near(c,r,1)){ abilDamage(cb,u,e,P*p.gm/n); if(!e.dead) addBurn(e,u,(p.burn||.03)*e.maxHp,2,'abil'); } }); cb.cExtra=` · suelo en llamas ${p.ground}s`; } } break;
   case 'wave': if(t){ t=aoeDir(cb,u,t,{w:p.w||1.3}); for(const e of dirTargets(cb,u,t,{w:p.w||1.3})){ hitFx(cb,u,e,P*p.m,p); if(p.push&&!e.dead) shove(cb,e,u.c,u.r,p.push,true); } FX({type:'wave',fc:u.c,fr:u.r,tc:t.c,tr:t.r,w:p.w||1.3,life:.9});
     if(p.healTeam) for(const a of allies) H(a,P*p.healTeam); if(p.asTeam) for(const a of allies){ a.as=Math.min(3,a.as*(1+p.asTeam)); FX({type:'arrows',c:a.c,r:a.r,life:.8}); } if(p.push) cb.cExtra=' · empuja'; } break;
   case 'strike': if(t){ if(p.r) t=aoeTarget(cb,u,t,p.r); const c=t.c, r=t.r, rad=p.r||0, d=p.delay||.6; FX({type:'tele',c,r,rad:rad+.5,life:d}); cb.cExtra=` · cae en ${d}s`;
@@ -1202,7 +1234,7 @@ function castAbility(cb,u,ab,depth=0){
     cb.cExtra=` · escudo de ${R0(amt)} y ${n} golpes`; break; }
   // Arrastra al enemigo más débil a su mundo: daño durante 2 s y, si cae, se queda con parte de su fuerza PARA SIEMPRE (estilo Tahm Kench)
   case 'devour': { const v=foes.filter(e=>!(e.stealth>0)).sort((a,b)=>a.hp-b.hp)[0]; if(!v) break; teleportNear(cb,u,v); stunUnit(v,p.dur||2); v.stealth=0; FX({type:'tether',u,t:v,life:p.dur||2}); FX({type:'vortex',c:v.c,r:v.r,rad:1,life:p.dur||2});
-    const ticks=4; let got=false; for(let i=1;i<=ticks;i++) later2(cb,i*(p.dur||2)/ticks,()=>{ if(u.dead||got) return; if(!v.dead) abilDamage(cb,u,v,P*p.m/ticks); if(v.dead&&!got){ got=true; u.devN=(u.devN||0)+1; gainStacks(u,p.ghp||40,p.gad||4); fxText(cb,u,`¡Devorado! +${p.ghp||40} PS`,'#c9a7ff'); } });
+    const ticks=4; let got=false; for(let i=1;i<=ticks;i++) later2(cb,i*(p.dur||2)/ticks,()=>{ if(u.dead||got) return; if(!v.dead) abilDamage(cb,u,v,P*p.m/ticks); if(u.star>=3&&p.aoe3) for(const e of foesOf(cb,u)) if(e!==v&&dU(v,e)<=2) abilDamage(cb,u,e,P*p.m*p.aoe3/ticks); if(v.dead&&!got){ got=true; u.devN=(u.devN||0)+1; gainStacks(u,p.ghp||40,p.gad||4); fxText(cb,u,`¡Devorado! +${p.ghp||40} PS`,'#c9a7ff'); } });
     cb.cExtra=' · si lo derrota, crece para siempre'; break; }
   case 'slam': { const rad=p.r||1; let best=null, bs=-1;
     for(let r=0;r<8;r++) for(let c=0;c<7;c++){ if(!(c===u.c&&r===u.r)&&!freeCell(cb,c,r,u)) continue; const n=near(c,r,rad).length; const sc=n*10-hexDist(c,r,u.c,u.r)*.1; if(n>0&&sc>bs){ bs=sc; best=[c,r]; } }
@@ -1210,7 +1242,8 @@ function castAbility(cb,u,ab,depth=0){
       later2(cb,.3,()=>{ if(u.dead) return; for(const e of near(u.c,u.r,rad)) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:u.c,r:u.r,rad:rad+.5,life:.7,quake:true}); }); cb.cExtra=' · salta al grupo'; } break; }
  }
  if(depth===0){
-   if(u.echo&&!u.echoing&&!u.dead){ u.echoing=true; cb.cExtra+=' · ¡doble lanzamiento!'; castAbility(cb,u,ab,1); u.echoing=false; }
+   if((u.echo||u.sp.echo3&&u.castN%3===0)&&!u.echoing&&!u.dead){ u.echoing=true; cb.cExtra+=' · ¡doble lanzamiento!'; castAbility(cb,u,ab,1); u.echoing=false; }
+   if(u.sp.goldCast&&!u.gcDone){ u.gcDone=1; const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+u.sp.goldCast); if(cb.gold[u.side]>before){ fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
    if(p.g){ const g=p.g+(u.star-1)+(u.payDay||0); const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+g); if(cb.gold[u.side]>before){ if(u.ref&&!NO_PERMA) u.ref.goldGen=(u.ref.goldGen||0)+cb.gold[u.side]-before; fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
    if(p.stk) gainStacks(u,15,2);
    // Crecimiento dentro del combate: las 3★ y algunos legendarios pegan más cada vez que lanzan su habilidad
@@ -1517,7 +1550,7 @@ function nextRound(){
    if(R.type==='carousel') continue;
    addXp(p,(idx<PASSIVE_XP.length?PASSIVE_XP[idx]:2)+(idx>0?p.mods.xpRound:0));
    p.freeRerolls=(p.freeRerolls||0)+p.mods.freeRerolls; // las tiendas gratis que no gastas se guardan (como en TFT)
-   augFire(p,'roundStart',{idx});
+   p.xpHpN=0; augFire(p,'roundStart',{idx});
    ensureGloves(p,true); // el Guante de Boxeo cambia sus objetos cada ronda
    if(!p.locked) refreshShop(p); p.locked=false;
    // Primero cambia la tienda y después llega el oro (el pendiente de los resultados y el ingreso de la ronda)
@@ -1651,8 +1684,9 @@ function mewtwoUnstable(){
  for(const p of alivePlayers()) for(const u of allUnits(p)) if(u.defId==='megamewtwo'){ u.defId='mewtwo'; u.baseId='mewtwo'; }
 }
 function growPotential(){
- for(const p of alivePlayers()){ const k=traitTiers(p)['Potencial Evolutivo']||0; if(!k) continue; const hp=[0,12,25,45,80][k], ad=[0,1,2,4,8][k];
-   for(const u of boardUnits(p)) if(unitTraits(u).includes('Potencial Evolutivo')){ const m=u.star>=3?2:1; u.stk.hp+=hp*m; u.stk.ad+=ad*m; u.stk.ap=(u.stk.ap||0)+ad*m*AP_PER_AD; } }
+ // Crecen más con su estrella (×1 / ×1,5 / ×2,5) y con las estrellas de todo el tablero (+4% por estrella): escala tanto con costes 4 a 2★ como con reroll a 3★. El Emblema lo duplica en su portador
+ for(const p of alivePlayers()){ const k=traitTiers(p)['Potencial Evolutivo']||0; if(!k) continue; const hp=[0,12,25,45,80][k], ad=[0,1,2,4,8][k], bu=boardUnits(p), team=1+.04*bu.reduce((s,u)=>s+u.star,0);
+   for(const u of bu) if(unitTraits(u).includes('Potencial Evolutivo')){ const m=[1,1.5,2.5][u.star-1]*team*(u.items.includes('emb_Potencial Evolutivo')?2:1); u.stk.hp+=hp*m; u.stk.ad+=ad*m; u.stk.ap=(u.stk.ap||0)+ad*m*AP_PER_AD; } }
 }
 // Mew (minileyenda mítica): al ganar un combate PvP toma la apariencia de la minileyenda del rival (tal como la lleva: evolución y forma)
 // y la desbloquea para esta partida; con la tecla 1 cambia al azar entre las desbloqueadas y con la 2 vuelve a ser Mew (acción mform). Solo visual
@@ -1813,8 +1847,8 @@ const NET={mode:'sp',sock:null,rooms:[],owner:'',named:null,code:'',isHost:false
 const TOPICS=['act','pub','priv','cmb','car','start','lobby','bye'];
 function randomCode(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let s=''; for(let i=0;i<5;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
 function myPeerOf(room){ const me=room.peers().find(p=>p.sameTab); return me?me.peer:''; }
-function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0]; }
-function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined}; }
+function packInst(u){ return [u.uid,u.defId,u.star,u.items,R0(u.stk.hp),R0(u.stk.ad),u.kills,u.goldGen||0,R0(u.stk.ap||0),u.mwR||0,u.tg||0,u.sk|0]; }
+function unpackInst(a){ if(!Array.isArray(a)||!DEF[a[1]]) return null; return {uid:a[0],defId:a[1],baseId:DEF[a[1]].evoOf||a[1],star:clamp(a[2]|0,1,3),items:(a[3]||[]).filter(i=>ITEMS[i]),stk:{hp:+a[4]||0,ad:+a[5]||0,ap:+a[8]||0},kills:+a[6]||0,mwR:+a[9]||0,goldGen:Math.max(0,+a[7]||0),tg:Array.isArray(a[10])?a[10].filter(i=>ITEMS[i]).slice(0,3):undefined,sk:Math.max(0,a[11]|0)}; }
 // Cristales de intereses de un jugador (1 por cada 10 de oro, hasta su máximo y 5): el propio se calcula; el de los demás llega en pub.pl[i][19]
 const interestOf=p=>p.mods&&p!==G.me&&p.icn!=null&&NET.mode==='client'?p.icn:Math.min(p.mods?p.mods.maxInterest:5,5,Math.floor((p.gold||0)/10));
 // Rival del combate que se está viendo (null en salvajes): su banca y sus cristales se ven en su lado del campo
@@ -1826,7 +1860,7 @@ function makePub(){
    bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,ITEMS_HARD),p.augments])};
 }
 function makePriv(p){ ensureGloves(p);
- const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,au:p.augments,it:p.items,md:p.mods,
+ const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,xh:p.xpHpN|0,au:p.augments,it:p.items,md:p.mods,
    be:p.bench.map(u=>u?packInst(u):null),bo:Object.entries(p.board).map(([k,u])=>[k,packInst(u)]),
    po:possibleOpps(p).map(q=>q.id),ac:G.phase==='augment'&&!p.augPicked?p.augChoices:null,ar:p.augRR||[0,0,0],ef:p.eeveeForm||'',lg:p.log.slice(0,8),ts:p.toasts,ob:p.orbs.slice(0,12).map(o=>[o.id,o.tier,o.c,o.r,orbUnits(o)]),rr:Object.entries(p.rres||{}).filter(([i])=>G.round&&ROUNDS[i]&&ROUNDS[i].s===G.round.s).map(([i,v])=>i+v).join(','),pk:p.picks&&p.picks[0]?p.picks[0]:null,ap:Object.fromEntries(p.augments.map(id=>[id,augProgress(p,id)])),ag:augSnap(p),rv:(p.reveals||[]).slice(-3),lt:p.loot||null};
  if(JSON.stringify(d).length>3900){ d.lg=d.lg.slice(0,2); d.ts=d.ts.slice(-1); }
@@ -2005,7 +2039,7 @@ function unpackBoard(p,[bo,be]){
 function applyPriv(d){
  const aq=d.aq|0; if(aq<(NET.q|0)&&Date.now()-(NET.qT||0)<1500) return; if(aq>(NET.q|0)) NET.q=aq; // aún no ha procesado tu última acción: este estado es anterior
  const me=G.me;
- Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,ITEMS_HARD)});
+ Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,xpHpN:+d.xh||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,ITEMS_HARD)});
  me.mods=Object.assign(defaultMods(),d.md||{}); me.po=Array.isArray(d.po)?d.po.slice(0,8):null;
  me.agSnap=Array.isArray(d.ag)?d.ag.filter(r=>Array.isArray(r)&&AUG_BY[r[0]]).slice(0,30):[];
  me.loot=d.lt&&typeof d.lt==='object'?{gold:+d.lt.gold||0,units:+d.lt.units||0,items:+d.lt.items||0,value:+d.lt.value||0}:null;
@@ -3267,7 +3301,7 @@ function renderShop(){
    $('xpbar').parentElement.style.setProperty('--sep',cut.length?'linear-gradient(90deg,'+cut.map(p=>`transparent calc(${p}% - 1px),rgba(6,8,18,.9) calc(${p}% - 1px) calc(${p}% + 1px),transparent calc(${p}% + 1px)`).join(',')+')':'none'); }
  $('gold').textContent=me.gold;
  $('odds').innerHTML=SHOP_ODDS[me.level].map((o,i)=>`<span style="color:${COST_HEX[i]}" title="Coste ${i+1}">${o}%</span>`).join('');
- $('xpBtn').disabled=(me.gold<xpCost(me)&&!xpByHp(me))||me.level>=10||!me.alive; { const hp=xpByHp(me); $('xpCostTxt').textContent=hp?me.mods.xpHp:xpCost(me); $('xpCoin').classList.toggle('hp',!!hp); $('xpBtn').title=hp?`Comprar 4 de XP por ${me.mods.xpHp} de vida (tecla F)`:`Comprar 4 de XP por ${xpCost(me)} de oro (tecla F)`; }
+ $('xpBtn').disabled=(me.gold<xpCost(me)&&!xpByHp(me))||me.level>=10||!me.alive; { const hp=xpByHp(me); $('xpCostTxt').textContent=hp?xpHpCost(me):xpCost(me); $('xpCoin').classList.toggle('hp',!!hp); $('xpBtn').title=hp?`Comprar 4 de XP por ${xpHpCost(me)} de vida (tecla F; ${XP_HP_MAX-(me.xpHpN|0)} esta ronda)`:`Comprar 4 de XP por ${xpCost(me)} de oro (tecla F)`; }
  { const fr=me.freeRerolls>0; $('rrCostTxt').textContent=fr?`Gratis${me.freeRerolls>1?' ×'+me.freeRerolls:''}`:2; $('rrCoin').style.display=fr?'none':''; }
  $('rerollBtn').disabled=(me.freeRerolls<=0&&me.gold<2)||!me.alive;
  $('lockBtn').textContent=me.locked?'🔒':'🔓'; $('lockBtn').setAttribute('aria-pressed',me.locked);
