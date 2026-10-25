@@ -275,7 +275,8 @@ ready.then(() => server.listen(0, async () => {
     for (let i = 0; i < 6000 && G.carousel === C; i++) { T += 50; E.serverTick(.05); if (G.resolving) await sleep(25); }
     assert.notStrictEqual(G.carousel, C, 'el carrusel termina sin esperar al ausente');
     assert.strictEqual(C.opts.filter(o => o.taken === dos).length, 1, 'el ausente recibe exactamente uno de los sobrantes');
-    assert(C.av[dos.id].carry, 'con su objeto'); assert.strictEqual(unidades(), u0 + 1, 'y ese Pokémon entra en su banquillo o tablero');
+    assert(C.av[dos.id].carry, 'con su objeto'); // (no se cuenta el total: el aumento al azar del ausente puede mover fichas al empezar la ronda, p. ej. la Zona Safari se lleva la última del banquillo)
+    const got = C.opts.find(o => o.taken === dos).key; assert([...Object.values(dos.board), ...dos.bench].some(u => u && u.baseId === got) || dos.augments.includes('safari'), 'y ese Pokémon entra en su banquillo o tablero (' + got + ', ' + u0 + ' → ' + unidades() + ', aumentos: ' + dos.augments.join(',') + ')');
     // vuelve con otra conexión
     assert.strictEqual(E.serverRejoin('x-no-existe', 'z'), false, 'un id desconocido no recupera ningún asiento');
     assert.strictEqual(E.serverRejoin('b', 'b2'), true, 'recupera su asiento'); assert.strictEqual(dos.away, false); assert.strictEqual(dos.remote, true); assert.strictEqual(dos.peer, 'b2'); assert.strictEqual(dos.isBot, false);

@@ -121,7 +121,7 @@ const AG=(o)=>{ AUG_DEFS.push(Object.assign({w:1,tags:[],on:{}},o)); };
 const rnds=(st,k)=>st[k]||0;
 
 // ===== Economía =====
-AG({id:'huevo',tier:'S',cat:'slow',tags:['slow'],name:'Huevo Misterioso',icon:'🥚',desc:'Eclosiona tras 6 rondas: recibes 2 copias de un Pokémon de coste 4 aleatorio y un componente.',
+AG({id:'huevo',tier:'S',cat:'slow',req:ST(2,3),tags:['slow'],name:'Huevo Misterioso',icon:'🥚',desc:'Eclosiona tras 6 rondas: recibes 2 copias de un Pokémon de coste 4 aleatorio y un componente.',
  on:{roundStart:c=>{ c.st.n=(c.st.n||0)+1; if(c.st.n>=6&&c.once('x')){ const k=c.unit(4); if(k) augGrant(c.p,'u:'+k); c.comp(); c.say(`¡eclosiona! ${k?'2 × '+DEF[k].name:'un premio'} y un componente`); } }},ui:c=>c.st.once?'Eclosionado':`Eclosiona en ${6-(c.st.n||0)} rondas`});
 AG({id:'amuleto2',tier:'G',cat:'classic',w:.5,name:'Amuleto Moneda II',icon:'🪙',desc:'+2 de oro al inicio de cada ronda. Recibes 4 de oro.',ex:'amuleto',on:{select:c=>{c.p.mods.income+=2;c.p.gold+=4;}}});
 AG({id:'amuleto3',tier:'P',cat:'classic',w:.5,name:'Amuleto Moneda III',icon:'💰',desc:'+3 de oro al inicio de cada ronda. Recibes 10 de oro.',ex:'amuleto',on:{select:c=>{c.p.mods.income+=3;c.p.gold+=10;}}});
@@ -135,9 +135,9 @@ AG({id:'mercado_negro',tier:'P',cat:'risk',name:'Mercado Negro del Team Rocket',
   roundStart:c=>{ if(c.st.debt>0){ c.st.debt--; c.p.gold=Math.max(0,c.p.gold-2); } }},ui:c=>c.st.debt?`Deuda: ${c.st.debt} rondas`:''});
 
 // ===== Ahorro (slow roll) =====
-AG({id:'ahorro_profesor',tier:'S',cat:'slow',tags:['slow'],name:'Ahorro del Profesor',icon:'🐖',desc:'Cada ronda que empiezas con 30 de oro o más suma 1 punto; con 3 puntos recibes un componente. Bajar de 30 reinicia los puntos.',
+AG({id:'ahorro_profesor',tier:'S',cat:'slow',req:ST(2,3),tags:['slow'],name:'Ahorro del Profesor',icon:'🐖',desc:'Cada ronda que empiezas con 30 de oro o más suma 1 punto; con 3 puntos recibes un componente. Bajar de 30 reinicia los puntos.',
  on:{roundStart:c=>{ const st=c.st; if(c.p.gold>=30){ st.k=(st.k||0)+1; if(st.k>=3){ st.k=0; c.comp(); c.say('un componente por ahorrar'); } } else st.k=0; }},ui:c=>`Puntos: ${c.st.k||0}/3`});
-AG({id:'paciencia_evo',tier:'G',cat:'slow',tags:['slow','evo'],name:'Paciencia Evolutiva',icon:'⏳',desc:'Cada ronda que empiezas con 30 de oro o más eliges una copia de uno de tus Pokémon de coste 1 o 2.',
+AG({id:'paciencia_evo',tier:'G',cat:'slow',req:ST(2,3),tags:['slow','evo'],name:'Paciencia Evolutiva',icon:'⏳',desc:'Cada ronda que empiezas con 30 de oro o más eliges una copia de uno de tus Pokémon de coste 1 o 2.',
  on:{roundStart:c=>{ if(c.p.gold<30) return; const own=[...new Set(allUnits(c.p).filter(u=>u.star<3&&DEF[u.baseId].cost<=2&&!DEF[u.baseId].evoOf).map(u=>u.baseId))]; const opts=shuffle(own).slice(0,3).map(k=>({t:DEF[k].name,i:'🧬',d:'Una copia',v:'u:'+k})); if(opts.length){ c.st.n=(c.st.n||0)+1; c.offer('Paciencia Evolutiva','Elige qué Pokémon copiar',opts); } }},ui:c=>`Copias elegidas: ${c.st.n||0}`});
 AG({id:'investigacion_fin',tier:'G',cat:'slow',tags:['slow'],name:'Investigación Financiada',icon:'🔬',desc:'El oro por encima de 50 al empezar cada ronda da puntos (máx. 5 por ronda). Con 10 puntos: 3 tiendas gratis; con 25: un Pokémon de coste 4 (una vez).',
  on:{roundStart:c=>{ const st=c.st; st.pts=(st.pts||0)+Math.min(5,Math.max(0,c.p.gold-50)); if(st.pts>=10&&!st.a){ st.a=1; c.p.freeRerolls+=3; c.say('3 tiendas gratis'); } if(st.pts>=25&&!st.b){ st.b=1; const k=c.unit(4); c.say(k?DEF[k].name:'nada'); } }},ui:c=>`Puntos: ${c.st.pts||0}/25`});
@@ -146,15 +146,15 @@ AG({id:'reserva_balls',tier:'S',cat:'slow',tags:['slow'],name:'Reserva de Poké 
 
 // ===== Reroll =====
 // Crianza Selectiva: sin topes ni esperas. Cada ronda, una copia del Pokémon barato que más cerca está de subir de estrellas
-AG({id:'crianza',tier:'S',cat:'reroll',tags:['reroll'],name:'Crianza Selectiva',icon:'🥚',desc:'Al empezar cada ronda recibes una copia de uno de tus Pokémon de coste 1 o 2 que aún no sea 3★ (el que más copias tenga).',
+AG({id:'crianza',tier:'S',cat:'reroll',req:ST(2,3),tags:['reroll'],name:'Crianza Selectiva',icon:'🥚',desc:'Al empezar cada ronda recibes una copia de uno de tus Pokémon de coste 1 o 2 que aún no sea 3★ (el que más copias tenga).',
  on:{roundStart:c=>{ const cnt={}; for(const u of allUnits(c.p)){ const d=DEF[u.baseId]; if(u.star<3&&d.cost<=2&&!d.evoOf) cnt[u.baseId]=(cnt[u.baseId]||0)+Math.pow(3,u.star-1); }
    const k=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]; if(!k) return; if(G.pool&&G.pool[k]>0) G.pool[k]--; giveUnitTo(c.p,k); c.st.n=(c.st.n||0)+1; c.say(`copia de ${DEF[k].name}`); }},ui:c=>`Copias: ${c.st.n||0}`});
-AG({id:'profesor_pokemon',tier:'G',cat:'reroll',tags:['reroll','evo'],name:'Profesor Pokémon',icon:'👨‍🔬',desc:'Cada vez que un Pokémon de coste 1 o 2 sube a 2★, recibes 2 de oro y tu equipo gana +2% de velocidad de ataque permanente (máx. 10).',
+AG({id:'profesor_pokemon',tier:'G',cat:'reroll',req:ST(2,3),tags:['reroll','evo'],name:'Profesor Pokémon',icon:'👨‍🔬',desc:'Cada vez que un Pokémon de coste 1 o 2 sube a 2★, recibes 2 de oro y tu equipo gana +2% de velocidad de ataque permanente (máx. 10).',
  on:{starUp:c=>{ if(DEF[c.d.key].cost<=2&&c.d.star===2){ c.p.gold+=2; c.st.n=Math.min(10,(c.st.n||0)+1); c.say(`+2 de oro y velocidad (${c.st.n}/10)`); } }},
  combat:(us,n)=>{ for(const u of us) boost(u,{as:.02*n}); },snap:c=>c.st.n||null,ui:c=>`Acumulado: +${2*(c.st.n||0)}% vel. de ataque`});
-AG({id:'evolucion_temprana',tier:'G',cat:'reroll',tags:['reroll','evo'],ex:'copias',name:'Evolución Temprana',icon:'🌱',desc:'Tus Pokémon de coste 1 suben de estrellas con 2 copias en vez de 3.',
+AG({id:'evolucion_temprana',tier:'G',cat:'reroll',req:ST(2,3),tags:['reroll','evo'],ex:'copias',name:'Evolución Temprana',icon:'🌱',desc:'Tus Pokémon de coste 1 suben de estrellas con 2 copias en vez de 3.',
  on:{select:c=>{ c.p.mods.cheapCombine=1; }}});
-AG({id:'investigacion_campo',tier:'S',cat:'reroll',tags:['reroll'],name:'Investigación de Campo',icon:'📋',desc:'Cada refresco en el que no sale ninguno de tus Pokémon suma 1 punto. Con 8 puntos eliges un Pokémon de coste 1-2 y vuelves a empezar.',
+AG({id:'investigacion_campo',tier:'S',cat:'reroll',req:ST(2,3),tags:['reroll'],name:'Investigación de Campo',icon:'📋',desc:'Cada refresco en el que no sale ninguno de tus Pokémon suma 1 punto. Con 8 puntos eliges un Pokémon de coste 1-2 y vuelves a empezar.',
  on:{reroll:c=>{ const own=ownedSpecies(c.p); if(c.p.shop.some(k=>k&&own.has(k))) return; c.st.k=(c.st.k||0)+1; if(c.st.k>=8){ c.st.k=0; c.offer('Investigación de Campo','Elige un Pokémon',unitOptions(c.p,u=>u.cost<=2)); } }},ui:c=>`Puntos: ${c.st.k||0}/8`});
 AG({id:'especialista',tier:'G',cat:'reroll',tags:['reroll','carry'],name:'Especialista de Una Sola Especie',icon:'🎯',desc:'Elige una especie de tu equipo. Al llegar a 2★: 3 de oro. Al llegar a 3★: un emblema de su sinergia principal y +40% de vida y daño en combate.',
  req:p=>allUnits(p).length>0,
@@ -327,11 +327,11 @@ AG({id:'llamada_clan',tier:'G',cat:'trait',tags:['trait','reroll'],req:p=>!!(G.r
  ui:c=>c.st.t?`Clan: ${c.st.t}`:'Sin elegir'});
 // Zona Safari (como Expedición): cada ronda el último Pokémon de tu banquillo se va de expedición; con 33 de oro enviados vuelven con un gran premio
 const pokeValue=u=>DEF[u.defId].cost*Math.pow(3,u.star-1);
-AG({id:'safari',tier:'G',cat:'slow',tags:['slow'],name:'Zona Safari',icon:'🧭',desc:'Al empezar cada ronda, el Pokémon del último hueco ocupado de tu banquillo se va de expedición al Safari. Cuando hayas enviado Pokémon por valor de 33 de oro, vuelven con: 15 de oro, 2 Pokémon de coste 5, un componente a elegir y un emblema a elegir.',
+AG({id:'safari',tier:'G',cat:'slow',tags:['slow'],req:ST(2),name:'Zona Safari',icon:'🧭',desc:'Al empezar cada ronda, el Pokémon del último hueco ocupado de tu banquillo se va de expedición al Safari. Cuando hayas enviado Pokémon por valor de 33 de oro, vuelven con: 20 de oro, 2 Pokémon de coste 5 a 2★, un objeto completo a elegir y un emblema a elegir.',
  on:{roundStart:c=>{ const st=c.st; if(st.done) return; const b=c.p.bench; let i=b.length-1; while(i>=0&&!b[i]) i--; if(i<0) return;
    const u=b[i]; b[i]=null; st.sent=(st.sent||0)+pokeValue(u); returnToPool(u.baseId,Math.pow(3,u.star-1)); for(const it of u.items) giveItem(c.p,it); c.say(`${nameOf(DEF[u.defId],u.star)} se va al Safari (${st.sent}/33)`);
-   if(st.sent>=33){ st.done=1; c.p.gold+=15; augGrant(c.p,'uc:5'); augGrant(c.p,'uc:5'); c.offer('Zona Safari','Elige un componente',shuffle(BASIC.filter(k=>k!=='medal')).slice(0,3).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k})));
-     c.offer('Zona Safari','Elige un emblema',emblemOpts([...ELEM_TRAITS,...CLASS_TRAITS],c.p)); revealTo(c.p,'🧭','Zona Safari','¡Vuelve la expedición!','15 de oro, 2 Pokémon de coste 5, un componente y un emblema a elegir.','bueno'); } }},
+   if(st.sent>=33){ st.done=1; c.p.gold+=20; for(let i=0;i<2;i++){ const k=drawUnitOfCost(5,threeStarSet(c.p)); if(k) giveStar(c.p,k,2,true); } c.offer('Zona Safari','Elige un objeto completo',shuffle(FULL_KEYS.slice()).slice(0,4).map(k=>({t:ITEMS[k].name,i:ITEMS[k].icon,d:ITEMS[k].desc,v:'it:'+k})));
+     c.offer('Zona Safari','Elige un emblema',emblemOpts([...ELEM_TRAITS,...CLASS_TRAITS],c.p)); revealTo(c.p,'🧭','Zona Safari','¡Vuelve la expedición!','20 de oro, 2 Pokémon de coste 5 a 2★, un objeto completo y un emblema a elegir.','bueno'); } }},
  ui:c=>c.st.done?'Expedición completada':`Enviado: ${c.st.sent||0}/33 de oro`});
 // Cimientos de Vanguardia: un Pokémon de primera línea de coste 1 a 2★ y el emblema de su clase
 AG({id:'vanguardia',tier:'S',cat:'carry',tags:['Guardián','Coloso'],name:'Cimientos de Vanguardia',icon:'🛡️',desc:'Recibes un Pokémon de primera línea de coste 1 a 2★ y un emblema de su clase.',
@@ -339,7 +339,7 @@ AG({id:'vanguardia',tier:'S',cat:'carry',tags:['Guardián','Coloso'],name:'Cimie
    const t=u.traits.find(x=>CLASS_TRAITS.includes(x)); c.item('emb_'+t); c.say(`${nameOf(u,2)} ★★ y emblema ${t}`); }}});
 
 // ===== Clásicos (estadísticas y recursos directos) =====
-AG({id:'pacto_cruel',tier:'S',cat:'fast',tags:['fast'],name:'Pacto Cruel',icon:'🩸',desc:'Comprar EXP te cuesta 2 de vida en lugar de oro mientras tengas más de 20 de vida.',on:{select:c=>{ c.p.mods.xpHp=2; }}});
+AG({id:'pacto_cruel',tier:'S',cat:'fast',tags:['fast'],name:'Pacto Cruel',icon:'🩸',desc:'Comprar EXP te cuesta vida en lugar de oro mientras tengas más de 20: 2 de vida hasta nivel 5 y 1 más por cada nivel desde ahí (3 a nivel 6, 4 a nivel 7…). Como mucho 8 compras así por ronda.',on:{select:c=>{ c.p.mods.xpHp=2; }}});
 AG({id:'pandora',tier:'S',cat:'risk',name:'Objetos de Pandora',icon:'📦',desc:'Recibes 1 componente. Al empezar cada ronda, los objetos de tu inventario cambian al azar por otros de su tipo: componentes por componentes, completos por completos, insignias por otras insignias y emblemas por otros emblemas (p. ej. el Emblema Acero puede volverse Emblema Agua).',
  on:{select:c=>c.comp(),roundStart:c=>{ c.p.items=c.p.items.map(pandoraCambio); }}});
 // Objetos de Pandora: cada objeto cambia por otro de su familia; insignias y emblemas siempre por uno distinto
@@ -439,7 +439,7 @@ AG({id:'entreno_combate',tier:'S',cat:'carry',tags:['carry'],req:p=>boardUnits(p
 
 
 // ===== Inspirados en TFT (Set 18). Fase en la que salen: ST(2)=2-1, ST(3)=3-2, ST(4)=4-2 =====
-const ST=(...s)=>()=>!!(G&&G.round)&&s.includes(Math.min(4,Math.max(2,G.round.s)));
+function ST(...s){ return ()=>!!(G&&G.round)&&s.includes(Math.min(4,Math.max(2,G.round.s))); } // función (no const): la usan también aumentos definidos más arriba
 const randKey=(cost,f)=>{ const l=UNIT_LIST.filter(u=>u.cost===cost&&(!f||f(u))&&(!G.pool||G.pool[u.key]>0)); return l.length?pick(l).key:null; };
 const giveCopy=(p,k)=>{ if(!k) return ''; if(G.pool&&G.pool[k]>0) G.pool[k]--; giveUnitTo(p,k); return DEF[k].name; };
 const randEmblem=c=>{ const t=pick([...ELEM_TRAITS,...CLASS_TRAITS].filter(x=>ITEMS['emb_'+x])); c.item('emb_'+t); return t; };
@@ -747,7 +747,9 @@ function augWeight(p,a){
  let w=a.w; const c=traitCounts(p);
  for(const t of a.tags){ if(TRAITS[t]&&c[t]) w*=1.35; }
  if(a.tags.includes('win')&&p.streak>=2) w*=1.25; if(a.tags.includes('lose')&&p.streak<=-2) w*=1.25;
- if(a.tags.includes('fast')&&p.gold>=30) w*=1.15; if(a.tags.includes('reroll')&&allUnits(p).some(u=>u.star===2&&DEF[u.defId].cost<=2)) w*=1.2;
+ if(a.tags.includes('fast')&&p.gold>=30) w*=1.15;
+ // Economía, reroll de costes 1-2, misiones y planes a largo plazo salen más en 2-1 (es cuando rinden) y los planes lentos, menos en 4-2
+ const s=G&&G.round?G.round.s:0; if(s<=2&&['econ','reroll','slow','quest'].includes(a.cat)) w*=1.6; if(s>=4&&a.cat==='slow') w*=.5; if(a.tags.includes('reroll')&&allUnits(p).some(u=>u.star===2&&DEF[u.defId].cost<=2)) w*=1.2;
  return w;
 }
 function augmentChoices(p,tier,n=3){

@@ -20,7 +20,7 @@ var I18N = (function () {
     if (!pats) compilePats();
     for (var i = 0; i < pats.length; i++) { var m = pats[i][0].exec(s); if (m) { var caps = m.slice(1), args = C.EN[pats[i][1]]; return args.replace(/\{(\d+)\}/g, function (_, j) { var c = caps[+j]; return c != null ? (lookup(c) || c) : ''; }); } }
     // Textos compuestos (descripciones de habilidades y aumentos): se traducen por partes (« · » y frases) si el conjunto no está
-    var parts = s.indexOf(' · ') >= 0 ? s.split(' · ') : s.split(/(?<=[.!?])s+(?=[A-ZÁÉÍÓÚÑ¡¿★])/); // frases: solo ante mayúscula (no corta «vel. de ataque» ni «máx. 3»)
+    var parts = s.indexOf(' · ') >= 0 ? s.split(' · ') : s.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¡¿★])/); // frases: solo ante mayúscula (no corta «vel. de ataque» ni «máx. 3»)
     if (parts.length > 1) { var got = false, res = parts.map(function (p) { var r = lookup(p); if (r != null) got = true; return r == null ? p : r; }); if (got) return res.join(s.indexOf(' · ') >= 0 ? ' · ' : ' '); }
     return null;
   }
