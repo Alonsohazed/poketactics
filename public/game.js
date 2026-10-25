@@ -2933,7 +2933,8 @@ function drawHud(a){
    ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
    const st='★'.repeat(o.star); ctx.strokeText(st,hx,hy-2); ctx.fillText(st,hx,hy-2);
-   if(o.shiny){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), fz=Math.max(9,R*.32), s=fz*.9, w=ctx.measureText(st).width; if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=2; ctx.drawImage(im.img,hx+w/2+fz*.12,hy-2-fz*.5-s/2,s,s); ctx.restore(); } } // con la misma sombra oscura que el contorno de las estrellas // marca de variocolor (destellos dorados) junto a las estrellas
+   if(o.shiny){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), m=ctx.measureText(st), fz=Math.max(9,R*.32), up=m.actualBoundingBoxAscent||fz*.8, dn=m.actualBoundingBoxDescent||0, s=(up+dn)*1.3, cy=hy-2+(dn-up)/2; // el destello grande (≈ 77 % del icono) del alto real de la estrella y centrado con ella (su centro está al 53 % del alto del icono)
+     if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=2; ctx.drawImage(im.img,hx+m.width/2+fz*.05,cy-s*.53,s,s); ctx.restore(); } } // con la misma sombra oscura que el contorno de las estrellas // marca de variocolor (destellos dorados) junto a las estrellas
  }
  if(o.items&&o.items.length){ const sz=isz, iy=itemsY+sz/2; o.items.forEach((it,i)=>{ const ix=hx+(i-(o.items.length-1)/2)*slot; drawItemBadge(it,ix,iy,sz,o.cnt&&o.cnt[it]); hudItems.push({k:it,x:ix,y:iy,s:sz}); }); }
  ctx.restore();
