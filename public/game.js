@@ -2931,8 +2931,8 @@ function drawHud(a){
    if(hasM){ const full=o.mana>=o.maxMana*.9; ctx.fillStyle='#1b2a48'; ctx.fillRect(bx,by+hh+1,w,mh); ctx.fillStyle=full?`hsl(205,100%,${70+15*Math.sin(performance.now()/90)}%)`:'#4aa3ff'; ctx.fillRect(bx,by+hh+1,w*clamp(o.mana/o.maxMana,0,1),mh); }
    hy=by;
  } else if(isz) hy=itemsY;
- // Variocolor: los destellos dorados a la izquierda de la barra de vida, centrados con ella (también en combate)
- if(o.shiny&&barBox){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), sz=Math.max(13,barBox[2]*1.9); if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=2; ctx.drawImage(im.img,barBox[0]-sz-2,barBox[1]+barBox[2]/2-sz*.53,sz,sz); ctx.restore(); } }
+ // Variocolor: los destellos dorados a la izquierda de la barra, del alto de las barras de vida y maná juntas y centrados con ellas; solo en la planificación (en combate no)
+ if(o.shiny&&barBox&&!a.cu&&(G.phase==='planning'||G.phase==='augment')){ const im=loadImg('ui:variocolor-oro','img/ui/variocolor-oro.webp'), sz=barBox[2]; if(im.status==='ok'){ ctx.save(); ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=1.5; ctx.drawImage(im.img,barBox[0]-sz-2,barBox[1],sz,sz); ctx.restore(); } }
  if(!o.creep&&o.star&&!a.cu&&(G.phase==='planning'||G.phase==='augment')){
    ctx.font=`900 ${Math.max(9,R*.32)}px Nunito,system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
    ctx.fillStyle=o.star===3?'#ffcf33':o.star===2?'#d6dde8':'#cd8f52'; ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=3;
@@ -3026,7 +3026,7 @@ function sceneActors(){
      const tg=u.target&&!u.target.dead?u.target:null, inR=!!tg&&!u.dead&&!(u.stun>0)&&dU(u,tg)<=u.range, sp=G.speed||1;
      A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),charge:u.maxMana<9999?u.mana/u.maxMana:0,ranged:u.range>1,dex:u.creep?creepDex(u.d):shinyDex(u,dexOf(u.d,u.star)),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
        alpha:u.stealth>0?.35:1,scale:unitScale(u.d,u.star,{boss:u.maxMana===120&&u.creep})*(u.d.big||1),ring:u.creep?'#8a8a8a':mine?'#3fd27a':'#ff5a5f',sel:u===selCombat,
-       hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,shiny:!!u.shiny&&!u.creep,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
+       hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
  } else if(inCar){
    const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=carV(...optPos(C,i)); A.push({key:'co'+i+':'+o.key,opt:i,hold:.5,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],halo:COST_HEX[DEF[o.key].cost-1],sel:selCar===i,scale:1,hud:{items:[o.item]}}); });
