@@ -122,7 +122,7 @@ Object.assign(I18N.EN, {
   'Medalla Arcoíris. El portador gana la sinergia Hada.': 'Rainbow Medal. The holder gains the Fairy trait.',
   'Medalla Cascada. El portador gana la sinergia Agua.': 'Cascade Medal. The holder gains the Water trait.',
   'Medalla Dragón. El portador gana la sinergia Dragón.': 'Dragon Medal. The holder gains the Dragon trait.',
-  'Medalla Pantano. El portador gana la sinergia Hechicero.': 'Marsh Medal. The holder gains the Sorcerer trait.',
+  'Medalla Volcán. El portador gana la sinergia Hechicero.': 'Volcano Medal. The holder gains the Sorcerer trait.',
   'Medalla Pluma. El portador gana la sinergia Tirador.': 'Feather Medal. The holder gains the Marksman trait.',
   'Medalla Puño. El portador gana la sinergia Coloso.': 'Fist Medal. The holder gains the Colossus trait.',
   'Medalla Roca. El portador gana la sinergia Guardián.': 'Rock Medal. The holder gains the Guardian trait.',

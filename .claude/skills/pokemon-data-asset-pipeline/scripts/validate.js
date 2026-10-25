@@ -59,7 +59,7 @@ async function checkUrls() {
   const urls = new Map();
   for (const d of [...E.UNIT_LIST, ...X.EVOS]) for (const n of d.dex) urls.set(X.SPRITE(n), `sprite de ${d.key} (#${n})`);
   if (X.ITEM_ART) for (const [k, n] of Object.entries(X.ITEM_ART)) urls.set(X.ITEM_SPRITE(n), `objeto ${k}`);
-  if (X.BADGE_SPRITE) for (const [c, [n]] of Object.entries(X.BADGE_OF)) urls.set(X.BADGE_SPRITE(n), `medalla de insignia ${c}`);
+  if (X.BADGE_SPRITE) for (const [c, [n]] of Object.entries(X.BADGE_OF)) { const p = X.BADGE_SPRITE(n); if (/^https?:/.test(p)) urls.set(p, `medalla de insignia ${c}`); else if (!fs.existsSync(path.join(__dirname, '..', '..', '..', '..', 'public', p))) errors.push(`medalla de insignia ${c}: falta public/${p}`); }
   for (const t of E.TRAINERS) urls.set(X.TRAINER_SPRITE(t.key), `entrenador ${t.key}`);
   if (X.GEN3) for (const n of [278, 380, 381]) urls.set(X.GEN3(n), `sprite del menú #${n}`);
   const list = [...urls], out = [];
