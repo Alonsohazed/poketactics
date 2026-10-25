@@ -504,7 +504,7 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   const b = G.players.find(q => q.isBot); b.picks = []; run('openAnvil')(b, 'c'); ok(!b.picks.length && b.items.length >= 1, 'los rivales generados eligen solos'); }
 // Variocolor: solo al comprar (SHINY_P), hereda al fusionar (1★→2★→3★), viaja en packInst/teamSnap/pub y no cambia estadísticas ni pool
 { const run = s => vm.runInContext(s, ctx); ctx.__rnd = run('Math.random');
-  { const { G, p } = fresh(); G.phase = 'planning'; G.roundIdx = 3; G.round = E.ROUNDS[3]; p.gold = 99; p.bench = p.bench.map(() => null); p.shop = ['charmander', 'charmander', 'charmander', 'squirtle', 'squirtle'];
+  { const { G, p } = fresh(); G.phase = 'planning'; G.roundIdx = 3; G.round = E.ROUNDS[3]; p.gold = 99; p.board = {}; p.bench = p.bench.map(() => null); p.shop = ['charmander', 'charmander', 'charmander', 'squirtle', 'squirtle'];
     run('Math.random=()=>0.001'); ok(E.applyAct(p, { t: 'buy', i: 0 }).ok && p.bench[0] && p.bench[0].shiny === true, 'compra con azar bajo: variocolor');
     run('Math.random=()=>0.9'); ok(E.applyAct(p, { t: 'buy', i: 1 }).ok && !p.bench[1].shiny && E.applyAct(p, { t: 'buy', i: 2 }).ok, 'compra con azar alto: normal');
     run('combine')(p); const u2 = p.bench.find(Boolean); ok(u2 && u2.star === 2 && u2.shiny === true && p.bench.filter(Boolean).length === 1, 'tres Charmander con uno variocolor → Charmeleon 2★ variocolor');
@@ -517,7 +517,7 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
     run('Math.random=__rnd'); }
   { const { G, p } = fresh(); G.phase = 'planning'; G.roundIdx = 3; G.round = E.ROUNDS[3]; let sh = 0, n = 0; for (let i = 0; i < 4000; i++) { p.gold = 99; p.bench = p.bench.map(() => null); p.shop = ['charmander', null, null, null, null]; if (E.applyAct(p, { t: 'buy', i: 0 }).ok) { n++; if (p.bench[0].shiny) sh++; } }
     ok(n === 4000 && sh > 20 && sh < 90, 'probabilidad ≈ 1/80 (' + sh + ' de 4000)'); }
-  { const { p } = fresh(); const a = run(`makeInst('rattata')`), b = run(`makeInst('rattata')`), c = run(`makeInst('rattata')`); b.shiny = true; p.bench = p.bench.map(() => null); p.bench[0] = a; p.bench[1] = b; p.bench[2] = c; run('combine')(p); ok(p.bench.find(Boolean).shiny === true, 'el variocolor hereda aunque no sea la copia que se queda'); } }
+  { const { p } = fresh(); const a = run(`makeInst('rattata')`), b = run(`makeInst('rattata')`), c = run(`makeInst('rattata')`); b.shiny = true; p.board = {}; p.bench = p.bench.map(() => null); p.bench[0] = a; p.bench[1] = b; p.bench[2] = c; run('combine')(p); ok(p.bench.find(Boolean).shiny === true, 'el variocolor hereda aunque no sea la copia que se queda'); } }
 // Rendirse: rechazado antes de 3-1 y en el carrusel; desde 3-1 elimina (último puesto entre los vivos, equipo al pool) y la partida sigue para los demás
 { const { G, p } = fresh(); const run = s => vm.runInContext(s, ctx); G.phase = 'planning'; G.roundIdx = 5; G.round = E.ROUNDS[5];
   ok(G.round.s === 2 && !E.applyAct(p, { t: 'surrender' }).ok && p.alive, 'rendirse: antes de la fase 3-1 se rechaza');
