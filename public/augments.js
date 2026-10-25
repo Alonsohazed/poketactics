@@ -26,7 +26,7 @@ function augState(p,id){ p.augSt=p.augSt||{}; return p.augSt[id]||(p.augSt[id]={
 // Contexto que reciben los efectos: el jugador, el estado del aumento, los datos del evento y ayudas
 function augCtx(p,def,d){
  const st=augState(p,def.id);
- const say=msg=>{ (p.augLog=p.augLog||[]).unshift(`${def.name}: ${msg}`); p.augLog.length=Math.min(p.augLog.length,30); note(p,`${def.icon} ${def.name}: ${msg}`,true); };
+ const say=msg=>{ (p.augLog=p.augLog||[]).unshift(`${def.name}: ${msg}`); p.augLog.length=Math.min(p.augLog.length,30); note(p,`${def.icon} ${def.name}: ${msg}`,false); };
  return {p,st,d:d||{},def,say,
    gold:(n,cap)=>{ if(cap!=null){ st.goldMade=st.goldMade||0; n=Math.max(0,Math.min(n,cap-st.goldMade)); st.goldMade+=n; } if(n>0) p.gold+=n; return n; },
    xp:n=>addXp(p,n), item:k=>giveItem(p,k), comp:()=>giveItem(p,pick(BASIC)), full:()=>giveItem(p,pick(FULL_KEYS)),
@@ -89,7 +89,7 @@ function resolvePick(p,id,i){
  p.picks.splice(k,1);
  const def=AUG_BY[pk.src]||AUG_EVENTS[pk.src];
  if(def&&def.on&&def.on.pick){ AUG_DEPTH++; try{ def.on.pick(augCtx(p,def,{v:o.v,pick:pk})); } finally{ AUG_DEPTH--; } }
- else { const got=augGrant(p,o.v); if(got) note(p,`${pk.title}: ${got}`,true); }
+ else { const got=augGrant(p,o.v); if(got) note(p,`${pk.title}: ${got}`,false); }
  return {ok:true};
 }
 // Las elecciones sin responder se resuelven solas (primera opción) al empezar el combate
@@ -733,7 +733,7 @@ const AUG_EVENTS={
 // Huevo de Oro del Caos: eclosiona a las 3 rondas
 function chaosTick(p,evt){
  if(evt!=='roundStart'||!augOwned(p,'llamada_caos')) return; const st=augState(p,'llamada_caos');
- if(st.egg>0&&--st.egg===0){ const a=augGrant(p,'uc:5'), b=augGrant(p,'uc:5'); p.gold+=15; note(p,'🌪️ ¡Eclosiona el Huevo de Oro!',true); revealTo(p,'🥚','Huevo de Oro','¡Eclosiona!',`${a}, ${b} y 15 de oro.`,'bueno'); }
+ if(st.egg>0&&--st.egg===0){ const a=augGrant(p,'uc:5'), b=augGrant(p,'uc:5'); p.gold+=15; note(p,'🌪️ ¡Eclosiona el Huevo de Oro!',false); revealTo(p,'🥚','Huevo de Oro','¡Eclosiona!',`${a}, ${b} y 15 de oro.`,'bueno'); }
 }
 
 /* ---------- registro, ofertas y selección ---------- */

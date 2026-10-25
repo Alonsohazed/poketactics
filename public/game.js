@@ -29,7 +29,7 @@ const XP_NEED={1:2,2:2,3:6,4:10,5:20,6:36,7:56,8:68,9:68};
 const BASE_INCOME=[0,2,3,4], PASSIVE_XP=[0,2,2]; // 1-2: nivel 2; 1-3: nivel 3 (tres fichas); después +2 por ronda
 const STAGE_DMG={1:1,2:2,3:4,4:6,5:9,6:11,7:15,8:18,9:22};
 const COST_HEX=['#7d8593','#23964a','#2f6fde','#9446cf','#d99a00'];
-const BENCH=9, MAX_ITEMS_BENCH=10, ITEMS_HARD=16;
+const BENCH=9, MAX_ITEMS_BENCH=10, MAX_ITEMS=20; // 10 huecos por banca de objetos; con más de 10 se abre una segunda banca al lado (hasta 20 en las acciones que mueven objetos); giveItem nunca pierde ni convierte un objeto
 
 const T=(icon,color,bp,scope,sum,lv)=>({icon,color,bp,scope,sum,lv});
 const TRAITS={
@@ -132,8 +132,8 @@ const UNIT_LIST=[
  U('growlithe',['Growlithe','Arcanine'],[58,59],2,'b',['Fuego','Peleador','Depredadores'],[['dash','Colmillo Ígneo',{m:.95,to:'target',burn:.03}],['dash','Velocidad Extrema',{m:1.05,to:'low',r:1,burn:.03}]]),
  // Slowpoke: mago tanque (casilla y stats de tanque, habilidad que escala con poder) para los Hechiceros
  U('slowpoke',['Slowpoke','Slowbro'],[79,80],2,'t',['Agua','Psíquico','Hechicero'],[['harden','Amnesia',{df:30,heal:.8}],['meteor','Paz Mental',{m:.6,r:1,sh:.2}]],{scale:'ap'}),
- U('nidoranf',['Nidoran♀','Nidorina','Nidoqueen'],[29,30,31],2,'t',['Roca','Guardián','Potencial Evolutivo'],[['knock','Doble Patada',{m:1,k:1}],['slam','Golpe Cuerpo',{r:1,m:.9,stun:1}],['zone','Tierra Viva',{r:1,m:1.4,dur:3,self:1,root:.8,v:'sand'}]]),
  U('nidoranm',['Nidoran♂','Nidorino','Nidoking'],[32,33,34],2,'b',['Roca','Peleador','Potencial Evolutivo'],[['combo','Doble Patada',{n:2,m:.7}],['dash','Cornada',{m:1.5,to:'target',stun:.5}],['cone','Megacuerno',{m:1.45,len:2}]]),
+ U('nidoranf',['Nidoran♀','Nidorina','Nidoqueen'],[29,30,31],2,'t',['Roca','Guardián','Potencial Evolutivo'],[['knock','Doble Patada',{m:1,k:1}],['slam','Golpe Cuerpo',{r:1,m:.9,stun:1}],['zone','Tierra Viva',{r:1,m:1.4,dur:3,self:1,root:.8,v:'sand'}]]),
  U('chikorita',['Chikorita','Bayleef','Meganium'],[152,153,154],2,'t',['Planta','Sanador'],[['heal','Síntesis',{n:2,m:.9}],['teamShield','Pantalla de Luz',{m:.5,heal:.2}],['zone','Aromaterapia',{r:2,m:1.4,dur:4,ally:1}]]),
  U('magnemite',['Magnemite','Magneton','Magnezone'],[81,82,462],2,'r',['Eléctrico','Acero','Tirador'],[['bolt','Onda Voltio',{selfAs:0.08,m:1.1,stun:.5}],['chain','Bomba Imán',{selfAs:0.08,n:3,m:.6}],['line','Cañón Destello',{selfAs:0.2,m:1.6,shred:.3}]]),
  U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Acero','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
@@ -172,7 +172,8 @@ const UNIT_LIST=[
  U('staryu',['Staryu','Starmie'],[120,121],4,'r',['Agua','Psíquico','Tirador'],[['chain','Rapidez',{n:3,m:.7,selfAs:.1}],['line','Psicorrayo',{m:1.4,aim:1,w:.65,selfAs:.15}]]),
  U('lapras',['Lapras'],[131],4,'t',['Agua','Sanador'],[['wave','Surf',{m:.6,w:1.6,stun:.4,healTeam:.25}]]),
  U('zorua',['Zorua','Zoroark'],[570,571],4,'a',['Siniestro','Asesino','Team Rocket'],[['dash','Finta',{m:1.05,to:'low',stealth:1}],['dash','Juego Sucio',{m:1.25,to:'low',stealth:2,r:1}]]),
- U('timburr',['Timburr','Gurdurr','Conkeldurr'],[532,533,534],4,'b',['Lucha','Peleador'],[['empower','Ultrapuño',{n:3,m:.6}],['nova','Martillazo',{r:1,m:1.6,stun:1.2}],['combo','Ultrapuño',{n:5,m:.6,stun:1.2,spill:1}]]),
+ // Cubone/Marowak: el coste 4 de Lucha (antes Timburr): golpe en área y combo de huesos que salta al siguiente si el objetivo cae
+ U('cubone',['Cubone','Marowak'],[104,105],4,'b',['Lucha','Peleador'],[['nova','Golpe Óseo',{r:1,m:1.6,stun:1.2}],['combo','Huesomerang',{n:5,m:.6,stun:1.2,spill:1}]]),
  U('hatenna',['Hatenna','Hattrem','Hatterene'],[856,857,858],4,'m',['Psíquico','Hada','Hechicero'],[['bolt','Confusión',{m:1.4}],['blast','Brillo Mágico',{r:1,m:1}],['meteor','Velo Mental',{m:.7,stun:.5,mana0:40}]]),
  U('litwick',['Litwick','Lampent','Chandelure'],[607,608,609],4,'m',['Fuego','Fantasma','Hechicero'],[['drain','Infortunio',{m:1.1,h:.6}],['burn','Fuego Fatuo',{m:1,r:1}],['zone','Infierno',{r:2,m:2,dur:3,burn:.03}]]),
  U('rowlet',['Rowlet','Dartrix','Decidueye'],[722,723,724],4,'r',['Planta','Fantasma','Tirador'],[['multi','Hoja Afilada',{selfAs:0.1,n:3,m:.6}],['multi','Hoja Aguda',{selfAs:0.15,n:4,m:.6}],['line','Puntada Sombría',{selfAs:0.25,m:1.5,shred:.4,mana0:10}]]),
@@ -239,58 +240,58 @@ const TRAINER_BY={}; for(const t of TRAINERS) TRAINER_BY[t.key]=t;
 // Minileyendas: el Pokémon que te representa en el tablero (evoluciona al llegar a nivel 6)
 // Etapas: base · nivel 6 · nivel 8 (sin Megaevoluciones). Eevee no tiene línea fija: al llegar a 6 y a 8 eliges su evolución (pick: opciones de cada subida)
 const TACS={charmander:{name:'Charmander',evo:'Charmeleon y Charizard',dex:[4,5,6]},bulbasaur:{name:'Bulbasaur',evo:'Ivysaur y Venusaur',dex:[1,2,3]},squirtle:{name:'Squirtle',evo:'Wartortle y Blastoise',dex:[7,8,9]},
- dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149]},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65]},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154]},
+ dratini:{name:'Dratini',evo:'Dragonair y Dragonite',dex:[147,148,149],locked:true},pichu:{name:'Pichu',evo:'Pikachu y Raichu',dex:[172,25,26]},abra:{name:'Abra',evo:'Kadabra y Alakazam',dex:[63,64,65],locked:true},chikorita:{name:'Chikorita',evo:'Bayleef y Meganium',dex:[152,153,154],locked:true},
  eevee:{name:'Eevee',evo:'la evolución que elijas en los niveles 6 y 8',dex:[133,134,196],locked:true,pick:[['flareon','jolteon','vaporeon'],['espeon','umbreon','leafeon','sylveon']]},
  // Mew (mítica del gacha): no evoluciona; al ganar un combate copia la minileyenda del rival (mimic: ver mewWin, tecla 1 y 2)
  mew:{name:'Mew',evo:'copia la minileyenda de quien derrotas',dex:[151,151,151],locked:true,mimic:true},
  // Líneas de 1.ª gen (todas con modelo animado oficial): dex por etapa (niveles 1, 6 y 8; las de 2 formas repiten la 2.ª y las de 1, la única).
- // tier: c y p gratis; r, e y l solo del gacha (locked, premios 'tac:<clave>' de su rareza en cosmetics.js)
- caterpie:{name:"Caterpie",evo:"Metapod y Butterfree",dex:[10,11,12],tier:'c'},
- weedle:{name:"Weedle",evo:"Kakuna y Beedrill",dex:[13,14,15],tier:'c'},
- pidgey:{name:"Pidgey",evo:"Pidgeotto y Pidgeot",dex:[16,17,18],tier:'c'},
- rattata:{name:"Rattata",evo:"Raticate",dex:[19,20,20],tier:'c'},
- spearow:{name:"Spearow",evo:"Fearow",dex:[21,22,22],tier:'c'},
- ekans:{name:"Ekans",evo:"Arbok",dex:[23,24,24],tier:'c'},
- sandshrew:{name:"Sandshrew",evo:"Sandslash",dex:[27,28,28],tier:'c'},
- nidoranf:{name:"Nidoran♀",evo:"Nidorina y Nidoqueen",dex:[29,30,31],tier:'c'},
- nidoranm:{name:"Nidoran♂",evo:"Nidorino y Nidoking",dex:[32,33,34],tier:'c'},
- zubat:{name:"Zubat",evo:"Golbat",dex:[41,42,42],tier:'c'},
- oddish:{name:"Oddish",evo:"Gloom y Vileplume",dex:[43,44,45],tier:'c'},
- paras:{name:"Paras",evo:"Parasect",dex:[46,47,47],tier:'c'},
- venonat:{name:"Venonat",evo:"Venomoth",dex:[48,49,49],tier:'c'},
- diglett:{name:"Diglett",evo:"Dugtrio",dex:[50,51,51],tier:'c'},
- meowth:{name:"Meowth",evo:"Persian",dex:[52,53,53],tier:'c'},
- psyduck:{name:"Psyduck",evo:"Golduck",dex:[54,55,55],tier:'c'},
- mankey:{name:"Mankey",evo:"Primeape",dex:[56,57,57],tier:'c'},
- poliwag:{name:"Poliwag",evo:"Poliwhirl y Poliwrath",dex:[60,61,62],tier:'c'},
- bellsprout:{name:"Bellsprout",evo:"Weepinbell y Victreebel",dex:[69,70,71],tier:'c'},
- tentacool:{name:"Tentacool",evo:"Tentacruel",dex:[72,73,73],tier:'c'},
- geodude:{name:"Geodude",evo:"Graveler y Golem",dex:[74,75,76],tier:'c'},
- doduo:{name:"Doduo",evo:"Dodrio",dex:[84,85,85],tier:'c'},
- seel:{name:"Seel",evo:"Dewgong",dex:[86,87,87],tier:'c'},
- grimer:{name:"Grimer",evo:"Muk",dex:[88,89,89],tier:'c'},
- shellder:{name:"Shellder",evo:"Cloyster",dex:[90,91,91],tier:'c'},
- drowzee:{name:"Drowzee",evo:"Hypno",dex:[96,97,97],tier:'c'},
- krabby:{name:"Krabby",evo:"Kingler",dex:[98,99,99],tier:'c'},
- voltorb:{name:"Voltorb",evo:"Electrode",dex:[100,101,101],tier:'c'},
- koffing:{name:"Koffing",evo:"Weezing",dex:[109,110,110],tier:'c'},
- horsea:{name:"Horsea",evo:"Seadra",dex:[116,117,117],tier:'c'},
- goldeen:{name:"Goldeen",evo:"Seaking",dex:[118,119,119],tier:'c'},
- magikarp:{name:"Magikarp",evo:"Gyarados",dex:[129,130,130],tier:'c'},
- clefairy:{name:"Clefairy",evo:"Clefable",dex:[35,36,36],tier:'p'},
- vulpix:{name:"Vulpix",evo:"Ninetales",dex:[37,38,38],tier:'p'},
- jigglypuff:{name:"Jigglypuff",evo:"Wigglytuff",dex:[39,40,40],tier:'p'},
- growlithe:{name:"Growlithe",evo:"Arcanine",dex:[58,59,59],tier:'p'},
- machop:{name:"Machop",evo:"Machoke y Machamp",dex:[66,67,68],tier:'p'},
- ponyta:{name:"Ponyta",evo:"Rapidash",dex:[77,78,78],tier:'p'},
- slowpoke:{name:"Slowpoke",evo:"Slowbro",dex:[79,80,80],tier:'p'},
- magnemite:{name:"Magnemite",evo:"Magneton",dex:[81,82,82],tier:'p'},
- gastly:{name:"Gastly",evo:"Haunter y Gengar",dex:[92,93,94],tier:'p'},
- exeggcute:{name:"Exeggcute",evo:"Exeggutor",dex:[102,103,103],tier:'p'},
- cubone:{name:"Cubone",evo:"Marowak",dex:[104,105,105],tier:'p'},
- rhyhorn:{name:"Rhyhorn",evo:"Rhydon",dex:[111,112,112],tier:'p'},
- staryu:{name:"Staryu",evo:"Starmie",dex:[120,121,121],tier:'p'},
- farfetchd:{name:"Farfetch'd",evo:"no evoluciona",dex:[83,83,83],tier:'p'},
+ // Solo Charmander, Bulbasaur, Squirtle y Pichu son gratis: todas las demás (tier c, p, r, e y l, y Dratini, Abra y Chikorita) salen del gacha (locked, premios 'tac:<clave>' de su rareza en cosmetics.js)
+ caterpie:{name:"Caterpie",evo:"Metapod y Butterfree",dex:[10,11,12],tier:'c',locked:true},
+ weedle:{name:"Weedle",evo:"Kakuna y Beedrill",dex:[13,14,15],tier:'c',locked:true},
+ pidgey:{name:"Pidgey",evo:"Pidgeotto y Pidgeot",dex:[16,17,18],tier:'c',locked:true},
+ rattata:{name:"Rattata",evo:"Raticate",dex:[19,20,20],tier:'c',locked:true},
+ spearow:{name:"Spearow",evo:"Fearow",dex:[21,22,22],tier:'c',locked:true},
+ ekans:{name:"Ekans",evo:"Arbok",dex:[23,24,24],tier:'c',locked:true},
+ sandshrew:{name:"Sandshrew",evo:"Sandslash",dex:[27,28,28],tier:'c',locked:true},
+ nidoranf:{name:"Nidoran♀",evo:"Nidorina y Nidoqueen",dex:[29,30,31],tier:'c',locked:true},
+ nidoranm:{name:"Nidoran♂",evo:"Nidorino y Nidoking",dex:[32,33,34],tier:'c',locked:true},
+ zubat:{name:"Zubat",evo:"Golbat",dex:[41,42,42],tier:'c',locked:true},
+ oddish:{name:"Oddish",evo:"Gloom y Vileplume",dex:[43,44,45],tier:'c',locked:true},
+ paras:{name:"Paras",evo:"Parasect",dex:[46,47,47],tier:'c',locked:true},
+ venonat:{name:"Venonat",evo:"Venomoth",dex:[48,49,49],tier:'c',locked:true},
+ diglett:{name:"Diglett",evo:"Dugtrio",dex:[50,51,51],tier:'c',locked:true},
+ meowth:{name:"Meowth",evo:"Persian",dex:[52,53,53],tier:'c',locked:true},
+ psyduck:{name:"Psyduck",evo:"Golduck",dex:[54,55,55],tier:'c',locked:true},
+ mankey:{name:"Mankey",evo:"Primeape",dex:[56,57,57],tier:'c',locked:true},
+ poliwag:{name:"Poliwag",evo:"Poliwhirl y Poliwrath",dex:[60,61,62],tier:'c',locked:true},
+ bellsprout:{name:"Bellsprout",evo:"Weepinbell y Victreebel",dex:[69,70,71],tier:'c',locked:true},
+ tentacool:{name:"Tentacool",evo:"Tentacruel",dex:[72,73,73],tier:'c',locked:true},
+ geodude:{name:"Geodude",evo:"Graveler y Golem",dex:[74,75,76],tier:'c',locked:true},
+ doduo:{name:"Doduo",evo:"Dodrio",dex:[84,85,85],tier:'c',locked:true},
+ seel:{name:"Seel",evo:"Dewgong",dex:[86,87,87],tier:'c',locked:true},
+ grimer:{name:"Grimer",evo:"Muk",dex:[88,89,89],tier:'c',locked:true},
+ shellder:{name:"Shellder",evo:"Cloyster",dex:[90,91,91],tier:'c',locked:true},
+ drowzee:{name:"Drowzee",evo:"Hypno",dex:[96,97,97],tier:'c',locked:true},
+ krabby:{name:"Krabby",evo:"Kingler",dex:[98,99,99],tier:'c',locked:true},
+ voltorb:{name:"Voltorb",evo:"Electrode",dex:[100,101,101],tier:'c',locked:true},
+ koffing:{name:"Koffing",evo:"Weezing",dex:[109,110,110],tier:'c',locked:true},
+ horsea:{name:"Horsea",evo:"Seadra",dex:[116,117,117],tier:'c',locked:true},
+ goldeen:{name:"Goldeen",evo:"Seaking",dex:[118,119,119],tier:'c',locked:true},
+ magikarp:{name:"Magikarp",evo:"Gyarados",dex:[129,130,130],tier:'c',locked:true},
+ clefairy:{name:"Clefairy",evo:"Clefable",dex:[35,36,36],tier:'p',locked:true},
+ vulpix:{name:"Vulpix",evo:"Ninetales",dex:[37,38,38],tier:'p',locked:true},
+ jigglypuff:{name:"Jigglypuff",evo:"Wigglytuff",dex:[39,40,40],tier:'p',locked:true},
+ growlithe:{name:"Growlithe",evo:"Arcanine",dex:[58,59,59],tier:'p',locked:true},
+ machop:{name:"Machop",evo:"Machoke y Machamp",dex:[66,67,68],tier:'p',locked:true},
+ ponyta:{name:"Ponyta",evo:"Rapidash",dex:[77,78,78],tier:'p',locked:true},
+ slowpoke:{name:"Slowpoke",evo:"Slowbro",dex:[79,80,80],tier:'p',locked:true},
+ magnemite:{name:"Magnemite",evo:"Magneton",dex:[81,82,82],tier:'p',locked:true},
+ gastly:{name:"Gastly",evo:"Haunter y Gengar",dex:[92,93,94],tier:'p',locked:true},
+ exeggcute:{name:"Exeggcute",evo:"Exeggutor",dex:[102,103,103],tier:'p',locked:true},
+ cubone:{name:"Cubone",evo:"Marowak",dex:[104,105,105],tier:'p',locked:true},
+ rhyhorn:{name:"Rhyhorn",evo:"Rhydon",dex:[111,112,112],tier:'p',locked:true},
+ staryu:{name:"Staryu",evo:"Starmie",dex:[120,121,121],tier:'p',locked:true},
+ farfetchd:{name:"Farfetch'd",evo:"no evoluciona",dex:[83,83,83],tier:'p',locked:true},
  onix:{name:"Onix",evo:"no evoluciona",dex:[95,95,95],locked:true,tier:'r'},
  hitmonlee:{name:"Hitmonlee",evo:"no evoluciona",dex:[106,106,106],locked:true,tier:'r'},
  hitmonchan:{name:"Hitmonchan",evo:"no evoluciona",dex:[107,107,107],locked:true,tier:'r'},
@@ -321,7 +322,7 @@ const tacStage=p=>p&&p.level>=8?2:p&&p.level>=6?1:0;
 // Altura real (m, de la Pokédex vía PokeAPI) de cada forma de minileyenda. Los modelos se normalizan a la misma altura, así que todas las primeras
 // formas se ven iguales; las evoluciones crecen según su altura real respecto a su forma base (raíz 0,35, hasta ×1,45) y los gigantes de una sola
 // forma (≥ 1,5 m: Onix, Snorlax, Lapras…) según su altura respecto a 1 m (raíz 0,35, hasta ×2)
-const DEX_H={1:0.7,2:1,3:2,4:0.6,5:1.1,6:1.7,7:0.5,8:1,9:1.6,10:0.3,11:0.7,12:1.1,13:0.3,14:0.6,15:1,16:0.3,17:1.1,18:1.5,19:0.3,20:0.7,21:0.3,22:1.2,23:2,24:3.5,25:0.4,26:0.8,27:0.6,28:1,29:0.4,30:0.8,31:1.3,32:0.5,33:0.9,34:1.4,35:0.6,36:1.3,37:0.6,38:1.1,39:0.5,40:1,41:0.8,42:1.6,43:0.5,44:0.8,45:1.2,46:0.3,47:1,48:1,49:1.5,50:0.2,51:0.7,52:0.4,53:1,54:0.8,55:1.7,56:0.5,57:1,58:0.7,59:1.9,60:0.6,61:1,62:1.3,63:0.9,64:1.3,65:1.5,66:0.8,67:1.5,68:1.6,69:0.7,70:1,71:1.7,72:0.9,73:1.6,74:0.4,75:1,76:1.4,77:1,78:1.7,79:1.2,80:1.6,81:0.3,82:1,83:0.8,84:1.4,85:1.8,86:1.1,87:1.7,88:0.9,89:1.2,90:0.3,91:1.5,92:1.3,93:1.6,94:1.5,95:8.8,96:1,97:1.6,98:0.4,99:1.3,100:0.5,101:1.2,102:0.4,103:2,104:0.4,105:1,106:1.5,107:1.4,108:1.2,109:0.6,110:1.2,111:1,112:1.9,113:1.1,114:1,115:2.2,116:0.4,117:1.2,118:0.6,119:1.3,120:0.8,121:1.1,122:1.3,123:1.5,124:1.4,125:1.1,126:1.3,127:1.5,128:1.4,129:0.9,130:6.5,131:2.5,132:0.3,133:0.3,134:1,135:0.8,136:0.9,137:0.8,138:0.4,139:1,140:0.5,141:1.3,142:1.8,143:2.1,144:1.7,145:1.6,146:2,147:1.8,148:4,149:2.2,150:2,151:0.4,152:0.9,153:1.2,154:1.8,172:0.3,173:0.3,174:0.3,175:0.3,176:0.6,196:0.9,197:1,200:0.7,208:9.2,212:1.8,228:0.6,229:1.4,230:1.8,239:0.6,246:0.6,247:1.2,248:2,249:5.2,250:3.8,280:0.4,281:0.8,282:1.6,302:0.5,355:0.8,356:1.6,359:1.2,371:0.6,372:1.1,373:1.5,374:0.6,375:1.2,376:1.6,382:4.5,383:3.5,384:7,387:0.4,388:1.1,389:2.2,403:0.5,404:0.9,405:1.4,429:0.9,439:0.6,443:0.7,444:1.4,445:1.9,446:0.6,447:0.7,448:1.2,462:1.2,464:2.4,466:1.8,468:1.5,470:1,471:0.8,477:2.2,487:4.5,491:1.5,532:0.6,533:1.2,534:1.4,570:0.7,571:1.6,607:0.3,608:0.6,609:1,700:1,722:0.3,723:0.7,724:1.6,856:0.4,857:0.6,858:2.1,999:0.3,1000:1.2};
+const DEX_H={1:0.7,2:1,3:2,4:0.6,5:1.1,6:1.7,7:0.5,8:1,9:1.6,10:0.3,11:0.7,12:1.1,13:0.3,14:0.6,15:1,16:0.3,17:1.1,18:1.5,19:0.3,20:0.7,21:0.3,22:1.2,23:2,24:3.5,25:0.4,26:0.8,27:0.6,28:1,29:0.4,30:0.8,31:1.3,32:0.5,33:0.9,34:1.4,35:0.6,36:1.3,37:0.6,38:1.1,39:0.5,40:1,41:0.8,42:1.6,43:0.5,44:0.8,45:1.2,46:0.3,47:1,48:1,49:1.5,50:0.2,51:0.7,52:0.4,53:1,54:0.8,55:1.7,56:0.5,57:1,58:0.7,59:1.9,60:0.6,61:1,62:1.3,63:0.9,64:1.3,65:1.5,66:0.8,67:1.5,68:1.6,69:0.7,70:1,71:1.7,72:0.9,73:1.6,74:0.4,75:1,76:1.4,77:1,78:1.7,79:1.2,80:1.6,81:0.3,82:1,83:0.8,84:1.4,85:1.8,86:1.1,87:1.7,88:0.9,89:1.2,90:0.3,91:1.5,92:1.3,93:1.6,94:1.5,95:8.8,96:1,97:1.6,98:0.4,99:1.3,100:0.5,101:1.2,102:0.4,103:2,104:0.4,105:1,106:1.5,107:1.4,108:1.2,109:0.6,110:1.2,111:1,112:1.9,113:1.1,114:1,115:2.2,116:0.4,117:1.2,118:0.6,119:1.3,120:0.8,121:1.1,122:1.3,123:1.5,124:1.4,125:1.1,126:1.3,127:1.5,128:1.4,129:0.9,130:6.5,131:2.5,132:0.3,133:0.3,134:1,135:0.8,136:0.9,137:0.8,138:0.4,139:1,140:0.5,141:1.3,142:1.8,143:2.1,144:1.7,145:1.6,146:2,147:1.8,148:4,149:2.2,150:2,151:0.4,152:0.9,153:1.2,154:1.8,172:0.3,173:0.3,174:0.3,175:0.3,176:0.6,196:0.9,197:1,200:0.7,208:9.2,212:1.8,228:0.6,229:1.4,230:1.8,239:0.6,246:0.6,247:1.2,248:2,249:5.2,250:3.8,280:0.4,281:0.8,282:1.6,302:0.5,355:0.8,356:1.6,359:1.2,371:0.6,372:1.1,373:1.5,374:0.6,375:1.2,376:1.6,382:4.5,383:3.5,384:7,387:0.4,388:1.1,389:2.2,403:0.5,404:0.9,405:1.4,429:0.9,439:0.6,443:0.7,444:1.4,445:1.9,446:0.6,447:0.7,448:1.2,462:1.2,464:2.4,466:1.8,468:1.5,470:1,471:0.8,477:2.2,487:4.5,491:1.5,570:0.7,571:1.6,607:0.3,608:0.6,609:1,700:1,722:0.3,723:0.7,724:1.6,856:0.4,857:0.6,858:2.1,999:0.3,1000:1.2};
 // Tamaño por altura real: 1 en la primera forma; las evoluciones, (altura/altura de la base)^0,35 hasta ×1,45 y sin encoger nunca;
 // los gigantes de una sola forma (≥ 1,5 m), altura^0,35 hasta `cap`
 const dexNum=d=>+String(d).split(/[:/]/).pop();
@@ -333,7 +334,7 @@ const tacLineOf=d=>Object.values(TACS).find(t=>!t.mimic&&(t.dex.includes(d)||(t.
 function tacSize(p){ const d=+tacDex(p), t=tacLineOf(d)||tacOf(p); return heightSize(t.dex,d,2); }
 const tacStar=p=>{ const t=tacOf(p); if(t.mimic) return 1; if(t.pick) return tacStage(p)+1; return new Set(t.dex.slice(0,tacStage(p)+1)).size; };
 const TAC_KEYS=Object.keys(TACS);
-// Minileyendas gratuitas: las únicas que reciben los rivales generados por ahora (Eevee es mítica y solo sale del gacha)
+// Minileyendas gratuitas (Charmander, Bulbasaur, Squirtle y Pichu): las únicas que reciben los rivales generados
 const FREE_TACS=TAC_KEYS.filter(k=>!TACS[k].locked);
 // Rarezas del selector de minileyendas (lista seccionada; las vacías salen como «Próximamente»)
 const TAC_TIERS=[['Común','comun',['charmander','bulbasaur','squirtle','pichu','chikorita','caterpie','weedle','pidgey','rattata','spearow','ekans','sandshrew','nidoranf','nidoranm','zubat','oddish','paras','venonat','diglett','meowth','psyduck','mankey','poliwag','bellsprout','tentacool','geodude','doduo','seel','grimer','shellder','drowzee','krabby','voltorb','koffing','horsea','goldeen','magikarp']],['Poco común','pococomun',['dratini','abra','clefairy','vulpix','jigglypuff','growlithe','machop','ponyta','slowpoke','magnemite','gastly','exeggcute','cubone','rhyhorn','staryu','farfetchd']],['Raro','raro',['onix','hitmonlee','hitmonchan','lickitung','tangela','chansey','kangaskhan','mrmime','jynx','electabuzz','magmar','pinsir','tauros','porygon','omanyte','kabuto','scyther']],['Épico','epico',['lapras','snorlax','ditto','aerodactyl']],['Legendario','legendario',['eevee','mew','articuno','zapdos','moltres','mewtwo']]];
@@ -525,7 +526,7 @@ const ITEMS={}, RECIPE={};
 for(const k of ORDER) ITEMS[k]={...COMPS[k],key:k,comp:true,sp:{},desc:k==='medal'?'Combínala con un componente para forjar su Insignia (cada componente graba siempre la misma sinergia), o con otra Medalla para una Medalla Maestra. Los emblemas desbloquean el nivel prismático de las sinergias.':'Componente. Combínalo con otro para crear un objeto.'};
 for(const [a,b,id,name,icon,desc,s,sp] of FULL){ ITEMS[id]={key:id,name,icon,desc,s:sumStats(COMPS[a].s,COMPS[b].s,s||{}),sp:sp||{},from:[a,b]}; RECIPE[rk(a,b)]=id; }
 // Cada insignia lleva el arte de una medalla de gimnasio afín a su sinergia (número de sprite en PokeAPI)
-const BADGE_OF={claw:[18,'Puño'],wing:[22,'Pluma'],spoon:[6,'Pantano'],water:[2,'Cascada'],coat:[1,'Roca'],goggles:[4,'Arcoíris'],club:[16,'Dragón'],lens:[5,'Alma']};
+const BADGE_OF={claw:['puno','Puño'],wing:['pluma','Pluma'],spoon:['volcan','Volcán'],water:['cascada','Cascada'],coat:['roca','Roca'],goggles:['arcoiris','Arcoíris'],club:['dragon','Dragón'],lens:['alma','Alma']}; // medallas de gimnasio (Wikidex) en img/medallas/medalla-<clave>.webp
 for(const c of BASIC){ const t=FORGE_OF[c][0], id='em_'+c; ITEMS[id]={key:id,name:'Insignia '+t,icon:TRAITS[t].icon,badge:BADGE_OF[c][0],desc:`Medalla ${BADGE_OF[c][1]}. El portador gana la sinergia ${t}.${embTxt(t)}`,...embParts(t),emblem:t,from:[c,'medal'],forge:c}; RECIPE[rk(c,'medal')]=id; }
 // Herramienta: no se equipa; devuelve al inventario todos los objetos de un Pokémon (es la única forma de quitarlos)
 ITEMS.magnet={key:'magnet',name:'Imán Removedor',icon:'🧲',desc:'Arrástralo sobre un Pokémon: todos sus objetos vuelven a tu inventario. Se gasta al usarlo. Recibes uno en cada fase contra Pokémon salvajes.',s:{},sp:{},tool:true};
@@ -624,7 +625,7 @@ function giveUnitTo(p,key){
  if(!key) return false;
  if(p.bench.some(x=>!x)||p.bench.filter(u=>u&&u.baseId===key&&u.star===1).length>=2){ addUnitToBench(p,makeInst(key)); return true; }
  // Banquillo lleno (carrusel, aumentos…): va al tablero aunque se pase del máximo (el contador sale en rojo, n+1/n); si al empezar el combate sigue sobrando, se vende uno al azar (sellOverflow)
- if(!p.isBot&&G.phase!=='combat'){ const k=freeBoardCell(p,DEF[key]); if(k){ augFire(p,'gain',{key,dup:allUnits(p).some(u=>u.baseId===key)}); p.board[k]=makeInst(key); combine(p); note(p,`Banquillo lleno: ${DEF[key].name} va al tablero. Si sobra al empezar el combate se venderá uno al azar`,true); return true; } }
+ if(!p.isBot&&G.phase!=='combat'){ const k=freeBoardCell(p,DEF[key]); if(k){ augFire(p,'gain',{key,dup:allUnits(p).some(u=>u.baseId===key)}); p.board[k]=makeInst(key); combine(p); note(p,`Banquillo lleno: ${DEF[key].name} va al tablero. Si sobra al empezar el combate se venderá uno al azar`,false); return true; } }
  p.gold+=DEF[key].cost; returnToPool(key,1); note(p,`Banquillo lleno: ${DEF[key].name} se convirtió en oro`); return false;
 }
 // Casilla libre de tu mitad del tablero (tanques y luchadores delante), en el mismo orden que autoFill
@@ -634,11 +635,11 @@ function sellOverflow(p){
  const out=[]; let extra=boardUnits(p).length-maxBoard(p);
  while(extra-->0){ const ks=Object.keys(p.board).filter(k=>p.board[k]); if(!ks.length) break; const k=pick(ks), u=p.board[k], g=sellValue(u);
    p.gold+=g; returnToPool(u.baseId,Math.pow(3,u.star-1)); augFire(p,'sell',{key:u.baseId,star:u.star,cost:DEF[u.defId].cost}); for(const it of u.items) giveItem(p,it); delete p.board[k]; out.push(`${DEF[u.defId].name} (+${g} de oro)`); }
- if(out.length) note(p,`Tablero lleno: se vendió ${out.join(', ')}`,true);
+ if(out.length) note(p,`Tablero lleno: se vendió ${out.join(', ')}`,false);
  return out.length;
 }
-// force: entra aunque el inventario esté lleno (hasta ITEMS_HARD); lo usan los aumentos cuyo efecto depende de tener ese objeto
-function giveItem(p,it,raw,force){ it=it||pick(BASIC); if(!raw&&p.mods&&p.mods.anvilBuffet&&ITEMS[it]&&ITEMS[it].comp&&it!=='medal'){ giveAnvil(p,'c'); return it; } if(p.items.length<(force?ITEMS_HARD:MAX_ITEMS_BENCH)) p.items.push(it); else { p.gold+=2; note(p,'Inventario lleno: objeto convertido en 2 de oro'); } return it; }
+// force: entra aunque el inventario esté lleno (hasta MAX_ITEMS); lo usan los aumentos cuyo efecto depende de tener ese objeto
+function giveItem(p,it,raw,force){ it=it||pick(BASIC); if(!raw&&p.mods&&p.mods.anvilBuffet&&ITEMS[it]&&ITEMS[it].comp&&it!=='medal'){ giveAnvil(p,'c'); return it; } p.items.push(it); return it; } // nunca se pierde: con más de 10 se abre otra banca
 // Guante de Boxeo: objetos que da esta ronda (u.tg). Con Guantes de la Suerte (mods.luckyGloves), los ideales para su rol
 const GLOVE_BIS={r:['band','rage','sharp','expert','razorfang','twin'],a:['band','blood','sharp','hook','justice','expert'],b:['blood','titan','sturdy','band','quick','justice'],
  m:['moon','specs','wise','soothe','energy','expert'],h:['moon','soothe','energy','cure','holy','specs'],t:['vest','leftovers','helmet','scale','royal','sturdy']};
@@ -710,17 +711,17 @@ function useItem0(p,idx,u,loc){
  if(ITEMS[it]&&ITEMS[it].dup){ const d=DEF[u.defId];
    if(d.anvil) return {ok:false,why:'Eso no se puede duplicar'}; if(d.cost>ITEMS[it].dup) return {ok:false,why:`El ${ITEMS[it].name} solo copia Pokémon de coste 1 a ${ITEMS[it].dup}`};
    if(!p.bench.some(x=>!x)&&countSame(p,u.baseId,1)<2) return {ok:false,why:'No te cabe la copia en el banquillo'};
-   p.items.splice(idx,1); addUnitToBench(p,makeInst(u.baseId)); combine(p); note(p,`🧬 Copia de ${DEF[u.baseId].name}`,true); return {ok:true,removed:true}; }
+   p.items.splice(idx,1); addUnitToBench(p,makeInst(u.baseId)); combine(p); note(p,`🧬 Copia de ${DEF[u.baseId].name}`,false); return {ok:true,removed:true}; }
  if(it==='magnet'){
    if(!u.items.length) return {ok:false,why:'Ese Pokémon no lleva objetos'};
-   if(p.items.length-1+u.items.length>MAX_ITEMS_BENCH) return {ok:false,why:'No caben sus objetos en tu inventario'};
+   if(p.items.length-1+u.items.length>MAX_ITEMS) return {ok:false,why:'No caben sus objetos en tu inventario'};
    p.items.splice(idx,1); p.items.push(...u.items); u.items=[]; return {ok:true,removed:true};
  }
  const r=addItemToUnit(u,it); if(r.ok) p.items.splice(idx,1); return r;
 }
 function removeItem(p,u,idx){
  if(!u.items[idx]) return {ok:false,why:'No hay objeto ahí'};
- if(p.items.length>=MAX_ITEMS_BENCH) return {ok:false,why:`Tu inventario está lleno (${MAX_ITEMS_BENCH} objetos)`};
+ if(p.items.length>=MAX_ITEMS) return {ok:false,why:`Tu inventario está lleno (${MAX_ITEMS} objetos)`};
  const loc=findLoc(p,u); if(G.phase==='combat'&&loc&&loc.b!==undefined) return {ok:false,why:'No puedes quitar objetos en pleno combate'};
  p.items.push(u.items.splice(idx,1)[0]); return {ok:true};
 }
@@ -930,7 +931,7 @@ function pveWave(s,n){
  if(k==='1-3') return [CREEP(21,'Spearow',300,20,2,0),CREEP(21,'Spearow',300,20,4,0),CREEP(16,'Pidgey',260,18,3,2,{range:3})];
  if(s===2) return [CREEP(98,'Krabby',560,36,2,0),CREEP(98,'Krabby',560,36,4,0),CREEP(98,'Krabby',560,36,3,1),CREEP(99,'Kingler',950,55,3,0)];
  if(s===3) return [CREEP(143,'Snorlax',2900,85,3,0,{as:.55,boss:true}),CREEP(446,'Munchlax',620,40,1,1),CREEP(446,'Munchlax',620,40,5,1)];
- if(s===4) return [CREEP(142,'Aerodactyl',1800,105,2,0,{as:.8}),CREEP(142,'Aerodactyl',1800,105,4,0,{as:.8}),CREEP(142,'Aerodactyl',1800,105,3,2,{as:.8,range:3})];
+ if(s===4) return [CREEP(142,'Aerodactyl',1800,105,2,0,{as:.8,big:2.4}),CREEP(142,'Aerodactyl',1800,105,4,0,{as:.8,big:2.4}),CREEP(142,'Aerodactyl',1800,105,3,2,{as:.8,range:3,big:2.4})]; // grandes e imponentes (solo tamaño del modelo)
  const m=Math.pow(1.3,Math.max(0,s-5));
  // Desde la fase 5: un único Gyarados variocolor grande (la vida y el daño de los tres jefes de antes juntos)
  return [CREEP(130,'Gyarados variocolor',11500*m,300*m,3,1,{boss:true,shiny:true,big:1.9,as:.7})];
@@ -1150,7 +1151,7 @@ function castAbility(cb,u,ab,depth=0){
   case 'chain': { if(p.every&&(u.castN||1)%p.every){ if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.3,big:true}); hitFx(cb,u,t,P*(p.alt||p.m),{...p,stun:0}); } cb.cExtra=` · rayo ${(u.castN||1)%p.every}/${p.every}`; break; }
    let cur=t, prev=u; const hit=new Set(); for(let i=0;i<p.n&&cur;i++){ FX({type:'zap',fc:prev.c,fr:prev.r,tc:cur.c,tr:cur.r,life:.4}); hitFx(cb,u,cur,P*p.m*(1+(p.amp||0)*i),i&&p.stunFirst?{...p,stun:0}:p); hit.add(cur); prev=cur; cur=foes.filter(e=>!e.dead&&!hit.has(e)&&dU(prev,e)<=3).sort((a,b)=>dU(prev,a)-dU(prev,b))[0]; } break; }
   case 'multi': for(let i=0;i<p.n;i++){ const live=foes.filter(e=>!e.dead); if(!live.length) break; const e=pickR(cb,live); FX({type:'proj',fc:u.c,fr:u.r,tc:e.c,tr:e.r,life:.25+i*.04}); hitFx(cb,u,e,P*p.m,p); } if(p.chill) cb.cExtra=' · ralentiza'; break;
-  // spill: si el objetivo cae, los golpes que sobran van al enemigo vivo más cercano (Timburr; Scyther, Machop y Poliwag no lo llevan)
+  // spill: si el objetivo cae, los golpes que sobran van al enemigo vivo más cercano (Nidoran♂; Scyther, Machop y Poliwag no lo llevan)
   case 'combo': if(t){ let tg=t; for(let i=0;i<p.n;i++){ if(tg.dead){ if(!p.spill) break; tg=foesOf(cb,u).filter(e=>!(e.stealth>0)).sort((a,b)=>dU(u,a)-dU(u,b)||cb.units.indexOf(a)-cb.units.indexOf(b))[0]; if(!tg) break; cb.cExtra=' · los golpes saltan al siguiente'; } hitFx(cb,u,tg,P*p.m,i===p.n-1?p:{...p,stun:0}); } FX({type:'hits',c:t.c,r:t.r,n:p.n,life:.6}); } break;
   case 'dash': { const nearF=foes.filter(e=>!(e.stealth>0)&&dU(u,e)<=3); const tg=p.to==='far'?nearF.sort((a,b)=>dU(u,b)-dU(u,a))[0]||t:p.to==='low'?nearF.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0]||t:t;
     if(tg){ teleportNear(cb,u,tg); u.target=tg; hitFx(cb,u,tg,P*p.m,p); FX({type:'hits',c:tg.c,r:tg.r,n:2,life:.5}); if(p.r){ for(const e of foes) if(e!==tg&&dU(tg,e)<=p.r) hitFx(cb,u,e,P*p.m*.6,p); FX({type:'area',c:tg.c,r:tg.r,rad:p.r+.5,life:.6}); } if(p.stealth){ u.stealth=p.stealth; for(const e of foes) if(e.target===u) e.target=null; cb.cExtra=' · invisible'; } if(p.selfAs) u.as=Math.min(3,u.as*(1+p.selfAs)); } break; }
@@ -1433,7 +1434,7 @@ function grant(p,tok,out){
  else if(k==='mag'){ giveItem(p,'magnet'); out.push('🧲 Imán Removedor'); }
  else if(k==='dup'){ const own=allUnits(p).filter(u=>!DEF[u.baseId].evoOf&&u.star<3&&G.pool[u.baseId]>0); if(own.length){ const u=pick(own); G.pool[u.baseId]--; giveUnitTo(p,u.baseId); out.push('🧬 Copia de '+DEF[u.baseId].name); } else { p.gold+=3; out.push('3 de oro'); } }
  // Yunque: las personas eligen 1 de 4 en la tienda «Elige uno» (también en multijugador); los rivales generados y los orbes abiertos de golpe, al azar
- else if(k==='ca'||k==='fa'){ if(!p.isBot&&!G.auto&&!NO_ANVIL){ openAnvil(p,k==='ca'?'c':'f',4); out.push(k==='ca'?'⚒️ Yunque de componentes':'⚒️ Yunque de objeto'); }
+ else if(k==='ca'||k==='fa'){ if(!p.isBot&&!G.auto&&(!NO_ANVIL||benchFree(p))) out.push('⚒️ '+giveAnvil(p,k==='ca'?'c':'f')); // el yunque va a la banca y se abre al venderlo (E o arrastrándolo a la tienda), nunca solo
    else { const it=giveItem(p,pick(k==='ca'?BASIC:FULL_KEYS)); out.push('⚒️ '+ITEMS[it].name); } }
 }
 let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques eligen solos
@@ -1441,13 +1442,13 @@ let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques 
 const ORB_TIER=k=>k==='prism'?'prism':/^(gray|c$|mag$)/.test(k)?'gray':'gold';
 function dropOrb(p,key,at){ const toks=ORBS[key]?weighted(ORBS[key].t):[key]; G.orbSeq=(G.orbSeq||0)+1; p.orbs.push({id:G.orbSeq,tier:ORB_TIER(key),toks,c:at?at.c:null,r:at?at.r:null}); }
 // Un orbe con Pokémon dentro no se abre (ni a mano ni solo al empezar el combate) si no caben en el banquillo: espera en el suelo a que hagas sitio
-const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(u\d|dup$)/.test(t)).length:(o.nu|0);
+const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(u\d|dup|ca|fa)$/.test(t)).length:(o.nu|0); // los yunques también ocupan banquillo
 const benchFree=p=>p.bench.filter(x=>!x).length;
 const orbBlocked=(p,o)=>!p.isBot&&orbUnits(o)>benchFree(p); // los rivales generados los abren siempre (si no cabe, oro): así no se les acumulan
 function openPlayerOrb(p,id,quick){
  const i=p.orbs.findIndex(o=>o.id===id); if(i<0||orbBlocked(p,p.orbs[i])) return null;
  const o=p.orbs.splice(i,1)[0], out=[]; NO_ANVIL=!!quick; for(const t of o.toks) grant(p,t,out); NO_ANVIL=false;
- note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,true); return o;
+ note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,false); return o;
 }
 function openOrb(p,key,out){ const O=ORBS[key]; const sub=[]; for(const t of weighted(O.t)) grant(p,t,sub); out.push(`${O.icon} ${sub.join(', ')}`); }
 // Botín de una ronda PvE como lista de orbes (para soltarlos uno a uno al derrotar a cada salvaje)
@@ -1602,7 +1603,7 @@ function startCombat(){
  const R=G.round, me=G.me;
  for(const p of alivePlayers()) for(const o of p.orbs.slice()) openPlayerOrb(p,o.id,true);
  for(const p of alivePlayers()) sellOverflow(p);
- for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,true); }
+ for(const p of alivePlayers()) if(isHuman(p)){ const n=autoFill(p); if(n) note(p,`Se colocaron ${n} Pokémon del banquillo en el tablero`,false); }
  G.phase='combat'; G.acc=0; G.resolving=false;
  const alive=alivePlayers(); G.fights=[];
  if(R.type==='pve') for(const p of alive) G.fights.push({a:p,b:null,pve:true});
@@ -1611,7 +1612,7 @@ function startCombat(){
  // El reloj de cada combate empieza tras la preparación: todo lo que se mide desde f.t0 (objetos en directo, oro, orbes, fin de ronda) la tiene en cuenta
  const prepMs=G.auto?0:PREP_T*1000/G.speed; G.prepT=G.auto?0:PREP_T;
  for(const f of G.fights){ f.t0=Date.now()+prepMs; if(f.pve&&isHuman(f.a)&&!G.auto){ f.lootKeys=pveLootKeys(f.a,R); f.lootN=0; } }
- for(const p of alive) autoPicks(p);
+ for(const p of alive) if(p.isBot||p.away) autoPicks(p); // las personas eligen cuando quieran (un yunque abierto al empezar el combate no pierde su objeto); solo bots y ausentes eligen solos
  for(const f of G.fights){ augFire(f.a,'combatStart',{pve:!!f.pve,opp:f.b?f.b.id:null}); if(f.b&&!f.ghost) augFire(f.b,'combatStart',{pve:false,opp:f.a.id}); }
  let myFight=null, maxRemote=0;
  for(const f of G.fights){
@@ -1734,9 +1735,9 @@ function resolveRound(){
      augFire(p,'roundEnd',{won:w,pve:!!f.pve,cs,firstKill:c.firstKill?c.firstKill[side]:null}); } }
  // Cazatesoros: botín tras cada combate (apuntado para la ficha de la sinergia)
  for(const p of alivePlayers()){ const tier=traitTiers(p)['Cazatesoros']||0; if(!tier) continue; const w=won.get(p);
-   lootTrack(p,()=>{ if(p.mods.lucky) p.gold+=2; if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),true); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
- for(const [p,m] of msgs) if(isHuman(p)) note(p,m,true);
- for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,true);
+   lootTrack(p,()=>{ if(p.mods.lucky) p.gold+=2; if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),false); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
+ for(const [p,m] of msgs) if(isHuman(p)) note(p,m,false);
+ for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,false);
  const dead=G.players.filter(p=>p.alive&&p.hp<=0).sort((a,b)=>a.hp-b.hp);
  let n=alivePlayers().length;
  for(const p of dead){
@@ -1753,7 +1754,7 @@ function resolveRound(){
  const queue=[];
  mewtwoUnstable();
  for(const p of alivePlayers()) for(const u of allUnits(p)) if(u.defId==='eevee'&&u.kills>=p.mods.eeveeKills){
-   if(G.auto||p.isBot){ u.defId=pick(EVOS).key; p.eeveeForm=u.defId; note(p,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,true); }
+   if(G.auto||p.isBot){ u.defId=pick(EVOS).key; p.eeveeForm=u.defId; note(p,`🌀 Eevee evolucionó en ${DEF[u.defId].name}`,false); }
    else if(!u.evoOffer){ u.evoOffer=1; augOffer(p,'__eevee','🌀 ¡Eevee va a evolucionar!','Ha derrotado a suficientes enemigos. Elige su evolución: conserva todo lo que ha acumulado y gana una habilidad nueva.',shuffle(EVOS.slice()).slice(0,3).map(e=>({t:e.name,i:'🌀',d:e.traits.join(' · '),v:'ev:'+u.uid+'|'+e.key}))); }
  }
  renderUI();
@@ -1788,7 +1789,7 @@ function startCarousel(){
  note(null,'🎠 Carrusel: salen primero los entrenadores con menos vida (de 2 en 2). Muévete con clic derecho y pasa por encima del Pokémon que quieras');
  renderUI();
 }
-function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return false; o.taken=p; giveUnitTo(p,o.key); giveItem(p,o.item); note(p,`🎠 Elegiste ${DEF[o.key].name} con ${ITEMS[o.item].name}`,true); return true; }
+function takeCarousel(p,i){ const o=G.carousel.opts[i]; if(!o||o.taken) return false; o.taken=p; giveUnitTo(p,o.key); giveItem(p,o.item); note(p,`🎠 Elegiste ${DEF[o.key].name} con ${ITEMS[o.item].name}`,false); return true; }
 function finishCarousel(){ const C=G.carousel; for(const o of C.opts) if(!o.taken) returnToPool(o.key,1); G.carousel=null; renderUI(); later(nextRound,400); }
 const releaseAt=idx=>8+3.5*Math.floor(idx/2); // la primera pareja sale a los 8 s (da tiempo a ver todos los Pokémon y objetos y elegir); las demás, cada 3,5 s
 // Cada pareja que sale a la vez empieza en lados opuestos (misma distancia a todos los Pokémon)
@@ -1811,7 +1812,7 @@ function applyAct(p,a){
   case 'lock': p.locked=!p.locked; return {ok:true};
   case 'sell': { const loc=normLoc(a.loc); return {ok:!!(loc&&sellAt(p,loc)),why:firstRound()?'En la primera ronda no se puede vender':'No puedes vender eso ahora'}; }
   case 'move': { const f=normLoc(a.from), to=normLoc(a.to); if(!f||!to) return {ok:false}; if((ph==='combat'||ph==='carousel')&&(f.b!==undefined||to.b!==undefined)) return {ok:false}; return {ok:moveTo(p,f,to)}; }
-  case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,true); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,true); return r; }
+  case 'item': { const loc=normLoc(a.loc), u=loc&&getAt(p,loc); if(!u) return {ok:false}; const r=useItem(p,idx(a.idx),u,loc); if(r.ok&&r.made) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name} en ${nameOf(DEF[u.defId],u.star)}!`,false); if(r.ok&&r.removed) note(p,`🧲 Los objetos de ${nameOf(DEF[u.defId],u.star)} volvieron a tu inventario`,false); return r; }
   case 'pick': return resolvePick(p,a.id|0,idx(a.i));
   case 'tac': { if(!TACS[a.k]) return {ok:false}; p.tac=a.k; return {ok:true}; }
   case 'mform': { if(!tacOf(p).mimic) return {ok:false}; const k=a.k|0, now=Date.now(); if(now-(p.mewT||0)<900) return {ok:false};
@@ -1826,7 +1827,7 @@ function applyAct(p,a){
   case 'taunt': { if((TACS[p.tac]?p.tac:'charmander')!=='charmander') return {ok:false}; const t=Date.now(); if(t-(p.tauntAt||0)<1400) return {ok:false}; p.tauntAt=t; p.tn=((p.tn||0)+1)%1000; return {ok:true}; }
   // Dónde está tu minileyenda para los demás: tablero que miras y destino (en radios de casilla desde la esquina del tablero)
   case 'tpos': { const b=idx(a.b), q=v=>Math.round(clamp(+v||0,-3,20)*100)/100; if(!G.players.some(o=>o.id===b)) return {ok:false}; p.tp=[b,q(a.x),q(a.y)]; return {ok:true}; }
-  case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,true); return r; }
+  case 'icomb': { const r=combineBench(p,idx(a.a),idx(a.b)); if(r.ok) note(p,`⚒️ ¡Creaste ${ITEMS[r.made].name}!`,false); return r; }
   case 'rmitem': return {ok:false,why:'Para quitar objetos usa un 🧲 Imán Removedor'};
   case 'ready': if(ph==='planning') p.ready=true; return {ok:true};
   case 'surrender': { if(!p.alive||G.over||!G.round||G.round.s<3||ph==='carousel'||ph==='over') return {ok:false,why:'Rendirse solo se puede desde la fase 3-1'}; return {ok:surrenderPlayer(p)}; }
@@ -1857,7 +1858,7 @@ function makePub(){
  return {ph:G.phase,ri:G.roundIdx,tl:isFinite(G.timer)?Math.max(0,Math.ceil(G.timer)):-1,sp:G.speed,at:G.augTiers,ov:G.over?1:0,dif:G.diff,
    pl:G.players.map(p=>[p.id,p.name,p.emoji,R0(p.hp),p.level,p.streak,p.alive?1:0,p.place,p.peer||'',0,p.ready?1:0,boardUnits(p).length,p.tr||'',p.lastUp||0,p.tac,(p.tacForm||['','']).join(','),p.tp||0,p.tn||0,p.gn||0,interestOf(p),[p.mewF|0,p.mewN|0,(p.mewSk||[]).length]]),
    // Tableros y banquillos de todos, para poder mirarlos fuera del combate
-   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,ITEMS_HARD),p.augments])};
+   bd:G.players.map(p=>[Object.entries(p.board).map(([k,u])=>[k,u.defId,u.star,u.items]),p.bench.map(u=>u?[u.defId,u.star,u.items]:0),p.items.slice(0,MAX_ITEMS),p.augments])};
 }
 function makePriv(p){ ensureGloves(p);
  const d={to:p.peer,id:p.id,aq:p.aq|0,g:p.gold,l:p.level,x:p.xp,sh:p.shop,lk:p.locked?1:0,fr:p.freeRerolls,xh:p.xpHpN|0,au:p.augments,it:p.items,md:p.mods,
@@ -2014,7 +2015,7 @@ function applyPub(d){
    if(r.icn!=null&&p!==G.me) p.icn=r.icn;
    if(Array.isArray(mw)){ p.mewF=clamp(mw[0]|0,0,1100); p.mewN=mw[1]|0; p.mewK=clamp(mw[2]|0,0,MEW_MAX); }
    const bd=Array.isArray(d.bd)?d.bd[list.length]:null;
-   if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,ITEMS_HARD); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
+   if(p!==G.me&&Array.isArray(bd)){ unpackBoard(p,bd); if(Array.isArray(bd[2])) p.items=bd[2].filter(k=>ITEMS[k]).slice(0,MAX_ITEMS); if(Array.isArray(bd[3])) p.augments=bd[3].filter(a=>AUG_BY[a]); }
    list.push(p);
  }
  G.players=list; loadB3();
@@ -2039,7 +2040,7 @@ function unpackBoard(p,[bo,be]){
 function applyPriv(d){
  const aq=d.aq|0; if(aq<(NET.q|0)&&Date.now()-(NET.qT||0)<1500) return; if(aq>(NET.q|0)) NET.q=aq; // aún no ha procesado tu última acción: este estado es anterior
  const me=G.me;
- Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,xpHpN:+d.xh||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,ITEMS_HARD)});
+ Object.assign(me,{id:d.id,gold:+d.g||0,level:clamp(+d.l||1,1,10),xp:+d.x||0,shop:(d.sh||[]).slice(0,5).map(k=>DEF[k]?k:null),locked:!!d.lk,freeRerolls:+d.fr||0,xpHpN:+d.xh||0,augments:(d.au||[]).filter(a=>AUG_BY[a]),items:(d.it||[]).filter(i=>ITEMS[i]).slice(0,MAX_ITEMS)});
  me.mods=Object.assign(defaultMods(),d.md||{}); me.po=Array.isArray(d.po)?d.po.slice(0,8):null;
  me.agSnap=Array.isArray(d.ag)?d.ag.filter(r=>Array.isArray(r)&&AUG_BY[r[0]]).slice(0,30):[];
  me.loot=d.lt&&typeof d.lt==='object'?{gold:+d.lt.gold||0,units:+d.lt.units||0,items:+d.lt.items||0,value:+d.lt.value||0}:null;
@@ -2283,14 +2284,14 @@ const ITEM_ART={claw:'razor-claw',wing:'swift-wing',spoon:'twisted-spoon',water:
  light:'light-ball',titan:'protector',twin:'quick-claw',quick:'quick-powder',razorfang:'razor-fang',specs:'choice-specs',moon:'moon-stone',royal:'kings-rock',veil:'light-clay',charcoal:'charcoal',
  wise:'wise-glasses',soothe:'soothe-bell',energy:'energy-root',holy:'fresh-water',cure:'lum-berry',justice:'life-orb',helmet:'rocky-helmet',vest:'assault-vest',flame:'flame-orb',sturdy:'eviolite',
  scale:'dragon-scale',bright:'bright-powder',whiteherb:'white-herb',leftovers:'leftovers',hook:'grip-claw',zoom:'punching-glove',master:'master-ball',magnet:'magnet'};
-const BADGE_SPRITE=n=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${n}.png`;
+const BADGE_SPRITE=n=>`img/medallas/medalla-${n}.webp`; // 96 px, propias (de Wikidex), servidas por nuestro servidor
 // Objetos: sprites de Wikidex (Escarlata/Púrpura) reducidos a 80 px en WebP (2 KB cada uno), en public/items/<clave>.webp y por CDN como los retratos; si fallan, cae al sprite pequeño de PokeAPI (data-alt). Las insignias siguen con sus sprites pixelados de PokeAPI
 // Aura de fondo del color de cada sprite (la tabla es el tono dominante de cada imagen; los 8 componentes básicos lo llevan en el CSS). Las insignias y los emblemas no tienen sprite propio y no llevan aura
 const ITEM_FX={has:()=>true}; // TODOS los objetos llevan aura, en la banca, sobre un Pokémon, en el carrusel y donde sea
 const BASIC_FXC={claw:'210,222,245',wing:'170,235,255',spoon:'190,110,255',water:'70,170,255',coat:'150,195,225',goggles:'255,110,90',club:'255,228,160',lens:'120,150,255'};
 const ITEM_FXC={...BASIC_FXC,band:'243,110,104',blood:'243,193,104',bright:'104,243,112',charcoal:'205,215,245',cure:'169,240,70',energy:'243,197,104',expert:'205,215,245',flame:'243,114,104',helmet:'240,195,71',holy:'190,205,235',hook:'205,215,245',justice:'240,67,167',leftovers:'243,107,104',light:'239,230,57',magnet:'242,90,97',master:'243,104,180',medal:'239,216,62',mental:'190,205,235',moon:'205,215,245',quick:'104,171,243',rage:'240,209,70',razorfang:'190,205,235',royal:'240,218,73',sash:'242,98,104',scale:'104,209,243',scarf:'104,187,243',sharp:'243,228,104',shellbell:'190,205,235',sitrus:'243,229,104',soothe:'243,104,109',specs:'242,139,89',sturdy:'192,104,243',titan:'241,134,85',twin:'243,198,104',veil:'188,243,104',vest:'240,75,87',whiteherb:'190,205,235',wise:'205,215,245',zoom:'240,64,68'};
 const artKey=k=>ITEMS[k]&&ITEMS[k].base||k; // los radiantes usan el arte de su objeto
-const itemHQ=k=>{ k=artKey(k); return !!(ITEM_ART[k]&&!(ITEMS[k]&&ITEMS[k].badge)); };
+const itemHQ=k=>{ k=artKey(k); return !!(ITEM_ART[k]||(ITEMS[k]&&ITEMS[k].badge)); }; // las medallas también son imágenes suaves
 const itemAlt=k=>{ k=artKey(k); return ITEM_ART[k]?ITEM_SPRITE(ITEM_ART[k]):''; };
 const itemSrc=k=>{ k=artKey(k); return ITEMS[k]&&ITEMS[k].badge?BADGE_SPRITE(ITEMS[k].badge):ITEM_ART[k]?(window.ASSET_BASE||'')+'items/'+k+'.webp':''; };
 const getItemImg=k=>itemSrc(k)?loadImg('it:'+k,itemSrc(k)):{status:'fail'};
@@ -2639,7 +2640,7 @@ function updateCarousel(dt){
    if(a.done){ if(isHuman(p)&&!p.away){ if(a.tx!=null) toward(a,a.tx,a.ty); } else toward(a,cx+Math.cos(a.ang)*rr*1.12,cy+Math.sin(a.ang)*rr*1.12); return; }
    if(C.t<releaseAt(idx)) return;
    if(p.away){ a.rel=true; return; } // desconectado: no camina; al final se le da uno de los que sobran (más abajo)
-   if(!a.rel){ a.rel=true; a.relT=C.t; if(p===G.me) toast('¡Se abre tu barrera! Muévete con clic derecho hasta un Pokémon'); else if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',true); }
+   if(!a.rel){ a.rel=true; a.relT=C.t; if(p.remote) note(p,'¡Te toca en el carrusel! Muévete con clic derecho',false); }
    // Los bots (y las personas que no se mueven en 10 s) van a por un Pokémon; las personas van a donde hacen clic derecho
    if(a.target!=null&&C.opts[a.target].taken) a.target=null;
    if(a.tx==null&&a.target==null&&(!isHuman(p)?C.t-a.relT>a.delay:C.t-a.relT>10)) a.target=carouselChoice(p);
@@ -2771,6 +2772,7 @@ function bindEvents(){
  bindAuth();
  $('players').addEventListener('click',e=>{ const row=e.target.closest('.pl[data-pid]'); if(row&&G&&G.players.length) spectate(+row.dataset.pid); });
  document.querySelector('.sideTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
+ document.querySelector('.dmgSide').addEventListener('click',e=>{ const b=e.target.closest('[data-s]'); if(!b) return; dmgWho=b.dataset.s; document.querySelectorAll('.dmgSide [data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false')); renderDmg(); });
  document.querySelector('.dmgModes').addEventListener('click',e=>{ const b=e.target.closest('[data-m]'); if(!b) return; dmgMode=b.dataset.m; document.querySelectorAll('.dmgModes [data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderDmg(); });
  // Pantalla completa (el navegador puede negarse si no viene de un clic)
  $('augBar').addEventListener('contextmenu',e=>{ e.preventDefault(); const b=$('augList'); b.hidden=!b.hidden; });
@@ -2886,8 +2888,9 @@ function drawItemBadge(k,x,y,sz,n){
  const I=ITEMS[k]; if(!I) return;
  ctx.save(); const col=itemColor(I);
  const fxc=itemFxRGB(k), pu=.5+.5*Math.sin(performance.now()/1000*2.4+k.length*1.7), g=ctx.createRadialGradient(x,y+sz*.04,0,x,y,sz*.74); g.addColorStop(0,`rgba(${fxc},${(.85+.12*pu).toFixed(2)})`); g.addColorStop(.48,`rgba(${fxc},${(.42+.12*pu).toFixed(2)})`); g.addColorStop(.76,`rgba(${fxc},.1)`); g.addColorStop(1,`rgba(${fxc},0)`); const bw=Math.max(2,sz*.1); ctx.fillStyle='#000'; ctx.fillRect(x-sz/2-bw,y-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#04090c'; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.fillStyle=g; ctx.fillRect(x-sz/2,y-sz/2,sz,sz); ctx.globalAlpha=1; ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x-sz/2+.5,y-sz/2+.5,sz-1,sz-1);
- const e=getItemImg(k);
- if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
+ const e=I.emblem&&!I.badge&&TRAIT_SVG[I.emblem]?null:getItemImg(k);
+ if(!e) drawTraitGlyph(I.emblem,x,y,sz*.62); // emblema sin imagen propia: el mismo logo que en la banca (la silueta blanca de traitIcon), nunca el emoji
+ else if(e.status==='ok'){ ctx.imageSmoothingEnabled=itemHQ(k); ctx.drawImage(e.img,x-sz*.46,y-sz*.46,sz*.92,sz*.92); }
  else { ctx.font=`${sz*.62}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(I.icon,x,y+1); }
  // Contador de acumulaciones dentro del objeto, como en TFT (cargas de la Cinta Furia, poder ganado con la Piedra Lunar…)
  if(n){ const t=String(n), fs=Math.max(8,sz*.4), bh=fs*.95; ctx.globalAlpha=.78; ctx.fillStyle='#05070f'; ctx.fillRect(x-sz/2,y+sz/2-bh,sz,bh); ctx.globalAlpha=1; ctx.font=`900 ${fs}px Nunito,system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=2.5; ctx.strokeStyle='#000'; ctx.fillStyle='#ffd75e'; ctx.strokeText(t,x,y+sz/2-bh/2+.5); ctx.fillText(t,x,y+sz/2-bh/2+.5); }
@@ -3029,7 +3032,7 @@ function sceneActors(){
    for(const i of info){ const {u,k,x,y,syn,m}=i, st=mine?planStats(u):null, d=DEF[u.defId];
      if(syn&&syn.includes('Coloso')) sceneLinks.push([x,y]);
      A.push({key:u,u,loc:{b:k},star:u.star,still:true,syn,joinN:m.n,joinT:m.t,joinTraits:m.tr,joinFrom:m.from,joinTo:m.to,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star),hud:st?{items:u.items,hp:st.maxHp,maxHp:st.maxHp,mana:st.mana,maxMana:st.maxMana,mine:true,star:u.star}:{items:u.items,star:u.star}}); }
- if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:(cr.boss?1.35:1)*(cr.big||1),hud:{creep:true}}); }); // clave estable: en multijugador la lista llega nueva en cada mensaje
+ if(G.preview&&G.phase==='planning') G.preview.forEach((cr,ci)=>{ const [gc,gr]=toGrid(1,cr.c,cr.r); const [x,y]=cellXY(gc,gr); A.push({key:'pv'+ci,dex:(cr.shiny?'shiny:':'')+cr.dex,x,y,face:0,ring:'#8a8a8a',alpha:.85,scale:unitScale({dex:cr.dex,traits:[]},1,{boss:!!cr.boss})*(cr.big||1),hud:{creep:true}}); }); // misma escala que en combate (2980) // clave estable: en multijugador la lista llega nueva en cada mensaje
  }
  // Minileyendas: la tuya donde la lleves; la del rival en su lado durante los combates PvP
  if(!inCar){
@@ -3040,7 +3043,7 @@ function sceneActors(){
  (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:dexOf(d,u.star),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
  const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star,still:true,dex:dexOf(d,u.star),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star}}); }); }
- if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:0,drag:true,alpha:.9,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
+ if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:dexOf(d,drag.u.star),x:drag.x,y:drag.y,face:0,drag:true,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star}}); }
  return A;
 }
 function draw(){
@@ -3259,6 +3262,9 @@ const TRAIT_SVG={
  'Team Rocket':'M5.5 3H13a5.5 5.5 0 0 1 2.2 10.5L19.5 21h-4.2l-3.8-7H9.2v7H5.5zm3.7 3.3v4.5H13a2.25 2.25 0 0 0 0-4.5z',
 };
 const traitIcon=t=>TRAIT_SVG[t]?`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="${TRAIT_SVG[t]}"/></svg>`:(TRAITS[t]?TRAITS[t].icon:'');
+// La misma silueta en el lienzo 2D (objetos sobre las fichas, combate y carrusel): el path de TRAIT_SVG en blanco al tamaño w con una sombra de 1 px, como el CSS de .ii .isvg
+const TRAIT_PATH={};
+function drawTraitGlyph(t,x,y,w){ if(!TRAIT_SVG[t]) return; const p=TRAIT_PATH[t]||(TRAIT_PATH[t]=new Path2D(TRAIT_SVG[t])); ctx.save(); ctx.translate(x-w/2,y-w/2); ctx.scale(w/24,w/24); ctx.fillStyle='rgba(0,0,0,.7)'; ctx.translate(0,24/w); ctx.fill(p,'evenodd'); ctx.translate(0,-24/w); ctx.fillStyle='#fff'; ctx.fill(p,'evenodd'); ctx.restore(); }
 // Mientras llega el retrato 3D se ve una Poké Ball (nunca un sprite 2D)
 const BALL_IMG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3Cpath d='M10 50a40 40 0 0 1 80 0z' fill='%23e8402e' stroke='%231a1a22' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='11' fill='%23f4f4f4' stroke='%231a1a22' stroke-width='6'/%3E%3C/svg%3E";
 // Retratos (public/art): sprites de Pokémon GO compuestos con un aura de sus colores, el Pokémon a la derecha (centro en el 68 % del ancho y el 52 % del alto) y la izquierda oscura para sinergias y nombre (retrato.js en la skill de recursos). Sin cargar modelos 3D
@@ -3269,7 +3275,7 @@ const ART_V=3;
 let ART_EXT='avif';
 const ART_FOCUS={}, ART_DEF=[68,50,1,.87];   // 4.º valor: escala mínima respecto al ancho (.87 = el retrato entero, sin ampliar de más)
 const shopArtKey=k=>k==='eevee'&&G.me&&G.me.eeveeForm&&DEF[G.me.eeveeForm]?G.me.eeveeForm:k;
-const CARD_ART=Object.fromEntries('abra absol aerodactyl articuno bagon beldum bellsprout bulbasaur caterpie chansey charmander chikorita clefairy cleffa cubone darkrai diglett ditto doduo dratini drowzee duskull eevee ekans electabuzz elekid espeon exeggcute farfetchd flareon gastly geodude gible gimmighoul giratina goldeen grimer groudon growlithe hatenna hitmonchan hitmonlee hooh horsea houndour igglybuff jigglypuff jolteon jynx kabuto kangaskhan koffing krabby kyogre lapras larvitar leafeon lickitung litwick lugia machop magikarp magmar magnemite mankey meowth mew mewtwo mimejr misdreavus moltres mrmime munchlax nidoranf nidoranm oddish omanyte onix paras pichu pidgey pinsir poliwag ponyta porygon psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye sandshrew scyther seel shellder shinx slowpoke snorlax spearow squirtle staryu sylveon tangela tauros tentacool timburr togepi turtwig umbreon vaporeon venonat voltorb vulpix weedle zapdos zorua zubat'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
+const CARD_ART=Object.fromEntries('abra absol aerodactyl articuno bagon beldum bellsprout bulbasaur caterpie chansey charmander chikorita clefairy cleffa cubone darkrai diglett ditto doduo dratini drowzee duskull eevee ekans electabuzz elekid espeon exeggcute farfetchd flareon gastly geodude gible gimmighoul giratina goldeen grimer groudon growlithe hatenna hitmonchan hitmonlee hooh horsea houndour igglybuff jigglypuff jolteon jynx kabuto kangaskhan koffing krabby kyogre lapras larvitar leafeon lickitung litwick lugia machop magikarp magmar magnemite mankey meowth mew mewtwo mimejr misdreavus moltres mrmime munchlax nidoranf nidoranm oddish omanyte onix paras pichu pidgey pinsir poliwag ponyta porygon psyduck ralts rattata rayquaza rhyhorn riolu rowlet sableye sandshrew scyther seel shellder shinx slowpoke snorlax spearow squirtle staryu sylveon tangela tauros tentacool nidoran togepi turtwig umbreon vaporeon venonat voltorb vulpix weedle zapdos zorua zubat'.split(' ').map(k=>[k,`art/${k}.${ART_EXT}?v=${ART_V}`])); // cada ilustración muestra la forma que sale en la tienda (los de coste 4, su 2.ª forma)
 const tacKey=p=>TACS[p&&p.tac]?p.tac:'charmander';
 // Cabezas, minimapa y menú usan la miniatura (224 px, ~5 KB; la ilustración completa de la tienda pesa hasta 43 KB). Si falla (CDN y luego nuestro servidor), se muestra el sprite de la Pokédex en vez de una imagen rota o de cargar un modelo 3D
 const artThumb=k=>(window.ASSET_BASE||'')+'art/t/'+k+'.'+ART_EXT+'?v='+ART_V;
@@ -3286,7 +3292,7 @@ const elemOf=d=>(d&&d.traits||[]).find(t=>ELEMS.includes(t))||'Normal';
 const portraitWait=new Set();
 if(!HEADLESS) window.addEventListener('b3ready',()=>{ for(const d of portraitWait) portraitImg(d); portraitWait.clear(); });
 // Retratos pequeños (ficha, lista de daño, formas): el sprite de public/dex (~3 KB, instantáneo) en vez de renderizar el modelo 3D, que obligaba a descargar el .glb (50-460 KB) y mostraba una Poké Ball girando hasta entonces. Solo los que no tienen sprite siguen con el 3D
-const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,532,533,534,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
+const DEX_FILES=new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,172,173,174,175,176,196,197,200,208,212,228,229,230,239,246,247,248,249,250,280,281,282,302,355,356,359,371,372,373,374,375,376,382,383,384,387,388,389,403,404,405,429,439,443,444,445,446,447,448,462,464,466,468,470,471,477,487,491,570,571,607,608,609,700,722,723,724,856,857,858,999,1000]);
 function portraitImg(dex){ const n=String(dex).split(/[:/]/).pop(); if(DEX_FILES.has(+n)) return `<img src="${dexUrl(n)}" alt="" decoding="async" data-sp="${n}" class="dexPic">`;
  if(!(window.B3&&B3.portrait)) portraitWait.add(dex);
  const url=window.B3&&B3.portrait?B3.portrait(dex,u=>{ if(u) document.querySelectorAll(`img[data-pdex="${dex}"]`).forEach(im=>{ im.src=u; im.classList.remove('loadingBall'); }); }):null;
@@ -3353,8 +3359,6 @@ function renderTraits(){
  }).join(''):'<p class="muted small">Coloca Pokémon en el tablero para activar sinergias. Pasa el cursor por una sinergia para ver qué le da a tu equipo.</p>';
  renderAugs();
 }
-// Avisos de subida de estrellas: se ven unos segundos junto al nombre
-const UPS={}, UP_MS=7000;
 const POGO='https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Sounds/';
 const SFX={ball:[POGO+'Encounter/se_go_ball_out.wav',.6]};
 // Nombre de la forma que sale en la tienda (para su grito)
@@ -3368,28 +3372,6 @@ function soundWatch(){ const me=G.me; if(!me) return; const up=me.lastUp?me.last
  if((tac>sndWatch.tac&&!tacOf(me).mimic)||(frm!==sndWatch.frm&&me.tac==='eevee'&&tac>=1)) Music.evolve('big');
  if((me.mewN|0)>(sndWatch.mew|0)) Music.morph();
  sndWatch.mew=me.mewN|0; sndWatch.up=up; sndWatch.tac=tac; sndWatch.frm=frm; sndWatch.stk=stk; }
-// Aviso de subida de estrellas de otro jugador: un recuadro semitransparente (nombre del jugador, cara del Pokémon, su nombre y las estrellas: plata a 2★, oro a 3★) que sale del círculo de su minileyenda hacia la izquierda y se desvanece solo. Vive en #upLayer (fixed) para poder salirse de la columna
-let DEX_NAME=null;
-const dexName=dex=>{ if(!DEX_NAME){ DEX_NAME={}; for(const k in DEF){ const d=DEF[k]; if(!d.names) continue; d.names.forEach((n,i)=>{ const dx=Array.isArray(d.dex)?d.dex[i]:d.dex; if(dx!=null&&!DEX_NAME[dx]) DEX_NAME[dx]=n; }); } } return DEX_NAME[String(dex).split('/').pop()]||''; };
-const UP_CARDS=new Map(); let UP_NAT=0; // altura natural del recuadro (con escala 1)
-function renderUps(){
- if(HEADLESS||!G||!G.players) return; let L=$('upLayer'); if(!L){ L=document.createElement('div'); L.id='upLayer'; document.body.appendChild(L); }
- const now=performance.now(), live=new Set(); L.hidden=!liveGame();
- // Si suben varios a la vez, todos los recuadros se reducen lo justo (--cs) para que quepan en la separación entre filas sin tocarse
- const rc=[...document.querySelectorAll('#players .pl')].map(e=>{ const b=e.getBoundingClientRect(); return b.top+b.height/2; }).sort((a,b)=>a-b), pitch=rc.length>1?Math.min(...rc.slice(1).map((y,i)=>y-rc[i])):90;
- if(!L.hidden) for(const p of G.players){ const u=p.lastUp; if(!u||p===G.me||!p.alive) continue; const [dex,star,seq]=u;
-   let r=UPS[p.id]; if(!r||r.seq!==seq){ r=UPS[p.id]={seq,t:now}; setTimeout(()=>{ if(G&&G.players) renderUps(); },UP_MS+50); }
-   if(now-r.t>=UP_MS) continue; const row=document.querySelector('#players .pl[data-pid="'+p.id+'"]'); if(!row) continue;
-   let c=UP_CARDS.get(p.id); if(!c||c.dataset.seq!==String(seq)){ if(c) c.remove(); c=document.createElement('div'); c.className='upCard s'+star; c.dataset.seq=seq; c.style.setProperty('--life',UP_MS+'ms');
-     c.innerHTML=`<span class="un">${esc(p.name)}</span><span class="face"><img src="${dexUrl(dex)}" alt="" data-sp="${String(dex).split('/').pop()}" decoding="async"></span><span class="pi"><b class="pn">${esc(dexName(dex)||'Pokémon')}</b><i class="st" title="Subió a ${star} estrellas">${'★'.repeat(star)}</i></span>`; c.style.visibility='hidden'; L.appendChild(c); UP_CARDS.set(p.id,c); c._new=true; }
-   if(!UP_NAT){ c.style.setProperty('--cs',1); UP_NAT=c.offsetHeight||76; } c.style.setProperty('--cs',clamp((pitch-6)/UP_NAT,.45,1).toFixed(3));
-   const info=row.querySelector('.plInfo').getBoundingClientRect(), ring=row.querySelector('.ring').getBoundingClientRect(), h=c.offsetHeight;
-   c.style.right=(innerWidth-info.left+10)+'px'; c.style.top=(ring.top+ring.height/2-h/2)+'px';
-   if(c._new){ c._new=false; const l=c.getBoundingClientRect().left; c.style.setProperty('--ox',(ring.left+ring.width/2-l)+'px'); c.style.visibility=''; }
-   live.add(p.id); }
- for(const [id,c] of UP_CARDS) if(!live.has(id)){ c.remove(); UP_CARDS.delete(id); }
-}
-function upBadge(){ return ''; }
 // Aumentos: tira de iconos sobre el tablero; con clic derecho se abre la lista con sus nombres
 // Icono de un aumento: su sprite (PokeAPI) con el emoji de reserva si no carga
 // Icono de un aumento: el propio (a.ico, sin teñir) o, en los de héroe, el sprite de siempre
@@ -3417,7 +3399,6 @@ function renderPlayers(){
    vi.innerHTML=G.view.board?`👁 Tablero de <b>${esc(p?p.name:'?')}</b> <button class="btn sm" id="viewBack">Volver al mío</button>`:`👁 Viendo: <b>${esc(p?p.name:'?')}</b> vs <b>${G.view.pve?'Salvajes':esc(o?o.name:'?')}</b> <button class="btn sm" id="viewBack">Volver a mi combate</button>`;
    $('viewBack').onclick=()=>spectate(G.me.id); }
  else vi.hidden=true;
- renderUps();
 }
 // Banca de objetos: en escritorio, casillas fijas (las vacías punteadas) a la izquierda del tablero
 // Recetas de un componente (clic derecho en la banca de objetos, como en TFT): las 9 combinaciones; resaltadas las que puedes hacer ya
@@ -3448,17 +3429,20 @@ function renderItems(){
  const key=me.id+':'+(me.items||[]).join()+'|'+slots; $('items').classList.toggle('spy',spy); $('items').title=spy?'Objetos de '+me.name:'';
  if(key===renderItems.last&&$('items').childElementCount) return; renderItems.last=key; closeRecipes();
  const groups=[]; me.items.forEach((k,i)=>{ const g=ITEMS[k]&&ITEMS[k].tool&&groups.find(x=>x.k===k); if(g) g.n++; else groups.push({k,i,n:1}); });
- const it=groups.map(g=>`<div class="item" data-i="${g.i}" data-tip="item:${g.k}" tabindex="0">${itemHTML(g.k)}${g.n>1?`<b class="icount">×${g.n}</b>`:''}</div>`).join('');
- $('items').innerHTML=slots?it+'<span class="islot"></span>'.repeat(Math.max(0,MAX_ITEMS_BENCH-groups.length)):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
+ const row=g=>`<div class="item" data-i="${g.i}" data-tip="item:${g.k}" tabindex="0">${itemHTML(g.k)}${g.n>1?`<b class="icount">×${g.n}</b>`:''}</div>`, it=groups.map(row).join('');
+ // Bancas de 10 huecos: con más de 10 objetos se abre otra al lado (los objetos nunca se pierden)
+ const benches=[]; for(let i=0;i<Math.max(1,Math.ceil(groups.length/MAX_ITEMS_BENCH));i++){ const g=groups.slice(i*MAX_ITEMS_BENCH,(i+1)*MAX_ITEMS_BENCH); benches.push(`<div class="ibench">${g.map(row).join('')}${'<span class="islot"></span>'.repeat(MAX_ITEMS_BENCH-g.length)}</div>`); }
+ $('items').classList.toggle('multi',slots&&benches.length>1);
+ $('items').innerHTML=slots?benches.join(''):(it||'<span class="muted small">Sin objetos. Arrastra los que consigas sobre un Pokémon.</span>');
 }
 // Registro de daño: daño hecho, daño recibido y curación (con escudos) de cada Pokémon del último combate
-let dmgMode='dmg', statsCb=null, statsSide=0, sideTab='pl', lastDmgT=0;
+let dmgMode='dmg', dmgWho='me', statsCb=null, statsSide=0, sideTab='pl', lastDmgT=0; // dmgWho: 'me' (tu lado) u 'opp' (el mismo registro, pero del rival)
 function renderDmg(){
  if(HEADLESS||sideTab!=='dmg') return;
  const cb=statsCb; if(!cb){ $('dmgTitle').textContent='Aparecerá cuando empiece el primer combate.'; $('dmgList').innerHTML=''; return; }
- const side=statsSide, f={dmg:'sDmg',tank:'sTank',heal:'sHeal'}[dmgMode];
+ const side=dmgWho==='opp'?1-statsSide:statsSide, f={dmg:'sDmg',tank:'sTank',heal:'sHeal'}[dmgMode];
  const us=cb.units.filter(u=>u.side===side).map(u=>({u,v:R0(u[f]||0)})).sort((a,b)=>b.v-a.v), max=Math.max(1,...us.map(x=>x.v));
- $('dmgTitle').textContent=(G.phase==='combat'?'Combate en curso':'Último combate')+' · '+{dmg:'daño infligido',tank:'daño recibido (con escudos)',heal:'curación y escudos dados'}[dmgMode];
+ $('dmgTitle').textContent=(G.phase==='combat'?'Combate en curso':'Último combate')+' · '+{dmg:'daño infligido',tank:'daño recibido (con escudos)',heal:'curación y escudos dados'}[dmgMode]+(dmgWho==='opp'?' · equipo rival':'');
  $('dmgList').innerHTML=us.map(({u,v})=>`<div class="dmgRow ${dmgMode}" style="--cc:${u.creep?'#8a8a8a':COST_HEX[(u.d.cost||1)-1]}"><span class="pic">${portraitImg(u.creep?u.d.dex:dexOf(u.d,u.star))}</span>
    <div><div class="nm"><span>${esc(u.name)} ${u.creep?'':'★'.repeat(u.star)}</span><b>${v}</b></div><div class="bar"><i style="width:${v/max*100}%"></i></div></div></div>`).join('');
 }
@@ -3516,7 +3500,7 @@ function ucSprite(){ if(document.getElementById('ucSprite')) return; const w=doc
 let UC_CUR=null, tipPinned=false;
 // La misma carta que se compra en la tienda, sin botón, para reconocer al Pokémon en su ficha
 // Retratos de las formas evolucionadas (public/art/f/<n.º>): la ficha muestra la forma de su estrella (Charmeleon a 2★, Charizard a 3★); la tienda sigue con la primera
-const FORM_ART=new Set('2 3 5 6 8 9 11 12 14 15 17 18 20 22 24 25 26 28 30 31 33 34 35 36 38 39 40 42 44 45 47 49 51 53 55 57 59 61 62 64 65 67 68 70 71 73 75 76 78 80 82 85 87 89 91 93 94 97 99 101 103 105 110 112 117 119 121 122 125 130 139 141 143 148 149 153 154 176 208 212 229 230 248 282 373 376 389 405 429 445 448 462 464 466 468 477 534 571 609 724 858 1000'.split(' ').map(Number));
+const FORM_ART=new Set('2 3 5 6 8 9 11 12 14 15 17 18 20 22 24 25 26 28 30 31 33 34 35 36 38 39 40 42 44 45 47 49 51 53 55 57 59 61 62 64 65 67 68 70 71 73 75 76 78 80 82 85 87 89 91 93 94 97 99 101 103 105 110 112 117 119 121 122 125 130 139 141 143 148 149 153 154 176 208 212 229 230 248 282 373 376 389 405 429 445 448 462 464 466 468 477 34 571 609 724 858 1000'.split(' ').map(Number));
 const formArt=dx=>FORM_ART.has(dx)?`art/f/${dx}.${ART_EXT}?v=${ART_V}`:null;
 function unitCardHTML(d,who,star){
  const sx=star&&Array.isArray(d.dex)?dexOf(d,star):null, fa=sx!=null&&sx!==dexOf(d,1)?formArt(sx):null;
@@ -3597,11 +3581,11 @@ function showTacPick(first){
  let sel=savedTac()||'charmander';
  $('menu').classList.remove('hidden'); $('auth').classList.add('hidden');
  const opt=k=>{ const t=TACS[k], own=tacOwned(k);
-   if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="${t.name}: solo se consigue en el gacha" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span><span class="tacLock"><i data-i="crystal" data-s="14"></i>Gacha</span><small class="tpPity">Mítica · ${typeof COSM!=='undefined'?(COSM.missingMythics(ACC&&ACC.cosm)[0]==='tac:'+k?`${t.name} garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:`${t.name}: tras conseguir la otra mítica`):'Solo en el gacha'}</small></button>`;
+   if(!own) return `<button class="tacOpt locked" data-k="${k}" type="button" aria-disabled="true" title="${t.name}: solo se consigue en el gacha" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span><span class="tacLock"><i data-i="crystal" data-s="14"></i>Gacha</span>${typeof COSM!=='undefined'&&COSM.MYTHICS.includes('tac:'+k)?`<small class="tpPity">Mítica · ${COSM.missingMythics(ACC&&ACC.cosm)[0]==='tac:'+k?`${t.name} garantizado en ${COSM.pityLeft(ACC&&ACC.cosm)} tiradas`:`${t.name}: tras conseguir la otra mítica`}</small>`:''}</button>`;
    return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}" type="button" title="${t.name}" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span></button>`; };
  openModal(`<div class="tpHead"><h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><span class="tpHelpWrap"><button class="tpHelp" id="tpHelp" type="button" aria-label="Qué es la minileyenda" aria-describedby="tpInfo">?</button><p class="tpInfo" id="tpInfo" role="tooltip">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p></span></div>
   <div class="tacPick">${TAC_TIERS.map(([name,cls,keys])=>`<section class="tpTier ${cls}"><h4>${name}</h4><div class="tpList">${keys.length?keys.map(opt).join(''):'<span class="tpSoon">Próximamente</span>'}</div></section>`).join('')}</div>
-  <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="tacOk">Confirmar</button></div>`,{closable:!first,tp:true,onClose:()=>{ if(ACC) showMenu(); }});
+  <div class="row tpFoot" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="tacOk">Confirmar</button></div>`,{closable:!first,tp:true,onClose:()=>{ if(ACC) showMenu(); }});
  $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast(`${TACS[b.dataset.k].name} solo se consigue en el gacha`); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
    $('tacOk').disabled=true;
@@ -3724,7 +3708,7 @@ function showAugment(){
  let k=0; const anim=choices.map(a=>augSeen.ids.has(a.id)?null:k++); choices.forEach(a=>augSeen.ids.add(a.id));
  openModal(`<div class="augPick">${choices.map((a,i)=>`<div class="augCol">${augCardHTML(a,i,anim[i])}<button class="augRR" data-r="${i}" ${rr[i]?'disabled':''} title="Cambiar este aumento (1 vez)">⟳</button></div>`).join('')}</div>`,{kind:'aug',bare:true});
  hydrateAugCards($('mbox'));
- $('mbox').querySelectorAll('.augCard3').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); toast(`✨ ${a.name}`); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
+ $('mbox').querySelectorAll('.augCard3').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i, a=choices[i]; closeModal(); doAct({t:'aug',i},()=>{ me.augChoices=null; }); });
  $('mbox').querySelectorAll('.augRR').forEach(b=>b.onclick=()=>{ const i=+b.dataset.r; doAct({t:'augrr',i},()=>{ (me.augRR=me.augRR||[0,0,0])[i]=1; }); if(NET.mode!=='client') showAugment(); });
 }
 // Elecciones pendientes de los aumentos (emblemas, recompensas, Llamada al Caos…)
@@ -3749,10 +3733,10 @@ function showPick(){
  if(pk.src==='__tac'){ showTacEvolve(pk); return; }
  const items=pk.opts.map(pickItem);
  if(items.every(Boolean)){ showChooseOne(pk,items); return; }
- openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>{ const pu=pickUnit(o);
+ openModal(`<h1>${esc(pk.title)}</h1><p class="muted">${esc(pk.desc||'')}</p><div class="choices">${pk.opts.map((o,i)=>{ const pu=pickUnit(o), ik=pickItem(o);
    // si la opción es una ficha, su retrato (con el color de su coste) y su descripción al pasar el ratón
    return pu?`<button class="choice pkUnit" data-i="${i}" data-tip="shop:${pu.d.key}" style="--cc:${COST_HEX[(pu.d.cost||1)-1]}"><span class="pkPic">${portraitImg(dexOf(pu.d,pu.star))}</span><b>${esc(nameOf(pu.d,pu.star))} ${'★'.repeat(pu.star)}</b><span class="small">${pu.d.traits.map(t=>TRAITS[t].icon+' '+t).join(' · ')}${o.d?'<br>'+esc(o.d):''}</span></button>`
-     :`<button class="choice" data-i="${i}"><span class="big">${esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`; }).join('')}</div>`,{kind:'pick'});
+     :`<button class="choice" data-i="${i}"><span class="big">${ik?itemHTML(ik,48):esc(o.i||'✨')}</span><b>${esc(o.t)}</b><span class="small">${esc(o.d||'')}</span></button>`; }).join('')}</div>`,{kind:'pick'});
  $('mbox').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; closeModal(); doAct({t:'pick',id:pk.id,i},()=>{ G.me.picks=G.me.picks.filter(x=>x.id!==pk.id); }); });
 }
 // Opciones que son un objeto (it:<objeto>) o un emblema (em:<sinergia>): se eligen en la tienda «Elige uno»
@@ -4016,7 +4000,7 @@ const FR_ST={game:'En partida',lobby:'En una sala',queue:'Buscando partida',menu
 const frStatus=f=>f.st==='game'?`En partida${f.r?' · Ronda '+f.r:''}`:FR_ST[f.st]||'Desconectado';
 async function loadFriends(){ if(!ACC) return; let d; try{ d=await api('/api/friends'); }catch(e){ return; }
  const prev=FR.list?new Set(FR.list.incoming.map(x=>x.name)):null; FR.list=d;
- if(prev) for(const x of d.incoming) if(!prev.has(x.name)) toast(`${x.name} quiere ser tu amigo`);
+ if(prev&&!liveGame()) for(const x of d.incoming) if(!prev.has(x.name)) toast(`${x.name} quiere ser tu amigo`); // en partida no: ninguna píldora por acciones de otros
  renderFriends(); }
 function onFriendUpd(d){ if(!FR.list||!d||typeof d.name!=='string') return; const f=FR.list.friends.find(x=>x.name===d.name); if(!f) return;
  f.st=FR_ST[d.st]?d.st:'off'; f.r=String(d.r||'').slice(0,6); f.mode=String(d.mode||'').slice(0,10); renderFriends(); }
@@ -4073,7 +4057,7 @@ const iconOf=(cs,z)=>{ const k=csParse(cs).ic, d=k&&COSM.BY[k].d; return d&&wind
 // Datos del cosmético de un hueco que lleva un jugador (del catálogo, nunca de la red)
 const cosD=(p,slot)=>{ const k=csParse(csOfP(p))[slot]; return k?COSM.BY[k].d:null; };
 // Variocolor equipado (solo para su minileyenda y si es gratuita): 'hue:<de>,<a>:<dex>' para board3d
-const tacDexC=p=>{ const d=cosD(p,'sh'), k=tacKey(p); return d&&d.tac===k&&!TACS[k].locked?`hue:${d.from},${d.to}:${tacDex(p)}`:tacDex(p); };
+const tacDexC=p=>{ const d=cosD(p,'sh'), k=tacKey(p); return d&&d.tac===k?`hue:${d.from},${d.to}:${tacDex(p)}`:tacDex(p); };
 const trailOf=p=>{ const d=cosD(p,'tr'); return d?d.c:null; };
 const csOfP=p=>p?(p===G.me&&!G.mirror&&!p.cs?myCs():p.cs||(NET.cos&&NET.cos[p.id])||''):'';
 function onCos(d){ if(!d||!Array.isArray(d.pl)) return; NET.cos={}; for(const r of d.pl.slice(0,8)) if(Array.isArray(r)) NET.cos[r[0]|0]=String(r[1]||'').slice(0,200);

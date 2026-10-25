@@ -122,7 +122,7 @@ Object.assign(I18N.EN, {
   'Medalla Arcoíris. El portador gana la sinergia Hada.': 'Rainbow Medal. The holder gains the Fairy trait.',
   'Medalla Cascada. El portador gana la sinergia Agua.': 'Cascade Medal. The holder gains the Water trait.',
   'Medalla Dragón. El portador gana la sinergia Dragón.': 'Dragon Medal. The holder gains the Dragon trait.',
-  'Medalla Pantano. El portador gana la sinergia Hechicero.': 'Marsh Medal. The holder gains the Sorcerer trait.',
+  'Medalla Volcán. El portador gana la sinergia Hechicero.': 'Volcano Medal. The holder gains the Sorcerer trait.',
   'Medalla Pluma. El portador gana la sinergia Tirador.': 'Feather Medal. The holder gains the Marksman trait.',
   'Medalla Puño. El portador gana la sinergia Coloso.': 'Fist Medal. The holder gains the Colossus trait.',
   'Medalla Roca. El portador gana la sinergia Guardián.': 'Rock Medal. The holder gains the Guardian trait.',
@@ -787,6 +787,7 @@ Object.assign(I18N.EN, {
   'Historial de partidas': 'Match history', 'Tus {0} partidas más recientes. Toca una para ver los detalles.': 'Your {0} most recent games. Tap one to see the details.', 'Aún no has jugado ninguna partida de Normal, Clasificatoria o sala informal.': 'You have not played any Normal, Ranked or casual room game yet.', 'Nadie por aquí ahora mismo.': 'Nobody around right now.', 'Cargando…': 'Loading…',
 });
 Object.assign(I18N.EN, { '🔥 Racha de {0} victorias': '🔥 {0}-win streak', 'Racha de {0} derrotas': '{0}-loss streak' });
+Object.assign(I18N.EN, { 'Tu equipo': 'Your team', 'Rival': 'Enemy', 'equipo rival': 'enemy team', 'daño infligido': 'damage dealt', 'daño recibido (con escudos)': 'damage taken (with shields)', 'curación y escudos dados': 'healing and shields given' });
 // Patrones genéricos (van los últimos: solo entran si nada más encaja): «Fuego (3)», «Mítica · X»
 Object.assign(I18N.EN, { '{0}-{1}: {2}': '{0}-{1}: {2}' }); // rótulo de ronda: la parte {2} se traduce sola
 Object.assign(I18N.EN, { '{0} ({1})': '{0} ({1})', '{0} · {1}': '{0} · {1}' });
@@ -829,7 +830,7 @@ Object.assign(I18N.EN, {
   "{0} de oro, {1} Pokémon de coste {2} a {3}★, un objeto completo y un emblema a elegir.": "{0} gold, {1} cost {2} Pokémon at {3}★, a full item and an emblem of your choice.",
   "Medalla Puño. El portador gana la sinergia Coloso. +12% de vida máx.": "Fist Medal. The holder gains the Colossus trait. +12% max health.",
   "Medalla Pluma. El portador gana la sinergia Tirador. +1 de alcance.": "Feather Medal. The holder gains the Marksman trait. +1 range.",
-  "Medalla Pantano. El portador gana la sinergia Hechicero. Cada 3.er lanzamiento, su habilidad se lanza dos veces.": "Marsh Medal. The holder gains the Sorcerer trait. Every 3rd cast, its ability is cast twice.",
+  "Medalla Volcán. El portador gana la sinergia Hechicero. Cada 3.er lanzamiento, su habilidad se lanza dos veces.": "Volcano Medal. The holder gains the Sorcerer trait. Every 3rd cast, its ability is cast twice.",
   "Medalla Cascada. El portador gana la sinergia Agua. +4 de maná por ataque.": "Cascade Medal. The holder gains the Water trait. +4 mana per attack.",
   "Medalla Roca. El portador gana la sinergia Guardián. Empieza el combate con un escudo del 25% de su vida máx.": "Rock Medal. The holder gains the Guardian trait. Starts combat with a shield of 25% of its max health.",
   "Medalla Arcoíris. El portador gana la sinergia Hada. Al empezar el combate, los aliados adyacentes ganan un escudo de 150.": "Rainbow Medal. The holder gains the Fairy trait. At the start of combat, adjacent allies gain a 150 shield.",
@@ -862,4 +863,5 @@ Object.assign(I18N.EN, {
   // ----- Fichas nuevas (octubre de 2026): nombres de habilidades -----
   'Autodestrucción': 'Self-Destruct', 'Amnesia': 'Amnesia', 'Doble Patada': 'Double Kick', 'Tierra Viva': 'Earth Power', 'Cornada': 'Horn Attack', 'Megacuerno': 'Megahorn',
   'Puños Elementales': 'Elemental Punches', 'Residuos': 'Sludge', 'Bomba Lodo': 'Sludge Bomb', 'Rapidez': 'Swift', 'Psicorrayo': 'Psybeam',
+  'Golpe Óseo': 'Bone Club', 'Huesomerang': 'Bonemerang',
 });
