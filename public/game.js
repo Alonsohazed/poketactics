@@ -1434,12 +1434,12 @@ const ORBS={
 function grant(p,tok,out){
  const m=tok.match(/^([a-z]+)(\d*)$/); const k=m[1], n=+m[2]||0;
  if(k==='g'){ p.gold+=n; out.push(`${n} de oro`); }
- else if(k==='u'){ const key=drawUnitOfCost(n,threeStarSet(p)); if(key){ giveUnitTo(p,key); out.push(DEF[key].name); } }
+ else if(k==='u'){ const key=drawUnitOfCost(n,threeStarSet(p)); if(key){ if(ORB_SELL&&!benchRoom(p,key)){ returnToPool(key,1); out.push(orbSold(p,key)); } else { giveUnitTo(p,key); out.push(DEF[key].name); } } }
  // Medallas al azar: ninguna en la fase 1 (para no empezar con 2 o 3 emblemas) y un 5 % después
  else if(k==='c'){ const it=giveItem(p,G.round&&G.round.s>=2&&Math.random()<.05?'medal':pick(BASIC)); out.push(ITEMS[it].icon+' '+ITEMS[it].name); }
  else if(k==='m'){ giveItem(p,'medal'); out.push('🏅 Medalla'); }
  else if(k==='mag'){ giveItem(p,'magnet'); out.push('🧲 Imán Removedor'); }
- else if(k==='dup'){ const own=allUnits(p).filter(u=>!DEF[u.baseId].evoOf&&u.star<3&&G.pool[u.baseId]>0); if(own.length){ const u=pick(own); G.pool[u.baseId]--; giveUnitTo(p,u.baseId); out.push('🧬 Copia de '+DEF[u.baseId].name); } else { p.gold+=3; out.push('3 de oro'); } }
+ else if(k==='dup'){ const own=allUnits(p).filter(u=>!DEF[u.baseId].evoOf&&u.star<3&&G.pool[u.baseId]>0); if(own.length){ const u=pick(own); if(ORB_SELL&&!benchRoom(p,u.baseId)) out.push('🧬 Copia de '+orbSold(p,u.baseId)); else { G.pool[u.baseId]--; giveUnitTo(p,u.baseId); out.push('🧬 Copia de '+DEF[u.baseId].name); } } else { p.gold+=3; out.push('3 de oro'); } }
  // Yunque: las personas eligen 1 de 4 en la tienda «Elige uno» (también en multijugador); los rivales generados y los orbes abiertos de golpe, al azar
  else if(k==='ca'||k==='fa'){ if(!p.isBot&&!G.auto&&(!NO_ANVIL||benchFree(p))) out.push('⚒️ '+giveAnvil(p,k==='ca'?'c':'f')); // el yunque va a la banca y se abre al venderlo (E o arrastrándolo a la tienda), nunca solo
    else { const it=giveItem(p,pick(k==='ca'?BASIC:FULL_KEYS)); out.push('⚒️ '+ITEMS[it].name); } }
@@ -1448,13 +1448,19 @@ let NO_ANVIL=false; // al abrir orbes de golpe (empieza el combate) los yunques 
 // Orbe de botín: color según lo bueno que es (gris, dorado o prismático) y contenido ya decidido al soltarlo
 const ORB_TIER=k=>k==='prism'?'prism':/^(gray|c$|mag$)/.test(k)?'gray':'gold';
 function dropOrb(p,key,at){ const toks=ORBS[key]?weighted(ORBS[key].t):[key]; G.orbSeq=(G.orbSeq||0)+1; p.orbs.push({id:G.orbSeq,tier:ORB_TIER(key),toks,c:at?at.c:null,r:at?at.r:null}); }
-// Un orbe con Pokémon dentro no se abre (ni a mano ni solo al empezar el combate) si no caben en el banquillo: espera en el suelo a que hagas sitio
-const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(u\d|dup|ca|fa)$/.test(t)).length:(o.nu|0); // los yunques también ocupan banquillo
+// Orbes y banquillo: los Pokémon del orbe nunca lo bloquean (los que no caben se venden por su coste, como en la tienda); solo un yunque
+// necesita su hueco en la banca, uno por yunque: el orbe que lo lleva espera en el suelo (ni a mano ni solo al empezar el combate) a que hagas sitio
+const orbUnits=o=>o.toks&&o.toks.length?o.toks.filter(t=>/^(ca|fa)$/.test(t)).length:(o.nu|0); // huecos que necesita: sus yunques
 const benchFree=p=>p.bench.filter(x=>!x).length;
+const benchRoom=(p,key)=>p.bench.some(x=>!x)||p.bench.filter(u=>u&&u.baseId===key&&u.star===1).length>=2; // hueco libre o se fusiona al llegar
 const orbBlocked=(p,o)=>!p.isBot&&orbUnits(o)>benchFree(p); // los rivales generados los abren siempre (si no cabe, oro): así no se les acumulan
+let ORB_SELL=false;
+function orbSold(p,key){ const c=DEF[key].cost; p.gold+=c; return `${DEF[key].name} (sin hueco: vendido por ${c} de oro)`; }
 function openPlayerOrb(p,id,quick){
  const i=p.orbs.findIndex(o=>o.id===id); if(i<0||orbBlocked(p,p.orbs[i])) return null;
- const o=p.orbs.splice(i,1)[0], out=[]; NO_ANVIL=!!quick; for(const t of o.toks) grant(p,t,out); NO_ANVIL=false;
+ // primero los yunques (tienen su hueco asegurado) y después lo demás
+ const o=p.orbs.splice(i,1)[0], out=[], toks=o.toks.filter(t=>/^(ca|fa)$/.test(t)).concat(o.toks.filter(t=>!/^(ca|fa)$/.test(t)));
+ NO_ANVIL=!!quick; ORB_SELL=true; try{ for(const t of toks) grant(p,t,out); } finally{ NO_ANVIL=false; ORB_SELL=false; }
  note(p,`${{gray:'⚪',gold:'🟡',prism:'🌈'}[o.tier]} Orbe: ${out.join(', ')}`,false); return o;
 }
 function openOrb(p,key,out){ const O=ORBS[key]; const sub=[]; for(const t of weighted(O.t)) grant(p,t,sub); out.push(`${O.icon} ${sub.join(', ')}`); }
@@ -2947,18 +2953,20 @@ function drawHud(a){
 function trScreen(x,y,s){ const [sx,sy]=scr(x,y,0), [,ty]=scr(x,y,s*1.35/geo.R); return [sx,sy,Math.max(10,sy-ty)]; }
 // Qué se ve en cada momento: lista de Pokémon para board3d.js
 // Tu minileyenda: se mueve con clic derecho por tu mitad del tablero y recoge los orbes al pasar por encima
-const TAC={g:null,x:0,y:0,tx:null,ty:null,mark:null,picked:new Set()};
+const TAC={g:null,x:0,y:0,tx:null,ty:null,mark:null,picked:new Map()};
+// Orbe ya pedido hace menos de 2 s: si el servidor lo rechazó (p. ej. la banca aún no estaba libre allí) sigue en el suelo y se vuelve a intentar
+const tacTook=id=>TAC.picked.has(id)&&performance.now()-TAC.picked.get(id)<2000;
 function tacArea(){ const R=geo.R; return {x0:geo.pad,x1:geo.W-geo.pad,y0:cellXY(0,0)[1]-R*.9,y1:benchXY(0)[1]+geo.bs*.5+R*.5}; }
 function stepTac(dt){
  if(!G||!G.players.length||!geo.W) return;
  if(TAC.g!==G){ const sp=trainerSpots().me; Object.assign(TAC,{g:G,x:sp[0],y:sp[1],tx:null,ty:null,mark:null}); TAC.picked.clear(); tacSent=''; tacVis.clear(); }
- if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), toOrb=orbList().some(o=>!TAC.picked.has(o.id)&&Math.hypot(TAC.tx-o.x,TAC.ty-o.y)<geo.R*2.2), st=geo.R*3.6*(toOrb?2.4:1)*dt;
+ if(TAC.tx!=null){ const dx=TAC.tx-TAC.x, dy=TAC.ty-TAC.y, d=Math.hypot(dx,dy), toOrb=orbList().some(o=>!tacTook(o.id)&&Math.hypot(TAC.tx-o.x,TAC.ty-o.y)<geo.R*2.2), st=geo.R*3.6*(toOrb?2.4:1)*dt;
    if(d<=st){ TAC.x=TAC.tx; TAC.y=TAC.ty; TAC.tx=null; } else { TAC.x+=dx/d*st; TAC.y+=dy/d*st; } }
  tacSync();
  if(!G.me.alive||G.phase==='carousel'||G.view) return;
- for(const o of orbList()) if(o.ready&&!TAC.picked.has(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){
-   const src=G.me.orbs.find(q=>q.id===o.id); if(src&&orbBlocked(G.me,src)){ if(TAC.blockT!==o.id){ TAC.blockT=o.id; toast('Banquillo lleno: haz sitio para abrir este orbe (lleva un Pokémon)'); } continue; }
-   if(TAC.blockT===o.id) TAC.blockT=null; TAC.picked.add(o.id); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); }
+ for(const o of orbList()) if(o.ready&&!tacTook(o.id)&&Math.hypot(TAC.x-o.x,TAC.y-o.y)<geo.R*.85){
+   const src=G.me.orbs.find(q=>q.id===o.id); if(src&&orbBlocked(G.me,src)){ if(TAC.blockT!==o.id){ TAC.blockT=o.id; toast('Banquillo lleno: haz sitio para el yunque de este orbe'); } continue; }
+   if(TAC.blockT===o.id) TAC.blockT=null; TAC.picked.set(o.id,performance.now()); doAct({t:'orb',id:o.id},()=>{ G.me.orbs=G.me.orbs.filter(q=>q.id!==o.id); }); }
 }
 // Envía al servidor el tablero que miras y adónde va tu minileyenda (solo cuando cambia: al hacer clic derecho o cambiar de tablero)
 // Al arrastrar con el clic derecho el destino cambia en cada movimiento: como mucho un mensaje cada 150 ms (el último siempre llega)
@@ -3590,7 +3598,9 @@ function renderCard(){
 }
 
 /* ---------- modales ---------- */
-function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').classList.toggle('tp',!!opt.tp); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
+// opt.gx: ventana con la estética del gacha (barra con ✦ y título y una carta crema; gx:true usa el <h1> inicial como título y lo quita de la carta)
+function gxWrap(html,gx,plain){ const m=gx===true&&/^\s*<h1>([\s\S]*?)<\/h1>/.exec(html); return `<div class="gbTop gxTop"><span class="gbMark" aria-hidden="true">✦</span>${m?`<h1 class="gxT">${m[1]}</h1>`:`<b>${gx}</b>`}</div><section class="${plain?'gxPlain':'gxCard'}">${m?html.slice(m[0].length):html}</section>`; }
+function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('gx',!!opt.gx); if(opt.gx) html=gxWrap(html,opt.gx,opt.gxPlain); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').classList.toggle('tp',!!opt.tp); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
 function savedTac(){ if(ACC&&TACS[ACC.trainer]&&tacOwned(ACC.trainer)) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]&&tacOwned(k)?k:''; }catch(e){ return ''; } }
@@ -3605,7 +3615,7 @@ function showTacPick(first){
    return `<button class="tacOpt ${k===sel?'on':''}" data-k="${k}" type="button" title="${t.name}" aria-label="${t.name}"><span class="tpRing">${artImg(k)}</span></button>`; };
  openModal(`<div class="tpHead"><h1>${first?'Elige tu minileyenda':'Cambiar minileyenda'}</h1><span class="tpHelpWrap"><button class="tpHelp" id="tpHelp" type="button" aria-label="Qué es la minileyenda" aria-describedby="tpInfo">?</button><p class="tpInfo" id="tpInfo" role="tooltip">Te acompaña en todas tus partidas: muévela por el tablero con <b>clic derecho</b> y pasa por encima de los orbes para recogerlos. Evoluciona en los niveles 6 y 8. Con <b>T</b> saluda y con <b>H</b> (Charmander) lanza una bola de fuego.</p></span></div>
   <div class="tacPick">${TAC_TIERS.map(([name,cls,keys])=>`<section class="tpTier ${cls}"><h4>${name}</h4><div class="tpList">${keys.length?keys.map(opt).join(''):'<span class="tpSoon">Próximamente</span>'}</div></section>`).join('')}</div>
-  <div class="row tpFoot" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="tacOk">Confirmar</button></div>`,{closable:!first,tp:true,onClose:()=>{ if(ACC) showMenu(); }});
+  <div class="row tpFoot" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="tacOk">Confirmar</button></div>`,{closable:!first,tp:true,gx:first?'Elige tu minileyenda':'Minileyenda',onClose:()=>{ if(ACC) showMenu(); }});
  $('mbox').querySelectorAll('.tacOpt').forEach(b=>b.onclick=()=>{ if(b.classList.contains('locked')){ toast(`${TACS[b.dataset.k].name} solo se consigue en el gacha`); return; } sel=b.dataset.k; $('mbox').querySelectorAll('.tacOpt').forEach(x=>x.classList.toggle('on',x===b)); });
  $('tacOk').onclick=async()=>{
    $('tacOk').disabled=true;
@@ -3628,7 +3638,7 @@ function showHow(){
  <h3>Objetos</h3><ul class="help"><li>Arrastra un componente sobre un Pokémon que ya lleve otro y se combinan. En el inventario, suelta un componente sobre otro para combinarlos. Para quitar objetos a un Pokémon usa el Imán Removedor (recibes uno en cada fase contra salvajes).</li></ul>
  <h3>Modos de juego</h3><ul class="help"><li><b>Normal</b>: rivales de tu nivel que se adaptan a ti (si ganas, juegan mejor; si te cuesta, más asequibles). No cambia tu rango.</li><li><b>Clasificatoria</b>: 3 partidas de posicionamiento y después ligas de Hierro a Retador. Ganas o pierdes LP según tu puesto y la fuerza de la sala.</li><li><b>Sala informal</b>: con amigos y un código. Da caramelos, pero no cambia tu nivel ni tu rango.</li><li>Todas dan caramelos (65 a 100 según el puesto) y quedan en tu historial. La práctica sin conexión no cuenta.</li></ul>
  <h3>Atajos</h3><p><span class="kbd">D</span> nueva tienda · <span class="kbd">F</span> comprar EXP · <span class="kbd">E</span> vender · <span class="kbd">Espacio</span> listo · <span class="kbd">Esc</span> cerrar ficha · <span class="kbd">T</span> tu minileyenda saluda · <span class="kbd">H</span> bola de fuego (Charmander)</p>
- <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true});
+ <h3>Créditos</h3><p class="small muted">Fangame gratuito y sin ánimo de lucro, sin relación con Nintendo, Game Freak ni The Pokémon Company. Sprites de Pokémon y objetos: PokeAPI/sprites. Música original.</p>`,{closable:true,gx:true});
 }
 // Pokédex: sprites 2D de Pokémon Bank (pokemondb.net; HOME en los de 8.ª y 9.ª gen), copiados a public/dex/<n.º>.png (128 px, ~3 KB). Antes eran retratos renderizados desde los modelos 3D (~190 KB por modelo: abrirla pedía ~35 MB). Cada forma usa SU número (d.dex[i]); dexOf desplaza una forma en los costes 4 de 3 formas
 const dexSprite=(d,size,i)=>`<span class="spr2" style="--s:${size}px"><img src="${(window.ASSET_BASE||'')}dex/${Array.isArray(d.dex)?d.dex[i]:d.dex}.png?v=${DEX_V}" alt="${esc(d.names[i])}" loading="lazy" decoding="async" width="${size}" height="${size}"></span>`;
@@ -3636,13 +3646,13 @@ function showDex(cost){
  const list=UNIT_LIST.filter(u=>!cost||u.cost===cost);
  openModal(`<h1>Pokédex</h1><p>${UNIT_LIST.length} líneas evolutivas. Pasa el cursor por una carta para ver sus 3 habilidades (una por estrella).</p>
  <div class="dexFilters">${[0,1,2,3,4,5].map(c=>`<button class="btn sm" data-c="${c}" aria-pressed="${c===cost}">${c?'Coste '+c:'Todos'}</button>`).join('')}</div>
- <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${dexSprite(d,d.names.length>2?52:64,i)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true});
+ <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${dexSprite(d,d.names.length>2?52:64,i)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true,gx:true});
  $('mbox').querySelectorAll('.dexFilters button').forEach(b=>b.onclick=()=>showDex(+b.dataset.c));
 }
 function showRecipes(){
  openModal(`<h1>Objetos</h1><p class="muted">Fila + columna = objeto. Pasa el cursor por una casilla para ver qué hace.</p>
  <div class="rtable"><table><tr><th></th>${ORDER.map(c=>`<th data-tip="item:${c}">${itemHTML(c,40)}</th>`).join('')}</tr>
- ${ORDER.map(a=>`<tr><th data-tip="item:${a}">${itemHTML(a,40)}</th>${ORDER.map(b=>{ const id=combineKey(a,b); return `<td data-tip="item:${id}">${itemHTML(id,40)}</td>`; }).join('')}</tr>`).join('')}</table></div>`,{closable:true});
+ ${ORDER.map(a=>`<tr><th data-tip="item:${a}">${itemHTML(a,40)}</th>${ORDER.map(b=>{ const id=combineKey(a,b); return `<td data-tip="item:${id}">${itemHTML(id,40)}</td>`; }).join('')}</tr>`).join('')}</table></div>`,{closable:true,gx:true});
 }
 // Ventana de configuración (menú y partida): volumen, tema y calidad con botones redondos (CSS .cfg*; los tiempos de planificación y de aumento son fijos, PLAN_T y AUG_T);
 // en partida (inGame), abajo y separado, Rendirse (solo desde la fase 3-1) y Volver al menú; en el menú, Cerrar sesión
@@ -3655,7 +3665,7 @@ function showOptions(inGame){
  <div class="cfgRow"><b>Tema</b>${rd('optTheme',[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']],S.theme||'system')}</div>
  <div class="cfgRow"><b>Calidad gráfica</b>${rd('optGfx',[['auto','Automática'],['2','Alta'],['1','Media'],['0','Baja']],GFX.q)}</div>
  <div class="cfgBtns">${inGame||!ACC?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
- ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true});
+ ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true,gx:true});
  const val=n=>{ const e=document.querySelector(`input[name="${n}"]:checked`); return e?e.value:''; };
  $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; $('optVolV').textContent=e.target.value; Music.init(); Music.setVol(); };
  $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; S.lang=val('optLang')||S.lang; saveSettings(); applyTheme(); applyLang(); if(ACC) renderMenu(); if(G&&G.players&&G.players.length) renderUI(); closeModal(); };
@@ -3890,7 +3900,7 @@ function showNormal(){
   <button class="pxb pxb-main wide" id="qNormal" type="button"><i data-i="ball" data-s="40"></i><span class="pxbT"><b>Buscar partida</b><small>Te emparejamos con entrenadores de tu nivel</small></span><i class="pxCaret" aria-hidden="true"></i></button>
   <h3 class="pxH">Sala informal</h3><p class="small muted">Juega con amigos con un código de sala. Da caramelos, pero no cambia tu dificultad ni tu rango.</p>
   <div class="roomRow"><button class="pxb" id="rmCreate" type="button"><i data-i="people" data-s="20"></i><span>Crear sala</span></button><div class="field"><label for="rmCode">Código de sala</label><input id="rmCode" maxlength="5" placeholder="abc12" autocomplete="off"></div><button class="pxb" id="rmJoin" type="button"><span>Unirse</span></button></div>
-  <button class="pxLink" id="practiceBtn" type="button">Práctica sin conexión (sin recompensas ni historial)</button>`,{closable:true});
+  <button class="pxLink" id="practiceBtn" type="button">Práctica sin conexión (sin recompensas ni historial)</button>`,{closable:true,gx:'Partida normal'});
  const s=sock();
  $('qNormal').onclick=()=>startQueue('normal');
  $('rmCreate').onclick=()=>{ if(NET.queue) return toast('Sal de la cola antes de crear una sala'); NET.mode='joining'; s.emit('create',{name:`Sala de ${S.name}`.slice(0,24),max:8}); };
@@ -3909,7 +3919,7 @@ function showRanked(){
   <div class="modeInfo"><p>Contra entrenadores de tu nivel y <b>rivales competitivos</b>, bastante mejores que en Normal: gestionan la economía, buscan sinergias y colocan bien. El <b>1.º</b> gana muchos LP; del <b>2.º al 4.º</b>, pocos; del <b>5.º al 8.º</b> se pierden, más cuanto más abajo. Si tu nivel real está por encima de tu rango, subes más rápido.</p>
   <p>Cada partida también da <b>caramelos</b>. De Hierro a Diamante hay 5 divisiones (V a I) de 100 LP; Maestro, Gran Maestro y Retador no tienen divisiones.</p></div>
   <div class="leagues">${leaguesHTML(rk)}</div>
-  <button class="pxb pxb-alt wide" id="qRanked" type="button"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Buscar clasificatoria</b><small>Entrenadores de tu nivel y partidas más exigentes</small></span><i class="pxCaret" aria-hidden="true"></i></button>`,{closable:true});
+  <button class="pxb pxb-alt wide" id="qRanked" type="button"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Buscar clasificatoria</b><small>Entrenadores de tu nivel y partidas más exigentes</small></span><i class="pxCaret" aria-hidden="true"></i></button>`,{closable:true,gx:'Clasificatoria'});
  $('qRanked').onclick=()=>startQueue('ranked');
 }
 
@@ -3962,7 +3972,7 @@ function histRow(m,i){
   <div class="hDet" hidden><div class="hDetGrid">${det.join('')}</div>${parts.length?`<div class="hParts">${parts.map(p=>`<span class="${p.me?'me':''}">${p.place?ordinal(p.place):'—'} ${esc(String(p.name||'').replace(/ (bot)$/,''))}</span>`).join('')}</div>`:''}</div></div>`;
 }
 async function showHistory(){
- openModal(`<div class="modeHead"><i data-i="hourglass" data-s="44"></i><div><h1>Historial de partidas</h1><p class="muted">Tus 6 partidas más recientes. Toca una para ver los detalles.</p></div></div><div class="hList" id="hList"><p class="muted">Cargando…</p></div>`,{closable:true});
+ openModal(`<div class="modeHead"><i data-i="hourglass" data-s="44"></i><div><h1>Historial de partidas</h1><p class="muted">Tus 6 partidas más recientes. Toca una para ver los detalles.</p></div></div><div class="hList" id="hList"><p class="muted">Cargando…</p></div>`,{closable:true,gx:'Historial'});
  let list=[]; try{ list=(await api('/api/history')).matches||[]; }catch(e){ $('hList').innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; }
  const el=$('hList'); if(!el) return;
  el.innerHTML=list.length?list.slice(0,6).map(histRow).join(''):'<div class="hEmpty"><i data-i="ball" data-s="40"></i><p>Aún no has jugado ninguna partida de Normal, Clasificatoria o sala informal.</p></div>';
@@ -4005,7 +4015,7 @@ function profileHTML(P,ctx={}){
  <h3 class="pxH">Últimas partidas</h3>
  <div class="hList">${P.history.length?P.history.map(pfRow).join(''):'<div class="hEmpty"><i data-i="ball" data-s="40"></i><p>Aún no hay partidas de Normal, Clasificatoria o sala informal.</p></div>'}</div>`; }
 async function showProfile(name){
- openModal('<div class="pfWrap" id="pfWrap"><p class="muted">Cargando el perfil…</p></div>',{closable:true,kind:'profile'});
+ openModal('<div class="pfWrap" id="pfWrap"><p class="muted">Cargando el perfil…</p></div>',{closable:true,kind:'profile',gx:'Perfil',gxPlain:true});
  let P, D; try{ D=await api('/api/profile/'+encodeURIComponent(name)); P=D.profile; }catch(e){ const el=$('pfWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; }
  const el=$('pfWrap'); if(!el||NET.modal!=='profile') return;
  el.innerHTML=profileHTML(P,D); hydrate(el); window.PX&&PX.hydrate(el);

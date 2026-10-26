@@ -469,12 +469,20 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
 // Banquillo lleno: orbes con Pokémon que esperan, Pokémon que van al tablero (n+1/n) y venta automática al empezar el combate
 { const run = s => vm.runInContext(s, ctx), mk = k => run(`makeInst('${k}')`), keys = E.UNIT_LIST.filter(u => u.cost === 1 && !E.DEF[u.key].evoOf).map(u => u.key);
   const llena = p => { p.bench = keys.slice(0, 9).map(k => mk(k)); p.board = {}; p.level = 3; for (let i = 0; i < 3; i++) p.board[i + ',3'] = mk(keys[(i + 3) % keys.length]); };
-  { const { G, p } = fresh(); G.phase = 'planning'; llena(p); p.orbs = [{ id: 901, tier: 'gold', toks: ['u2'], c: 3, r: 5 }, { id: 902, tier: 'gray', toks: ['g3'], c: 2, r: 5 }];
-    const g0 = p.gold; ok(run('openPlayerOrb')(p, 901, false) === null && p.orbs.some(o => o.id === 901), 'banca llena: un orbe con Pokémon no se puede abrir y sigue en el suelo');
-    ok(!!run('openPlayerOrb')(p, 902, false) && p.gold === g0 + 3, 'banca llena: un orbe sin Pokémon (oro) sí se abre');
-    ok(!E.applyAct(p, { t: 'orb', id: 901 }).ok, 'banca llena: la acción orb tampoco lo abre');
-    p.isBot = false; G.round = E.ROUNDS[G.roundIdx]; run('startCombat')(); ok(p.orbs.some(o => o.id === 901), 'banca llena: al empezar el combate el orbe con Pokémon no se abre solo');
-    const n0 = p.bench.filter(Boolean).length; p.bench[0] = null; G.phase = 'planning'; ok(!!run('openPlayerOrb')(p, 901, false) && p.bench.filter(Boolean).length >= n0, 'banca llena: con un hueco libre ya se abre'); }
+  // Los Pokémon del orbe nunca lo bloquean: los que no caben se venden por su coste; solo un yunque necesita su hueco (uno por yunque)
+  { const { G, p } = fresh(); G.phase = 'planning'; llena(p); p.orbs = [{ id: 901, tier: 'gold', toks: ['u2', 'u2'], c: 3, r: 5 }, { id: 902, tier: 'gray', toks: ['g3'], c: 2, r: 5 }, { id: 903, tier: 'gold', toks: ['ca'], c: 4, r: 5 }];
+    const ids = () => p.bench.map(u => u && u.uid).join(), b0 = ids(), g0 = p.gold, pool0 = JSON.stringify(G.pool);
+    ok(!!run('openPlayerOrb')(p, 901, false) && !p.orbs.some(o => o.id === 901) && ids() === b0 && p.gold - g0 >= 2 && p.gold - g0 <= 10 && JSON.stringify(G.pool) === pool0,
+      `banca llena: el orbe con 2 Pokémon se abre y se venden por su coste (+${p.gold - g0} de oro, el pool queda igual)`);
+    const g1 = p.gold; ok(!!run('openPlayerOrb')(p, 902, false) && p.gold === g1 + 3, 'banca llena: un orbe de oro se abre');
+    ok(!E.applyAct(p, { t: 'orb', id: 903 }).ok && p.orbs.some(o => o.id === 903), 'banca llena: el orbe con yunque no se abre y sigue en el suelo');
+    p.isBot = false; G.round = E.ROUNDS[G.roundIdx]; run('startCombat')(); ok(p.orbs.some(o => o.id === 903), 'banca llena: al empezar el combate el orbe con yunque no se abre solo');
+    p.bench[0] = null; G.phase = 'planning'; ok(E.applyAct(p, { t: 'orb', id: 903 }).ok && p.bench.some(u => u && u.defId === 'yunque'), 'con un solo hueco libre el yunque ya entra'); }
+  { const { G, p } = fresh(); G.phase = 'planning'; llena(p); p.bench[8] = null; p.orbs = [{ id: 904, tier: 'gold', toks: ['u1', 'ca', 'u1'], c: 3, r: 5 }];
+    const g0 = p.gold; ok(run('orbUnits')(p.orbs[0]) === 1 && !!run('openPlayerOrb')(p, 904, false) && p.bench.some(u => u && u.defId === 'yunque') && p.gold - g0 >= 2,
+      `un hueco y un orbe con yunque y 2 Pokémon: el yunque entra y los Pokémon se venden (+${p.gold - g0} de oro)`); }
+  { const { G, p } = fresh(); G.phase = 'planning'; llena(p); p.bench[8] = null; p.orbs = [{ id: 905, tier: 'gray', toks: ['u1'], c: 3, r: 5 }];
+    const g0 = p.gold; ok(!!run('openPlayerOrb')(p, 905, false) && p.bench.every(Boolean) && p.gold === g0, 'con hueco libre el Pokémon del orbe va a la banca (no se vende)'); }
   { const { G, p } = fresh(); G.phase = 'planning'; llena(p); const max = run('maxBoard')(p), nb = () => Object.values(p.board).filter(Boolean).length;
     const libre = keys.find(k => !p.bench.some(u => u.baseId === k) && !Object.values(p.board).some(u => u.baseId === k));
     ok(run('giveUnitTo')(p, libre) && nb() === max + 1 && Object.values(p.board).some(u => u.baseId === libre), `banca llena: el Pokémon que te dan va al tablero aunque se pase (${nb()}/${max})`);

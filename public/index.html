@@ -1116,33 +1116,105 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 @media (max-width:820px){ .rsRow{grid-template-columns:36px 40px minmax(0,1fr) 40px;grid-template-areas:"pl av who act" "comp comp comp comp" "tr tr tr tr"} .rsPl{grid-area:pl} .rsAv{grid-area:av} .rsWho{grid-area:who} .rsAct{grid-area:act} .rsComp{grid-area:comp} .rsTr{grid-area:tr;justify-content:flex-start} .rsHead{flex-direction:column;text-align:center} }
 /* ---------- gacha ---------- */
 .mbox:has(.gaWrap){max-width:980px}
+/* Paleta de las cartas de las ventanas (oscura). Para volver a la crema: --k-bg #f8f4ea→#efe8d8, --k-tx #3e3a52, --k-h #4f4b63… (git) */
+.gxCard,.gbCard.gbSub,.frPanel{--k-bg:linear-gradient(180deg,#262b52,#1a1e3c);--k-tx:#e6e8f7;--k-h:#f4f0ff;--k-mut:#a2a8cf;--k-line:rgba(255,255,255,.1);--k-row:rgba(255,255,255,.055);
+  --k-pill:linear-gradient(180deg,#3a4178,#2b315f);--k-pilltx:#e8eaff;--k-in:#121630;--k-tile:linear-gradient(170deg,#3a356f,#2a2652);--k-tile2:linear-gradient(170deg,#463f84,#322c61)}
+.gxCard,.gbCard.gbSub{box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 0 1px 0 rgba(255,255,255,.06)}
+.gxCard ::placeholder,.frPanel ::placeholder{color:#8088b3}
+.gbSub .gbBack{background:var(--k-pill);color:var(--k-pilltx);box-shadow:0 2px 0 rgba(0,0,0,.25),inset 0 0 0 1px rgba(255,255,255,.1)}
+/* ===== Ventanas del menú con la estética del gacha (tema gx: openModal({gx})) ===== */
+.mbox.gx{--gxW:980px;max-width:var(--gxW);padding:16px 18px 18px;border-radius:18px;clip-path:none;overflow:hidden;display:flex;flex-direction:column;color:#eef2ff;border:2px solid #c9a24a;
+  background:radial-gradient(120% 90% at 85% -10%,#4b6fb0 0,transparent 55%),radial-gradient(90% 80% at -10% 110%,#3a3f8f 0,transparent 60%),linear-gradient(160deg,#20335e,#121a33 60%,#0d1226);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.mbox.gx .gxTop{flex:none;margin:0 0 12px;min-height:36px}.mbox.gx .gxTop .gxT{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.02em;color:#eef2ff;text-shadow:none;margin:0;padding:0;border:0}
+.mbox.gx .mtop{position:absolute;top:14px;right:14px;height:auto;z-index:5}
+.mbox.gx .mclose{position:static;margin:0;width:36px;height:36px;border-radius:50%;clip-path:none;opacity:1;display:grid;place-items:center;background:#1a2342;box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)}
+.mbox.gx .mclose svg{display:block}.mbox.gx .mclose::after{display:none}
+.gxCard{flex:1 1 auto;min-height:0;overflow:auto;border-radius:16px;padding:22px 26px;background:var(--k-bg);color:var(--k-tx);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.gxCard h1{font-family:var(--display);font-weight:400;font-size:30px;line-height:1.05;color:var(--k-h);text-shadow:none;letter-spacing:0;margin:0;padding:0;border:0}
+.gxCard h3,.gxCard .pxH{font-family:var(--display);font-weight:400;font-size:20px;color:var(--k-h);text-shadow:none;letter-spacing:0;border-left:5px solid #7465d1;padding-left:10px;margin:18px 0 8px}
+.gxCard h3:first-child{margin-top:0}
+.gxCard p,.gxCard li,.gxCard label,.gxCard td{color:var(--k-h)}.gxCard b,.gxCard strong{color:var(--k-tx)}.gxCard .muted,.gxCard small.muted,.gxCard .small.muted{color:var(--k-mut)}
+.gxCard a,.gxCard .pxLink{color:#6f63c9}
+.gxCard kbd{background:var(--k-in);color:var(--k-tx);border:1px solid var(--k-line);box-shadow:0 1px 0 var(--k-line);border-radius:5px}
+.gxCard input:not([type]),.gxCard input[type=text],.gxCard input[type=search]{background:var(--k-in);color:var(--k-tx);border:1px solid var(--k-line);border-radius:10px;clip-path:none;box-shadow:none}
+.gxCard .btn:not(.gold):not(.primary),.gxCard .pxb:not(.pxb-main):not(.pxb-alt){all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 20px;border-radius:999px;background:var(--k-pill);color:var(--k-pilltx);font-weight:800;font-size:14px;box-shadow:0 2px 0 rgba(0,0,0,.2),inset 0 0 0 1px rgba(255,255,255,.1)}
+.gxCard .btn:not(.gold):not(.primary):hover,.gxCard .pxb:not(.pxb-main):not(.pxb-alt):hover{filter:brightness(1.04)}
+.gxCard .btn[aria-pressed="true"],.gxCard .btn.on,.gxCard .btn.gold,.gxCard .btn.primary{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 22px;border-radius:999px;background:linear-gradient(180deg,#8a7ee0,#6f63c9);color:#fff;font-weight:800;font-size:14px;box-shadow:0 2px 0 rgba(0,0,0,.25),0 0 14px rgba(138,126,224,.35)}
+/* Configuración */
+.mbox.gx.cfg{--gxW:680px;overflow:hidden;padding:16px 18px 18px;border-radius:18px;background:radial-gradient(120% 90% at 85% -10%,#4b6fb0 0,transparent 55%),radial-gradient(90% 80% at -10% 110%,#3a3f8f 0,transparent 60%),linear-gradient(160deg,#20335e,#121a33 60%,#0d1226);color:#eef2ff}
+.mbox.gx.cfg .mclose{background:#1a2342}
+.gx .cfgRow{border-bottom:1px solid var(--k-line)}.gx .cfgRow>b{color:var(--k-tx)}
+.gx .rd{color:var(--k-mut)}.gx .rd input:checked~span{color:var(--k-tx)}
+.gx .rd i{background:var(--k-in);box-shadow:inset 0 0 0 2px var(--k-line)}.gx .rd:hover i{box-shadow:inset 0 0 0 2px #8a7ee0}
+.gx .rd input:checked+i{box-shadow:inset 0 0 0 2px #6f63c9,0 0 10px rgba(138,126,224,.45)}.gx .rd input:checked+i::after{inset:6px;background:radial-gradient(circle at 40% 35%,#b8adff,#6f63c9)}
+.gx .cfgVol input[type=range]{accent-color:#7465d1}.gx .cfgVol b{color:#6f63c9}
+.gx .cfgBtn{border-radius:999px;font-family:inherit;font-weight:800;font-size:14px;letter-spacing:0;padding:9px 24px;background:linear-gradient(180deg,#8a7ee0,#6f63c9);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.gx .cfgBtn.ghost{background:var(--k-pill);color:var(--k-pilltx);box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.gx .cfgBtn.red{background:linear-gradient(180deg,#e46a5a,#b8382b);color:#fff}
+.gx .cfgSep{margin:18px -26px 14px;background:linear-gradient(90deg,transparent,rgba(201,162,74,.8) 20%,rgba(201,162,74,.8) 80%,transparent)}.gx .cfgSur small{color:var(--k-mut)}
+/* Guía, Pokédex y Objetos */
+.gx .dexFilters{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
+.gx .dexCard{border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.gx .rtable{display:flex;justify-content:center}.gx .rtable table{border-collapse:separate;border-spacing:4px}
+/* Partida normal, Clasificatoria e Historial: la cabecera con icono va dentro de la carta */
+.gx .modeHead{margin-bottom:12px}.gx .modeHead p,.gx .modeHead small{color:var(--k-mut)}
+.gx .modeInfo{background:var(--k-row);border:0;border-radius:12px;clip-path:none;box-shadow:inset 0 0 0 1px var(--k-line);color:var(--k-h)}
+.gx .pxKicker{color:#7465d1}.gx .rkBigTxt,.gx .rkLp{color:var(--k-h)}.gx .leagues small,.gx .leagues span{color:var(--k-mut)}
+.gx .roomRow .field span,.gx .field label{color:var(--k-mut)}
+/* Historial: filas claras con la franja del puesto, como el historial del gacha */
+.gxCard .hRow{background:var(--k-row);clip-path:none;border-radius:12px;box-shadow:inset 5px 0 0 0 var(--pc),0 1px 4px rgba(0,0,0,.1);color:var(--k-tx)}
+.gxCard .hRow.pl3{--pc:#9a95b3}.gxCard .hRow.pl1{--pc:#d9a520}.gxCard .hRow.pl2{--pc:#6f9fe0}
+.gxCard .hRow.open{box-shadow:inset 5px 0 0 0 var(--pc),inset 0 0 0 2px #8a7ee0,0 2px 8px rgba(0,0,0,.12)}
+.gxCard .hRow b,.gxCard .hRow strong{color:var(--k-tx)}.gxCard .hRow small,.gxCard .hRow .muted{color:var(--k-mut)}
+.gxCard .pxb-main b,.gxCard .pxb-main small,.gxCard .pxb-alt b,.gxCard .pxb-alt small{color:inherit}
+/* Perfil: el marco y la barra del gacha; su escaparate oscuro se queda tal cual */
+.gxPlain{flex:1 1 auto;min-height:0;overflow:auto;overflow-x:hidden;border-radius:14px}
+.mbox.gx:has(.pfWrap){--gxW:1100px}
+/* Selector de minileyenda */
+.mbox.gx.tp{--gxW:780px;background:radial-gradient(120% 90% at 85% -10%,#4b6fb0 0,transparent 55%),radial-gradient(90% 80% at -10% 110%,#3a3f8f 0,transparent 60%),linear-gradient(160deg,#20335e,#121a33 60%,#0d1226);color:#eef2ff}
+.mbox.gx.tp .gxCard{display:flex;flex-direction:column;overflow:hidden;padding:18px 22px 16px}
+.gx.tp .tpHead h1{color:var(--k-h)}
+.gx.tp .tpTier h4{color:var(--k-h)}
+.gx.tp .tpSoon{color:var(--k-mut)}
+.gx.tp .tpHelp{background:#7465d1;color:#fff;box-shadow:none}
+/* Panel de amigos con la estética del gacha */
+.frPanel{border:2px solid #c9a24a;border-radius:18px;background:radial-gradient(120% 70% at 85% -10%,#4b6fb0 0,transparent 55%),linear-gradient(170deg,#20335e,#121a33 60%,#0d1226);box-shadow:0 16px 40px rgba(0,0,0,.5)}
+.frPanel .frHead b{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.02em;text-transform:none;color:#eef2ff;text-shadow:none}.frPanel .frHead b::before{content:'✦ ';color:#f4d27a}
+.frPanel .frHead span{color:#b8c3e6}
+.frPanel .frAdd input{background:var(--k-in);color:var(--k-tx);border-radius:999px;clip-path:none;box-shadow:inset 0 0 0 1px rgba(79,75,99,.2);font-family:inherit;padding:8px 14px}.frPanel .frAdd input::placeholder{color:var(--k-mut)}
+.frPanel .frAdd input:focus-visible{box-shadow:inset 0 0 0 2px #8a7ee0}
+.frPanel .frList{background:var(--k-bg);border-radius:14px;padding:8px}
+.frPanel .frGrpH{color:var(--k-mut);font-family:inherit}.frPanel .frGrpH b{color:var(--k-tx)}.frPanel .frGrpH:hover{color:var(--k-tx)}
+.frPanel .frList>p,.frPanel .frGrp>p,.frPanel .frEmpty{color:var(--k-mut)}
+.frPanel .frRow{background:var(--k-tile);margin-bottom:5px;box-shadow:0 2px 5px rgba(0,0,0,.15)}
+.frPanel .frRow[data-pick]:hover,.frPanel .frRow.sel{background:var(--k-tile2)}
 /* ===== Gacha como estandarte (gb*) ===== */
 .mbox:has(.gaWrap){max-width:1180px;padding:16px 18px 18px;background:radial-gradient(120% 90% at 85% -10%,#4b6fb0 0,transparent 55%),radial-gradient(90% 80% at -10% 110%,#3a3f8f 0,transparent 60%),linear-gradient(160deg,#20335e,#121a33 60%,#0d1226);border:2px solid #c9a24a}
 .gaWrap{position:relative;display:flex;flex-direction:column;gap:12px}
 /* Subpáginas (Tienda, Detalles, Historial, Personalizar, Colección): el mismo marco y una carta crema con desplazamiento */
-.gbCard.gbSub{overflow:auto;padding:22px 26px;background:linear-gradient(180deg,#f8f4ea,#efe8d8);color:#3e3a52}
+.gbCard.gbSub{overflow:auto;padding:22px 26px;background:var(--k-bg);color:var(--k-tx)}
 .gbCard.gbSub::before{display:none}
 .gbSub .gbBack{padding:7px 18px;font-size:14px;margin-bottom:6px}
-.gbSub .pxH{color:#4f4b63;text-shadow:none;font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:0;margin:10px 0 6px}
-.gbSub .muted,.gbSub .small.muted{color:#6b6782}
-.gbSub .gaOdds{font-family:inherit;color:#3e3a52}.gbSub .gaOdds th{color:#7a7591}.gbSub .gaOdds td{border-top:1px solid rgba(79,75,99,.18)}
-.gbSub .gaOdds td:first-child b{color:#3e3a52;border-left:6px solid var(--tc);padding-left:8px}
-.gbSub .help,.gbSub p,.gbSub li{color:#4f4b63}.gbSub .help b,.gbSub p b{color:#3e3a52}
-.gbSub .gaHRow{background:rgba(255,255,255,.65);box-shadow:inset 5px 0 0 var(--tc),0 1px 3px rgba(0,0,0,.08);border-radius:8px;font-family:inherit;color:#3e3a52}.gbSub .gaHRow small{color:#7a7591}
-.gbSub .gaShopH{color:#4f4b63!important;text-shadow:none;border-left:6px solid var(--tc);padding-left:10px;font-family:var(--display);font-weight:400;font-size:20px}
-.gbSub .gaItem{background:linear-gradient(170deg,#36305a,#231f3d);border-radius:12px;clip-path:none;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--tc) 70%,transparent),0 3px 8px rgba(0,0,0,.18);font-family:inherit}
+.gbSub .pxH{color:var(--k-h);text-shadow:none;font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:0;margin:10px 0 6px}
+.gbSub .muted,.gbSub .small.muted{color:var(--k-mut)}
+.gbSub .gaOdds{font-family:inherit;color:var(--k-tx)}.gbSub .gaOdds th{color:var(--k-mut)}.gbSub .gaOdds td{border-top:1px solid var(--k-line)}
+.gbSub .gaOdds td:first-child b{color:var(--k-tx);border-left:6px solid var(--tc);padding-left:8px}
+.gbSub .help,.gbSub p,.gbSub li{color:var(--k-h)}.gbSub .help b,.gbSub p b{color:var(--k-tx)}
+.gbSub .gaHRow{background:var(--k-row);box-shadow:inset 5px 0 0 var(--tc),0 1px 3px rgba(0,0,0,.08);border-radius:8px;font-family:inherit;color:var(--k-tx)}.gbSub .gaHRow small{color:var(--k-mut)}
+.gbSub .gaShopH{color:var(--k-h)!important;text-shadow:none;border-left:6px solid var(--tc);padding-left:10px;font-family:var(--display);font-weight:400;font-size:20px}
+.gbSub .gaItem{background:var(--k-tile);border-radius:12px;clip-path:none;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--tc) 70%,transparent),0 3px 8px rgba(0,0,0,.18);font-family:inherit}
 .gbSub .gaItem:hover{box-shadow:inset 0 0 0 2px var(--tc),0 5px 12px rgba(0,0,0,.25)}.gbSub .gaItem.on{box-shadow:inset 0 0 0 3px #e8c867,0 0 14px rgba(232,200,103,.5);background:rgba(34,30,58,.95)}
-.gbSub .gaItem small{color:#c9c3e6}.gbSub .gaItem.locked{background:linear-gradient(170deg,#2c2848,#1d1a33)}.gbSub .gaItem.locked b,.gbSub .gaItem.locked small{color:#8f89a8}.gbSub .gaItem.locked .cc{filter:grayscale(1) brightness(.6);opacity:.6}
+.gbSub .gaItem small{color:#c9c3e6}.gbSub .gaItem.locked{background:var(--k-tile)}.gbSub .gaItem.locked b,.gbSub .gaItem.locked small{color:#8f89a8}.gbSub .gaItem.locked .cc{filter:grayscale(1) brightness(.6);opacity:.6}
 .gbSub .gaItem[aria-disabled="true"]{opacity:1}.gbSub .gaItem[aria-disabled="true"] .cc{opacity:.6}
 .gbSub .gaFeat{margin-bottom:4px}.gbSub .gaItem.have small{color:#9fe3b0}
 .gbSub .gaDetH{font-size:22px;margin-top:18px}.gbSub .gaDet{margin:4px 0 8px}.gbSub .gaDet summary{cursor:pointer;list-style:none;user-select:none}.gbSub .gaDet summary::-webkit-details-marker{display:none}
-.gbSub .gaDet summary::after{content:'▸';display:inline-block;margin-left:10px;color:#7a7591;transition:transform .15s}.gbSub .gaDet[open] summary::after{transform:rotate(90deg)}.gbSub .gaDet>.gaShop{margin-top:8px}
+.gbSub .gaDet summary::after{content:'▸';display:inline-block;margin-left:10px;color:var(--k-mut);transition:transform .15s}.gbSub .gaDet[open] summary::after{transform:rotate(90deg)}.gbSub .gaDet>.gaShop{margin-top:8px}
 .gbTab.tool.on{margin-right:0;background:linear-gradient(160deg,#3b5a96,#22356a);box-shadow:inset 0 0 0 2px #e8c867,0 0 18px rgba(244,210,122,.45)}
-.gbSub .pzSlots .pxb{all:unset;cursor:pointer;position:relative;padding:7px 14px;border-radius:999px;background:linear-gradient(180deg,#f8f3e6,#e6dcc4);color:#4a4560;font-weight:800;font-size:13px;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.gbSub .pzSlots .pxb{all:unset;cursor:pointer;position:relative;padding:7px 14px;border-radius:999px;background:var(--k-pill);color:var(--k-pilltx);font-weight:800;font-size:13px;box-shadow:0 2px 0 rgba(0,0,0,.2)}
 .gbSub .pzSlots .pxb.on{background:linear-gradient(180deg,#8a7ee0,#6f63c9);color:#fff}
 .gbSub .pzCard{border-radius:14px}
-.gbSub .coRow{background:rgba(255,255,255,.7);clip-path:none;border-radius:10px;font-family:inherit;color:#3e3a52;box-shadow:0 1px 3px rgba(0,0,0,.08)}.gbSub .coRow small{color:#7a7591}.gbSub .coRow.done{box-shadow:inset 0 0 0 2px #e8c867}.gbSub .coRow.done small{color:#a07a1a}
-.gbSub .rkBar{height:8px;border:0;border-radius:99px;background:rgba(79,75,99,.16);box-shadow:none;overflow:hidden}.gbSub .rkBar i{border-radius:99px;background:linear-gradient(90deg,#a99bf5,#7465d1)}
+.gbSub .coRow{background:var(--k-row);clip-path:none;border-radius:10px;font-family:inherit;color:var(--k-tx);box-shadow:0 1px 3px rgba(0,0,0,.08)}.gbSub .coRow small{color:var(--k-mut)}.gbSub .coRow.done{box-shadow:inset 0 0 0 2px #e8c867}.gbSub .coRow.done small{color:#a07a1a}
+.gbSub .rkBar{height:8px;border:0;border-radius:99px;background:var(--k-line);box-shadow:none;overflow:hidden}.gbSub .rkBar i{border-radius:99px;background:linear-gradient(90deg,#a99bf5,#7465d1)}
 .gbTop{display:flex;align-items:center;gap:10px;padding-right:44px;color:#eef2ff;font-family:var(--display);font-size:20px}.gbTop .gbMark{color:#f4d27a;font-size:24px;filter:drop-shadow(0 0 6px rgba(244,210,122,.6))}.gbTop>b{font-weight:400;letter-spacing:.02em}
 .gbTop .gaBal{margin-left:auto}.gbTop .gaBal span{border-radius:999px;clip-path:none;background:rgba(8,12,28,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);padding:5px 14px}
 .gbMain{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;min-height:0}
