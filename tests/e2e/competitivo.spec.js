@@ -99,6 +99,8 @@ test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabili
   await page.locator('#gaOdds').click();
   await expect(page.locator('.gaOdds tbody tr')).toHaveCount(5);
   await expect(page.locator('.gaOdds')).toContainText('0,1 %');
+  { const caja = async () => { const c = await page.locator('.gbCard').boundingBox(), v = await page.locator('.mbox:has(.gaWrap)').boundingBox(); return [c.width, c.height, v.width, v.height].map(Math.round).join('×'); };
+    const sub = await caja(); await page.locator('#gaBack').click(); expect(await caja(), 'la carta y la ventana miden lo mismo en el estandarte y en las subpáginas').toBe(sub); await page.locator('#gaOdds').click(); }
   await page.locator('#gaBack').click(); await page.locator('#gaHist').click();
   await expect(page.locator('.hEmpty')).toContainText('Aún no has tirado');
   await page.locator('#gaBack').click(); await page.locator('#gaShop').click();

@@ -4145,14 +4145,11 @@ function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return; el.
    ${B.feat.map(plate).join('')}
    <div class="gbRes"><div class="gaBall" id="gaBall" aria-hidden="true"><i class="gbTop"></i><i class="gbBand"></i><i class="gbBtn"></i></div><div class="gaRes" id="gaRes" aria-live="polite"></div><button class="gbBtn2" id="gaOk" type="button">Continuar</button></div>
   </section></div>
- <div class="gbBottom"><div class="gaLinks"><button class="gbPill" id="gaShop" type="button">Tienda</button><button class="gbPill" id="gaOdds" type="button">Detalles</button><button class="gbPill" id="gaHist" type="button">Historial</button></div>
-  <div class="gaBtns">${gaDailyBtn(st)}<button class="gbPull" id="ga1" type="button"><span>Pedir 1 tirada</span><small>${PX.icon('candy',16)} ${st.price}</small></button>
-   <button class="gbPull" id="ga10" type="button"><span>Pedir 10 tiradas</span><small>${PX.icon('candy',16)} ${st.price10.toLocaleString(I18N.locale)}</small></button></div></div>`;
+ ${F.bottom}`;
  hydrate(el); PX.hydrate(el);
  gbBindTabs(el);
- $('ga1').onclick=()=>gaDo('roll',{n:1}); $('ga10').onclick=()=>gaDo('roll',{n:10}); $('gaOk').onclick=()=>{ el.classList.remove('showRes'); $('gaRes').innerHTML=''; const b=$('gaBall'); if(b){ b.className='gaBall'; b.style.removeProperty('--tc'); } };
- $('gaD').onclick=()=>{ if(st.daily==='lista') gaDo('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); };
- $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; }
+ $('gaOk').onclick=()=>{ el.classList.remove('showRes'); $('gaRes').innerHTML=''; const b=$('gaBall'); if(b){ b.className='gaBall'; b.style.removeProperty('--tc'); } };
+ }
 async function showGacha(){ openModal('<div class="gaWrap" id="gaWrap"><p class="muted">Cargando…</p></div>',{closable:true,kind:'gacha'});
  try{ GA.st=await api('/api/gacha'); }catch(e){ const el=$('gaWrap'); if(el) el.innerHTML=`<p class="muted">${esc(e.message)}</p>`; return; } renderGacha(); }
 function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pity=o.pity; st.pityLeft=o.pityLeft; for(const r of o.res||[]) if(r.new&&!st.inv.includes(r.key)) st.inv.push(r.key); if((o.res||[]).some(r=>r.key===COSM.EEVEE&&r.new)) st.eevee=true; if(!COSM.missingMythics({inv:st.inv}).length) st.allMythic=true;
@@ -4171,13 +4168,18 @@ async function gaDo(op,body){ if(GA.busy) return; const st=GA.st; if(op==='roll'
  if(o.eevee) toast(o.mythic===COSM.MEW?'¡Has conseguido a Mew, la minileyenda mítica!':'¡Has conseguido a Eevee, la minileyenda mítica!'); }
 function gaBack(){ return '<button class="gbPill gbBack" id="gaBack" type="button">← Volver al gacha</button>'; }
 // Barra superior y pestañas del gacha (las mismas del estandarte); tool: la pestaña de herramienta activa (gaPz o gaColl) o ninguna
-function gbFrame(tool){ const st=GA.st, bk=COSM.BANNERS[GA.banner]?GA.banner:'eevee', GB=gbData();
+function gbFrame(tool){ const st=GA.st, bk=COSM.BANNERS[GA.banner]?GA.banner:'eevee', GB=gbData(), pill=(id,t)=>`<button class="gbPill${tool===id?' on':''}" id="${id}" type="button"${tool===id?' aria-current="page"':''}>${t}</button>`;
  return {top:`<div class="gbTop"><span class="gbMark" aria-hidden="true">✦</span><b>Gacha</b>
   <div class="gaBal"><span title="Caramelos">${PX.icon('candy',20)}<b id="gaCandy">${st.candies.toLocaleString(I18N.locale)}</b></span><span title="Polvo Estelar">${PX.icon('crystal',20)}<b id="gaDust">${st.dust.toLocaleString(I18N.locale)}</b></span></div></div>`,
   tabs:`<nav class="gbTabs" aria-label="Secciones del gacha">${COSM.BANNER_KEYS.map(k=>`<button class="gbTab${!tool&&k===bk?' on':''}" data-b="${k}" type="button" ${!tool&&k===bk?'aria-current="true"':''} title="${esc(GB[k].h)}"><img src="img/gacha/${GB[k].tab}-h.webp" alt=""></button>`).join('')}
-   <span class="gbTabGap"></span><button class="gbTab tool${tool==='gaPz'?' on':''}" id="gaPz" type="button" title="Personalizar"><i data-i="gear" data-s="26"></i></button><button class="gbTab tool${tool==='gaColl'?' on':''}" id="gaColl" type="button" title="Colección"><i data-i="book" data-s="26"></i></button></nav>`}; }
-function gbBindTabs(el){ el.querySelectorAll('.gbTab[data-b]').forEach(b=>b.onclick=()=>{ if(GA.busy) return; GA.banner=b.dataset.b; renderGacha(); }); $('gaPz').onclick=()=>gaPz(); $('gaColl').onclick=gaColl; }
-function gaSub(html,tool){ const el=$('gaWrap'), F=gbFrame(tool); el.classList.remove('showRes','rolling','sub'); el.innerHTML=`${F.top}<div class="gbMain">${F.tabs}<section class="gbCard gbSub">${gaBack()}${html}</section></div>`; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; gbBindTabs(el); }
+   <span class="gbTabGap"></span><button class="gbTab tool${tool==='gaPz'?' on':''}" id="gaPz" type="button" title="Personalizar"><i data-i="gear" data-s="26"></i></button><button class="gbTab tool${tool==='gaColl'?' on':''}" id="gaColl" type="button" title="Colección"><i data-i="book" data-s="26"></i></button></nav>`,
+  bottom:`<div class="gbBottom"><div class="gaLinks">${pill('gaShop','Tienda')}${pill('gaOdds','Detalles')}${pill('gaHist','Historial')}</div>
+  <div class="gaBtns">${gaDailyBtn(st)}<button class="gbPull" id="ga1" type="button"><span>Pedir 1 tirada</span><small>${PX.icon('candy',16)} ${st.price}</small></button>
+   <button class="gbPull" id="ga10" type="button"><span>Pedir 10 tiradas</span><small>${PX.icon('candy',16)} ${st.price10.toLocaleString(I18N.locale)}</small></button></div></div>`}; }
+function gbBindTabs(el){ el.querySelectorAll('.gbTab[data-b]').forEach(b=>b.onclick=()=>{ if(GA.busy) return; GA.banner=b.dataset.b; renderGacha(); }); $('gaPz').onclick=()=>gaPz(); $('gaColl').onclick=gaColl; const st=GA.st, pull=(op,b)=>{ if(GA.busy) return; if(!$('gaBall')) renderGacha(); gaDo(op,b); };
+ $('ga1').onclick=()=>pull('roll',{n:1}); $('ga10').onclick=()=>pull('roll',{n:10}); $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop;
+ $('gaD').onclick=()=>{ if(st.daily==='lista') pull('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); }; }
+function gaSub(html,tool){ const el=$('gaWrap'), F=gbFrame(tool); el.classList.remove('showRes','rolling','sub'); el.innerHTML=`${F.top}<div class="gbMain">${F.tabs}<section class="gbCard gbSub">${gaBack()}${html}</section></div>${F.bottom}`; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; gbBindTabs(el); }
 function gaOdds(){ const per=t=>COSM.POOL[t].length;
  gaSub(`<h2 class="pxH">Probabilidades</h2><p class="small muted">Cada tirada sortea primero la rareza y después un premio de esa rareza, todos con la misma probabilidad. La tirada diaria funciona igual.</p>
  <table class="gaOdds"><thead><tr><th>Rareza</th><th>Probabilidad</th><th>Premios</th><th>Cada premio</th><th>Si se repite</th></tr></thead><tbody>
@@ -4186,13 +4188,13 @@ function gaOdds(){ const per=t=>COSM.POOL[t].length;
  <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString(I18N.locale)} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
  <li><b>Eevee y Mew</b> (míticas): 0,1 % fijo por tirada (te toca una de las que te faltan), sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b> (primero Eevee y después Mew). La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
  <li><b>Colecciones:</b> reúne todos los premios de un elemento y ganas su título exclusivo (${COSM.COLLECTIONS.map(c=>'«'+esc(COSM.BY[c.reward].name)+'»').join(', ')}).</li>
- <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`); }
+ <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`,'gaOdds'); }
 function gaHist(){ const h=(GA.st.hist||[]).slice().reverse();
- gaSub(`<h2 class="pxH">Tus últimas tiradas</h2>${h.length?`<div class="gaHist">${h.map(([t,k])=>{ const tr=k==='cd'?COSM.TIER.c:k==='dust'?COSM.TIER.m:cosTier(k), it=COSM.BY[k]; return `<div class="gaHRow" style="--tc:${tr.col}"><span class="gaHT">${tr.name}</span><span class="gaHN">${esc(k==='cd'?'Caramelos de vuelta':k==='dust'?'Polvo Estelar':it?it.name:k)}</span><small>${fmtDate(t*1000)}</small></div>`; }).join('')}</div>`:'<div class="hEmpty"><p>Aún no has tirado.</p></div>'}`); }
+ gaSub(`<h2 class="pxH">Tus últimas tiradas</h2>${h.length?`<div class="gaHist">${h.map(([t,k])=>{ const tr=k==='cd'?COSM.TIER.c:k==='dust'?COSM.TIER.m:cosTier(k), it=COSM.BY[k]; return `<div class="gaHRow" style="--tc:${tr.col}"><span class="gaHT">${tr.name}</span><span class="gaHN">${esc(k==='cd'?'Caramelos de vuelta':k==='dust'?'Polvo Estelar':it?it.name:k)}</span><small>${fmtDate(t*1000)}</small></div>`; }).join('')}</div>`:'<div class="hEmpty"><p>Aún no has tirado.</p></div>'}`,'gaHist'); }
 function gaShop(){ const st=GA.st, own=new Set(st.inv);
  const tiers=COSM.TIERS.filter(t=>t.price);
  gaSub(`<h2 class="pxH">Tienda de Polvo Estelar</h2><p class="small muted">Los premios repetidos se convierten en Polvo Estelar. Aquí compras premios concretos (Eevee no está a la venta). Tienes <b>${st.dust}</b> de polvo.</p>
- ${tiers.map(t=>{ const items=COSM.POOL[t.k].filter(k=>!own.has(k)); return `<h3 class="gaShopH" style="--tc:${t.col}">${t.name} · ${t.price} polvo</h3>${items.length?`<div class="gaShop">${items.map(k=>`<button class="gaItem" data-k="${k}" type="button" ${st.dust<t.price?'aria-disabled="true"':''} style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${COSM.TYPES[COSM.typeOf(k)]}</small></button>`).join('')}</div>`:'<p class="small muted">Ya los tienes todos.</p>'}`; }).join('')}`);
+ ${tiers.map(t=>{ const items=COSM.POOL[t.k].filter(k=>!own.has(k)); return `<h3 class="gaShopH" style="--tc:${t.col}">${t.name} · ${t.price} polvo</h3>${items.length?`<div class="gaShop">${items.map(k=>`<button class="gaItem" data-k="${k}" type="button" ${st.dust<t.price?'aria-disabled="true"':''} style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${COSM.TYPES[COSM.typeOf(k)]}</small></button>`).join('')}</div>`:'<p class="small muted">Ya los tienes todos.</p>'}`; }).join('')}`,'gaShop');
  $('gaWrap').querySelectorAll('.gaItem').forEach(b=>b.onclick=async()=>{ const k=b.dataset.k, t=COSM.TIER[COSM.BY[k].t]; if(GA.st.dust<t.price) return toast(`Necesitas ${t.price} de Polvo Estelar`); if(GA.busy) return;
    if(!b.dataset.sure){ b.dataset.sure=1; b.querySelector('small').textContent=`¿Comprar por ${t.price}? Pulsa otra vez`; return; }
    GA.busy=true; try{ const o=await api('/api/gacha/buy',{key:k,nonce:gaNonce()}); gaSync(o); toast('Comprado: '+COSM.BY[k].name); }catch(e){ toast(e.message); } GA.busy=false; gaShop(); }); }
