@@ -4127,7 +4127,7 @@ const gbData=()=>({ // función: COSM solo existe en el navegador (el servidor c
   feat:[['mewtwo','Mewtwo','Psíquico','Minileyenda legendaria',5],['snorlax','Snorlax','Normal','Minileyenda épica',4],['ditto','Ditto','Normal','Minileyenda épica',4]]}});
 // en los estandartes sin mítica: la probabilidad de su premio (legendario o épico) en lugar de la garantía
 const gbOdds=b=>{ const pc=t=>(COSM.TIER[t].p+(t==='l'?COSM.TIER.m.p:0))*100; return b==='kanto'?`Cada tirada: ${pc('l').toLocaleString(I18N.locale,{maximumFractionDigits:1})} % de premio legendario y ${pc('e').toLocaleString(I18N.locale,{maximumFractionDigits:1})} % de épico. Sin garantía.`:`Cada tirada: ${pc('l').toLocaleString(I18N.locale,{maximumFractionDigits:1})} % de premio legendario. Sin garantía.`; };
-function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return; el.classList.remove('sub');
+function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return; GA.page=null; el.classList.remove('sub');
  const bk=COSM.BANNERS[GA.banner]?GA.banner:(GA.banner='eevee'), GB=gbData(), B=GB[bk];
  const stars=n=>'<i class="gbStars">'+'★'.repeat(n)+'</i>', plate=([k,n,t,s,r],i)=>`<div class="gbPlate p${i}"><span class="gbEl" style="--c:${TRAITS[t]?TRAITS[t].color:'#fff'}">${traitIcon(t)}</span><div><b>${esc(n)}</b>${stars(r)}<small>${esc(s)}</small></div></div>`;
  const F=gbFrame();
@@ -4171,24 +4171,34 @@ function gaBack(){ return '<button class="gbPill gbBack" id="gaBack" type="butto
 function gbFrame(tool){ const st=GA.st, bk=COSM.BANNERS[GA.banner]?GA.banner:'eevee', GB=gbData(), pill=(id,t)=>`<button class="gbPill${tool===id?' on':''}" id="${id}" type="button"${tool===id?' aria-current="page"':''}>${t}</button>`;
  return {top:`<div class="gbTop"><span class="gbMark" aria-hidden="true">✦</span><b>Gacha</b>
   <div class="gaBal"><span title="Caramelos">${PX.icon('candy',20)}<b id="gaCandy">${st.candies.toLocaleString(I18N.locale)}</b></span><span title="Polvo Estelar">${PX.icon('crystal',20)}<b id="gaDust">${st.dust.toLocaleString(I18N.locale)}</b></span></div></div>`,
-  tabs:`<nav class="gbTabs" aria-label="Secciones del gacha">${COSM.BANNER_KEYS.map(k=>`<button class="gbTab${!tool&&k===bk?' on':''}" data-b="${k}" type="button" ${!tool&&k===bk?'aria-current="true"':''} title="${esc(GB[k].h)}"><img src="img/gacha/${GB[k].tab}-h.webp" alt=""></button>`).join('')}
+  tabs:`<nav class="gbTabs" aria-label="Secciones del gacha">${COSM.BANNER_KEYS.map(k=>`<button class="gbTab${(!tool||tool==='gaOdds')&&k===bk?' on':''}" data-b="${k}" type="button" ${(!tool||tool==='gaOdds')&&k===bk?'aria-current="true"':''} title="${esc(GB[k].h)}"><img src="img/gacha/${GB[k].tab}-h.webp" alt=""></button>`).join('')}
    <span class="gbTabGap"></span><button class="gbTab tool${tool==='gaPz'?' on':''}" id="gaPz" type="button" title="Personalizar"><i data-i="gear" data-s="26"></i></button><button class="gbTab tool${tool==='gaColl'?' on':''}" id="gaColl" type="button" title="Colección"><i data-i="book" data-s="26"></i></button></nav>`,
   bottom:`<div class="gbBottom"><div class="gaLinks">${pill('gaShop','Tienda')}${pill('gaOdds','Detalles')}${pill('gaHist','Historial')}</div>
   <div class="gaBtns">${gaDailyBtn(st)}<button class="gbPull" id="ga1" type="button"><span>Pedir 1 tirada</span><small>${PX.icon('candy',16)} ${st.price}</small></button>
    <button class="gbPull" id="ga10" type="button"><span>Pedir 10 tiradas</span><small>${PX.icon('candy',16)} ${st.price10.toLocaleString(I18N.locale)}</small></button></div></div>`}; }
-function gbBindTabs(el){ el.querySelectorAll('.gbTab[data-b]').forEach(b=>b.onclick=()=>{ if(GA.busy) return; GA.banner=b.dataset.b; renderGacha(); }); $('gaPz').onclick=()=>gaPz(); $('gaColl').onclick=gaColl; const st=GA.st, pull=(op,b)=>{ if(GA.busy) return; if(!$('gaBall')) renderGacha(); gaDo(op,b); };
+function gbBindTabs(el){ el.querySelectorAll('.gbTab[data-b]').forEach(b=>b.onclick=()=>{ if(GA.busy) return; GA.banner=b.dataset.b; if(GA.page==='gaOdds') gaOdds(); else renderGacha(); }); $('gaPz').onclick=()=>gaPz(); $('gaColl').onclick=gaColl; const st=GA.st, pull=(op,b)=>{ if(GA.busy) return; if(!$('gaBall')) renderGacha(); gaDo(op,b); };
  $('ga1').onclick=()=>pull('roll',{n:1}); $('ga10').onclick=()=>pull('roll',{n:10}); $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop;
  $('gaD').onclick=()=>{ if(st.daily==='lista') pull('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); }; }
-function gaSub(html,tool){ const el=$('gaWrap'), F=gbFrame(tool); el.classList.remove('showRes','rolling','sub'); el.innerHTML=`${F.top}<div class="gbMain">${F.tabs}<section class="gbCard gbSub">${gaBack()}${html}</section></div>${F.bottom}`; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; gbBindTabs(el); }
-function gaOdds(){ const per=t=>COSM.POOL[t].length;
- gaSub(`<h2 class="pxH">Probabilidades</h2><p class="small muted">Cada tirada sortea primero la rareza y después un premio de esa rareza, todos con la misma probabilidad. La tirada diaria funciona igual.</p>
+function gaSub(html,tool){ const el=$('gaWrap'), F=gbFrame(tool); GA.page=tool; el.classList.remove('showRes','rolling','sub'); el.innerHTML=`${F.top}<div class="gbMain">${F.tabs}<section class="gbCard gbSub">${gaBack()}${html}</section></div>${F.bottom}`; hydrate(el); PX.hydrate(el); $('gaBack').onclick=renderGacha; gbBindTabs(el); }
+// Detalles del estandarte elegido: sus probabilidades (sin mítica, ese 0,1 % es legendario), sus minileyendas y todos sus premios por rareza.
+// Cada estandarte tiene los suyos; el historial y la tienda de polvo son comunes
+function gaOdds(){ const bk=COSM.BANNERS[GA.banner]?GA.banner:'eevee', BN=COSM.BANNERS[bk], B=gbData()[bk], own=new Set(GA.st.inv);
+ const tiers=COSM.TIERS.filter(t=>BN.mythic||t.k!=='m').map(t=>({t,p:!BN.mythic&&t.k==='l'?t.p+COSM.TIER.m.p:t.p,items:COSM.bannerPool(bk,t.k)}));
+ const pct=(x,d)=>(x*100).toLocaleString(I18N.locale,{maximumFractionDigits:d})+' %';
+ const tile=k=>{ const t=cosTier(k), h=own.has(k); return `<div class="gaItem${h?' have':''}" style="--tc:${t.col}">${cosChip(k)}<b>${esc(COSM.BY[k].name)}</b><small>${h?'Ya lo tienes':t.name}</small></div>`; };
+ const feat=BN.tacs.map(k=>'tac:'+k).filter(k=>COSM.BY[k]);
+ gaSub(`<h2 class="pxH">Detalles · ${B.t1} ${B.t2}</h2><p class="small muted">Lo que puedes conseguir en este estandarte. Cada tirada sortea primero la rareza y después un premio de esa rareza, todos con la misma probabilidad; la tirada diaria funciona igual. El historial y la tienda de polvo son comunes a todos los estandartes.</p>
+ <h3 class="gaShopH" style="--tc:#e8c867">Minileyendas de este estandarte</h3><div class="gaShop gaFeat">${feat.map(tile).join('')}</div>
+ <p class="small muted">Las demás minileyendas solo salen en su propio estandarte o en la tienda de polvo.</p>
  <table class="gaOdds"><thead><tr><th>Rareza</th><th>Probabilidad</th><th>Premios</th><th>Cada premio</th><th>Si se repite</th></tr></thead><tbody>
- ${COSM.TIERS.map(t=>{ const n=per(t.k), pc=t.k==='c'?t.p*(1-COSM.REFUND_SHARE):t.p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${(t.p*100).toLocaleString(I18N.locale,{maximumFractionDigits:1})} %</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${(pc/n*100).toLocaleString(I18N.locale,{maximumFractionDigits:3})} %</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
+ ${tiers.map(({t,p,items})=>{ const n=items.length, pc=t.k==='c'?p*(1-COSM.REFUND_SHARE):p; return `<tr style="--tc:${t.col}"><td><b>${t.name}</b></td><td>${pct(p,1)}</td><td>${n}${t.k==='c'?' + caramelos de vuelta':''}</td><td>${pct(pc/n,3)}</td><td>${t.dust?'+'+t.dust+' polvo':'—'}</td></tr>`; }).join('')}
  </tbody></table>
  <ul class="help"><li><b>Caramelos de vuelta:</b> ${(COSM.TIER.c.p*COSM.REFUND_SHARE*100).toLocaleString(I18N.locale)} % de las tiradas devuelven ${COSM.REFUND} caramelos.</li>
- <li><b>Eevee y Mew</b> (míticas): 0,1 % fijo por tirada (te toca una de las que te faltan), sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b> (primero Eevee y después Mew). La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>
+ ${BN.mythic?`<li><b>Eevee y Mew</b> (míticas): 0,1 % fijo por tirada (te toca una de las que te faltan), sin subida progresiva, y <b>garantizada en la tirada ${COSM.PITY}</b> (primero Eevee y después Mew). La tirada diaria también cuenta. Al salir, el contador vuelve a 0.</li>`:'<li><b>Sin mítica ni garantía:</b> en este estandarte el 0,1 % de la mítica da un premio legendario.</li>'}
  <li><b>Colecciones:</b> reúne todos los premios de un elemento y ganas su título exclusivo (${COSM.COLLECTIONS.map(c=>'«'+esc(COSM.BY[c.reward].name)+'»').join(', ')}).</li>
- <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>`,'gaOdds'); }
+ <li><b>Tirada diaria:</b> gratis una vez al día después de terminar una partida.</li></ul>
+ <h3 class="pxH gaDetH">Todos los premios</h3>
+ ${tiers.map(({t,items})=>`<details class="gaDet"${t.k==='m'||t.k==='l'?' open':''}><summary class="gaShopH" style="--tc:${t.col}">${t.name} · ${items.length} premios</summary><div class="gaShop">${items.map(tile).join('')}</div></details>`).join('')}`,'gaOdds'); }
 function gaHist(){ const h=(GA.st.hist||[]).slice().reverse();
  gaSub(`<h2 class="pxH">Tus últimas tiradas</h2>${h.length?`<div class="gaHist">${h.map(([t,k])=>{ const tr=k==='cd'?COSM.TIER.c:k==='dust'?COSM.TIER.m:cosTier(k), it=COSM.BY[k]; return `<div class="gaHRow" style="--tc:${tr.col}"><span class="gaHT">${tr.name}</span><span class="gaHN">${esc(k==='cd'?'Caramelos de vuelta':k==='dust'?'Polvo Estelar':it?it.name:k)}</span><small>${fmtDate(t*1000)}</small></div>`; }).join('')}</div>`:'<div class="hEmpty"><p>Aún no has tirado.</p></div>'}`,'gaHist'); }
 function gaShop(){ const st=GA.st, own=new Set(st.inv);

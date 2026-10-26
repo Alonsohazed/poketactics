@@ -99,6 +99,10 @@ test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabili
   await page.locator('#gaOdds').click();
   await expect(page.locator('.gaOdds tbody tr')).toHaveCount(5);
   await expect(page.locator('.gaOdds')).toContainText('0,1 %');
+  await expect(page.locator('.gaFeat .gaItem')).toHaveText([/Eevee/, /Mew/]); // cada estandarte tiene sus Detalles
+  await page.locator('.gbTab[data-b="aves"]').click(); await expect(page.locator('.gbSub h2')).toContainText('Alas legendarias');
+  await expect(page.locator('.gaOdds tbody tr')).toHaveCount(4); await expect(page.locator('.gaFeat .gaItem')).toHaveText([/Articuno/, /Zapdos/, /Moltres/]);
+  await page.locator('.gbTab[data-b="eevee"]').click(); await expect(page.locator('.gaOdds tbody tr')).toHaveCount(5);
   { const caja = async () => { const c = await page.locator('.gbCard').boundingBox(), v = await page.locator('.mbox:has(.gaWrap)').boundingBox(); return [c.width, c.height, v.width, v.height].map(Math.round).join('×'); };
     const sub = await caja(); await page.locator('#gaBack').click(); expect(await caja(), 'la carta y la ventana miden lo mismo en el estandarte y en las subpáginas').toBe(sub); await page.locator('#gaOdds').click(); }
   await page.locator('#gaBack').click(); await page.locator('#gaHist').click();
