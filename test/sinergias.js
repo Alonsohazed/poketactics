@@ -516,7 +516,7 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
     const bd = run('makePub')().bd[0]; ok(bd[0].some(r => r[1] === u3.defId && r[4] === 1), 'pub.bd lleva el variocolor del tablero');
     run('Math.random=__rnd'); }
   { const { G, p } = fresh(); G.phase = 'planning'; G.roundIdx = 3; G.round = E.ROUNDS[3]; let sh = 0, n = 0; for (let i = 0; i < 4000; i++) { p.gold = 99; p.bench = p.bench.map(() => null); p.shop = ['charmander', null, null, null, null]; if (E.applyAct(p, { t: 'buy', i: 0 }).ok) { n++; if (p.bench[0].shiny) sh++; } }
-    ok(n === 4000 && sh > 20 && sh < 90, 'probabilidad ≈ 1/80 (' + sh + ' de 4000)'); }
+    ok(n === 4000 && sh > 10 && sh < 65, 'probabilidad ≈ 1/120 (' + sh + ' de 4000)'); }
   { const { p } = fresh(); const a = run(`makeInst('rattata')`), b = run(`makeInst('rattata')`), c = run(`makeInst('rattata')`); b.shiny = true; p.board = {}; p.bench = p.bench.map(() => null); p.bench[0] = a; p.bench[1] = b; p.bench[2] = c; run('combine')(p); ok(p.bench.find(Boolean).shiny === true, 'el variocolor hereda aunque no sea la copia que se queda'); } }
 // Rendirse: rechazado antes de 3-1 y en el carrusel; desde 3-1 elimina (último puesto entre los vivos, equipo al pool) y la partida sigue para los demás
 { const { G, p } = fresh(); const run = s => vm.runInContext(s, ctx); G.phase = 'planning'; G.roundIdx = 5; G.round = E.ROUNDS[5];
