@@ -4117,30 +4117,41 @@ function gaDailyBtn(st){ const l={lista:'Tirada diaria gratis',usada:'Diaria usa
 // Pantalla del gacha como un estandarte: pestañas a la izquierda (estandarte, Personalizar y Colección), la carta con el título, la garantía
 // y los destacados (Eevee y Mew míticas y el variocolor), enlaces abajo a la izquierda y las tiradas abajo a la derecha. Al tirar, la Poké Ball
 // del estandarte tiembla y los premios salen encima de la carta (gbRes) hasta pulsar «Continuar»
-const GB_FEAT=[['eevee','Eevee','Normal','Minileyenda mítica',5],['mew','Mew','Psíquico','Minileyenda mítica',5],['charmander-vario','Variocolor, títulos, marcos…','Fuego','Cosméticos de todo tipo',4]];
+// Los tres estandartes (COSM.BANNERS: qué minileyendas salen en cada uno). Cada destacado: [imagen de img/gacha, nombre, tipo, rótulo, estrellas, posición]
+const gbData=()=>({ // función: COSM solo existe en el navegador (el servidor carga game.js sin cosmetics.js)
+ eevee:{tab:'eevee',kick:'Gacha mítico',t1:'Destellos',t2:'de la suerte',h:'Poké Ball de la suerte',box:`✦ Cada ${COSM.PITY} tiradas, una minileyenda mítica garantizada.`,
+  feat:[['eevee','Eevee','Normal','Minileyenda mítica',5],['mew','Mew','Psíquico','Minileyenda mítica',5],['charmander-vario','Variocolor, títulos, marcos…','Fuego','Cosméticos de todo tipo',4]]},
+ aves:{tab:'zapdos',kick:'Gacha legendario',t1:'Alas',t2:'legendarias',h:'Las aves de Kanto',box:'✦ Articuno, Zapdos y Moltres salen como premio legendario.',
+  feat:[['zapdos','Zapdos','Eléctrico','Minileyenda legendaria',5],['articuno','Articuno','Agua','Minileyenda legendaria',5],['moltres','Moltres','Fuego','Minileyenda legendaria',5]]},
+ kanto:{tab:'mewtwo',kick:'Gacha legendario',t1:'Leyendas',t2:'de Kanto',h:'Mewtwo, Ditto y Snorlax',box:'✦ Mewtwo sale como premio legendario; Ditto y Snorlax, como épicos.',
+  feat:[['mewtwo','Mewtwo','Psíquico','Minileyenda legendaria',5],['snorlax','Snorlax','Normal','Minileyenda épica',4],['ditto','Ditto','Normal','Minileyenda épica',4]]}});
+// en los estandartes sin mítica: la probabilidad de su premio (legendario o épico) en lugar de la garantía
+const gbOdds=b=>{ const pc=t=>(COSM.TIER[t].p+(t==='l'?COSM.TIER.m.p:0))*100; return b==='kanto'?`Cada tirada: ${pc('l').toLocaleString(I18N.locale,{maximumFractionDigits:1})} % de premio legendario y ${pc('e').toLocaleString(I18N.locale,{maximumFractionDigits:1})} % de épico. Sin garantía.`:`Cada tirada: ${pc('l').toLocaleString(I18N.locale,{maximumFractionDigits:1})} % de premio legendario. Sin garantía.`; };
 function renderGacha(){ const el=$('gaWrap'), st=GA.st; if(!el||!st) return; el.classList.remove('sub');
+ const bk=COSM.BANNERS[GA.banner]?GA.banner:(GA.banner='eevee'), GB=gbData(), B=GB[bk];
  const stars=n=>'<i class="gbStars">'+'★'.repeat(n)+'</i>', plate=([k,n,t,s,r],i)=>`<div class="gbPlate p${i}"><span class="gbEl" style="--c:${TRAITS[t]?TRAITS[t].color:'#fff'}">${traitIcon(t)}</span><div><b>${esc(n)}</b>${stars(r)}<small>${esc(s)}</small></div></div>`;
  el.innerHTML=`<div class="gbTop"><span class="gbMark" aria-hidden="true">✦</span><b>Gacha</b>
   <div class="gaBal"><span title="Caramelos">${PX.icon('candy',20)}<b id="gaCandy">${st.candies.toLocaleString(I18N.locale)}</b></span><span title="Polvo Estelar">${PX.icon('crystal',20)}<b id="gaDust">${st.dust.toLocaleString(I18N.locale)}</b></span></div></div>
  <div class="gbMain">
-  <nav class="gbTabs" aria-label="Secciones del gacha"><button class="gbTab on" type="button" aria-current="true" title="Poké Ball de la suerte"><img src="img/gacha/eevee.webp" alt=""></button>
-   <button class="gbTab" id="gaPz" type="button" title="Personalizar"><i data-i="gear" data-s="26"></i></button><button class="gbTab" id="gaColl" type="button" title="Colección"><i data-i="book" data-s="26"></i></button></nav>
-  <section class="gbCard">
-   <div class="gbKick">Gacha permanente</div>
-   <h1 class="gbTitle"><em>Destellos</em> de la suerte</h1>
-   <div class="gbInfo"><h3>Poké Ball de la suerte</h3>
-    <div class="gbBox">✦ Cada ${COSM.PITY} tiradas, una minileyenda mítica garantizada.</div>
-    ${gaPityHTML(st)}
-    <p>Solo cosméticos: nada cambia la partida. Ver «Detalles» para saber más.</p></div>
-   <div class="gbArt" aria-hidden="true"><img class="gbI i1" src="img/gacha/mew.webp" alt=""><img class="gbI i0" src="img/gacha/eevee.webp" alt=""><img class="gbI i2" src="img/gacha/charmander-vario.webp" alt="">
+  <nav class="gbTabs" aria-label="Secciones del gacha">${COSM.BANNER_KEYS.map(k=>`<button class="gbTab${k===bk?' on':''}" data-b="${k}" type="button" ${k===bk?'aria-current="true"':''} title="${esc(GB[k].h)}"><img src="img/gacha/${GB[k].tab}-h.webp" alt=""></button>`).join('')}
+   <span class="gbTabGap"></span><button class="gbTab tool" id="gaPz" type="button" title="Personalizar"><i data-i="gear" data-s="26"></i></button><button class="gbTab tool" id="gaColl" type="button" title="Colección"><i data-i="book" data-s="26"></i></button></nav>
+  <section class="gbCard b-${bk}">
+   <div class="gbKick">${B.kick}</div>
+   <h1 class="gbTitle"><em>${B.t1}</em> ${B.t2}</h1>
+   <div class="gbInfo"><h3>${esc(B.h)}</h3>
+    <div class="gbBox">${esc(B.box)}</div>
+    ${COSM.BANNERS[bk].mythic?gaPityHTML(st):`<div class="gaPity gbOdds"><span>${gbOdds(bk)}</span></div>`}
+    <p>Además: variocolor, títulos, marcos y más. Solo cosméticos.</p></div>
+   <div class="gbArt" aria-hidden="true">${B.feat.map((f,i)=>`<img class="gbI i${i}" src="img/gacha/${f[0]}-h.webp" alt="">`).join('')}
     <div class="gaBall" id="gaBall"><i class="gbTop"></i><i class="gbBand"></i><i class="gbBtn"></i></div></div>
-   ${GB_FEAT.map(plate).join('')}
+   ${B.feat.map(plate).join('')}
    <div class="gbRes"><div class="gaRes" id="gaRes" aria-live="polite"></div><button class="gbBtn2" id="gaOk" type="button">Continuar</button></div>
   </section></div>
  <div class="gbBottom"><div class="gaLinks"><button class="gbPill" id="gaShop" type="button">Tienda</button><button class="gbPill" id="gaOdds" type="button">Detalles</button><button class="gbPill" id="gaHist" type="button">Historial</button></div>
   <div class="gaBtns">${gaDailyBtn(st)}<button class="gbPull" id="ga1" type="button"><span>Pedir 1 tirada</span><small>${PX.icon('candy',16)} ${st.price}</small></button>
    <button class="gbPull" id="ga10" type="button"><span>Pedir 10 tiradas</span><small>${PX.icon('candy',16)} ${st.price10.toLocaleString(I18N.locale)}</small></button></div></div>`;
  hydrate(el); PX.hydrate(el);
+ el.querySelectorAll('.gbTab[data-b]').forEach(b=>b.onclick=()=>{ if(GA.busy) return; GA.banner=b.dataset.b; renderGacha(); });
  $('ga1').onclick=()=>gaDo('roll',{n:1}); $('ga10').onclick=()=>gaDo('roll',{n:10}); $('gaOk').onclick=()=>{ el.classList.remove('showRes'); $('gaRes').innerHTML=''; const b=$('gaBall'); if(b){ b.className='gaBall'; b.style.removeProperty('--tc'); } };
  $('gaD').onclick=()=>{ if(st.daily==='lista') gaDo('daily',{}); else toast(st.daily==='usada'?'Ya usaste la tirada gratis de hoy':'Termina una partida hoy para desbloquear la tirada gratis'); };
  $('gaOdds').onclick=gaOdds; $('gaHist').onclick=gaHist; $('gaShop').onclick=gaShop; $('gaColl').onclick=gaColl; $('gaPz').onclick=()=>gaPz(); }
@@ -4151,7 +4162,7 @@ function gaSync(o){ const st=GA.st; st.candies=o.candies; st.dust=o.dust; st.pit
 async function gaDo(op,body){ if(GA.busy) return; const st=GA.st; if(op==='roll'&&st.candies<(body.n===10?st.price10:st.price)){ toast(`Necesitas ${body.n===10?st.price10:st.price} caramelos`); return; }
  GA.busy=true; document.querySelectorAll('#gaWrap .gaBtns button').forEach(b=>b.disabled=true); $('gaWrap').classList.remove('showRes');
  const ball=$('gaBall'), res=$('gaRes'); res.innerHTML=''; ball.className='gaBall shake'; ball.style.removeProperty('--tc');
- let o; try{ o=await api('/api/gacha/'+op,Object.assign({nonce:gaNonce()},body)); }catch(e){ toast(e.message); GA.busy=false; renderGacha(); return; }
+ let o; try{ o=await api('/api/gacha/'+op,Object.assign({nonce:gaNonce(),banner:GA.banner||'eevee'},body)); }catch(e){ toast(e.message); GA.busy=false; renderGacha(); return; }
  if(op==='daily') st.daily='usada';
  const best=['m','l','e','r','c','x'].find(t=>o.res.some(r=>r.t===t))||'c', tc=(COSM.TIER[best]||{col:'#b9b4d4'}).col;
  await new Promise(r=>setTimeout(r,900)); if(!$('gaBall')) { GA.busy=false; return; }

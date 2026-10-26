@@ -83,6 +83,11 @@ var COSM = (function () {
   C.isItem = function (key) { return !!C.BY[key] && key !== 'cd'; };
   // Huecos que ven los demás (viajan en una cadena corta «nc:fuego|tt:domador|…» una vez por partida y en la lista de amigos).
   // th (tema) y ac (acento de amigos) solo se ven en el perfil y en tu propio panel.
+  // Estandartes del gacha: en cada uno solo salen sus minileyendas destacadas (tac:); el resto del catálogo (variocolor, títulos, marcos…)
+  // sale en todos. La mítica (0,1 %) y su garantía en la tirada PITY solo existen en el de Eevee y Mew; en los otros ese tramo da un premio legendario
+  C.BANNERS = { eevee: { tacs: ['eevee', 'mew'], mythic: true }, aves: { tacs: ['articuno', 'zapdos', 'moltres'] }, kanto: { tacs: ['mewtwo', 'ditto', 'snorlax'] } };
+  C.BANNER_KEYS = Object.keys(C.BANNERS);
+  C.bannerPool = function (b, t) { var B = C.BANNERS[b] || C.BANNERS.eevee; return C.POOL[t].filter(function (k) { return k.indexOf('tac:') !== 0 || B.tacs.indexOf(k.slice(4)) >= 0; }); };
   C.PUB_SLOTS = ['nc', 'tt', 'ic', 'fr', 'tr', 'gr', 'fb', 'tl', 'cr', 'br', 'fn', 'sh'];
   C.SLOTS = ['nc', 'tt', 'ic', 'fr', 'th', 'ac', 'tr', 'gr', 'fb', 'tl', 'cr', 'br', 'fn', 'sh'];
   C.validEq = function (slot, key) { return C.SLOTS.indexOf(slot) >= 0 && !!C.BY[key] && C.typeOf(key) === slot; };

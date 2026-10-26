@@ -1125,11 +1125,12 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .gbTabs{display:flex;flex-direction:column;gap:10px;padding:8px 0;background:linear-gradient(180deg,rgba(14,22,48,.75),rgba(14,22,48,.35));border-radius:14px}
 .gbTab{all:unset;cursor:pointer;display:grid;place-items:center;height:84px;margin:0 8px;border-radius:12px;background:linear-gradient(160deg,#2c4579,#1b2a52);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12);color:#cfe0ff;transition:transform .12s,box-shadow .12s}
 .gbTab:hover{transform:translateX(3px);box-shadow:inset 0 0 0 2px rgba(244,210,122,.6)}
-.gbTab.on{background:linear-gradient(160deg,#fff6dc,#f1e2b8);box-shadow:inset 0 0 0 2px #e8c867,0 0 18px rgba(244,210,122,.45);margin-right:-6px}.gbTab img{height:74px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.gbTab.on{background:linear-gradient(160deg,#fff6dc,#f1e2b8);box-shadow:inset 0 0 0 2px #e8c867,0 0 18px rgba(244,210,122,.45);margin-right:-6px}.gbTab img{height:70px;max-width:76px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.gbTabGap{flex:1}.gbTab.tool{height:58px}
 .gbCard{position:relative;overflow:hidden;min-height:540px;border-radius:16px;padding:30px 34px 26px;color:#3e3a52;background:radial-gradient(70% 90% at 82% 40%,rgba(255,255,255,.55) 0,transparent 60%),linear-gradient(100deg,#f6f1e6 0 40%,#e9e3f4 52%,#b9addf 72%,#8a7fc8 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 18px 40px rgba(0,0,0,.35)}
 .gbCard::before{content:'';position:absolute;right:-120px;top:-120px;width:640px;height:640px;border-radius:50%;background:radial-gradient(circle,transparent 44%,rgba(255,255,255,.45) 44.6% 45.2%,transparent 45.8%,transparent 58%,rgba(255,255,255,.3) 58.5% 59%,transparent 59.6%);pointer-events:none}
-.gbKick{position:absolute;left:0;top:14px;padding:4px 18px 4px 22px;border-radius:0 999px 999px 0;background:#6f63c9;color:#fff;font-weight:800;font-size:14px}
-.gbCard .gbTitle{margin:40px 0 0;padding:0;font-family:var(--display);font-weight:400;font-size:clamp(42px,4.4vw,64px);line-height:1.02;color:#5c5873;max-width:40%;text-shadow:none;letter-spacing:0}.gbTitle em{font-style:normal;color:#7465d1}
+.gbKick{position:absolute;left:0;top:10px;padding:4px 18px 4px 22px;border-radius:0 999px 999px 0;background:#6f63c9;color:#fff;font-weight:800;font-size:14px}
+.gbCard .gbTitle{margin:58px 0 0;padding:0;font-family:var(--display);font-weight:400;font-size:clamp(42px,4.4vw,64px);line-height:1.02;color:#5c5873;max-width:40%;text-shadow:none;letter-spacing:0}.gbTitle em{font-style:normal;color:#7465d1}
 .gbInfo{position:relative;z-index:2;max-width:36%;margin-top:26px;padding-left:14px;border-left:5px solid #4f4b63}
 .gbInfo h3{margin:0 0 8px;font-family:var(--display);font-weight:400;font-size:24px;color:#4f4b63}
 .gbBox{padding:8px 12px;background:#7569d0;color:#fff;font-weight:800;font-size:15px;line-height:1.3;border-radius:4px}
@@ -1137,14 +1138,21 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .gbInfo p{margin:10px 0 0;font-size:14px;font-weight:600;color:#5c5873;line-height:1.35}
 .gbArt{position:absolute;inset:0;pointer-events:none}
 .gbI{position:absolute;filter:drop-shadow(0 10px 18px rgba(46,30,96,.35))}
-.gbI.i0{height:80%;right:20%;bottom:0;z-index:2}.gbI.i1{height:56%;right:1%;top:3%;z-index:1}.gbI.i2{height:36%;right:47%;bottom:2%;z-index:3}
+.gbI.i0{height:80%;right:20%;bottom:0;z-index:2}.gbI.i1{height:56%;right:1%;top:3%;z-index:1}.gbI.i2{height:36%;right:44%;bottom:2%;z-index:3}
 .gbArt .gaBall{position:absolute;right:5%;bottom:6%;width:78px;height:78px;z-index:4;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
 .gbPlate{position:absolute;z-index:4;display:flex;align-items:flex-start;gap:8px;pointer-events:none}
 .gbPlate>div{display:flex;flex-direction:column;gap:2px;padding:6px 14px 7px;background:rgba(34,30,58,.82);border-radius:4px;color:#fff;box-shadow:0 6px 14px rgba(0,0,0,.25)}
 .gbPlate b{font-family:var(--display);font-weight:400;font-size:26px;line-height:1}.gbPlate small{font-size:12px;font-weight:700;color:#d9d4f2}
 .gbStars{font-style:normal;color:#ffd75e;letter-spacing:2px;font-size:15px;text-shadow:0 1px 0 #7a5a10}
 .gbEl{display:grid;place-items:center;width:38px;height:38px;margin-top:4px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0,color-mix(in srgb,var(--c) 70%,#fff) 30%,var(--c) 70%);box-shadow:0 0 0 2px rgba(255,255,255,.85),0 0 14px var(--c)}.gbEl svg{width:22px;height:22px;fill:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
-.gbPlate.p0{right:3%;bottom:36%}.gbPlate.p1{right:25%;top:5%}.gbPlate.p2{right:53%;bottom:5%}.gbPlate.p2 b{font-size:20px}.gbPlate.p2 small{color:#ffcf8a}
+.gbPlate.p0{right:3%;bottom:36%}.gbPlate.p1{right:25%;top:5%}.gbPlate.p2{right:46%;bottom:3%}
+.gbOdds{font-weight:700}
+.b-aves .gbI.i0{height:62%;right:14%;bottom:14%}.b-aves .gbI.i1{height:52%;right:1%;top:2%}.b-aves .gbI.i2{height:26%;right:36%;bottom:2%}.b-aves .gbArt .gaBall{right:auto;bottom:auto;left:41%;top:4%}
+.b-aves .gbPlate.p0{right:3%;bottom:4%}.b-aves .gbPlate.p1{right:31%;top:5%}.b-aves .gbPlate.p2{right:46%;bottom:3%}
+.b-kanto .gbI.i0{height:82%;right:20%;bottom:0}.b-kanto .gbI.i1{height:50%;right:1%;top:4%}.b-kanto .gbI.i2{height:30%;right:44%;bottom:2%}
+.b-kanto .gbPlate.p0{right:3%;bottom:36%}.b-kanto .gbPlate.p1{right:27%;top:5%}.b-kanto .gbPlate.p2{right:46%;bottom:3%}
+.b-aves{background:radial-gradient(70% 90% at 82% 40%,rgba(255,255,255,.55) 0,transparent 60%),linear-gradient(100deg,#f6f1e6 0 40%,#e6eef6 52%,#a9c7e6 72%,#6f9fd6 100%)}.b-aves .gbTitle em,.b-aves .gbInfo .gaPity b{color:#3f7fd0}.b-aves .gbKick,.b-aves .gbBox{background:#4a86cf}
+.b-kanto{background:radial-gradient(70% 90% at 82% 40%,rgba(255,255,255,.55) 0,transparent 60%),linear-gradient(100deg,#f6f1e6 0 40%,#f1e6f1 52%,#d6b0d9 72%,#a87ab8 100%)}.b-kanto .gbTitle em{color:#a14fb8}.b-kanto .gbKick,.b-kanto .gbBox{background:#9a55b0}.gbPlate.p2 b{font-size:20px}.gbPlate.p2 small{color:#ffcf8a}
 .gbRes{position:absolute;inset:0;z-index:6;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;background:radial-gradient(circle at 50% 40%,rgba(31,27,66,.86),rgba(10,10,28,.96));animation:gbIn .25s ease-out}
 .gaWrap.showRes .gbRes{display:flex}@keyframes gbIn{from{opacity:0}to{opacity:1}}
 .gbBtn2{all:unset;cursor:pointer;padding:10px 28px;border-radius:999px;background:linear-gradient(180deg,#fff7df,#f1e2b8);color:#3e3a52;font-weight:800;box-shadow:inset 0 0 0 2px #e8c867}

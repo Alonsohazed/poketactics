@@ -40,16 +40,20 @@ function collections(c) { const out = [];
 
 // Una tirada: rareza → premio. Cuenta para la garantía de mítica mientras te falte alguna (Eevee, Mew): la garantía da la primera que falte
 // en orden y la mítica al azar, una cualquiera de las que faltan
-function rollOne(comp, c, rng) {
-  const miss = COSM.missingMythics(c), has = !miss.length; if (!has) c.pity++;
+// banner: estandarte (COSM.BANNERS). Solo el de Eevee y Mew tiene mítica y garantía; en los demás el tramo de la mítica da un premio legendario
+// y solo salen sus minileyendas destacadas (COSM.bannerPool)
+function rollOne(comp, c, rng, banner) {
+  const B = COSM.BANNERS[banner] || COSM.BANNERS.eevee, myth = !!B.mythic;
+  const miss = COSM.missingMythics(c), has = !miss.length; if (myth && !has) c.pity++;
   let t = rarity(rng); // un solo sorteo: la mítica es el primer tramo (0,1 %)
-  if (!has && c.pity >= COSM.PITY) t = 'm'; // garantía
+  if (!myth && t === 'm') t = 'l';
+  if (myth && !has && c.pity >= COSM.PITY) t = 'm'; // garantía
   if (t === 'm') {
     if (has) { c.dust += COSM.BIG_DUST; return { key: 'dust', t: 'm', dust: COSM.BIG_DUST }; } // ya la tienes: Polvo Estelar
     const k = c.pity >= COSM.PITY ? miss[0] : pick(miss, rng); c.pity = 0; return grant(c, k);
   }
   if (t === 'c' && rng() < COSM.REFUND_SHARE) { comp.candies += COSM.REFUND; return { key: 'cd', t: 'c', candy: COSM.REFUND }; }
-  return grant(c, pick(COSM.POOL[t], rng));
+  return grant(c, pick(COSM.bannerPool(banner, t), rng));
 }
 
 // op: 'roll' {n}, 'daily', 'buy' {key}. ctx: {today: 'AAAA-MM-DD', playedToday: bool, rng}
@@ -57,16 +61,17 @@ function apply(comp0, cosm0, req, ctx) {
   const comp = normComp(comp0), c = normCosm(cosm0), rng = ctx.rng || cryptoRng;
   if (typeof req.nonce !== 'string' || !NONCE_RE.test(req.nonce)) return fail(400, 'Petición no válida');
   if (c.nonce && c.nonce.id === req.nonce) return { comp: comp0, cosm: cosm0, out: c.nonce.res, replay: true }; // repetida: mismo resultado, sin cobrar
-  let res = [], cost = 0;
+  let res = [], cost = 0; const banner = req.banner == null ? 'eevee' : req.banner;
+  if (req.op !== 'buy' && !COSM.BANNERS[banner]) return fail(400, 'Ese estandarte no existe');
   if (req.op === 'roll') {
     const n = req.n === 1 || req.n === 10 ? req.n : 0; if (!n) return fail(400, 'Solo se puede tirar 1 o 10 veces');
     cost = n === 10 ? COSM.PRICE10 : COSM.PRICE;
     if (comp.candies < cost) return fail(400, `Necesitas ${cost} caramelos`);
-    comp.candies -= cost; for (let i = 0; i < n; i++) res.push(rollOne(comp, c, rng));
+    comp.candies -= cost; for (let i = 0; i < n; i++) res.push(rollOne(comp, c, rng, banner));
   } else if (req.op === 'daily') {
     if (c.day === ctx.today) return fail(400, 'Ya usaste la tirada gratis de hoy');
     if (!ctx.playedToday) return fail(400, 'Termina una partida hoy para desbloquear la tirada gratis');
-    c.day = ctx.today; res.push(rollOne(comp, c, rng));
+    c.day = ctx.today; res.push(rollOne(comp, c, rng, banner));
   } else if (req.op === 'buy') {
     const it = COSM.BY[req.key], tier = it && COSM.TIER[it.t];
     if (!it || !tier || !tier.price) return fail(400, 'Eso no se puede comprar con Polvo Estelar');

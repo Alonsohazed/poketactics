@@ -230,7 +230,7 @@ function createAuth(db, { trainers, presence, onFriends, onEevee }) {
     if (gachaLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiadas tiradas seguidas: espera un momento' });
     gachaLimit.hit(user.id);
     const b = req.body || {}, ctx = await gachaCtx(user);
-    const r = await db.gachaTx(user.id, (comp, cosm) => GACHA.apply(comp, cosm, { op, n: b.n, key: b.key, nonce: b.nonce }, ctx));
+    const r = await db.gachaTx(user.id, (comp, cosm) => GACHA.apply(comp, cosm, { op, n: b.n, key: b.key, nonce: b.nonce, banner: b.banner }, ctx));
     if (r.error) return res.status(r.code).json({ error: r.error });
     if (r.out.eevee && !r.replay && onEevee) onEevee(user.name, r.out.mythic);
     res.json(Object.assign({}, r.out, { pityLeft: COSM.PITY - r.out.pity, replay: !!r.replay }));

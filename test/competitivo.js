@@ -68,6 +68,14 @@ const opps7 = (mmr, myPlace) => [1, 2, 3, 4, 5, 6, 7, 8].filter(p => p !== myPla
 { // caramelos: tabla configurada, todos los puestos reciben algo y nunca negativos
   ok(C.CFG.CANDY.join() === '100,95,90,85,80,75,70,65', 'caramelos por puesto'); ok(C.normComp({ candies: 'x' }).candies === 0, 'saldo inválido → 0 (nunca NaN)'); }
 
+// ---------- estandartes del gacha: en cada uno solo salen sus minileyendas; la mítica y su garantía, solo en el de Eevee y Mew ----------
+{ const G = require('../gacha'), CO = require('../public/cosmetics'); let k = 0; const N = () => 'estandarte' + (k++);
+  for (const b of CO.BANNER_KEYS) { let cosm = {}, comp = { candies: 1e9 }; const tacs = new Set(); let myth = 0;
+    for (let i = 0; i < 300; i++) { const r = G.apply(comp, cosm, { op: 'roll', n: 10, nonce: N(), banner: b }, { today: 'x', playedToday: true, rng: Math.random }); comp = r.comp; cosm = r.cosm; for (const x of r.out.res) { if (x.key.startsWith('tac:')) tacs.add(x.key.slice(4)); if (x.t === 'm') myth++; } }
+    ok([...tacs].every(t => CO.BANNERS[b].tacs.includes(t)), 'estandarte ' + b + ': solo sus minileyendas (' + [...tacs].join(',') + ')');
+    ok(CO.BANNERS[b].mythic ? true : myth === 0 && cosm.pity == null || (cosm.pity | 0) === 0, 'estandarte ' + b + ': sin mítica ni garantía fuera del de Eevee');
+    ok(tacs.size > 0, 'estandarte ' + b + ': en 3.000 tiradas sale alguna de sus minileyendas'); }
+  ok(G.apply({ candies: 999 }, {}, { op: 'roll', n: 1, nonce: N(), banner: 'nada' }, { today: 'x', playedToday: true }).code === 400, 'estandarte inexistente: rechazado'); }
 // ---------- gacha (lógica pura, con un azar sustituible) ----------
 { const G = require('../gacha'), CO = require('../public/cosmetics'); let k = 0; const N = () => 'test' + String(++k).padStart(8, '0');
   const run = (comp, cosm, req, rng) => G.apply(comp, cosm, Object.assign({ nonce: N() }, req), { today: '2026-10-22', playedToday: true, rng });
