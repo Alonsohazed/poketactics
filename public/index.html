@@ -1117,8 +1117,29 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 /* ---------- gacha ---------- */
 .mbox:has(.gaWrap){max-width:980px}
 /* ===== Gacha como estandarte (gb*) ===== */
-.mbox:has(.gaWrap:not(.sub)){max-width:1180px;padding:16px 18px 18px;background:radial-gradient(120% 90% at 85% -10%,#4b6fb0 0,transparent 55%),radial-gradient(90% 80% at -10% 110%,#3a3f8f 0,transparent 60%),linear-gradient(160deg,#20335e,#121a33 60%,#0d1226);border:2px solid #c9a24a}
-.gaWrap:not(.sub){position:relative;display:flex;flex-direction:column;gap:12px}
+.mbox:has(.gaWrap){max-width:1180px;padding:16px 18px 18px;background:radial-gradient(120% 90% at 85% -10%,#4b6fb0 0,transparent 55%),radial-gradient(90% 80% at -10% 110%,#3a3f8f 0,transparent 60%),linear-gradient(160deg,#20335e,#121a33 60%,#0d1226);border:2px solid #c9a24a}
+.gaWrap{position:relative;display:flex;flex-direction:column;gap:12px}
+/* Subpáginas (Tienda, Detalles, Historial, Personalizar, Colección): el mismo marco y una carta crema con desplazamiento */
+.gbCard.gbSub{min-height:0;max-height:min(640px,calc(100vh - 210px));overflow:auto;padding:22px 26px;background:linear-gradient(180deg,#f8f4ea,#efe8d8);color:#3e3a52}
+.gbCard.gbSub::before{display:none}
+.gbSub .gbBack{padding:7px 18px;font-size:14px;margin-bottom:6px}
+.gbSub .pxH{color:#4f4b63;text-shadow:none;font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:0;margin:10px 0 6px}
+.gbSub .muted,.gbSub .small.muted{color:#6b6782}
+.gbSub .gaOdds{font-family:inherit;color:#3e3a52}.gbSub .gaOdds th{color:#7a7591}.gbSub .gaOdds td{border-top:1px solid rgba(79,75,99,.18)}
+.gbSub .gaOdds td:first-child b{color:#3e3a52;border-left:6px solid var(--tc);padding-left:8px}
+.gbSub .help,.gbSub p,.gbSub li{color:#4f4b63}.gbSub .help b,.gbSub p b{color:#3e3a52}
+.gbSub .gaHRow{background:rgba(255,255,255,.65);box-shadow:inset 5px 0 0 var(--tc),0 1px 3px rgba(0,0,0,.08);border-radius:8px;font-family:inherit;color:#3e3a52}.gbSub .gaHRow small{color:#7a7591}
+.gbSub .gaShopH{color:#4f4b63!important;text-shadow:none;border-left:6px solid var(--tc);padding-left:10px;font-family:var(--display);font-weight:400;font-size:20px}
+.gbSub .gaItem{background:linear-gradient(170deg,#36305a,#231f3d);border-radius:12px;clip-path:none;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--tc) 70%,transparent),0 3px 8px rgba(0,0,0,.18);font-family:inherit}
+.gbSub .gaItem:hover{box-shadow:inset 0 0 0 2px var(--tc),0 5px 12px rgba(0,0,0,.25)}.gbSub .gaItem.on{box-shadow:inset 0 0 0 3px #e8c867,0 0 14px rgba(232,200,103,.5);background:rgba(34,30,58,.95)}
+.gbSub .gaItem small{color:#c9c3e6}.gbSub .gaItem.locked{background:linear-gradient(170deg,#2c2848,#1d1a33)}.gbSub .gaItem.locked b,.gbSub .gaItem.locked small{color:#8f89a8}.gbSub .gaItem.locked .cc{filter:grayscale(1) brightness(.6);opacity:.6}
+.gbSub .gaItem[aria-disabled="true"]{opacity:1}.gbSub .gaItem[aria-disabled="true"] .cc{opacity:.6}
+.gbTab.tool.on{margin-right:0;background:linear-gradient(160deg,#3b5a96,#22356a);box-shadow:inset 0 0 0 2px #e8c867,0 0 18px rgba(244,210,122,.45)}
+.gbSub .pzSlots .pxb{all:unset;cursor:pointer;position:relative;padding:7px 14px;border-radius:999px;background:linear-gradient(180deg,#f8f3e6,#e6dcc4);color:#4a4560;font-weight:800;font-size:13px;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.gbSub .pzSlots .pxb.on{background:linear-gradient(180deg,#8a7ee0,#6f63c9);color:#fff}
+.gbSub .pzCard{border-radius:14px}
+.gbSub .coRow{background:rgba(255,255,255,.7);clip-path:none;border-radius:10px;font-family:inherit;color:#3e3a52;box-shadow:0 1px 3px rgba(0,0,0,.08)}.gbSub .coRow small{color:#7a7591}.gbSub .coRow.done{box-shadow:inset 0 0 0 2px #e8c867}.gbSub .coRow.done small{color:#a07a1a}
+.gbSub .rkBar{height:8px;border:0;border-radius:99px;background:rgba(79,75,99,.16);box-shadow:none;overflow:hidden}.gbSub .rkBar i{border-radius:99px;background:linear-gradient(90deg,#a99bf5,#7465d1)}
 .gbTop{display:flex;align-items:center;gap:10px;padding-right:44px;color:#eef2ff;font-family:var(--display);font-size:20px}.gbTop .gbMark{color:#f4d27a;font-size:24px;filter:drop-shadow(0 0 6px rgba(244,210,122,.6))}.gbTop>b{font-weight:400;letter-spacing:.02em}
 .gbTop .gaBal{margin-left:auto}.gbTop .gaBal span{border-radius:999px;clip-path:none;background:rgba(8,12,28,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);padding:5px 14px}
 .gbMain{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;min-height:0}
@@ -1139,7 +1160,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .gbArt{position:absolute;inset:0;pointer-events:none}
 .gbI{position:absolute;filter:drop-shadow(0 10px 18px rgba(46,30,96,.35))}
 .gbI.i0{height:80%;right:20%;bottom:0;z-index:2}.gbI.i1{height:56%;right:1%;top:3%;z-index:1}.gbI.i2{height:36%;right:44%;bottom:2%;z-index:3}
-.gbArt .gaBall{position:absolute;right:5%;bottom:6%;width:78px;height:78px;z-index:4;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+.gbRes .gaBall{flex:none}.gaWrap.rolling .gbBtn2{visibility:hidden}.gaWrap.rolling .gaRes{display:none}
 .gbPlate{position:absolute;z-index:4;display:flex;align-items:flex-start;gap:8px;pointer-events:none}
 .gbPlate>div{display:flex;flex-direction:column;gap:2px;padding:6px 14px 7px;background:rgba(34,30,58,.82);border-radius:4px;color:#fff;box-shadow:0 6px 14px rgba(0,0,0,.25)}
 .gbPlate b{font-family:var(--display);font-weight:400;font-size:26px;line-height:1}.gbPlate small{font-size:12px;font-weight:700;color:#d9d4f2}
@@ -1147,7 +1168,7 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .gbEl{display:grid;place-items:center;width:38px;height:38px;margin-top:4px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0,color-mix(in srgb,var(--c) 70%,#fff) 30%,var(--c) 70%);box-shadow:0 0 0 2px rgba(255,255,255,.85),0 0 14px var(--c)}.gbEl svg{width:22px;height:22px;fill:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
 .gbPlate.p0{right:3%;bottom:36%}.gbPlate.p1{right:25%;top:5%}.gbPlate.p2{right:46%;bottom:3%}
 .gbOdds{font-weight:700}
-.b-aves .gbI.i0{height:62%;right:14%;bottom:14%}.b-aves .gbI.i1{height:52%;right:1%;top:2%}.b-aves .gbI.i2{height:26%;right:36%;bottom:2%}.b-aves .gbArt .gaBall{right:auto;bottom:auto;left:41%;top:4%}
+.b-aves .gbI.i0{height:62%;right:14%;bottom:14%}.b-aves .gbI.i1{height:52%;right:1%;top:2%}.b-aves .gbI.i2{height:26%;right:36%;bottom:2%}
 .b-aves .gbPlate.p0{right:3%;bottom:4%}.b-aves .gbPlate.p1{right:31%;top:5%}.b-aves .gbPlate.p2{right:46%;bottom:3%}
 .b-kanto .gbI.i0{height:82%;right:20%;bottom:0}.b-kanto .gbI.i1{height:50%;right:1%;top:4%}.b-kanto .gbI.i2{height:30%;right:44%;bottom:2%}
 .b-kanto .gbPlate.p0{right:3%;bottom:36%}.b-kanto .gbPlate.p1{right:27%;top:5%}.b-kanto .gbPlate.p2{right:46%;bottom:3%}

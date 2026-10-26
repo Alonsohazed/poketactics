@@ -90,7 +90,7 @@ test('Eevee es mítica: bloqueada en el selector del registro y del menú, con �
 test('gacha: pantalla, garantía de Eevee, diaria bloqueada sin jugar, probabilidades, historial y tienda', async ({ page }) => {
   await register(page);
   await page.locator('#eeveeGacha').click();
-  await expect(page.locator('.gaBall')).toBeVisible();
+  await expect(page.locator('.gbCard')).toBeVisible(); await expect(page.locator('.gaBall')).toBeHidden(); // la Poké Ball solo sale al tirar
   await expect(page.locator('#gaCandy')).toHaveText('0');
   await expect(page.locator('.gaPity')).toContainText('Eevee garantizado en 200 tiradas');
   await expect(page.locator('#gaD')).toContainText('termina una partida');
