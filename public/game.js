@@ -55,7 +55,7 @@ const TRAITS={
  'Sanador':T('💖','#16a085',[2,4,6],'Afecta a TODO tu equipo','Las curaciones y escudos de las habilidades de tu equipo son más fuertes, y todos ganan resistencia.',['+20% de curación y escudos · +10 de resistencia','+40% · +20 de resistencia','+70% · +35 de resistencia']),
  'Cazatesoros':T('💎','#e0a800',[2,3],'Afecta a tu economía','Consiguen botín al ganar combates, más con rachas de victorias. Toca la sinergia para ver todo lo que te han dado.',['Al ganar: 2 de oro (+1 por cada victoria seguida, máx. +3) · al perder: 1 de oro','Al ganar: un orbe de botín y oro de racha · al perder: 2 de oro']),
  'Legendario':T('👑','#c79400',[1],'Afecta a cada Legendario','Resonancia: cada Legendario se hace más fuerte con los niveles activos de sus OTRAS sinergias, contando solo a tus Pokémon no legendarios (vida, ataque y habilidad). Sin apoyo, se debilita.',['Sin sinergias activas −8% · 1 nivel +0% · 2 niveles +12% · 3 niveles +25% · 4 niveles +40% · 5 o más +50%']),
- 'Depredadores':T('🩸','#e8572a',[2,4,6],'Afecta a tus Depredadores','Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná (el maná, como mucho una vez cada 2,5 s).',['+8% de vel. de ataque · al matar: acelerón +25% 2 s y 15% de maná','+12% · acelerón +35% 2,5 s y 25% de maná','+20% · acelerón +50% 3 s y 30% de maná']),
+ 'Depredadores':T('🩸','#e8572a',[2,4,6],'Afecta a tus Depredadores','Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná (el maná, como mucho una vez cada 2,5 s).',['+6% de vel. de ataque · al matar: acelerón +20% 2 s y 12% de maná','+10% · acelerón +30% 2,5 s y 20% de maná','+15% · acelerón +40% 3 s y 25% de maná']),
  'Potencial Evolutivo':T('🌱','#5bbf6a',[2,4,6],'Afecta a tus Pokémon con Potencial Evolutivo','Crecen para siempre: al terminar cada ronda en el tablero ganan vida, ataque y poder permanentes. Crecen más con sus estrellas (×1,5 a 2★ y ×2,5 a 3★) y con las de todo tu tablero (+4% por cada estrella).',['+12 de vida, +1 de ataque y +1,5 de poder por ronda','+25 de vida, +2 de ataque y +3 de poder por ronda','+45 de vida, +4 de ataque y +6 de poder por ronda']),
  'Team Rocket':T('🚀','#b8203c',[3,5],'Afecta a tus miembros del Team Rocket','La primera vez que bajan del 60% de vida se ponen serios durante 4 s.',['25% menos de daño, +50% de vel. de ataque y regeneran 3% de vida/s','45% menos de daño, +80% de vel. de ataque y regeneran 5% de vida/s']),
 };
@@ -82,7 +82,7 @@ const PRISM={
  'Asesino':[8,'+25% de prob. crítica y +20% de daño crítico'],
  'Sanador':[8,'Curas y escudos +120% · +60 de resistencia'],
  'Cazatesoros':[5,'Al ganar: un orbe de botín, 4 de oro y oro de racha · al perder: 4 de oro'],
- 'Depredadores':[8,'+35% de vel. de ataque · al matar: acelerón +70% 4 s y 40% de maná'],
+ 'Depredadores':[8,'+30% de vel. de ataque · al matar: acelerón +60% 4 s y 35% de maná'],
  'Potencial Evolutivo':[8,'+80 de vida, +8 de ataque y +12 de poder por ronda'],
  'Team Rocket':[7,'Se ponen serios con 60% menos de daño · la primera vez que caen ¡despegan! y vuelven con la mitad de vida · cada baja roba 1 de oro'],
 };
@@ -139,12 +139,12 @@ const UNIT_LIST=[
  U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Acero','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
  U('drowzee',['Drowzee','Hypno'],[96,97],2,'t',['Psíquico','Guardián','Team Rocket'],[['sing','Hipnosis',{r:0,s:2,m:.6}],['sing','Come Sueños',{r:1,s:1.5,m:.8,drain:.5}]]),
  U('igglybuff',['Igglybuff','Jigglypuff','Wigglytuff'],[174,39,40],2,'t',['Hada','Normal','Sanador'],[['heal','Encanto',{n:2,m:.8}],['sing','Canto',{r:1,s:2,m:.35,healTeam:.25}],['sing','Voz Cautivadora',{r:2,s:2,m:.6,healTeam:.3}]]),
- U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:.88,th:.08}]]),
+ U('scyther',['Scyther','Scizor'],[123,212],2,'a',['Acero','Asesino','Depredadores'],[['combo','Corte Furia',{n:3,m:.55}],['execute','Puño Bala',{m:.84,th:.07}]]),
  U('poliwag',['Poliwag','Poliwhirl','Poliwrath'],[60,61,62],2,'b',['Agua','Lucha','Peleador'],[['bolt','Burbuja',{m:1.2}],['sing','Hipnosis',{r:1,s:1.2,m:.6}],['combo','Puño Dinámico',{n:3,m:.7,stun:1.2}]]),
  U('sableye',['Sableye'],[302],2,'a',['Siniestro','Cazatesoros','Team Rocket'],[['dash','Ladrón',{m:.92,to:'low',g:1,stealth:1}]]),
  U('houndour',['Houndour','Houndoom'],[228,229],2,'m',['Fuego','Siniestro','Hechicero'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:.56,len:4,burn:.03,ground:3,gm:.4}]]),
  U('riolu',['Riolu','Lucario'],[447,448],2,'r',['Lucha','Acero','Tirador'],[['bolt','Palmeo',{selfAs:0.12,m:1.3,stun:.6}],['empower','Esfera Aural',{n:4,m:.42,selfAs:.25}]]),
- U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:.85,to:'far',burn:.03,selfAs:.1}],['dash','Envite Ígneo',{m:.52,to:'low',r:1,burn:.03}]]),
+ U('ponyta',['Ponyta','Rapidash'],[77,78],3,'a',['Fuego','Asesino','Depredadores'],[['dash','Nitrocarga',{m:.85,to:'far',burn:.03,selfAs:.1}],['dash','Envite Ígneo',{m:.49,to:'low',r:1,burn:.03}]]),
  U('shellder',['Shellder','Cloyster'],[90,91],3,'t',['Agua','Guardián'],[['harden','Refugio',{df:35,heal:.6}],['multi','Carámbano',{n:4,m:.38,chill:3,el:'Hielo'}]]),
  U('oddish',['Oddish','Gloom','Vileplume'],[43,44,45],3,'m',['Planta','Hechicero'],[['zone','Somnífero',{r:1,m:.5,dur:2,sleep:1.2}],['poison','Polvo Veneno',{m:1.1,dur:5,r:1,el:'Veneno'}],['zone','Danza Pétalo',{r:2,m:1.2,dur:3}]]),
  U('elekid',['Elekid','Electabuzz','Electivire'],[239,125,466],3,'b',['Eléctrico','Peleador'],[['empower','Puño Trueno',{n:3,m:.55,stun:.3}],['chain','Puño Trueno',{n:3,m:.9}],['slam','Voltio Cruel',{r:1,m:1.4,stun:1}]]),
@@ -158,7 +158,7 @@ const UNIT_LIST=[
  U('grimer',['Grimer','Muk'],[88,89],3,'t',['Siniestro','Coloso','Team Rocket'],[['poison','Residuos',{m:.85,r:1,dur:4,el:'Veneno'}],['poison','Bomba Lodo',{m:.9,r:1,dur:5,el:'Veneno'}]]),
  U('gimmighoul',['Gimmighoul','Gholdengo'],[999,1000],3,'m',['Fantasma','Cazatesoros'],[['gold','Moneda Oculta',{m:1.1,g:1}],['gold','Fiebre Dorada',{m:.75,g:2,all:1}]]),
  U('munchlax',['Munchlax','Snorlax'],[446,143],3,'t',['Normal','Guardián'],[['rest','Engullir',{m:1}],['rest','Descanso',{m:2,sleep:1.5}],['slam','Golpe Cuerpo',{r:1,m:1.05,stun:1.3}]]),
- U('absol',['Absol'],[359],3,'a',['Siniestro','Asesino','Depredadores'],[['execute','Tajo Umbrío',{m:.8,th:.1}]]),
+ U('absol',['Absol'],[359],3,'a',['Siniestro','Asesino','Depredadores'],[['execute','Tajo Umbrío',{m:.72,th:.09}]]),
  U('ditto',['Ditto'],[132],3,'b',['Normal','Peleador'],[['copy','Transformación',{}]]),
  U('larvitar',['Larvitar','Pupitar','Tyranitar'],[246,247,248],4,'t',['Roca','Guardián','Potencial Evolutivo'],[['harden','Endurecimiento',{df:40,heal:.6}],['shield','Fortaleza',{m:1.6}],['zone','Tormenta Arena',{r:2,m:1.8,dur:4,self:1,root:1,chill:1,v:'sand'}]]),
  U('ralts',['Ralts','Kirlia','Gardevoir'],[280,281,282],4,'h',['Psíquico','Hada','Sanador'],[['heal','Encanto',{n:2,m:1.1}],['teamShield','Paz Mental',{m:.55,ap:10}],['meteor','Fuerza Lunar',{m:.4,healAll:1.6,mana0:60,mm:70}]]),
@@ -851,7 +851,7 @@ function applyTraits(u,traits,Tt,mods){
  u.ap+=tv('Hechicero',[0,8,15,25,40,60])*(has('Hechicero')?2:1); if(has('Hechicero')){ u.scholar=tv('Hechicero',[0,2,4,7,12,18]); u.echo=(Tt['Hechicero']||0)>TRAITS['Hechicero'].bp.length; }
  if(has('Asesino')){ u.critC+=tv('Asesino',[0,.1,.18,.22,.25]); u.critM+=tv('Asesino',[0,.1,.15,.2,.2]); if(Tt['Asesino']){ u.critAbil=true; u.vanish=tv('Asesino',[0,1.5,2,2.5,3]); } }
  u.healAmp=(u.healAmp||0)+tv('Sanador',[0,.2,.4,.7,1.2]); u.mr+=tv('Sanador',[0,10,20,35,60]);
- if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.08,.12,.2,.35]); u.rival=[tv('Depredadores',[0,.25,.35,.5,.7]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.15,.25,.3,.4])]; }
+ if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.06,.1,.15,.3]); u.rival=[tv('Depredadores',[0,.2,.3,.4,.6]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.12,.2,.25,.35])]; }
  if(has('Team Rocket')&&Tt['Team Rocket']) u.rocket=Tt['Team Rocket'];
  // Resonancia: un Legendario sin su arquetipo (p. ej. Rayquaza sin Dragón ni Tirador) rinde menos; llenar el tablero de legendarios no basta
  if(has('Legendario')){ let n=0; const T2=Tt.nl||Tt; for(const t of traits) if(t!=='Legendario') n+=T2[t]||0; const b=LEG_RES[Math.min(n,LEG_RES.length-1)]+(mods?mods.legend:0); u.maxHp*=b; u.ad*=b; u.legMul=b; u.legRes=n; }
