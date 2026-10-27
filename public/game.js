@@ -953,7 +953,9 @@ function addCreeps(cb,R){
 }
 // efectos visuales (no afectan a la simulación)
 // cb.visDelay (solo visual): retrasa los textos y reacciones de impacto hasta que el proyectil llega al objetivo
+const CAST_W=.32; // preparación visual de una habilidad: el Pokémon carga y suelta el golpe a los 0,32 s (solo dibujo)
 function fx(cb,o){ if(cb.visual){ o.t=-(cb.visDelay||0); o.life=o.life||.8; cb.fx.push(o); } }
+const unitEl=u=>u&&u.d&&u.d.traits?u.d.traits.find(x=>FX_EL.has(x)):null;
 function fxText(cb,u,txt,color,big){ fx(cb,{type:'text',c:u.c,r:u.r,txt:String(txt),color,big:!!big,dx:(Math.random()-.5)*14}); }
 // Avanza el tiempo de los efectos (se hace en cada fotograma para que se muevan a la frecuencia de la pantalla)
 function ageFx(cb,dt){ if(!cb||!cb.fx.length) return; for(const f of cb.fx) f.t+=dt; cb.fx=cb.fx.filter(f=>f.t<f.life); }
@@ -1025,7 +1027,7 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
  if(kind!=='true'){ t.mana+=Math.min(dmg*.04,12); if(t.sp.titan&&t.titanN<25){ t.titanN++; t.dmgBonus+=t.sp.titan; } }
  if(t.reflT>0&&src&&src!==t&&kind!=='true'&&!src.dead) dealDamage(cb,t,src,dmg*t.reflPct,'true',true);
  if(src&&src.omni&&!src.dead) heal(src,dmg*src.omni);
- if(!silent&&dmg>=1){ fxText(cb,t,crit?R0(dmg)+'!':R0(dmg),crit?'#ffb400':kind==='magic'?'#7fb6ff':'#ffffff',crit); if(cb.visual) fx(cb,{type:'hit',u:t,src,crit,kind,k:Math.min(1,dmg/Math.max(1,t.maxHp)*4),life:.4}); }
+ if(!silent&&dmg>=1){ fxText(cb,t,crit?R0(dmg)+'!':R0(dmg),crit?'#ffb400':kind==='magic'?'#7fb6ff':'#ffffff',crit); if(cb.visual) fx(cb,{type:'hit',u:t,src,crit,kind,el:unitEl(src),k:Math.min(1,dmg/Math.max(1,t.maxHp)*4),life:.4}); }
  if(src&&src.sp.execute&&kind!=='true'&&t.hp>0&&t.hp<t.maxHp*src.sp.execute){ t.hp=0; fxText(cb,t,'¡Rematado!','#ff6b6b'); }
  if(src&&src.execTh&&kind!=='true'&&t.hp>0&&t.hp<t.maxHp*src.execTh){ t.hp=0; fxText(cb,t,'¡Ejecutado!','#b07cff'); cb.darkN=cb.darkN||[0,0]; if(cb.darkN[src.side]<5){ cb.darkN[src.side]++; for(const a of cb.units) if(!a.dead&&a.side===src.side) a.dmgBonus+=src.execBuff; } }
  // Team Rocket: la primera vez que bajan del 60% se ponen serios 4 s
@@ -1134,11 +1136,15 @@ function typeOnCast(cb,u){
 function castAbility(cb,u,ab,depth=0){
  const [k,name,p]=ab; const P=abilPower(u), col=typeColor(u.d), el=p.el||u.d.traits[0]||'Normal';
  // Todos los efectos de la habilidad llevan su elemento y su estilo (p.v) para que board3d.js los pinte distintos
- const FX=o=>fx(cb,{el,v:p.v,color:col,...o});
+ // Un proyectil de habilidad retrasa lo que viene después (impactos, cifras, área) hasta que llega: en cada caso el proyectil se emite antes que el daño
+ const FX=o=>{ fx(cb,{el,v:p.v,color:col,...o}); if(cb.visual&&o.type==='proj'&&depth===0) cb.visDelay=(u.castVis||0)+CAST_W+(o.life||.3)*.85; };
  const foes=foesOf(cb,u), allies=alliesOf(cb,u);
  let t=u.target&&!u.target.dead&&!(u.target.stealth>0)?u.target:nearestEnemy(cb,u);
  if(depth===0){ u.castN=(u.castN||0)+1; if(u.castAp){ u.ap+=u.castAp; u.ad+=u.ad0*u.castAp/100; } typeOnCast(cb,u); for(const a of cb.units) if(a.scholar&&!a.dead&&a.side===u.side){ a.ap+=a.scholar; a.ad+=a.ad0*a.scholar/100; } cb.caster=u; HEALER=u; cb.cDmg=0; cb.cHits=new Set(); cb.cHeal=0; cb.cShield=0; cb.cStun=false; cb.cKills=0; cb.cExtra='';
-   fx(cb,{type:'banner',u,txt:name,color:col,icon:elIcon(el),life:1.3}); u.glow=.6; u.flash=.2; }
+   fx(cb,{type:'banner',u,txt:name,color:col,icon:elIcon(el),life:1.3}); u.glow=.6; u.flash=.2;
+   // Casteo (solo visual): círculo de poder bajo el lanzador y pose de habilidad; el resto de efectos (proyectil, impactos, cifras) espera la preparación (CAST_W),
+   // así el proyectil sale cuando el Pokémon suelta el golpe. El daño se aplica igual en este tick (la simulación no cambia)
+   fx(cb,{type:'cast',u,el,color:col,life:CAST_W+.45}); if(cb.visual){ u.castVis=(cb.visDelay||0); cb.visDelay=u.castVis+CAST_W; } }
  const amp=1+(u.healAmp||0); // Sanadores: curas y escudos más fuertes
  // Precisión Lunar: las curas y escudos de la línea de Clefable pueden ser críticos
  const hc=()=>{ if(u.healCrit&&cb.rng()<u.critC){ fxText(cb,u,'¡Crítico!','#ffb400'); return u.critM; } return 1; };
@@ -1161,7 +1167,7 @@ function castAbility(cb,u,ab,depth=0){
   // spill: si el objetivo cae, los golpes que sobran van al enemigo vivo más cercano (Nidoran♂; Scyther, Machop y Poliwag no lo llevan)
   case 'combo': if(t){ let tg=t; for(let i=0;i<p.n;i++){ if(tg.dead){ if(!p.spill) break; tg=foesOf(cb,u).filter(e=>!(e.stealth>0)).sort((a,b)=>dU(u,a)-dU(u,b)||cb.units.indexOf(a)-cb.units.indexOf(b))[0]; if(!tg) break; cb.cExtra=' · los golpes saltan al siguiente'; } hitFx(cb,u,tg,P*p.m,i===p.n-1?p:{...p,stun:0}); } FX({type:'hits',c:t.c,r:t.r,n:p.n,life:.6}); } break;
   case 'dash': { const nearF=foes.filter(e=>!(e.stealth>0)&&dU(u,e)<=3); const tg=p.to==='far'?nearF.sort((a,b)=>dU(u,b)-dU(u,a))[0]||t:p.to==='low'?nearF.sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0]||t:t;
-    if(tg){ teleportNear(cb,u,tg); u.target=tg; hitFx(cb,u,tg,P*p.m,p); FX({type:'hits',c:tg.c,r:tg.r,n:2,life:.5}); if(p.r){ for(const e of foes) if(e!==tg&&dU(tg,e)<=p.r) hitFx(cb,u,e,P*p.m*.6,p); FX({type:'area',c:tg.c,r:tg.r,rad:p.r+.5,life:.6}); } if(p.stealth){ u.stealth=p.stealth; for(const e of foes) if(e.target===u) e.target=null; cb.cExtra=' · invisible'; } if(p.selfAs) u.as=Math.min(3,u.as*(1+p.selfAs)); } break; }
+    if(tg){ const pc=u.c, pr=u.r; teleportNear(cb,u,tg); u.target=tg; FX({type:'leap',fc:pc,fr:pr,tc:u.c,tr:u.r,life:.35}); hitFx(cb,u,tg,P*p.m,p); FX({type:'hits',c:tg.c,r:tg.r,n:2,life:.5}); if(p.r){ for(const e of foes) if(e!==tg&&dU(tg,e)<=p.r) hitFx(cb,u,e,P*p.m*.6,p); FX({type:'area',c:tg.c,r:tg.r,rad:p.r+.5,life:.6}); } if(p.stealth){ u.stealth=p.stealth; for(const e of foes) if(e.target===u) e.target=null; cb.cExtra=' · invisible'; } if(p.selfAs) u.as=Math.min(3,u.as*(1+p.selfAs)); } break; }
   case 'execute': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:3,color:'#ff5a5a',life:.6}); if(!t.dead&&t.hp<t.maxHp*execTh(p,u.star)){ dealDamage(cb,u,t,t.hp+t.shield+1,'true',true); fxText(cb,t,'¡Rematado!','#ff6b6b'); }
     if(t.dead&&p.reset&&u.maxMana<9999){ u.mana+=u.maxMana*p.reset; cb.cExtra+=' · ¡recupera maná!'; } } break;
   // r: solo cae sobre la zona con más enemigos (radio r) en vez de en todo el tablero
@@ -1250,6 +1256,7 @@ function castAbility(cb,u,ab,depth=0){
       later2(cb,.3,()=>{ if(u.dead) return; for(const e of near(u.c,u.r,rad)) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:u.c,r:u.r,rad:rad+.5,life:.7,quake:true}); }); cb.cExtra=' · salta al grupo'; } break; }
  }
  if(depth===0){
+   if(cb.visual) cb.visDelay=u.castVis||0;
    if((u.echo||u.sp.echo3&&u.castN%3===0)&&!u.echoing&&!u.dead){ u.echoing=true; cb.cExtra+=' · ¡doble lanzamiento!'; castAbility(cb,u,ab,1); u.echoing=false; }
    if(u.sp.goldCast&&!u.gcDone){ u.gcDone=1; const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+u.sp.goldCast); if(cb.gold[u.side]>before){ fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
    if(p.g){ const g=p.g+(u.star-1)+(u.payDay||0); const before=cb.gold[u.side]; cb.gold[u.side]=Math.min(12,before+g); if(cb.gold[u.side]>before){ if(u.ref&&!NO_PERMA) u.ref.goldGen=(u.ref.goldGen||0)+cb.gold[u.side]-before; fxText(cb,u,`+${cb.gold[u.side]-before} 💰`,'#ffd23f'); cb.cExtra+=` · +${cb.gold[u.side]-before} oro`; } }
@@ -3033,6 +3040,8 @@ function sceneActors(){
      // Para la animación: cuánto falta para el próximo golpe (el impacto del clip se alinea con el daño), cada cuánto ataca y si ganó
      const tg=u.target&&!u.target.dead?u.target:null, inR=!!tg&&!u.dead&&!(u.stun>0)&&dU(u,tg)<=u.range, sp=G.speed||1;
      A.push({key:u,cu:u,atkIn:inR?Math.max(0,u.atkCd-drawSub)/sp:null,atkP:1/((u.as||1)*sp),spd:sp,win:!!(cb.done&&cb.winner===u.side&&!u.dead),charge:u.maxMana<9999?u.mana/u.maxMana:0,ranged:u.range>1,dex:u.creep?creepDex(u.d):shinyDex(u,dexOf(u.d,u.star)),x,y,tx:t&&u.mt>=.3?t[0]:null,ty:t?t[1]:null,face:mine?Math.PI:0,atk:u.atkN,cast:u.castN||0,dead:u.dead,stun:u.stun,sleep:u.sleepT,shield:u.shield,flash:u.flash,glow:u.glow,glowColor:typeColor(u.d),
+       // estados que se ven sobre la ficha (solo dibujo): quemadura, veneno, drenadoras, escarcha
+       st:u.dead?0:((u.burns.some(b=>b.t>0&&b.key!=='poison'&&b.key!=='seed')?1:0)|(u.burns.some(b=>b.t>0&&b.key==='poison')?2:0)|(u.chillT>0?4:0)|(u.burns.some(b=>b.t>0&&b.key==='seed')?8:0)),
        alpha:u.stealth>0?.35:1,scale:unitScale(u.d,u.star,{boss:u.maxMana===120&&u.creep})*(u.d.big||1),ring:u.creep?'#8a8a8a':mine?'#3fd27a':'#ff5a5f',sel:u===selCombat,
        hud:{hp:u.hp,maxHp:u.maxHp,mana:u.mana,maxMana:u.maxMana,shield:u.shield,mine,items:u.items,creep:u.creep,star:u.star,cnt:{rage:u.rageN||0,titan:u.titanN||0,moon:R0(u.apGain||0)}}});
    }
