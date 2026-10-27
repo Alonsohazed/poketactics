@@ -32,7 +32,7 @@ for (const t of TRAITS) { const Tr = E.TRAITS[t], n = Tr.bp.length, pr = Tr.pr[0
   ok(mk('Hechicero', 5).echo === true && !mk('Hechicero', 4).echo, 'Hechicero prismático: doble lanzamiento solo en el prismático');
   const PR = s => E.TRAITS[s].bp.length + 1; // escalón prismático de cada sinergia
   ok(mk('Tirador', PR('Tirador')).range === mk('Tirador', PR('Tirador') - 1).range + 1, 'Tirador prismático: +1 de alcance');
-  ok(mk('Depredadores', 3).rival[2] === 1, 'Depredadores 6: reinicia la habilidad al matar');
+  ok(mk('Depredadores', 3).rival[2] === .5, 'Depredadores 6: 50 % de maná al matar (ya no reinicia la habilidad: encadenaba remates)');
   ok(mk('Siniestro', 2).execTh === .2 && mk('Siniestro', 3).execTh === .3, 'Siniestro: umbral de ejecución 20% → 30% prismático');
   ok(mk('Acero', 2).fort === .4, 'Acero: absorbe el 40% de los adyacentes');
   ok(mk('Team Rocket', 3).rocket === 3, 'Team Rocket prismático');
@@ -601,6 +601,11 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
 // Emblemas con efecto propio
 ok(E.ITEMS['emb_Hechicero'].sp.echo3 === 1 && E.ITEMS['em_spoon'].sp.echo3 === 1 && E.ITEMS['emb_Tirador'].s.range === 1 && E.ITEMS['emb_Asesino'].sp.execute === .15, 'emblemas: cada uno lleva su efecto (también la insignia forjada)');
 for (const t in E.TRAITS) if (t !== 'Legendario') ok(/. [^.]+./.test(E.ITEMS['emb_' + t].desc), `Emblema ${t}: la descripción explica su efecto propio`);
+// Depredadores: el maná por baja solo llega una vez cada 2,5 s (antes, con 6, un remate se relanzaba al tick siguiente y limpiaba la mesa)
+{ const cb = E.createCombatSnap({ ag: [], m: { x: { Depredadores: 6 } }, u: [['3,0', 'absol', 2, [], 0, 0]] }, { ag: [], m: {}, u: [['3,0', 'onix', 1, [], 0, 0], ['2,0', 'machop', 1, [], 0, 0], ['4,0', 'geodude', 1, [], 0, 0]] }, { s: 5, n: 2 }, { seed: 9 });
+  const u = cb.units.find(x => x.side === 0), [a, b, c] = cb.units.filter(x => x.side === 1); const kill = e => { e.hp = 1; e.shield = 0; e.dodge = 0; u.target = e; E.dealDamage(cb, u, e, 999, 'true'); };
+  u.mana = 0; kill(a); const m1 = u.mana; kill(b); const m2 = u.mana; cb.t += 2.6; kill(c);
+  ok(a.dead && b.dead && Math.abs(m1 - u.maxMana * .5) < .01 && m2 === m1 && Math.abs(u.mana - u.maxMana) < .01, `Depredadores: 50 % de maná por baja, como mucho una vez cada 2,5 s (${Math.round(m1)} → ${Math.round(m2)} → ${Math.round(u.mana)})`); }
 // Ticket Prismático: solo prismático
 ok(E.AUG_BY.ticket_dorado.tier === 'P' && E.AUG_BY.ticket_dorado.name === 'Ticket Prismático', 'Ticket Prismático: prismático y con su nombre');
 console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);

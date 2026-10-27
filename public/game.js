@@ -55,7 +55,7 @@ const TRAITS={
  'Sanador':T('💖','#16a085',[2,4,6],'Afecta a TODO tu equipo','Las curaciones y escudos de las habilidades de tu equipo son más fuertes, y todos ganan resistencia.',['+20% de curación y escudos · +10 de resistencia','+40% · +20 de resistencia','+70% · +35 de resistencia']),
  'Cazatesoros':T('💎','#e0a800',[2,3],'Afecta a tu economía','Consiguen botín al ganar combates, más con rachas de victorias. Toca la sinergia para ver todo lo que te han dado.',['Al ganar: 2 de oro (+1 por cada victoria seguida, máx. +3) · al perder: 1 de oro','Al ganar: un orbe de botín y oro de racha · al perder: 2 de oro']),
  'Legendario':T('👑','#c79400',[1],'Afecta a cada Legendario','Resonancia: cada Legendario se hace más fuerte con los niveles activos de sus OTRAS sinergias, contando solo a tus Pokémon no legendarios (vida, ataque y habilidad). Sin apoyo, se debilita.',['Sin sinergias activas −8% · 1 nivel +0% · 2 niveles +12% · 3 niveles +25% · 4 niveles +40% · 5 o más +50%']),
- 'Depredadores':T('🩸','#e8572a',[2,4,6],'Afecta a tus Depredadores','Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná: una baja puede encadenar otra.',['+15% de vel. de ataque · al matar: acelerón +40% 2 s y 30% de maná','+30% · acelerón +60% 2,5 s y 50% de maná','+50% · acelerón +90% 3 s y reinicia su habilidad']),
+ 'Depredadores':T('🩸','#e8572a',[2,4,6],'Afecta a tus Depredadores','Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná (el maná, como mucho una vez cada 2,5 s).',['+15% de vel. de ataque · al matar: acelerón +40% 2 s y 30% de maná','+30% · acelerón +60% 2,5 s y 40% de maná','+50% · acelerón +90% 3 s y 50% de maná']),
  'Potencial Evolutivo':T('🌱','#5bbf6a',[2,4,6],'Afecta a tus Pokémon con Potencial Evolutivo','Crecen para siempre: al terminar cada ronda en el tablero ganan vida, ataque y poder permanentes. Crecen más con sus estrellas (×1,5 a 2★ y ×2,5 a 3★) y con las de todo tu tablero (+4% por cada estrella).',['+12 de vida, +1 de ataque y +1,5 de poder por ronda','+25 de vida, +2 de ataque y +3 de poder por ronda','+45 de vida, +4 de ataque y +6 de poder por ronda']),
  'Team Rocket':T('🚀','#b8203c',[3,5],'Afecta a tus miembros del Team Rocket','La primera vez que bajan del 60% de vida se ponen serios durante 4 s.',['25% menos de daño, +50% de vel. de ataque y regeneran 3% de vida/s','45% menos de daño, +80% de vel. de ataque y regeneran 5% de vida/s']),
 };
@@ -82,7 +82,7 @@ const PRISM={
  'Asesino':[8,'+70% de prob. crítica y +60% de daño crítico'],
  'Sanador':[8,'Curas y escudos +120% · +60 de resistencia'],
  'Cazatesoros':[5,'Al ganar: un orbe de botín, 4 de oro y oro de racha · al perder: 4 de oro'],
- 'Depredadores':[8,'+80% de vel. de ataque · al matar: acelerón +130% 4 s y reinicia su habilidad'],
+ 'Depredadores':[8,'+80% de vel. de ataque · al matar: acelerón +130% 4 s y 60% de maná'],
  'Potencial Evolutivo':[8,'+80 de vida, +8 de ataque y +12 de poder por ronda'],
  'Team Rocket':[7,'Se ponen serios con 60% menos de daño · la primera vez que caen ¡despegan! y vuelven con la mitad de vida · cada baja roba 1 de oro'],
 };
@@ -820,6 +820,8 @@ const toGrid=(side,c,r)=>side===0?[c,4+r]:[6-c,3-r];
 const pickR=(cb,a)=>a[Math.floor(cb.rng()*a.length)];
 
 const LEG_RES=[.92,1,1.12,1.25,1.4,1.5]; // por niveles activos de sus otras sinergias
+// Depredadores: el maná por baja solo llega una vez cada RIVAL_CD s. Antes, con 6, cada baja rellenaba el 100 % y un remate (Luxray, Absol) volvía a lanzarse al tick siguiente: limpiaba la mesa en cadena
+const RIVAL_CD=2.5;
 function applyTraits(u,traits,Tt,mods){
  const has=t=>traits.includes(t), leg=traits.includes('Legendario'), tv=(t,arr)=>{ let k=Tt[t]||0; if(leg&&TRAITS[t]&&TRAITS[t].legOld) k=LEG_OLD_TIER[k]; return arr[Math.min(k,arr.length-1)]||0; };
  // Tipos con identidad propia: incendio, oleadas, sobrecarga, ciclos de maná, escalado dracónico, fortaleza y ejecuciones
@@ -849,7 +851,7 @@ function applyTraits(u,traits,Tt,mods){
  u.ap+=tv('Hechicero',[0,8,15,25,40,60])*(has('Hechicero')?2:1); if(has('Hechicero')){ u.scholar=tv('Hechicero',[0,2,4,7,12,18]); u.echo=(Tt['Hechicero']||0)>TRAITS['Hechicero'].bp.length; }
  if(has('Asesino')){ u.critC+=tv('Asesino',[0,.15,.3,.45,.7]); u.critM+=tv('Asesino',[0,.1,.2,.35,.6]); if(Tt['Asesino']){ u.critAbil=true; u.vanish=tv('Asesino',[0,1.5,2,2.5,3]); } }
  u.healAmp=(u.healAmp||0)+tv('Sanador',[0,.2,.4,.7,1.2]); u.mr+=tv('Sanador',[0,10,20,35,60]);
- if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.15,.3,.5,.8]); u.rival=[tv('Depredadores',[0,.4,.6,.9,1.3]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.3,.5,1,1])]; }
+ if(has('Depredadores')&&Tt['Depredadores']){ u.as*=1+tv('Depredadores',[0,.15,.3,.5,.8]); u.rival=[tv('Depredadores',[0,.4,.6,.9,1.3]),tv('Depredadores',[0,2,2.5,3,4]),tv('Depredadores',[0,.3,.4,.5,.6])]; }
  if(has('Team Rocket')&&Tt['Team Rocket']) u.rocket=Tt['Team Rocket'];
  // Resonancia: un Legendario sin su arquetipo (p. ej. Rayquaza sin Dragón ni Tirador) rinde menos; llenar el tablero de legendarios no basta
  if(has('Legendario')){ let n=0; const T2=Tt.nl||Tt; for(const t of traits) if(t!=='Legendario') n+=T2[t]||0; const b=LEG_RES[Math.min(n,LEG_RES.length-1)]+(mods?mods.legend:0); u.maxHp*=b; u.ad*=b; u.legMul=b; u.legRes=n; }
@@ -1044,7 +1046,7 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
    else if(!t.creep&&(t.revive>0||(cb.phoenix&&cb.phoenix[t.side]>0))){ const pct=t.revive>0?t.revive:cb.phoenix[t.side]; if(t.revive>0) t.revive=0; else cb.phoenix[t.side]=0;
      t.hp=t.maxHp*pct; t.stun=0; t.burns=[]; t.mana=Math.max(t.mana,t.maxMana*.5); fxText(cb,t,'¡Renace!','#ffb347'); fx(cb,{type:'area',c:t.c,r:t.r,rad:1.8,color:'#ff8a3a',life:.9,el:'Fuego'});
      if(t.rebirthNova) for(const e of foesOf(cb,t)) if(dU(t,e)<=2) dealDamage(cb,t,e,abilPower(t)*t.rebirthNova,'magic',false); }
-   else { t.hp=0; t.dead=true; if(src&&!t.creep&&src.side!==t.side){ cb.firstKill=cb.firstKill||[null,null]; if(cb.firstKill[src.side]==null) cb.firstKill[src.side]=t.d.key; } spreadFire(cb,t); if(src&&src.rocket>=3&&!t.creep&&cb.gold[src.side]<12){ cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(src&&src.sp.kgold&&src.side!==t.side&&!t.creep&&(src.kg|0)<3&&cb.gold[src.side]<12){ src.kg=(src.kg|0)+1; cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(t.creep) (cb.deaths=cb.deaths||[]).push([cb.t,t.c,t.r]); if(src&&src.side!==t.side){ src.kills++; if(src.ab&&src.ab[2].storm) stormKill(cb,src,t); if(src.rival&&src.target===t&&!src.dead){ src.rushMul=1+src.rival[0]; src.rushT=src.rival[1]; if(src.maxMana<9999) src.mana+=src.maxMana*(src.rival[2]||0); const n=nearestEnemy(cb,src,t); if(n){ teleportNear(cb,src,n); src.target=n; } } if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; quakeFeed(cb,t); }
+   else { t.hp=0; t.dead=true; if(src&&!t.creep&&src.side!==t.side){ cb.firstKill=cb.firstKill||[null,null]; if(cb.firstKill[src.side]==null) cb.firstKill[src.side]=t.d.key; } spreadFire(cb,t); if(src&&src.rocket>=3&&!t.creep&&cb.gold[src.side]<12){ cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(src&&src.sp.kgold&&src.side!==t.side&&!t.creep&&(src.kg|0)<3&&cb.gold[src.side]<12){ src.kg=(src.kg|0)+1; cb.gold[src.side]++; fxText(cb,src,'+1 💰','#ffd23f'); } if(t.creep) (cb.deaths=cb.deaths||[]).push([cb.t,t.c,t.r]); if(src&&src.side!==t.side){ src.kills++; if(src.ab&&src.ab[2].storm) stormKill(cb,src,t); if(src.rival&&src.target===t&&!src.dead){ src.rushMul=1+src.rival[0]; src.rushT=src.rival[1]; if(src.maxMana<9999&&!(cb.t<(src.rivalCd||0))){ src.mana+=src.maxMana*(src.rival[2]||0); src.rivalCd=cb.t+RIVAL_CD; } const n=nearestEnemy(cb,src,t); if(n){ teleportNear(cb,src,n); src.target=n; } } if(cb.kh) for(const h of cb.kh[src.side]) h(cb,src,t); } fx(cb,{type:'ring',c:t.c,r:t.r,color:'#ffffff',life:.5}); if(cb.caster&&src===cb.caster) cb.cKills++; quakeFeed(cb,t); }
  }
  return true;
 }
