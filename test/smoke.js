@@ -41,6 +41,16 @@ ready.then(() => server.listen(0, async () => {
   assert.strictEqual((await fetch(url + '/api/me')).status, 401, 'sin sesión');
   assert.strictEqual((await post('/api/me', { trainer: 'noexiste' }, cookieA)).status, 400, 'entrenador no válido');
   assert.strictEqual((await post('/api/me', { trainer: 'squirtle', settings: { vol: 3, hack: 'x' } }, cookieA)).status, 200, 'cambiar minileyenda');
+  // Sugerencias y errores: solo con sesión, tipo y longitud válidos, contexto recortado, 5 cada 10 minutos y sin lectura pública
+  { const fb = (b, ck) => post('/api/feedback', b, ck);
+    assert.strictEqual((await fb({ kind: 'idea', text: 'Una sugerencia válida' })).status, 401, 'sugerencia sin sesión');
+    assert.strictEqual((await fb({ kind: 'otra', text: 'Una sugerencia válida' }, cookieA)).status, 400, 'tipo de reporte no válido');
+    assert.strictEqual((await fb({ kind: 'bug', text: 'corto' }, cookieA)).status, 400, 'reporte demasiado corto');
+    assert.strictEqual((await fb({ kind: 'bug', text: 'x'.repeat(1001) }, cookieA)).status, 400, 'reporte demasiado largo');
+    assert.strictEqual((await fb({ kind: 'bug', text: { a: 1 } }, cookieA)).status, 400, 'reporte que no es texto');
+    for (let i = 0; i < 5; i++) assert.strictEqual((await fb({ kind: i % 2 ? 'bug' : 'idea', text: 'Reporte de prueba número ' + i, ctx: { ronda: '2-1', '<x>': 'mal', larga: 'z'.repeat(900), obj: { a: 1 } } }, cookieA)).status, 200, 'reporte válido ' + i);
+    assert.strictEqual((await fb({ kind: 'idea', text: 'Uno más de la cuenta' }, cookieA)).status, 429, 'límite de reportes');
+    assert.strictEqual((await fetch(url + '/api/feedback')).status, 404, 'los reportes no se leen sin ADMIN_KEY'); }
   me = await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json();
   assert.strictEqual(me.user.trainer, 'squirtle');
   assert.deepStrictEqual(me.user.settings, { vol: 1 }, 'ajustes saneados');

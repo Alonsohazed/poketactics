@@ -236,6 +236,25 @@ function createAuth(db, { trainers, presence, onFriends, onEevee }) {
     res.json(Object.assign({}, r.out, { pityLeft: COSM.PITY - r.out.pity, replay: !!r.replay }));
   }));
 
+  // Sugerencias y reportes de errores: 5 cada 10 minutos por cuenta, texto de 10 a 1.000 caracteres y un contexto corto (solo cadenas y números
+  // recortados: versión, pantalla, ronda, idioma, último error). El autor los lee con GET /api/feedback y la cabecera x-admin-key = ADMIN_KEY
+  // (sin ADMIN_KEY en el entorno la lectura no existe)
+  const fbLimit = limiter(5, 10 * 60 * 1000);
+  const fbCtx = (o, ua) => { const c = {}; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o).slice(0, 12)) { if (!/^[a-z]{1,12}$/i.test(k)) continue; if (typeof v === 'number' && Number.isFinite(v)) c[k] = v; else if (typeof v === 'string') c[k] = v.slice(0, 300); } if (ua) c.ua = String(ua).slice(0, 200); return c; };
+  router.post('/feedback', needUser(async (req, res, user) => {
+    const b = req.body || {}, kind = b.kind === 'bug' ? 'bug' : b.kind === 'idea' ? 'idea' : null, text = typeof b.text === 'string' ? b.text.replace(/\u0000/g, '').trim() : '';
+    if (!kind) return res.status(400).json({ error: 'Elige si es una sugerencia o un error' });
+    if (text.length < 10) return res.status(400).json({ error: 'Cuéntanos un poco más (al menos 10 caracteres)' });
+    if (text.length > 1000) return res.status(400).json({ error: 'Máximo 1.000 caracteres' });
+    if (fbLimit.blocked(user.id)) return res.status(429).json({ error: 'Has enviado varios seguidos: espera unos minutos' });
+    fbLimit.hit(user.id); await db.addReport(user.id, kind, text, fbCtx(b.ctx, req.get('user-agent'))); res.json({ ok: true });
+  }));
+  router.get('/feedback', async (req, res) => {
+    const key = process.env.ADMIN_KEY, got = String(req.get('x-admin-key') || '');
+    if (!key || got.length !== key.length || !crypto.timingSafeEqual(Buffer.from(got), Buffer.from(key))) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ reports: await db.reports(Math.min(500, +req.query.n || 100)) });
+  });
+
   // Socket.io: solo entran jugadores con sesión
   function socketGuard(socket, next) {
     const origin = socket.handshake.headers.origin;

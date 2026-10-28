@@ -987,12 +987,28 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 .mnEevee .halo,.mnEevee .haloF,.mnEevee .ev{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none}
 .mnEevee .halo,.mnEevee .haloF{width:176px;height:176px;animation:mnHalo 3.6s ease-in-out infinite}
 .mnEevee .ev{width:116px;height:116px;top:48%;filter:drop-shadow(0 10px 10px rgba(0,0,0,.45));transition:transform .15s,filter .15s}
-.mnEevee span{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);font-family:var(--display);font-size:14px;letter-spacing:.08em;color:#f4d27a;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 10px rgba(255,215,94,.55)}
 @keyframes mnHalo{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.04)}}
 .mnEevee:hover .ev,.mnEevee:focus-visible .ev{transform:translate(-50%,-52%);filter:drop-shadow(2px 0 0 #ffd75e) drop-shadow(-2px 0 0 #ffd75e) drop-shadow(0 2px 0 #ffd75e) drop-shadow(0 -2px 0 #ffd75e) drop-shadow(0 0 12px rgba(255,215,94,.9)) brightness(1.06)}
 .mnEevee:hover .halo,.mnEevee:focus-visible .halo{filter:brightness(1.15) saturate(1.1)}
-.mnEevee:hover span,.mnEevee:focus-visible span{color:#fff2b0}
 .mnEevee:focus-visible{outline:none}
+/* Cartel del gacha sobre el Eevee: «✦ Gacha ✦» y «¡Atrapa minileyendas!» en dorado con brillo que recorre las letras; con la diaria lista, una píldora roja «¡Tirada gratis!» que late */
+.mnEvTag{position:absolute;left:50%;top:-6px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:0;white-space:nowrap;pointer-events:none;animation:evTagBob 2.4s ease-in-out infinite}
+.mnEvTag small{font-family:var(--display);font-size:11px;letter-spacing:.18em;color:#fff2b0;text-shadow:0 1px 0 rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.5)}
+.mnEvTag b{position:relative;overflow:hidden;display:block;margin-top:2px;padding:4px 14px 5px;border-radius:999px;font-family:var(--display);font-weight:400;font-size:15px;line-height:1.1;letter-spacing:.02em;color:#ffe27a;text-shadow:0 1px 0 #3a2400;background:linear-gradient(180deg,#24305e,#141b3a);box-shadow:inset 0 0 0 2px #e8b84a,0 3px 10px rgba(0,0,0,.45),0 0 14px rgba(255,200,60,.35)}
+.mnEvTag b::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:35%;background:linear-gradient(100deg,transparent,rgba(255,240,190,.55),transparent);transform:skewX(-18deg);animation:evTagShine 3.2s ease-in-out infinite}
+.mnEvFree{position:absolute;left:50%;top:50px;transform:translateX(-50%);display:none;padding:3px 12px;border-radius:999px;background:linear-gradient(180deg,#ff5a4a,#c8241a);color:#fff;font-family:var(--display);font-size:13px;letter-spacing:.03em;white-space:nowrap;box-shadow:0 2px 0 rgba(0,0,0,.35),0 0 12px rgba(255,90,74,.6);pointer-events:none;animation:evFree 1.2s ease-in-out infinite}
+.mnEevee.free .mnEvFree{display:block}
+.mnEvTag{top:auto;bottom:-6px}.mnEvTag small{display:none}.mnEvTag b{font-size:13px;padding:3px 10px 4px}.mnEvFree{top:2px;font-size:12px;padding:2px 10px}
+.mnEevee:hover .mnEvTag b::after{animation-duration:1.4s}.mnEevee:hover .mnEvTag b{color:#fff2b0}
+@keyframes evTagBob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-4px)}}
+@keyframes evTagShine{0%,55%{left:-40%}100%{left:120%}}
+@keyframes evFree{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.08)}}
+@media (prefers-reduced-motion:reduce){ .mnEvTag,.mnEvTag b::after,.mnEvFree{animation:none} }
+/* Ventana de sugerencias y errores */
+.fbKinds{display:flex;gap:22px;margin:12px 0 10px}
+.fbText{display:block;width:100%;box-sizing:border-box;min-height:130px;resize:vertical;padding:10px 12px;border-radius:12px;border:1px solid var(--k-line,rgba(255,255,255,.15));background:var(--k-in,#121630);color:var(--k-tx,#e6e8f7);font:15px/1.4 Nunito,system-ui,sans-serif}
+.fbText:focus-visible{outline:none;box-shadow:0 0 0 2px #8a7ee0}
+.fbFoot{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
 @media (prefers-reduced-motion:reduce){ .mnEevee .halo,.mnEevee .haloF{animation:none} }
 /* ---------- cola ---------- */
 #queueBar{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);bottom:18px;z-index:30;display:flex;align-items:center;gap:14px;padding:14px 16px 14px 18px;min-width:min(520px,calc(100vw - 32px));color:var(--pxInk);animation:pxIn .3s steps(4) both}
@@ -1650,7 +1666,7 @@ body.fullField .top{background:none;border-bottom:0;box-shadow:none;backdrop-fil
   .mnEevee{left:24px;bottom:0;width:510px;height:600px}
   .mnEevee .halo,.mnEevee .haloF{width:495px;height:495px}
   .mnEevee .ev{width:345px;height:345px;top:47%}
-  .mnEevee span{font-size:22px;bottom:16px}
+  .mnEvTag{top:38px;bottom:auto}.mnEvTag small{display:block;font-size:15px}.mnEvTag b{font-size:26px;padding:6px 22px 7px}.mnEvFree{top:118px;font-size:18px;padding:4px 16px}
 }
 /* Fondo del menú y del acceso: la ilustración de Eevee en la roca mirando al cielo (img/menu/fondo.webp, 2000×1125, del autor), a pantalla completa anclada abajo */
 body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{display:block}
@@ -1824,12 +1840,13 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 </div>
 
 <div id="menu" class="screen hidden">
-  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee-go.webp" alt="" width="410" height="410" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"></button>
+  <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee-go.webp" alt="" width="410" height="410" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"><span class="mnEvTag" aria-hidden="true"><small>✦ Gacha ✦</small><b>¡Atrapa minileyendas!</b></span><span class="mnEvFree" aria-hidden="true">¡Tirada gratis!</span></button>
   <div class="mnTools" id="mnTools">
     <button class="btn ghost icon mnTool" id="optBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
     <button class="btn ghost icon mnTool" id="howBtn" title="Guía" aria-label="Guía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 6.3C8.6 4.4 5.8 4.3 3 5.4v12c2.8-1.1 5.6-1 8.4.9zM12.6 6.3c2.8-1.9 5.6-2 8.4-.9v12c-2.8-1.1-5.6-1-8.4.9z"/><path d="M2 8.6h1v10.6c2.8-1.1 5.8-1 9 1.1 3.2-2.1 6.2-2.2 9-1.1V8.6h1V21H2z"/></svg></button>
     <button class="btn ghost icon mnTool" id="dexMenuBtn" title="Pokédex" aria-label="Pokédex"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M8 2.5h8a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-13a3 3 0 0 1 3-3zm4 4.4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6zM7.2 17h9.6v1.8H7.2z"/></svg></button>
     <button class="btn ghost icon mnTool" id="recMenuBtn" title="Objetos" aria-label="Objetos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 5.2a2.8 2.8 0 0 1 5.6 0" fill="none" stroke="currentColor" stroke-width="2"/><path fill-rule="evenodd" d="M9 5h6a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a4 4 0 0 1 4-4zm.6 3.2v1.6h4.8V8.2zM9 12.5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2V21H9zm1.6 3.6v1.4h2.8v-1.4z"/><rect x="2.4" y="11.5" width="2" height="5.5" rx="1"/><rect x="19.6" y="11.5" width="2" height="5.5" rx="1"/></svg></button>
+    <button class="btn ghost icon mnTool" id="fbBtn" title="Sugerencias y errores" aria-label="Sugerencias y errores"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7.5L7 22v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm7 3v5h2V7zm0 6.5v2h2v-2z" fill="currentColor"/></svg></button>
     <button class="btn ghost icon mnTool pill" id="histBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M6.5 2.5h11a2 2 0 0 1 2 2v7.3a5.8 5.8 0 0 0-7.9 8.7H6.5a2 2 0 0 1-2-2v-14a2 2 0 0 1 2-2zm.9 4.3v1.6h7.2V6.8zm0 3.6v1.6h7.2v-1.6zm0 3.6v1.6H11v-1.6z"/><circle cx="17" cy="16.6" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M17 14.6v2.3l1.5.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19.7 19.3l2.3 2.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Historial</span></button>
   </div>
   <div class="mnLayout">

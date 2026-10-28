@@ -2788,7 +2788,7 @@ function bindEvents(){
  $('howBtn').addEventListener('click',()=>{ guideSeen(); showHow(); });
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
- $('optBtn').addEventListener('click',()=>showOptions(false));
+ $('optBtn').addEventListener('click',()=>showOptions(false)); $('fbBtn').addEventListener('click',()=>showFeedback());
  bindAuth();
  $('players').addEventListener('click',e=>{ const row=e.target.closest('.pl[data-pid]'); if(row&&G&&G.players.length) spectate(+row.dataset.pid); });
  document.querySelector('.sideTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
@@ -3673,15 +3673,28 @@ function showOptions(inGame){
  <div class="cfgRow"><b>Idioma</b>${rd('optLang',[['es','Español'],['en','English']],S.lang||I18N.lang)}</div>
  <div class="cfgRow"><b>Tema</b>${rd('optTheme',[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']],S.theme||'system')}</div>
  <div class="cfgRow"><b>Calidad gráfica</b>${rd('optGfx',[['auto','Automática'],['2','Alta'],['1','Media'],['0','Baja']],GFX.q)}</div>
- <div class="cfgBtns">${inGame||!ACC?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
+ <div class="cfgBtns">${ACC?'<button class="cfgBtn ghost" id="fbOpt">Sugerencias y errores</button>':''}${inGame||!ACC?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
  ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true,gx:true});
  const val=n=>{ const e=document.querySelector(`input[name="${n}"]:checked`); return e?e.value:''; };
  $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; $('optVolV').textContent=e.target.value; Music.init(); Music.setVol(); };
  $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; S.lang=val('optLang')||S.lang; saveSettings(); applyTheme(); applyLang(); if(ACC) renderMenu(); if(G&&G.players&&G.players.length) renderUI(); closeModal(); };
  if($('logoutBtn')) $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
+ if($('fbOpt')) $('fbOpt').onclick=()=>showFeedback(inGame?'bug':'idea');
  if($('quitBtn')) $('quitBtn').onclick=()=>{ closeModal(); confirmQuit(); };
  if($('surrBtn')) $('surrBtn').onclick=()=>{ if(!canSurrender()) return; closeModal(); confirmSurrender(); };
 }
+// Sugerencias y errores: el texto va al servidor (POST /api/feedback, 5 cada 10 min) con un contexto corto para poder reproducir el fallo
+function fbContext(){ const c={ver:String(build0||'').slice(0,12),pant:innerWidth+'x'+innerHeight,lang:S.lang||I18N.lang,donde:G&&G.players&&G.players.length&&G.me&&G.me.alive?'partida':'menu'};
+ if(c.donde==='partida'){ c.ronda=G.round?G.round.s+'-'+G.round.n:''; c.fase=G.phase||''; c.modo=NET.mode||'solo'; } try{ const e=localStorage.getItem('pt_err'); if(e) c.err=e.slice(0,300); }catch(e){} return c; }
+function showFeedback(kind){ if(!ACC){ toast('Entra con tu cuenta para enviar sugerencias'); return; } kind=kind==='bug'?'bug':'idea';
+ openModal(`<h1>Sugerencias y errores</h1><p class="small muted">Lo leemos todo: cuéntanos qué mejorarías o qué ha fallado. Si es un error, di qué hacías justo antes; se adjunta información técnica (versión, pantalla, ronda y el último error) para poder reproducirlo.</p>
+  <div class="fbKinds" role="radiogroup" aria-label="Tipo"><label class="rd"><input type="radio" name="fbKind" value="idea" ${kind==='idea'?'checked':''}><i></i><span>Sugerencia</span></label><label class="rd"><input type="radio" name="fbKind" value="bug" ${kind==='bug'?'checked':''}><i></i><span>Error (bug)</span></label></div>
+  <textarea id="fbText" class="fbText" maxlength="1000" rows="6" placeholder="Escribe aquí…"></textarea><div class="fbFoot"><small class="muted" id="fbCount">0 / 1000</small><button class="cfgBtn" id="fbSend" type="button">Enviar</button></div>`,{closable:true,gx:true,cfg:true});
+ const T=$('fbText'), cnt=()=>{ $('fbCount').textContent=T.value.length+' / 1000'; }; T.oninput=cnt; T.focus();
+ $('fbSend').onclick=async()=>{ const k=(document.querySelector('input[name="fbKind"]:checked')||{}).value||'idea', txt=T.value.trim(); if(txt.length<10){ toast('Cuéntanos un poco más (al menos 10 caracteres)'); return; }
+   $('fbSend').disabled=true; try{ await api('/api/feedback',{kind:k,text:txt,ctx:fbContext()}); closeModal(); toast(k==='bug'?'¡Gracias! Revisaremos el error':'¡Gracias por la sugerencia!'); }catch(e){ toast(e.message); $('fbSend').disabled=false; } }; }
+// Cartel del Eevee del gacha: «¡Tirada gratis!» cuando la diaria está lista (se consulta al volver al menú, como mucho una vez por minuto)
+let gaHintT=0; async function gachaHint(){ const el=$('eeveeGacha'); if(!el||!ACC||Date.now()-gaHintT<60000) return; gaHintT=Date.now(); try{ const st=await api('/api/gacha'); el.classList.toggle('free',st.daily==='lista'); }catch(e){} }
 // Rendirse: solo desde la fase 3-1, vivo y fuera del carrusel (en multijugador lo valida igual el servidor en applyAct)
 function canSurrender(){ return !!(G&&G.players&&G.players.length&&!G.over&&G.me&&G.me.alive&&G.round&&G.round.s>=3&&G.phase!=='carousel'&&G.phase!=='over'); }
 function confirmSurrender(){
@@ -3845,7 +3858,7 @@ function guideHint(){ const b=$('howBtn'); if(!b) return; let seen=true; try{ se
  const on=!!ACC&&!(ACC.stats&&ACC.stats.games>0)&&!seen; b.classList.toggle('guideNew',on);
  let t=$('guideTip'); if(on&&!t){ t=document.createElement('span'); t.id='guideTip'; t.className='guideTip'; t.textContent='Cosas que debes saber antes de jugar'; b.appendChild(t); } if(t) t.hidden=!on; } // dentro del botón: el clic abre la Guía y el globo va siempre debajo de él
 function guideSeen(){ try{ localStorage.setItem(guideKey(),'1'); }catch(e){} guideHint(); }
-function renderMenu(){
+function renderMenu(){ gachaHint();
  if(!ACC) return; const tk=savedTac()||'charmander', t=TACS[tk], rk=COMP().ranked;
  $('menuWho').classList.add('mnCard');
  $('menuWho').innerHTML=`<div class="mcRank" title="${esc(rankText(rk))}">${rankBadge(rk,44)}</div>

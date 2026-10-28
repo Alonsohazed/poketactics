@@ -43,7 +43,7 @@ function fileStore(file) {
     async init() {
       await fs.promises.mkdir(path.dirname(file), { recursive: true });
       try { db = JSON.parse(await fs.promises.readFile(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-      db.matches = db.matches || []; db.friends = db.friends || []; db.ghosts = db.ghosts || []; for (const u of db.users) { u.comp = u.comp || {}; u.cosm = u.cosm || {}; }
+      db.matches = db.matches || []; db.friends = db.friends || []; db.ghosts = db.ghosts || []; db.reports = db.reports || []; for (const u of db.users) { u.comp = u.comp || {}; u.cosm = u.cosm || {}; }
       if (migrateEeveeRows(db.users)) await save();
     },
     async createUser({ name, pass, trainer }) {
@@ -89,6 +89,9 @@ function fileStore(file) {
     async ghosts(userId) { return db.ghosts.filter(g => g.u === userId).map(g => ({ name: g.name, created: g.created })); },
     async addGhost(userId, name) { if (!db.ghosts.some(g => g.u === userId && g.key === keyOf(name))) { db.ghosts.push({ u: userId, name, key: keyOf(name), created: new Date().toISOString() }); await save(); } },
     async delGhost(userId, name) { const n = db.ghosts.length; db.ghosts = db.ghosts.filter(g => !(g.u === userId && g.key === keyOf(name))); if (db.ghosts.length !== n) await save(); return n - db.ghosts.length; },
+    // Sugerencias y reportes de errores (se guardan los 2.000 últimos)
+    async addReport(userId, kind, text, ctx) { db.reportSeq = (db.reportSeq || 0) + 1; db.reports.push({ id: db.reportSeq, userId, kind, text, ctx, created: new Date().toISOString() }); if (db.reports.length > 2000) db.reports.splice(0, db.reports.length - 2000); await save(); },
+    async reports(limit = 100) { return db.reports.slice(-limit).reverse().map(r => Object.assign({}, r, { name: (byId(r.userId) || {}).name || '?' })); },
     async purgeFriends(ms) { const lim = Date.now() - ms, n = db.friends.length + db.ghosts.length;
       db.friends = db.friends.filter(l => l.status !== 'pending' || Date.parse(l.created) > lim); db.ghosts = db.ghosts.filter(g => Date.parse(g.created) > lim);
       if (db.friends.length + db.ghosts.length !== n) await save(); },
@@ -163,6 +166,14 @@ function pgStore(url) {
           name_key TEXT NOT NULL,
           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
           PRIMARY KEY (user_id, name_key)
+        );
+        CREATE TABLE IF NOT EXISTS reports (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          kind TEXT NOT NULL,
+          text TEXT NOT NULL,
+          ctx JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );`);
       for (const r of (await pool.query('SELECT name_key FROM users')).rows) names.add(r.name_key);
       // Eevee pasa a ser mítica: quien la llevaba sin haberla conseguido en el gacha vuelve a la minileyenda por defecto (repetible)
@@ -202,6 +213,8 @@ function pgStore(url) {
     async ghosts(userId) { return (await pool.query('SELECT name, created_at AS created FROM friend_ghosts WHERE user_id = $1', [userId])).rows; },
     async addGhost(userId, name) { await pool.query('INSERT INTO friend_ghosts (user_id, name, name_key) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [userId, name, keyOf(name)]); },
     async delGhost(userId, name) { return (await pool.query('DELETE FROM friend_ghosts WHERE user_id = $1 AND name_key = $2', [userId, keyOf(name)])).rowCount; },
+    async addReport(userId, kind, text, ctx) { await pool.query('INSERT INTO reports (user_id, kind, text, ctx) VALUES ($1, $2, $3, $4::jsonb)', [userId, kind, text, JSON.stringify(ctx || {})]); },
+    async reports(limit = 100) { return (await pool.query('SELECT r.id, r.kind, r.text, r.ctx, r.created_at AS created, COALESCE(u.name, \'?\') AS name FROM reports r LEFT JOIN users u ON u.id = r.user_id ORDER BY r.id DESC LIMIT $1', [limit])).rows; },
     async purgeFriends(ms) {
       const lim = new Date(Date.now() - ms);
       await pool.query(`DELETE FROM friends WHERE status = 'pending' AND created_at < $1`, [lim]);
