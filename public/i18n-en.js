@@ -876,4 +876,8 @@ Object.assign(I18N.EN, {
   'Autodestrucción': 'Self-Destruct', 'Amnesia': 'Amnesia', 'Doble Patada': 'Double Kick', 'Tierra Viva': 'Earth Power', 'Cornada': 'Horn Attack', 'Megacuerno': 'Megahorn',
   'Puños Elementales': 'Elemental Punches', 'Residuos': 'Sludge', 'Bomba Lodo': 'Sludge Bomb', 'Rapidez': 'Swift', 'Psicorrayo': 'Psybeam',
   'Golpe Óseo': 'Bone Club', 'Huesomerang': 'Bonemerang',
+  // ----- Depredadores (octubre de 2026): maná por baja con espera -----
+  "Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná (el maná, como mucho una vez cada {0} s).": "They attack faster and, on defeating their target, dash to the next one with a burst of speed and recover mana (the mana, at most once every {0} s).",
+  "+{0}% de vel. de ataque · al matar: acelerón +{1}% {2} s y {3}% de maná": "+{0}% attack speed · on a kill: +{1}% dash for {2} s and {3}% mana",
+  "+{0}% · acelerón +{1}% {2} s y {3}% de maná": "+{0}% · +{1}% dash for {2} s and {3}% mana",
 });

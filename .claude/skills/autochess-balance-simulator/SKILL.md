@@ -22,6 +22,7 @@ node .claude/skills/autochess-balance-simulator/scripts/sim.js games --n 60 --di
 
 # Cualquiera de ellos con --json para procesar el resultado
 ```
+- `scripts/balance.js` (más justo para comparar fichas): `unit --cost 3 --star 2 [--only absol,ponyta]` enfrenta cada ficha con objetos ideales a todas las de su coste y estrella en **espejo** (los mismos 6 compañeros al azar: solo cambia la ficha), con su **composición natural** (compañeros que comparten sus sinergias, mismo perfil de costes 4-4-3-3-2-2) y con **objetos malos**; `trait --trait Asesino` mide la sinergia en cada escalón (prismático con emblema) contra tableros del mismo coste hueco por hueco sin ella. Objetivo usado: ≤ 60 % en espejo. `scripts/leg3.js` mide costes 5 a 3★ contra tableros de nivel 9.
 - Las claves de Pokémon son las de `UNIT_LIST` (`grep -n "^ U('" public/game.js`) y las de objetos las de `ITEMS` (componentes: `claw wing spoon water coat goggles club lens medal`).
 - En `comp`, el script coloca delante a tanques y cuerpo a cuerpo, y detrás a tiradores, magos y soportes.
 - Para medir un cambio: ejecuta antes y después con el mismo `--n` y compara. Con `games`, usa 60 partidas o más para conclusiones (cada una tarda unos 2 s).
