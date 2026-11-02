@@ -68,7 +68,7 @@ Object.assign(I18N.EN, {
   // ----- Tipos de habilidad -----
   'Área': 'Area', 'Área propia': 'Self area', 'Cadena': 'Chain', 'Combo': 'Combo', 'Cono': 'Cone', 'Copia': 'Copy', 'Corriente': 'Current', 'Corrosión': 'Corrosion',
   'Curación': 'Heal', 'Daño y curación': 'Damage and heal', 'Descanso': 'Rest', 'Devorar': 'Devour', 'Disparo': 'Shot', 'Drenadoras': 'Leech Seed', 'Drenaje': 'Drain',
-  'Empujón': 'Knockback', 'Endurecer': 'Harden', 'Escudo': 'Shield', 'Escudo de equipo': 'Team shield', 'Espectro': 'Specter', 'Frenesí': 'Frenzy', 'Giro': 'Spin',
+  'Golpe aturdidor': 'Stunning blow', 'Empujón': 'Knockback', 'Endurecer': 'Harden', 'Escudo': 'Shield', 'Escudo de equipo': 'Team shield', 'Espectro': 'Specter', 'Frenesí': 'Frenzy', 'Giro': 'Spin',
   'Golpe global': 'Global strike', 'Golpe retardado': 'Delayed strike', 'Golpe y cura': 'Strike and heal', 'Juicio Psíquico': 'Psychic Judgment', 'Marca': 'Mark', 'Marea': 'Tide',
   'Mejora de equipo': 'Team buff', 'Ola': 'Wave', 'Potenciar ataques': 'Empower attacks', 'Provocación': 'Taunt', 'Proyectiles': 'Projectiles', 'Rayo en línea': 'Line bolt',
   'Reflejo': 'Reflect', 'Remate': 'Execute', 'Salto': 'Leap', 'Salto en área': 'Area leap', 'Saqueo': 'Plunder', 'Sobrecarga': 'Overcharge', 'Sueño': 'Sleep', 'Veneno': 'Poison',
@@ -308,6 +308,7 @@ Object.assign(I18N.EN, {
   'Golpea a los enemigos a {0} casillas a su alrededor: {1} de daño (aturde {2}s).': 'Hits enemies within {0} hexes around it: {1} damage (stuns for {2}s).',
   'Golpea a los enemigos a {0} casillas a su alrededor: {1} de daño.': 'Hits enemies within {0} hexes around it: {1} damage.',
   'Golpea a su objetivo con {0} de daño mágico y le quita un {1}% de armadura durante {2}s (no se acumula: se renueva).': 'Hits its target for {0} magic damage and strips {1}% of its armor for {2}s (does not stack: refreshes).',
+  'Golpea al objetivo por {0} (aturde {1}s).': 'Hits the target for {0} (stuns for {1}s).',
   'Golpea al objetivo por {0} (aturde {1}s) y lo lanza {2} casillas hacia atrás.': 'Hits the target for {0} (stuns for {1}s) and knocks it {2} hexes back.',
   'Golpea al objetivo por {0} de daño mágico (aturde {1}s).': 'Hits the target for {0} magic damage (stuns for {1}s).',
   'Golpea al objetivo por {0} de daño mágico.': 'Hits the target for {0} magic damage.',

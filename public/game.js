@@ -114,8 +114,8 @@ const U=(key,names,dex,cost,role,traits,ab,x)=>({key,names,dex,name:names[cost==
 const MEW_NEED=10;
 const UNIT_LIST=[
  U('charmander',['Charmander','Charmeleon','Charizard'],[4,5,6],1,'b',['Fuego','Peleador','Potencial Evolutivo'],[['burn','Ascuas',{m:1.1}],['cone','Lanzallamas',{m:1,len:2,burn:.03}],['cone','Llamarada',{m:1.3,len:3,burn:.04}]]),
- U('bulbasaur',['Bulbasaur','Ivysaur','Venusaur'],[1,2,3],1,'t',['Planta','Guardián','Potencial Evolutivo'],[['seed','Drenadoras',{m:1.2,dur:4,h:1}],['knock','Látigo Cepa',{m:1,k:2,stun:1}],['zone','Planta Feroz',{r:1,m:1.3,dur:3,root:1.2}]]),
- U('squirtle',['Squirtle','Wartortle','Blastoise'],[7,8,9],1,'t',['Agua','Guardián','Potencial Evolutivo'],[['shield','Refugio',{m:1.3}],['spin','Giro Rápido',{m:.3,n:4,dr:.3}],['wave','Hidrocañón',{m:1.2,w:1.2,push:1}]]),
+ U('bulbasaur',['Bulbasaur','Ivysaur','Venusaur'],[1,2,3],1,'t',['Planta','Guardián','Potencial Evolutivo'],[['seed','Drenadoras',{m:1.2,dur:4,h:1}],['knock','Látigo Cepa',{m:1,stun:1.5}],['zone','Planta Feroz',{r:1,m:1.3,dur:3,root:1.2}]]),
+ U('squirtle',['Squirtle','Wartortle','Blastoise'],[7,8,9],1,'t',['Agua','Guardián','Potencial Evolutivo'],[['shield','Refugio',{m:1.3}],['spin','Giro Rápido',{m:.3,n:4,dr:.3}],['wave','Hidrocañón',{m:.6,w:1.2,stun:1.5}]]),
  U('pichu',['Pichu','Pikachu','Raichu'],[172,25,26],1,'r',['Eléctrico','Tirador'],[['bolt','Impactrueno',{selfAs:0.1,m:1.4}],['chain','Rayo',{selfAs:0.15,n:3,m:.9}],['strike','Trueno',{selfAs:0.25,r:1,m:1.4,delay:.6,stun:.8}]]),
  U('geodude',['Geodude','Graveler','Golem'],[74,75,76],1,'b',['Roca','Coloso'],[['harden','Rizo Defensa',{df:25,heal:.5}],['slam','Rodar',{r:1,m:.9,stun:.8}],['nova','Explosión',{r:2,m:1.75,selfDmg:.3}]]),
  U('gastly',['Gastly','Haunter','Gengar'],[92,93,94],1,'m',['Fantasma','Hechicero','Team Rocket'],[['bolt','Lengüetazo',{m:1.2,stun:1}],['mark','Maldición',{m:.9,amp:.3,dur:4}],['blast','Bola Sombra',{r:1,m:1.15,shred:.3}]]),
@@ -124,7 +124,7 @@ const UNIT_LIST=[
  U('rattata',['Rattata','Raticate'],[19,20],1,'a',['Normal','Asesino','Depredadores'],[['dash','Ataque Rápido',{m:1.3,to:'low'}],['execute','Hipercolmillo',{m:1.05,th:.11}]]),
  U('dratini',['Dratini','Dragonair','Dragonite'],[147,148,149],1,'r',['Dragón','Tirador','Potencial Evolutivo'],[['bolt','Furia Dragón',{m:1.4}],['frenzy','Danza Dragón',{as:.2,ad:.15}],['line','Hiperrayo',{m:2,stunSelf:1}]]),
  U('meowth',['Meowth','Persian'],[52,53],1,'r',['Normal','Cazatesoros','Team Rocket'],[['gold','Día de Pago',{m:1,g:1}],['gold','Día de Pago',{m:1.1,g:1,r:1}]]),
- U('machop',['Machop','Machoke','Machamp'],[66,67,68],1,'b',['Lucha','Peleador','Depredadores'],[['empower','Golpe Kárate',{n:3,m:.5}],['knock','Sísmico',{m:1.15,k:2,stun:1}],['combo','Puño Dinámico',{n:4,m:.55,stun:1.5}]]),
+ U('machop',['Machop','Machoke','Machamp'],[66,67,68],1,'b',['Lucha','Peleador','Depredadores'],[['empower','Golpe Kárate',{n:3,m:.5}],['knock','Sísmico',{m:1.15,stun:1.5}],['combo','Puño Dinámico',{n:4,m:.55,stun:1.5}]]),
  U('magikarp',['Magikarp','Gyarados'],[129,130],1,'b',['Agua','Coloso','Team Rocket'],[['splash','Salpicadura',{}],['wave','Cascada',{m:.85,w:1.2,stun:.5}],['line','Hiperrayo',{m:2.2}]]),
  U('voltorb',['Voltorb','Electrode'],[100,101],1,'t',['Eléctrico','Guardián'],[['nova','Chispa',{r:1,m:.7,stun:.6}],['nova','Autodestrucción',{r:2,m:1.2,stun:.8,selfDmg:.25}]]),
  U('diglett',['Diglett','Dugtrio'],[50,51],1,'a',['Roca','Asesino'],[['dash','Excavar',{m:1.4,to:'far',stealth:1}],['nova','Terremoto',{r:2,m:.7}]]),
@@ -133,7 +133,7 @@ const UNIT_LIST=[
  // Slowpoke: mago tanque (casilla y stats de tanque, habilidad que escala con poder) para los Hechiceros
  U('slowpoke',['Slowpoke','Slowbro'],[79,80],2,'t',['Agua','Psíquico','Hechicero'],[['harden','Amnesia',{df:30,heal:.8}],['meteor','Paz Mental',{m:.6,r:1,sh:.2}]],{scale:'ap'}),
  U('nidoranm',['Nidoran♂','Nidorino','Nidoking'],[32,33,34],2,'b',['Roca','Peleador','Potencial Evolutivo'],[['combo','Doble Patada',{n:2,m:.7}],['dash','Cornada',{m:1.5,to:'target',stun:.5}],['cone','Megacuerno',{m:1.45,len:2}]]),
- U('nidoranf',['Nidoran♀','Nidorina','Nidoqueen'],[29,30,31],2,'t',['Roca','Guardián','Potencial Evolutivo'],[['knock','Doble Patada',{m:1,k:1}],['slam','Golpe Cuerpo',{r:1,m:.9,stun:1}],['zone','Tierra Viva',{r:1,m:1.4,dur:3,self:1,root:.8,v:'sand'}]]),
+ U('nidoranf',['Nidoran♀','Nidorina','Nidoqueen'],[29,30,31],2,'t',['Roca','Guardián','Potencial Evolutivo'],[['knock','Doble Patada',{m:1,stun:1.5}],['slam','Golpe Cuerpo',{r:1,m:.9,stun:1}],['zone','Tierra Viva',{r:1,m:1.4,dur:3,self:1,root:.8,v:'sand'}]]),
  U('chikorita',['Chikorita','Bayleef','Meganium'],[152,153,154],2,'t',['Planta','Sanador'],[['heal','Síntesis',{n:2,m:.9}],['teamShield','Pantalla de Luz',{m:.5,heal:.2}],['zone','Aromaterapia',{r:2,m:1.4,dur:4,ally:1}]]),
  U('magnemite',['Magnemite','Magneton','Magnezone'],[81,82,462],2,'r',['Eléctrico','Acero','Tirador'],[['bolt','Onda Voltio',{selfAs:0.08,m:1.1,stun:.5}],['chain','Bomba Imán',{selfAs:0.08,n:3,m:.6}],['line','Cañón Destello',{selfAs:0.2,m:1.6,shred:.3}]]),
  U('onix',['Onix','Steelix'],[95,208],2,'t',['Roca','Acero','Guardián'],[['harden','Fortaleza',{df:35,heal:1}],['slam','Cola Férrea',{r:1,m:.9,stun:1.3}]]),
@@ -222,7 +222,7 @@ const execTh=(p,star)=>p.th*[1,1.5,1.8][Math.min(3,Math.max(1,star))-1];
 const typeColor=d=>d&&d.traits&&d.traits[0]&&TRAITS[d.traits[0]]?TRAITS[d.traits[0]].color:'#e9d27a';
 const METRO=[['bolt','Hiperrayo',{m:1.8}],['nova','Explosión',{r:2,m:1}],['heal','Recuperación',{n:3,m:.8}],['meteor','Cometa Draco',{m:.6}],['sing','Canto',{r:1,s:2,m:.3}],['splash','Salpicadura',{}],['teamShield','Protección',{m:.5}],['chain','Rayo',{n:4,m:.8}]];
 const KIND_NAME={psy:'Juicio Psíquico',sacred:'Golpe y cura',tide:'Marea',lunar:'Daño y curación',titan:'Coloso',devour:'Devorar',bolt:'Disparo',burn:'Fuego',blast:'Área',nova:'Área propia',line:'Rayo en línea',chain:'Cadena',multi:'Proyectiles',combo:'Combo',dash:'Salto',execute:'Remate',meteor:'Golpe global',shield:'Escudo',taunt:'Provocación',reflect:'Reflejo',harden:'Endurecer',rest:'Descanso',heal:'Curación',teamShield:'Escudo de equipo',buff:'Mejora de equipo',frenzy:'Frenesí',empower:'Potenciar ataques',sing:'Sueño',drain:'Drenaje',gold:'Oro',stack:'Acumulación infinita',splash:'¿?',copy:'Copia',metro:'Aleatoria',
- cone:'Cono',wave:'Ola',strike:'Golpe retardado',zone:'Zona',knock:'Empujón',pull:'Atracción',seed:'Drenadoras',poison:'Veneno',mark:'Marca',spin:'Giro',slam:'Salto en área'};
+ cone:'Cono',wave:'Ola',strike:'Golpe retardado',zone:'Zona',knock:'Golpe aturdidor',pull:'Atracción',seed:'Drenadoras',poison:'Veneno',mark:'Marca',spin:'Giro',slam:'Salto en área'};
 
 // Entrenadores que se pueden elegir como estratega (sprites de Pokémon Showdown)
 const TRAINERS=[
@@ -419,7 +419,7 @@ function abDesc(ab,P,star){
   case 'wave': t=`Una ola de ${R0((p.w||1.3)*2)} casillas de ancho cruza el tablero hacia el objetivo: ${d(p.m)} de daño a cada enemigo${e}${p.push?` y los empuja ${p.push} casilla hacia atrás`:''}.${p.healTeam?` Cura ${d(p.healTeam)} a sus aliados.`:''}`; break;
   case 'strike': t=`Marca el suelo bajo el objetivo y ${p.delay||.6}s después cae sobre ${p.r?`la zona (radio ${p.r})`:'esa casilla'}: ${d(p.m)} de daño a quien siga ahí${e}.`; break;
   case 'zone': t=p.ally?`Crea una zona curativa (radio ${p.r||1}) durante ${p.dur||3}s: cura ${d(p.m)} en total a los aliados que estén dentro.`:`Crea una zona (radio ${p.r||1}) ${p.self?'a su alrededor':'en el objetivo'} durante ${p.dur||3}s: ${d(p.m)} de daño en total a los enemigos dentro${p.root?`; al aparecer los enraíza ${p.root}s`:''}${p.sleep?`; al aparecer los duerme ${p.sleep}s`:''}${p.burn?'; además los quema':''}${p.chill?'; además los ralentiza':''}.`; break;
-  case 'knock': t=`Golpea al objetivo por ${d(p.m)}${e} y lo lanza ${p.k||2} casillas hacia atrás.`; break;
+  case 'knock': t=`Golpea al objetivo por ${d(p.m)}${e}${p.k?` y lo lanza ${p.k} casillas hacia atrás`:''}.`; break;
   case 'pull': t=`Atrae a los enemigos en radio ${p.r||2} ${p.self?'hacia sí mismo':'hacia el objetivo'} y les inflige ${d(p.m)}${e}.`; break;
   case 'seed': t=`Planta una semilla en el objetivo: ${d(p.m*.25)} de daño al momento y ${d(p.m*.75)} más durante ${p.dur||4}s. Se cura el ${R0((p.h||1)*100)}% de lo que drena.`; break;
   case 'poison': t=`Envenena ${p.r?`al objetivo y a los enemigos a ${p.r} casilla`:'al objetivo'}: ${d(p.m)} de daño en ${p.dur||5}s, y mientras dure solo reciben la mitad de curación.`; break;
@@ -1242,7 +1242,7 @@ function castAbility(cb,u,ab,depth=0){
       if(p.ally){ HEALER=u; for(const a of cb.units) if(!a.dead&&a.side===u.side&&hexDist(a.c,a.r,c,r)<=rad){ heal(a,P*p.m/n); if(i%2===0) FX({type:'plus',c:a.c,r:a.r,life:.6}); } HEALER=null; return; }
       for(const e of near(c,r,rad)){ abilDamage(cb,u,e,P*p.m/n); if(e.dead) continue; if(i===1&&(p.root||p.sleep)) stunUnit(e,p.root||p.sleep,!!p.sleep); if(p.burn) addBurn(e,u,p.burn*e.maxHp,2,'abil'); if(p.chill) e.chillT=Math.max(e.chillT||0,1); } });
     cb.cExtra=` · zona ${dur}s`; break; }
-  case 'knock': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:2,life:.5}); if(!t.dead&&shove(cb,t,u.c,u.r,p.k||2,true)) { cb.cExtra=' · lo lanza lejos'; FX({type:'trail',fc:t.pc,fr:t.pr,tc:t.c,tr:t.r,life:.45}); } } break;
+  case 'knock': if(t){ hitFx(cb,u,t,P*p.m,p); FX({type:'hits',c:t.c,r:t.r,n:2,life:.5}); if(!t.dead&&p.k&&shove(cb,t,u.c,u.r,p.k,true)) { cb.cExtra=' · lo lanza lejos'; FX({type:'trail',fc:t.pc,fr:t.pr,tc:t.c,tr:t.r,life:.45}); } } break;
   case 'pull': { if(t&&!p.self) t=aoeTarget(cb,u,t,p.r||2); const center=p.self||!t?u:t, c=center.c, r=center.r, rad=p.r||2; const tg=near(c,r,rad).sort((a,b)=>hexDist(a.c,a.r,c,r)-hexDist(b.c,b.r,c,r));
     for(const e of tg){ if(e!==center) shove(cb,e,c,r,2,false); hitFx(cb,u,e,P*p.m,p); } FX({type:'vortex',c,r,rad:rad+.5,life:.9}); cb.cExtra=' · atrae'; break; }
   case 'seed': if(t){ hitFx(cb,u,t,P*p.m*.25,p); const b=addBurn(t,u,P*p.m*.75/(p.dur||4),p.dur||4,'seed'); b.leech=p.h||1; FX({type:'tether',u,t,life:p.dur||4}); cb.cExtra=' · drena con el tiempo'; } break;

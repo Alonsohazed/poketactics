@@ -148,20 +148,20 @@ const combatOf = (p, k) => { const cb = E.createCombatSnap(E.teamSnap(p), null, 
   ok(Math.round(combatOf(p, '3,0').ap - base.ap) === 15, 'Fuerza Creciente: +15 de poder tras 3 rondas'); }
 ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite');
 
-// 11. Cada aumento de héroe mejora de verdad a su Pokémon (mismo combate y semilla, con y sin el aumento; media de 12 semillas)
-{ const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', 'squirtle', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0], ['2,3', 'pichu', 2, [], 0, 0]] };
-  const stat = (k, aug, f, n = 12) => { let s = 0; for (let seed = 1; seed <= n; seed++) { const { p } = fresh(); if (aug) { E.applyAugment(p, E.AUG_BY[aug]); for (let r = 0; r < 5; r++) E.augFire(p, 'roundStart', {}); }
+// 11. Cada aumento de héroe mejora de verdad a su Pokémon (mismo combate y semilla, con y sin el aumento). Sin azar al elegir objetivo, las semillas
+// apenas cambian el combate (solo críticos y esquivas): la media es de 4 rivales distintos (el de siempre, en espejo, otro equipo y en fila) con 6 semillas cada uno
+{ const F0 = [['3,0', 'onix', 2], ['2,0', 'machop', 2], ['4,0', 'squirtle', 2], ['3,3', 'abra', 2], ['2,3', 'pichu', 2]];
+  const FOES = [F0, F0.map(([c, k, s]) => [(6 - c.split(',')[0]) + ',' + c.split(',')[1], k, s]), [['3,0', 'geodude', 2], ['2,0', 'charmander', 2], ['4,0', 'bulbasaur', 2], ['3,3', 'gastly', 2], ['2,3', 'growlithe', 2]], [['1,0', 'onix', 2], ['3,0', 'machop', 2], ['5,0', 'squirtle', 2], ['2,2', 'abra', 2], ['4,2', 'pichu', 2]]].map(u => ({ ag: [], m: {}, u: u.map(r => [...r, [], 0, 0]) }));
+  const stat = (k, aug, f, n = 6) => { let s = 0; for (const foe of FOES) for (let seed = 1; seed <= n; seed++) { const { p } = fresh(); if (aug) { E.applyAugment(p, E.AUG_BY[aug]); for (let r = 0; r < 5; r++) E.augFire(p, 'roundStart', {}); }
       const ag = aug ? E.augSnap(p) : []; const me = { ag, m: {}, u: [['3,1', k, 2, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0], ['4,0', 'machop', 2, [], 0, 0]] };
-      const cb = E.createCombatSnap(me, foe, { s: 4, n: 2, type: 'pvp' }, { seed: seed * 101 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k); const pre = f(h, cb, true); E.simulate(cb); s += pre != null ? pre : f(h, cb, false); } return s / n; };
+      const cb = E.createCombatSnap(me, foe, { s: 4, n: 2, type: 'pvp' }, { seed: seed * 101 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k); const pre = f(h, cb, true); E.simulate(cb); s += pre != null ? pre : f(h, cb, false); } return s / n / FOES.length; };
   const cmp = (id, k, f, label, n) => { const a = stat(k, null, f, n), b = stat(k, id, f, n); ok(b > a * 1.05, `${E.AUG_BY[id].name}: ${label} (${Math.round(a)} → ${Math.round(b)})`); };
   const dmg = (h, cb, pre) => pre ? null : (h.sDmg || 0), heal = (h, cb, pre) => pre ? null : (h.sHeal || 0);
   cmp('h_gengar', 'gastly', dmg, 'más daño de Gengar'); cmp('h_gyarados', 'magikarp', (h, cb, pre) => pre ? h.maxHp : null, 'más vida de Gyarados');
   cmp('h_clefable', 'cleffa', dmg, 'Clefable hace daño (Rayo Lunar)'); cmp('h_clefable', 'cleffa', heal, 'y cura más a la vez'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
   cmp('h_raichu', 'pichu', dmg, 'más daño de Raichu'); cmp('h_machamp', 'machop', dmg, 'más daño de Machamp (velocidad creciente)');
   cmp('h_lucario', 'riolu', dmg, 'Lucario lanza dos veces: más daño'); cmp('h_charizard', 'charmander', dmg, 'más daño de Charizard');
-  // Ditto, con 120 semillas: aquí el rival más caro es Onix y no le mejora ninguna estadística, así que su ventaja es solo la reducción y el maná lleno
-  // (~+10 %), y qué enemigo le toca cuando empujan a Wartortle (desempate al azar) mueve mucho la media de 12 combates (0,97 a 1,19 según las semillas)
-  cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor', 120); }
+  cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor'); }
 { const { G, p } = fresh(); G.round = { s: 3, n: 2 }; E.applyAugment(p, E.AUG_BY.h_lucario); ok(p.bench.filter(Boolean).some(u => u.defId === 'riolu' && u.star === 2), 'héroe en 3-2: el Pokémon llega a 2★');
   G.round = { s: 2, n: 1 }; let seen = 0; for (let i = 0; i < 300; i++) seen += E.augmentChoices(p, 'S').filter(id => id === 'h_dusknoir').length; ok(seen === 0, 'el héroe de coste 4 no sale en 2-1');
   G.round = { s: 3, n: 2 }; seen = 0; for (let i = 0; i < 300; i++) seen += E.augmentChoices(p, 'S').filter(id => id === 'h_dusknoir').length; ok(seen > 0, 'el héroe de coste 4 sí sale en 3-2'); }
