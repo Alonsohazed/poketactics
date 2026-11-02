@@ -46,7 +46,7 @@ const TRAITS={
  'Acero':T('🔩','#8a9bb0',[2,4],'Afecta a tus Pokémon Acero','Fortaleza: más defensa y resistencia, reciben menos daño y absorben parte del que va a los aliados que tienen al lado.',['+25 de defensa y resistencia · 15% menos de daño · absorben el 25% del daño de los aliados adyacentes','+50 de defensa y resistencia · 25% menos de daño · absorben el 40%']),
  'Siniestro':T('🌑','#4b3f5c',[2,4],'Afecta a tus Pokémon Siniestro','Ejecuciones: rematan a los enemigos heridos y cada remate envalentona a todo tu equipo.',['Rematan por debajo del 10% de vida · cada remate: equipo +2% de daño (máx. 5)','Rematan por debajo del 11% · cada remate: equipo +2% de daño (máx. 5)']),
  'Lucha':T('🥋','#b5462f',[2,4],'Afecta a tus Pokémon Lucha','Pegan más fuerte (ataque y poder) y se curan con el daño que hacen.',['15% de robo de vida · +12% de ataque y +12 de poder','25% de robo de vida · +25% de ataque y +25 de poder']),
- 'Guardián':T('🛡️','#5d7a8c',[2,4,6,8],'Afecta a tus Guardianes','Aguantan en primera fila y, a los 1,5 s de combate, provocan a los enemigos cercanos y se cubren con un escudo.',['+20 de defensa y resistencia · escudo del 10% de su vida al provocar','+40 · escudo del 15%','+70 · escudo del 22%','+110 · escudo del 30%']),
+ 'Guardián':T('🛡️','#5d7a8c',[2,4,6,8],'Afecta a tus Guardianes','Aguantan en primera fila y, a los 1,5 s de combate, provocan durante 2 s a los enemigos cercanos y se cubren con un escudo.',['+20 de defensa y resistencia · escudo del 10% de su vida al provocar','+40 · escudo del 15%','+70 · escudo del 22%','+110 · escudo del 30%']),
  'Coloso':T('🦍','#c0392b',[2,3,4,5],'Afecta a TODO tu equipo (doble para Colosos)','Los pesos pesados: más vida para todo tu equipo; los Colosos reciben el doble.',['Equipo +100 de vida · Colosos +200','Equipo +160 · Colosos +320','Equipo +220 · Colosos +440','Equipo +320 · Colosos +640']),
  'Peleador':T('🥊','#e67e22',[2,4,6],'Afecta a tus Peleadores','Cuerpo a cuerpo ágiles con mucha vida: al bajar del 50% de vida entran en furia y atacan más rápido.',['+18% de vida máx. · furia: +20% de vel. de ataque','+35% de vida máx. · furia: +35%','+55% de vida máx. · furia: +55% y +10% de daño']),
  'Tirador':T('🎯','#d35400',[2,3,4,5],'Afecta a tus Tiradores','Hacen más daño cuanto más lejos está su objetivo (ataques y habilidades).',['+6% de daño por casilla de distancia','+8% por casilla','+10% por casilla','+13% por casilla']),
@@ -398,7 +398,7 @@ function abDesc(ab,P,star){
   case 'psy': t=`Onda mental en el objetivo (radio ${star>=3&&p.r3?p.r3:p.r}): ${d(star>=3&&p.m3?p.m3:p.m)} de daño mágico. Cada lanzamiento le da una carga psíquica: +${R0((p.charge||0)*100)}% de daño de esta habilidad durante el combate. Cada ${p.judge} lanzamientos, Juicio Psíquico: ${star>=3?'ejecuta al enemigo con menos vida (salvo escudos y renacimientos)':`ejecuta al enemigo con menos vida si le queda menos del ${R0((p.th||[])[Math.min(2,star-1)]*100)}%; si no, le lanza otra descarga de ${d((star>=3&&p.m3?p.m3:p.m)*(p.judgeDmg||.6))}`}. Con ${p.mega} de energía psíquica (1 por lanzamiento y 1 por baja) se vuelve Mega Mewtwo Y hasta el final del combate: radio ${p.r+1} y una segunda descarga en otro grupo.`; break;
   case 'sacred': t=`Golpea a su objetivo con ${d(p.m)} de daño mágico y le quita un ${R0((p.arm||0)*100)}% de armadura durante ${p.armT||5}s (no se acumula: se renueva). Cura ${d(p.healAll)} a todos sus aliados.`; break;
   case 'shield': t=`Se cubre con un escudo de ${d(p.m)} durante 4s.`; break;
-  case 'taunt': t=`Provoca a los enemigos cercanos para que le ataquen, gana un escudo de ${d(p.m*.6)} y recibe un 30% menos de daño 3s.${p.heal?` Se cura ${d(p.heal)}.`:''}${p.teamShield?` Sus aliados ganan un escudo de ${d(p.teamShield)}.`:''}`; break;
+  case 'taunt': t=`Provoca a los enemigos cercanos durante ${TAUNT_T} s para que le ataquen, gana un escudo de ${d(p.m*.6)} y recibe un 30% menos de daño 3s.${p.heal?` Se cura ${d(p.heal)}.`:''}${p.teamShield?` Sus aliados ganan un escudo de ${d(p.teamShield)}.`:''}`; break;
   case 'reflect': t=`Gana un escudo de ${d(p.m*.6)} y devuelve el ${R0(p.pct*100)}% del daño recibido durante 4s.${p.heal?` Se cura ${d(p.heal)}.`:''}`; break;
   case 'harden': t=`Gana +${p.df*star} de defensa y resistencia (se acumula) y se cura ${d(p.heal)}.`; break;
   case 'rest': t=`Se cura ${d(p.m)}${p.sleep?` y se duerme ${p.sleep}s`:''}.`; break;
@@ -811,6 +811,7 @@ function note(p,msg,toastIt){
 }
 
 /* ============================== [COMBAT] ============================== */
+const TAUNT_T=2; // provocar (Guardián y la habilidad) obliga a ir a por quien provoca durante 2 s; luego mandan las reglas del objetivo (si lo cambias, cambia el texto de Guardián en TRAITS)
 const DT=0.05, COMBAT_T=40, PREP_T=3, END_T=3; // duración máxima del combate (luego empate), preparación antes de pelear (las fichas se dan la vuelta hacia el rival) y finalización: segundos de más tras acabar el último combate antes de volver a tu tablero, para ver qué pasó
 const PLAN_T=30, AUG_T=45; // tiempos fijos (no se configuran): planificación de cada ronda y elección de aumento
 function hexDist(c1,r1,c2,r2){ const x1=c1-(r1-(r1&1))/2, x2=c2-(r2-(r2&1))/2; const y1=-x1-r1,y2=-x2-r2; return Math.max(Math.abs(x1-x2),Math.abs(y1-y2),Math.abs(r1-r2)); }
@@ -976,34 +977,39 @@ function aoeTarget(cb,u,t,rad,cnt){ if(!t) return t; const fs=foesOf(cb,u).filte
 const aoeDir=(cb,u,t,o)=>aoeTarget(cb,u,t,0,c=>dirTargets(cb,u,c,o).length);
 // Zonas de curación: donde más aliados heridos quedan dentro (antes caían sobre el lanzador o sobre el enemigo)
 function allyCluster(cb,u,rad){ const al=alliesOf(cb,u); let best=u, bs=-1; for(const c of al){ const sc=al.reduce((s2,a)=>s2+(dU(c,a)<=rad?1+2*(1-a.hp/a.maxHp):0),0); if(sc>bs){ bs=sc; best=c; } } return best; }
+// Distancia real entre los centros de dos casillas: desempata, sin azar, entre enemigos a las mismas casillas (gana el que queda más en línea recta)
+const dEu=(a,b)=>{ const [x1,y1]=hxy(a.c,a.r),[x2,y2]=hxy(b.c,b.r); return Math.hypot(x1-x2,y1-y2); };
+// Enemigo más cercano, sin azar (como el reparto de TFT, que se ve ordenado): en empate de casillas, el más en línea recta y luego el orden de cb.units
 function nearestEnemy(cb,u,except,ok){
  let best=null,bd=1e9;
- for(const e of cb.units){ if(e.dead||e.side===u.side||e===except||e.stealth>0||(ok&&!ok(e))) continue; const d=dU(u,e)+cb.rng()*.1; if(d<bd){bd=d;best=e;} }
+ for(const e of cb.units){ if(e.dead||e.side===u.side||e===except||e.stealth>0||(ok&&!ok(e))) continue; const d=dU(u,e)+dEu(u,e)*1e-3; if(d<bd){bd=d;best=e;} }
  return best;
 }
 // Agro inicial de tanques (solo en el primer tick del combate): si una ficha tiene a su alcance, en las posiciones iniciales, un tanque enemigo
-// (rol 't', vivo y sin sigilo), empieza atacándolo: el más cercano, con el mismo desempate por cb.rng que nearestEnemy. Así un tanque bien
+// (rol 't', vivo y sin sigilo), empieza atacándolo: el más cercano, con el mismo desempate que nearestEnemy. Así un tanque bien
 // colocado protege a los aliados que tiene al lado. Si no hay ninguno, devuelve null y la ficha elige como siempre (el más cercano, en su turno).
 // No se vuelve a aplicar en ese combate: al cambiar de objetivo manda la cercanía, y Guardianes y provocar lo siguen sobrescribiendo.
 function pickInitialTarget(cb,u){ return nearestEnemy(cb,u,null,e=>e.role==='t'&&dU(u,e)<=u.range); }
-// Enemigo más cercano que el objetivo actual (a menos de d casillas); sin azar: en empate, el primero de cb.units
-function closerFoe(cb,u,d){ let best=null,bd=d; for(const e of cb.units){ if(e.dead||e.side===u.side||e.stealth>0) continue; const x=dU(u,e); if(x<bd){bd=x;best=e;} } return best; }
+// Enemigo más cercano que el objetivo actual (a menos de d casillas); sin azar: en empate, el más en línea recta y luego el primero de cb.units
+function closerFoe(cb,u,d){ let best=null,bd=d; for(const e of cb.units){ if(e.dead||e.side===u.side||e.stealth>0) continue; const x=dU(u,e)+dEu(u,e)*1e-3; if(x<bd){bd=x;best=e;} } return best; }
 function freeCell(cb,c,r,except){ return !cb.units.some(x=>!x.dead&&x!==except&&x.c===c&&x.r===r); }
-// Primer paso del camino más corto (por anchura, nivel a nivel) hasta quedar a su alcance: devuelve [c, r, enemigo].
-// Con any, si otro enemigo queda a su alcance en menos pasos que el objetivo, va a por ese (no rodea un atasco teniendo a otro más a mano); en empate, su objetivo
+// Primer paso hacia el enemigo al que llega antes (en pasos, por casillas libres) hasta quedar a su alcance: devuelve [c, r, enemigo]. Sin any, solo su objetivo.
+// Con any no rodea un atasco teniendo a otro más a mano; en empate de pasos, su objetivo y luego el más cercano y en línea recta. De los pasos que acortan
+// el camino da el que más le acerca en línea recta (antes salía del orden de las casillas y hacía eses). Sin azar: misma posición, mismo paso
 function nextStep(cb,u,t,any){
- const occ=new Set(cb.units.filter(x=>!x.dead&&x!==u).map(x=>x.c+','+x.r)), foes=any?cb.units.filter(e=>!e.dead&&e.side!==u.side&&!(e.stealth>0)&&e!==t):[];
- const start=u.c+','+u.r, prev={[start]:null}, first=k=>{ while(prev[k]!==start) k=prev[k]; return k.split(',').map(Number); };
- let lvl=[[u.c,u.r]];
- while(lvl.length){ let alt=null; const nx=[];
-   for(const [c,r] of lvl){ if(c===u.c&&r===u.r) continue; const k=c+','+r;
-     if(hexDist(c,r,t.c,t.r)<=u.range) return [...first(k),t];
-     if(!alt) for(const e of foes) if(hexDist(c,r,e.c,e.r)<=u.range){ alt=[...first(k),e]; break; } }
-   if(alt) return alt;
-   for(const [c,r] of lvl) for(const [nc,nr] of neighbors(c,r)){ const k=nc+','+nr; if(k in prev||occ.has(k)) continue; prev[k]=c+','+r; nx.push([nc,nr]); }
-   lvl=nx;
- }
- return null;
+ const occ=new Set(cb.units.filter(x=>!x.dead&&x!==u).map(x=>x.c+','+x.r)), here=u.c+','+u.r;
+ // pasos que faltan desde cada casilla libre hasta quedar a su alcance de e (por anchura desde las casillas que ya lo están)
+ const field=e=>{ const D=new Map(); let q=[];
+   for(let r=0;r<8;r++) for(let c=0;c<7;c++){ const k=c+','+r; if(!occ.has(k)&&hexDist(c,r,e.c,e.r)<=u.range){ D.set(k,0); q.push([c,r]); } }
+   for(let d=1;q.length;d++){ const nq=[]; for(const [c,r] of q) for(const [nc,nr] of neighbors(c,r)){ const k=nc+','+nr; if(D.has(k)||occ.has(k)) continue; D.set(k,d); nq.push([nc,nr]); } q=nq; }
+   return D; };
+ let best=null, bs=1e9, bD=null;
+ for(const e of any?cb.units.filter(e=>!e.dead&&e.side!==u.side&&!(e.stealth>0)):[t]){ const D=field(e), n=D.get(here); if(!n) continue;
+   const sc=n*100+(e===t?0:50)+dU(u,e)+dEu(u,e)*1e-3; if(sc<bs){ bs=sc; best=e; bD=D; } }
+ if(!best) return null;
+ const n=bD.get(here); let st=null, sd=1e9;
+ for(const [c,r] of neighbors(u.c,u.r)){ if(bD.get(c+','+r)!==n-1) continue; const d=dEu({c,r},best); if(d<sd-1e-9){ sd=d; st=[c,r]; } }
+ return st&&[...st,best];
 }
 function teleportNear(cb,u,t){
  const cells=neighbors(t.c,t.r).filter(([c,r])=>freeCell(cb,c,r,u)); if(!cells.length) return false;
@@ -1113,8 +1119,8 @@ function shove(cb,e,c,r,k,away){
    if(!best) break; if(!moved){ e.pc=e.c; e.pr=e.r; e.mt=0; } [e.c,e.r]=best; moved=true;
  }
  // Quien lo tenía de objetivo y lo pierde de su alcance por el empujón vuelve a elegir al más cercano (nearestEnemy en su turno) en vez de
- // cruzar el mapa tras él, aunque sea un tanque: el empujón rompe también la provocación (Guardián, Provocar), que si no duraba todo el combate
- if(moved) for(const x of cb.units) if(!x.dead&&x.side!==e.side&&x.target===e&&dU(x,e)>x.range){ x.target=null; if(x.taunt===e) x.taunt=null; }
+ // cruzar el mapa tras él, aunque sea un tanque: el empujón rompe también la provocación (Guardián, Provocar)
+ if(moved) for(const x of cb.units) if(!x.dead&&x.side!==e.side&&x.target===e&&dU(x,e)>x.range){ x.target=null; if(x.taunt===e){ x.taunt=null; x.tauntT=0; } }
  return moved;
 }
 // Efecto que se resuelve más tarde (golpes retardados, zonas que hacen daño por tics…)
@@ -1200,7 +1206,7 @@ function castAbility(cb,u,ab,depth=0){
     if(p.healAll) for(const a of allies) H(a,P*p.healAll); FX({type:'flash',color:'#ffb347',life:.35});
     if(p.rebirth&&(u.rbN=(u.rbN||0)+1)>=p.rebirth){ u.rbN=0; rebirthAlly(cb,u,p.phoenix||.4); } else if(p.rebirth) cb.cExtra+=` · renacer ${u.rbN}/${p.rebirth}`; break;
   case 'shield': SH(u,P*p.m,4); break;
-  case 'taunt': SH(u,P*p.m*.6,4); u.tdr=.3; u.tdrT=3; for(const e of foes) if(dU(u,e)<=3) e.target=e.taunt=u; if(p.heal) H(u,P*p.heal); if(p.teamShield) for(const a of allies) SH(a,P*p.teamShield,4); FX({type:'area',c:u.c,r:u.r,rad:3.2,color:'#ff5a5a',life:.6,thin:true}); cb.cExtra=' · provoca'; break;
+  case 'taunt': SH(u,P*p.m*.6,4); u.tdr=.3; u.tdrT=3; for(const e of foes) if(dU(u,e)<=3){ e.target=e.taunt=u; e.tauntT=TAUNT_T; } u.plantT=TAUNT_T; if(p.heal) H(u,P*p.heal); if(p.teamShield) for(const a of allies) SH(a,P*p.teamShield,4); FX({type:'area',c:u.c,r:u.r,rad:3.2,color:'#ff5a5a',life:.6,thin:true}); cb.cExtra=' · provoca'; break;
   case 'reflect': SH(u,P*p.m*.6,4); u.reflT=4; u.reflPct=p.pct||.4; if(p.heal) H(u,P*p.heal); FX({type:'aura',u,life:4,color:'#e6f0ff'}); cb.cExtra=` · refleja ${R0((p.pct||.4)*100)}%`; break;
   case 'harden': u.df+=p.df*u.star; u.mr+=p.df*u.star; H(u,P*p.heal); FX({type:'aura',u,life:1,color:'#c9c9c9'}); cb.cExtra=` · +${p.df*u.star} def/res`; break;
   case 'rest': H(u,P*p.m); if(p.sleep){ u.stun=Math.max(u.stun,p.sleep); u.sleepT=p.sleep; } break;
@@ -1295,14 +1301,14 @@ function stepCombat(cb){
  }
  cb.t+=DT;
  // Guardianes: a los 1,5 s provocan a los enemigos cercanos y se cubren con un escudo
- if(!cb.bgDone&&cb.t>=1.5){ cb.bgDone=true; for(const g of cb.units) if(g.bodyguard&&!g.dead){ const amt=g.maxHp*g.bodyguard; g.shield+=amt; g.shieldT=Math.max(g.shieldT,4); for(const e of cb.units) if(!e.dead&&e.side!==g.side&&dU(g,e)<=2) e.target=e.taunt=g; fxText(cb,g,'¡Provoca!','#9fd0ff'); fx(cb,{type:'area',c:g.c,r:g.r,rad:2.2,color:'#9fd0ff',life:.6,thin:true}); } }
+ if(!cb.bgDone&&cb.t>=1.5){ cb.bgDone=true; for(const g of cb.units) if(g.bodyguard&&!g.dead){ const amt=g.maxHp*g.bodyguard; g.shield+=amt; g.shieldT=Math.max(g.shieldT,4); for(const e of cb.units) if(!e.dead&&e.side!==g.side&&dU(g,e)<=2){ e.target=e.taunt=g; e.tauntT=TAUNT_T; } g.plantT=TAUNT_T; fxText(cb,g,'¡Provoca!','#9fd0ff'); fx(cb,{type:'area',c:g.c,r:g.r,rad:2.2,color:'#9fd0ff',life:.6,thin:true}); } }
  if(cb.pend&&cb.pend.length){ const due=cb.pend.filter(q=>q.at<=cb.t+1e-9); if(due.length){ cb.pend=cb.pend.filter(q=>q.at>cb.t+1e-9); for(const q of due) q.run(); } }
  for(const u of cb.units){
    if(u.dead) continue;
    u.mt+=DT; u.flash=Math.max(0,u.flash-DT); u.glow=Math.max(0,u.glow-DT);
    if(u.shieldT>0){ u.shieldT-=DT; if(u.shieldT<=0) u.shield=0; }
    if(u.stealth>0) u.stealth-=DT; if(u.tdrT>0) u.tdrT-=DT; if(u.reflT>0) u.reflT-=DT; if(u.sleepT>0) u.sleepT-=DT;
-   if(u.woundT>0) u.woundT-=DT; if(u.chillT>0) u.chillT-=DT; if(u.markT>0) u.markT-=DT;
+   if(u.woundT>0) u.woundT-=DT; if(u.tauntT>0) u.tauntT-=DT; if(u.plantT>0) u.plantT-=DT; if(u.chillT>0) u.chillT-=DT; if(u.markT>0) u.markT-=DT;
    if(u.armT>0){ u.armT-=DT; if(u.armT<=0&&u.armCut>0){ u.df+=u.armCut; u.armCut=0; } }
    // Quemaduras, veneno y drenadoras (estas curan a quien las lanzó)
    for(const b of u.burns){ if(b.t>0&&!u.dead){ b.t-=DT; const hp0=u.hp; dealDamage(cb,b.src,u,b.dps*DT,'true',true); if(b.leech&&b.src&&!b.src.dead) heal(b.src,(hp0-u.hp)*b.leech); } }
@@ -1321,11 +1327,14 @@ function stepCombat(cb){
    if(u.mana>=u.maxMana){ u.mana=u.sp.refund||0; castAbility(cb,u,u.ab); continue; }
    let d=dU(u,u.target);
    // Como en TFT: el objetivo se mantiene mientras está a su alcance; si no lo está y otro enemigo sí, pasa a ese (no ignora al que tiene delante),
-   // y al caminar va a por el enemigo al que llega antes (nextStep con any: sin rodeos). Quien fue provocado (Guardián, Provocar) sigue yendo a por quien lo provocó, salvo que un empujón se lo saque de su alcance (shove).
-   const free=u.target!==u.taunt;
-   if(d>u.range&&free){ const n=closerFoe(cb,u,u.range+1); if(n){ u.target=n; d=dU(u,n); } }
+   // y al caminar va a por el enemigo al que llega antes (nextStep con any: sin rodeos). Quien fue provocado (Guardián, Provocar) va a por quien lo provocó durante TAUNT_T (2 s), salvo que un empujón se lo saque de su alcance (shove);
+   // después manda la regla de siempre: lo mantiene mientras está a su alcance (antes la provocación duraba todo el combate y los provocados daban vueltas tras él).
+   // Quien acaba de provocar se planta (plantT, lo mismo que dura la provocación): no camina y pega a quien tenga a su alcance. Así sus provocados van a él
+   // en línea recta; si caminaba (a por otro objetivo, o provocado a su vez por un Guardián rival) lo seguían en círculos alrededor del grupo
+   const free=!(u.tauntT>0&&u.target===u.taunt), planted=u.plantT>0;
+   if(d>u.range&&(free||planted)){ const n=closerFoe(cb,u,u.range+1); if(n){ u.target=n; d=dU(u,n); } }
    if(d<=u.range){ u.atkCd-=DT; if(u.atkCd<=0){ u.atkCd=1/(u.as*(u.chillT>0?.65:1)*(u.rushT>0?u.rushMul:1)); attack(cb,u,u.target); } }
-   else { u.moveCd-=DT; if(u.moveCd<=0){ const s=nextStep(cb,u,u.target,free); if(s){ u.target=s[2]; u.pc=u.c;u.pr=u.r;u.c=s[0];u.r=s[1];u.mt=0; } else u.target=nearestEnemy(cb,u); u.moveCd=.35; } }
+   else if(!planted){ u.moveCd-=DT; if(u.moveCd<=0){ const s=nextStep(cb,u,u.target,free); if(s){ u.target=s[2]; u.pc=u.c;u.pr=u.r;u.c=s[0];u.r=s[1];u.mt=0; } else u.target=nearestEnemy(cb,u); u.moveCd=.35; } }
  }
  const a0=cb.units.some(u=>!u.dead&&u.side===0), a1=cb.units.some(u=>!u.dead&&u.side===1);
  if(!a0||!a1){ cb.done=true; cb.winner=a0?0:a1?1:null; }

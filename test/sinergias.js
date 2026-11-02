@@ -358,6 +358,21 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
       at(R, 3, 1); at(T, 6, 7); at(P, 0, 0); at(T, 3, 4); at(P, 3, 3); still(cb); vmStep(cb); const d0 = dUc(R, T); E.castAbility(cb, T, ['taunt', 'Provocar', { m: 1 }]); knock(cb, P, T, 2);
       ok(R.range >= dUc(R, T) && dUc(R, T) > d0, `provocar: montaje (empujado de ${d0} a ${dUc(R, T)} casillas, dentro del alcance ${R.range})`);
       ok(R.taunt === T && R.target === T, 'provocar: un empujón que lo deja a su alcance no rompe la provocación'); }
+    // 18) Sin azar al elegir objetivo: con dos enemigos a las mismas casillas, siempre el que queda más en línea recta (antes, cb.rng lo echaba a suertes)
+    { let n = 0; for (let s = 1; s <= 20; s++) { const cb = fight([K.m, K.m], [K.b], s), [M1, M2] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+        at(B, 3, 3); at(M1, 6, 7); at(M2, 0, 7); at(M1, 5, 3); at(M2, 3, 5); still(cb); vmStep(cb); if (B.target === M2) n++; }
+      ok(hexD(3, 3, 5, 3) === 2 && hexD(3, 3, 3, 5) === 2 && n === 20, `objetivo sin azar: a igualdad de casillas, el que está más en línea recta (${n}/20 semillas)`); }
+    // 19) La provocación dura 2 s: mientras dura no cambia al enemigo pegado; después vuelve la regla de siempre (el que tiene a su alcance)
+    { const cb = fight([K.t, K.m], [K.b]), [T, M] = cb.units.filter(u => u.side === 0), B = cb.units.find(u => u.side === 1); const TT = vm.runInContext('TAUNT_T', ctx);
+      at(B, 3, 3); at(T, 6, 7); at(M, 0, 7); at(T, 3, 5); at(M, 2, 3); still(cb); vmStep(cb); E.castAbility(cb, T, ['taunt', 'Provocar', { m: 1 }]); at(T, 3, 7); B.moveCd = 99;
+      ok(B.taunt === T && dUc(B, T) > B.range && dUc(B, M) <= B.range, 'provocar: montaje (provocado, quien provoca se aleja y tiene al mago pegado)');
+      for (let i = 0; i < Math.round(1 / DTc); i++) { still(cb); vmStep(cb); } ok(B.target === T, 'provocar: durante la provocación no cambia al enemigo que tiene pegado');
+      for (let i = 0; i < Math.round((TT - 1) / DTc) + 2; i++) { still(cb); vmStep(cb); } ok(TT === 2 && B.target === M, 'provocar: a los 2 s se acaba y pega al que tiene a su alcance'); }
+    // 20) Quien provoca se planta mientras dura su provocación: no camina aunque su objetivo esté lejos (si no, sus provocados lo seguían en círculos)
+    { const cb = fight([K.t], [K.b]), G = cb.units.find(u => u.side === 0), B = cb.units.find(u => u.side === 1);
+      at(B, 3, 0); at(G, 3, 6); still(cb); vmStep(cb); G.target = B; E.castAbility(cb, G, ['taunt', 'Provocar', { m: 1 }]); G.moveCd = 0; const p0 = G.c + ',' + G.r;
+      for (let i = 0; i < Math.round(1.5 / DTc); i++) { still(cb, G); vmStep(cb); } ok(G.c + ',' + G.r === p0, 'provocar: quien provoca no camina durante la provocación');
+      for (let i = 0; i < Math.round(1.5 / DTc); i++) { still(cb, G); vmStep(cb); } ok(G.c + ',' + G.r !== p0, 'provocar: después vuelve a caminar hacia su objetivo'); }
     // 17) Misma semilla, mismo combate con empujadores y Guardianes en juego
     { const a = [['3,0', 'bulbasaur', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', 'nidoranf', 1, [], 0, 0], ['3,3', K.r, 2, [], 0, 0]], b = [['3,0', 'squirtle', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', K.b, 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0]];
       const log = () => { const cb = E.createCombatSnap({ ag: [], m: {}, u: a }, { ag: [], m: {}, u: b }, { s: 5, n: 2 }, { seed: 91 }); let s = ''; for (let i = 0; i < 900 && !cb.done; i++) { vmStep(cb); s += cb.units.map(u => `${u.c},${u.r},${u.hp.toFixed(3)},${cb.units.indexOf(u.target)},${cb.units.indexOf(u.taunt)}`).join('|') + ';'; } return s + cb.winner; };
@@ -399,13 +414,21 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     const cb = E.createCombatSnap(me, foe, { s: 5, n: 2 }, { seed, visual: true }), u = cb.units.find(x => x.d.key === k), hp0 = u.maxHp; E.simulate(cb); return { cb, u, hp0, f: cb.feed.filter(x => x.s === 0 && x.n === u.name) }; };
   // Groudon: tanque, aturde en área al primer lanzamiento, gana vida (para siempre) con las bajas cercanas
   const g = E.baseCombatUnit(E.DEF.groudon, 0, 2); ok(g.role === 't' && g.mana >= g.maxMana * .8, `Groudon: tanque con maná inicial alto (${g.mana}/${g.maxMana})`);
-  const G = run('groudon'); ok(G.f[0] && G.f[0].st, 'Groudon: su primer lanzamiento aturde'); ok(G.u.quakeGain > 0 && G.u.maxHp > G.hp0, `Groudon: gana vida con las bajas cercanas (+${G.u.quakeGain})`);
-  { const { G: Gm, p } = fresh(); const inst = E.makeInst('groudon'), mk = (k, s) => Object.assign(E.makeInst(k), { star: s }); inst.star = 2; p.board = { '3,0': inst, '2,0': mk('lapras', 2), '4,0': mk('onix', 2), '2,3': mk('rowlet', 2) }; const sa = E.teamSnap(p); const cb = E.createCombatSnap(sa, foe, { s: 5, n: 2 }, { seed: 31, refsA: p.board }); E.simulate(cb); ok(inst.stk.hp > 0, `Groudon: la vida ganada se guarda para siempre (+${inst.stk.hp})`); }
+  const G = run('groudon'); ok(G.f[0] && G.f[0].st, 'Groudon: su primer lanzamiento aturde');
+  // Las bajas a 2 casillas se provocan a mano: en este montaje gana el rival y, sin azar al elegir objetivo, cae Groudon antes que nadie a su lado
+  { const { p } = fresh(); const inst = E.makeInst('groudon'), mk = (k, s) => Object.assign(E.makeInst(k), { star: s }); inst.star = 2; p.board = { '3,0': inst, '2,0': mk('lapras', 2), '4,0': mk('onix', 2), '2,3': mk('rowlet', 2) };
+    const cb = E.createCombatSnap(E.teamSnap(p), foe, { s: 5, n: 2 }, { seed: 31, refsA: p.board }), dUv = vm.runInContext('dU', ctx); vmStep(cb);
+    const g = cb.units.find(u => u.d.key === 'groudon'), hp0 = g.maxHp, e = cb.units.filter(u => u.side === 1).sort((a, b) => dUv(g, a) - dUv(g, b))[0];
+    ok(dUv(g, e) <= 2, 'Groudon: montaje (un enemigo a 2 casillas o menos)'); E.dealDamage(cb, null, e, 1e9, 'true', true);
+    ok(e.dead && g.quakeGain > 0 && g.maxHp > hp0, `Groudon: gana vida con las bajas cercanas (+${g.quakeGain})`); E.simulate(cb); ok(inst.stk.hp > 0, `Groudon: la vida ganada se guarda para siempre (+${inst.stk.hp})`); }
   // Darkrai: duerme a 3 enemigos al azar a 1★ y a 4 a 2★, más tiempo a 2★
   const D1 = run('darkrai', 1), D2 = run('darkrai', 2); ok(D1.f[0] && D1.f[0].h === 3, `Darkrai 1★: duerme a 3 (${D1.f[0] && D1.f[0].h})`); ok(D2.f[0] && D2.f[0].h === 4, `Darkrai 2★: duerme a 4 (${D2.f[0] && D2.f[0].h})`);
   ok(/3 enemigos al azar 2.4s/.test(E.abDesc(E.DEF.darkrai.ab[0], 100, 1)) && /4 enemigos al azar 3.2s/.test(E.abDesc(E.DEF.darkrai.ab[0], 100, 2)), 'Darkrai: la descripción muestra objetivos y duración por estrella');
   // Moltres: golpea a todos, quema y reduce la curación; lanza varias veces
-  const M = run('moltres'); ok(M.f.length >= 2 && M.f[0].h >= 5, `Moltres: varios lanzamientos que golpean a todo el tablero (${M.f.length} lanzamientos, ${M.f[0] && M.f[0].h} golpeados)`);
+  // Con vida de sobra: se mide cuánto lanza, no cuánto aguanta (eso depende de a quién elijan los rivales)
+  { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'moltres', 2, [], 0, 0], ['3,0', 'lapras', 2, [], 0, 0], ['4,0', 'onix', 2, [], 0, 0], ['2,3', 'rowlet', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31, visual: true }), mo = cb.units.find(x => x.d.key === 'moltres');
+    mo.maxHp = mo.hp = 1e6; while (!cb.done && !mo.castN) vmStep(cb); const h1 = cb.cHits.size; E.simulate(cb);
+    ok(mo.castN >= 2 && h1 >= 5, `Moltres: varios lanzamientos que golpean a todo el tablero (${mo.castN} lanzamientos, ${h1} golpeados en el primero)`); }
   { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'moltres', 2, [], 0, 0]] }, foe, { s: 5, n: 2 }, { seed: 31 }); const mo = cb.units.find(x => x.d.key === 'moltres'); mo.mana = mo.maxMana; for (let i = 0; i < 400 && !mo.castN; i++) vmStep(cb);
     const en = cb.units.filter(x => x.side === 1 && !x.dead); ok(en.every(e => e.woundT > 0 && e.burns.length > 0), 'Moltres: todos los golpeados quedan quemados y con curación reducida'); }
   // Ho-Oh: cada 3 lanzamientos revive al aliado caído más valioso
