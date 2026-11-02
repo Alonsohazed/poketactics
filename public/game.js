@@ -119,7 +119,7 @@ const UNIT_LIST=[
  U('pichu',['Pichu','Pikachu','Raichu'],[172,25,26],1,'r',['Eléctrico','Tirador'],[['bolt','Impactrueno',{selfAs:0.1,m:1.4}],['chain','Rayo',{selfAs:0.15,n:3,m:.9}],['strike','Trueno',{selfAs:0.25,r:1,m:1.4,delay:.6,stun:.8}]]),
  U('geodude',['Geodude','Graveler','Golem'],[74,75,76],1,'b',['Roca','Coloso'],[['harden','Rizo Defensa',{df:25,heal:.5}],['slam','Rodar',{r:1,m:.9,stun:.8}],['nova','Explosión',{r:2,m:1.75,selfDmg:.3}]]),
  U('gastly',['Gastly','Haunter','Gengar'],[92,93,94],1,'m',['Fantasma','Hechicero','Team Rocket'],[['bolt','Lengüetazo',{m:1.2,stun:1}],['mark','Maldición',{m:.9,amp:.3,dur:4}],['blast','Bola Sombra',{r:1,m:1.15,shred:.3}]]),
- U('abra',['Abra','Kadabra','Alakazam'],[63,64,65],1,'m',['Psíquico','Hechicero'],[['bolt','Confusión',{m:1.3}],['blast','Telequinesis',{r:2,m:.6,stun:1.5}],['strike','Premonición',{r:1,m:1.6,delay:1.2,stun:.5,ghost:1}]]),
+ U('abra',['Abra','Kadabra','Alakazam'],[63,64,65],1,'m',['Psíquico','Hechicero'],[['bolt','Confusión',{m:1.3}],['blast','Telequinesis',{r:2,m:.85,stun:1,stunN:2}],['strike','Premonición',{r:1,m:1.6,delay:1.2,stun:.5,ghost:1}]]),
  U('cleffa',['Cleffa','Clefairy','Clefable'],[173,35,36],1,'h',['Hada','Sanador'],[['heal','Encanto',{n:1,m:1.4}],['zone','Luz Lunar',{r:1,m:1.6,dur:3,ally:1}],['teamShield','Deseo',{m:.55,heal:.3}]]),
  U('rattata',['Rattata','Raticate'],[19,20],1,'a',['Normal','Asesino','Depredadores'],[['dash','Ataque Rápido',{m:1.3,to:'low'}],['execute','Hipercolmillo',{m:1.05,th:.11}]]),
  U('dratini',['Dratini','Dragonair','Dragonite'],[147,148,149],1,'r',['Dragón','Tirador','Potencial Evolutivo'],[['bolt','Furia Dragón',{m:1.4}],['frenzy','Danza Dragón',{as:.2,ad:.15}],['line','Hiperrayo',{m:2,stunSelf:1}]]),
@@ -380,7 +380,7 @@ function abHTML(ab,u,star,opt={}){
 }
 function abDesc(ab,P,star){
  const [k,,p]=ab; const d=x=>ABD?(ABD.push(x),'\u0001'+(ABD.length-1)+'\u0002'):R0(P*x); const ex=[];
- if(p.stun) ex.push(`aturde ${p.stun}s`); if(p.burn&&k!=='zone') ex.push(`quema ${(p.burn*100).toFixed(0)}% de vida máx./s (4s)`); if(p.shred) ex.push(`reduce su resistencia un ${R0(p.shred*100)}%`); if(p.chill&&k!=='zone') ex.push(`le hace atacar un 35% más lento ${p.chill}s`); if(p.wound) ex.push(`reduce su curación a la mitad ${p.wound}s`);
+ if(p.stun) ex.push(p.stunN?`aturde ${p.stun}s a los ${p.stunN} más cercanos al centro`:`aturde ${p.stun}s`); if(p.burn&&k!=='zone') ex.push(`quema ${(p.burn*100).toFixed(0)}% de vida máx./s (4s)`); if(p.shred) ex.push(`reduce su resistencia un ${R0(p.shred*100)}%`); if(p.chill&&k!=='zone') ex.push(`le hace atacar un 35% más lento ${p.chill}s`); if(p.wound) ex.push(`reduce su curación a la mitad ${p.wound}s`);
  const e=ex.length?` (${ex.join(', ')})`:''; let t='';
  switch(k){
   case 'bolt': t=`Golpea al objetivo por ${d(p.m)} de daño mágico${e}.`; break;
@@ -1165,7 +1165,10 @@ function castAbility(cb,u,ab,depth=0){
  switch(k){
   case 'bolt': if(t){ FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.32,big:true}); hitFx(cb,u,t,P*p.m,p); } break;
   case 'burn': if(t){ if(p.r) t=aoeTarget(cb,u,t,p.r); FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true}); const tg=p.r?foes.filter(e=>dU(t,e)<=p.r):[t]; for(const e of tg) hitFx(cb,u,e,P*p.m,{...p,burn:p.burn||.03}); FX({type:'area',c:t.c,r:t.r,rad:(p.r||0)+.5,life:.6}); } break;
-  case 'blast': if(t){ t=aoeTarget(cb,u,t,p.r); FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true}); for(const e of foes) if(dU(t,e)<=p.r) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:t.c,r:t.r,rad:p.r+.5,life:.65}); } break;
+  case 'blast': if(t){ t=aoeTarget(cb,u,t,p.r); FX({type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,life:.28,big:true});
+    // stunN: solo aturde a los N golpeados más cercanos al centro (sin azar: casillas, línea recta y orden de cb.units); al resto solo les hace daño
+    const hit=foes.filter(e=>dU(t,e)<=p.r), sn=p.stunN?hit.slice().sort((a,b)=>dU(t,a)-dU(t,b)||dEu(t,a)-dEu(t,b)).slice(0,p.stunN):hit, q=p.stunN?{...p,stun:0}:p;
+    for(const e of hit) hitFx(cb,u,e,P*p.m,sn.includes(e)?p:q); FX({type:'area',c:t.c,r:t.r,rad:p.r+.5,life:.65}); } break;
   case 'nova': for(const e of foes) if(dU(u,e)<=p.r) hitFx(cb,u,e,P*p.m,p); FX({type:'area',c:u.c,r:u.r,rad:p.r+.5,life:.7,quake:p.r>=2});
     if(p.selfDmg){ u.hp=Math.max(1,u.hp-u.maxHp*p.selfDmg); cb.cExtra=` · pierde ${R0(p.selfDmg*100)}% de su vida`; } break;
   // fall: cada enemigo atravesado recibe ese porcentaje menos que el anterior (mín. 40 %): el rayo no borra una fila entera

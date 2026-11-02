@@ -388,6 +388,11 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     ok(log() === log(), 'agro: dos ejecuciones con la misma semilla dan exactamente el mismo registro de combate'); }
 }
 
+// Telequinesis (Kadabra): daño en radio 2, pero solo aturde 1 s a los 2 golpeados más cercanos al centro (aturdir en área era demasiado fuerte)
+{ const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,3', 'abra', 2, [], 0, 0]] }, { ag: [], m: {}, u: ['3,0', '2,0', '4,0', '3,1', '2,1'].map(c => [c, 'onix', 1, [], 0, 0]) }, { s: 5, n: 2 }, { seed: 3 });
+  const k = cb.units.find(u => u.side === 0), en = cb.units.filter(u => u.side === 1), pos = en.map(e => e.c + ',' + e.r).join('|'); k.target = en[0]; E.castAbility(cb, k, k.ab);
+  ok(k.ab[1] === 'Telequinesis' && en.filter(e => e.hp < e.maxHp).length === 5 && en.filter(e => e.stun > 0).length === 2 && Math.max(...en.map(e => e.stun)) === 1, `Telequinesis: golpea a los 5 pero solo aturde a 2 durante 1 s (${en.filter(e => e.stun > 0).length} aturdidos)`);
+  ok(en.map(e => e.c + ',' + e.r).join('|') === pos, 'Telequinesis: ya no mueve a nadie'); }
 // Coste 4: Bagon mago tanque, Timburr con golpes que saltan, tanques a 3★ con su bonus de defensa
 { const b2 = E.baseCombatUnit(E.DEF.bagon, 0, 2), r2 = E.baseCombatUnit(E.DEF.ralts, 0, 2); ok(b2.role === 't' && b2.range === 1 && b2.maxHp > r2.maxHp * 1.5, 'Bagon: stats y alcance de tanque');
   const bx = Object.assign({}, b2, { ap: 50 }), bh = Object.assign({}, b2, { maxHp: b2.maxHp * 2 }); ok(E.abilPower(bx) > E.abilPower(b2) * 1.4 && Math.abs(E.abilPower(bh) - E.abilPower(b2)) < 1, 'Bagon: su habilidad escala con el poder, no con la vida');
