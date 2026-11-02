@@ -292,6 +292,7 @@ Object.assign(I18N.EN, {
   'Empieza el combate con la marea en {0}/{1}.': 'Starts combat with the tide at {0}/{1}.',
   'Envenena al objetivo y a los enemigos a {0} casilla: {1} de daño en {2}s, y mientras dure solo reciben la mitad de curación.': 'Poisons the target and enemies within {0} hex: {1} damage over {2}s, and while it lasts they only receive half healing.',
   'Explosión en el objetivo (radio {0}): {1} de daño mágico (reduce su resistencia un {2}%).': 'Explosion on the target (radius {0}): {1} magic damage (reduces their magic resist by {2}%).',
+  'Explosión en el objetivo (radio {0}): {1} de daño mágico (aturde {2}s).': 'Explosion on the target (radius {0}): {1} magic damage (stuns for {2}s).',
   'Explosión en el objetivo (radio {0}): {1} de daño mágico.': 'Explosion on the target (radius {0}): {1} magic damage.',
   'Forma Mega: cada lanzamiento le da +{0}% de vida máxima, +{1} de poder y +{2}% de ataque durante el combate.': 'Mega form: each cast grants +{0}% max health, +{1} ability power and +{2}% attack damage during the combat.',
   'Gana +{0} de defensa y resistencia (se acumula) y se cura {1}.': 'Gains +{0} armor and magic resist (stacks) and heals {1}.',
