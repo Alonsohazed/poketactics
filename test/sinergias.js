@@ -150,16 +150,18 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
 
 // 11. Cada aumento de héroe mejora de verdad a su Pokémon (mismo combate y semilla, con y sin el aumento; media de 12 semillas)
 { const foe = { ag: [], m: {}, u: [['3,0', 'onix', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', 'squirtle', 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0], ['2,3', 'pichu', 2, [], 0, 0]] };
-  const stat = (k, aug, f) => { let s = 0; for (let seed = 1; seed <= 12; seed++) { const { p } = fresh(); if (aug) { E.applyAugment(p, E.AUG_BY[aug]); for (let r = 0; r < 5; r++) E.augFire(p, 'roundStart', {}); }
+  const stat = (k, aug, f, n = 12) => { let s = 0; for (let seed = 1; seed <= n; seed++) { const { p } = fresh(); if (aug) { E.applyAugment(p, E.AUG_BY[aug]); for (let r = 0; r < 5; r++) E.augFire(p, 'roundStart', {}); }
       const ag = aug ? E.augSnap(p) : []; const me = { ag, m: {}, u: [['3,1', k, 2, [], 0, 0], ['2,0', 'onix', 2, [], 0, 0], ['4,0', 'machop', 2, [], 0, 0]] };
-      const cb = E.createCombatSnap(me, foe, { s: 4, n: 2, type: 'pvp' }, { seed: seed * 101 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k); const pre = f(h, cb, true); E.simulate(cb); s += pre != null ? pre : f(h, cb, false); } return s / 12; };
-  const cmp = (id, k, f, label) => { const a = stat(k, null, f), b = stat(k, id, f); ok(b > a * 1.05, `${E.AUG_BY[id].name}: ${label} (${Math.round(a)} → ${Math.round(b)})`); };
+      const cb = E.createCombatSnap(me, foe, { s: 4, n: 2, type: 'pvp' }, { seed: seed * 101 }); const h = cb.units.find(u => u.side === 0 && u.d.key === k); const pre = f(h, cb, true); E.simulate(cb); s += pre != null ? pre : f(h, cb, false); } return s / n; };
+  const cmp = (id, k, f, label, n) => { const a = stat(k, null, f, n), b = stat(k, id, f, n); ok(b > a * 1.05, `${E.AUG_BY[id].name}: ${label} (${Math.round(a)} → ${Math.round(b)})`); };
   const dmg = (h, cb, pre) => pre ? null : (h.sDmg || 0), heal = (h, cb, pre) => pre ? null : (h.sHeal || 0);
   cmp('h_gengar', 'gastly', dmg, 'más daño de Gengar'); cmp('h_gyarados', 'magikarp', (h, cb, pre) => pre ? h.maxHp : null, 'más vida de Gyarados');
   cmp('h_clefable', 'cleffa', dmg, 'Clefable hace daño (Rayo Lunar)'); cmp('h_clefable', 'cleffa', heal, 'y cura más a la vez'); cmp('h_alakazam', 'abra', dmg, 'más daño de Alakazam (poder por lanzamiento)');
   cmp('h_raichu', 'pichu', dmg, 'más daño de Raichu'); cmp('h_machamp', 'machop', dmg, 'más daño de Machamp (velocidad creciente)');
   cmp('h_lucario', 'riolu', dmg, 'Lucario lanza dos veces: más daño'); cmp('h_charizard', 'charmander', dmg, 'más daño de Charizard');
-  cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor'); }
+  // Ditto, con 120 semillas: aquí el rival más caro es Onix y no le mejora ninguna estadística, así que su ventaja es solo la reducción y el maná lleno
+  // (~+10 %), y qué enemigo le toca cuando empujan a Wartortle (desempate al azar) mueve mucho la media de 12 combates (0,97 a 1,19 según las semillas)
+  cmp('h_ditto', 'ditto', dmg, 'Ditto copia algo mejor', 120); }
 { const { G, p } = fresh(); G.round = { s: 3, n: 2 }; E.applyAugment(p, E.AUG_BY.h_lucario); ok(p.bench.filter(Boolean).some(u => u.defId === 'riolu' && u.star === 2), 'héroe en 3-2: el Pokémon llega a 2★');
   G.round = { s: 2, n: 1 }; let seen = 0; for (let i = 0; i < 300; i++) seen += E.augmentChoices(p, 'S').filter(id => id === 'h_dusknoir').length; ok(seen === 0, 'el héroe de coste 4 no sale en 2-1');
   G.round = { s: 3, n: 2 }; seen = 0; for (let i = 0; i < 300; i++) seen += E.augmentChoices(p, 'S').filter(id => id === 'h_dusknoir').length; ok(seen > 0, 'el héroe de coste 4 sí sale en 3-2'); }
@@ -327,6 +329,39 @@ ok(Object.values(E.AUG_BY).every(a => a.img), 'todos los aumentos tienen sprite'
     let hecho = false; for (let r = 0; r < 8 && !hecho; r++) for (let c = 0; c < 7 && !hecho; c++) { if (!free(cb, c, r)) continue; at(X, c, r); if (hexD(3, 0, c, r) > hexD(3, 0, 3, 2) && steps(B, X) < steps(B, M)) hecho = true; }
     ok(hecho, 'foco: montaje (objetivo más cerca en línea recta pero detrás de dos aliados; otro enemigo más lejos pero a menos pasos)');
     for (const u of cb.units) if (u !== B) u.moveCd = 99; B.target = M; B.moveCd = 0; vmStep(cb); ok(B.target === X, 'foco: no rodea el atasco: va a por el enemigo al que llega antes'); }
+  // 13-16) Empujones: quien pierde a su objetivo de su alcance por un empujón elige al más cercano, aunque el empujado sea un tanque que lo provocó
+  { const knock = (cb, P, e, k) => { P.target = e; E.castAbility(cb, P, ['knock', 'Látigo Cepa', { m: .01, k }]); };
+    const still = (cb, ...us) => { for (const u of cb.units) if (!us.includes(u)) u.moveCd = 99; };
+    // montaje común: el melé B (3,3) pega al tanque T (3,4); su aliado P (3,2) lo empuja; el mago M queda a 2 casillas de B
+    const setup = () => { const cb = fight([K.t, K.m], [K.b, K.b]), [T, M] = cb.units.filter(u => u.side === 0), [B, P] = cb.units.filter(u => u.side === 1);
+      at(B, 3, 3); at(T, 6, 7); at(M, 0, 7); at(P, 0, 0); at(T, 3, 4); at(P, 3, 2); still(cb); vmStep(cb); B.target = T; B.moveCd = 0; return { cb, T, M, B, P }; };
+    const runTo = (cb, B, M) => { let i = 0; while (i++ < 60 && dUc(B, M) > B.range) { still(cb, B); vmStep(cb); } };
+    const dUc = (a, b) => hexD(a.c, a.r, b.c, b.r);
+    // 13) Sin provocar: el empujón le quita el objetivo y elige al más cercano (el mago), no cruza el mapa tras el tanque
+    { const { cb, T, M, B, P } = setup(); knock(cb, P, T, 3); at(M, ...cellAt(cb, B, 2, (c, r) => hexD(c, r, T.c, T.r) > 2));
+      ok(dUc(B, T) > B.range && dUc(B, M) < dUc(B, T), `empujón: montaje (tanque empujado a ${dUc(B, T)}, mago a ${dUc(B, M)})`);
+      ok(B.target === null, 'empujón: al sacarle el objetivo de su alcance, lo suelta');
+      still(cb, B); vmStep(cb); ok(B.target === M, 'empujón: elige al enemigo más cercano (el mago) en vez de perseguir al tanque empujado');
+      const t0 = dUc(B, T); runTo(cb, B, M); ok(B.target === M && dUc(B, M) <= B.range && dUc(B, T) >= t0 - 1, 'empujón: camina hasta el mago, no hacia el tanque'); }
+    // 14) Provocado por el tanque al que empujan: el empujón rompe la provocación y va al más cercano
+    { const { cb, T, M, B, P } = setup(); E.castAbility(cb, T, ['taunt', 'Provocar', { m: 1 }]); ok(B.target === T && B.taunt === T, 'empujón: montaje (el tanque provoca al melé)');
+      knock(cb, P, T, 3); at(M, ...cellAt(cb, B, 2, (c, r) => hexD(c, r, T.c, T.r) > 2)); ok(dUc(B, T) > B.range && dUc(B, M) < dUc(B, T), 'empujón: montaje (el que provocó queda fuera de su alcance y el mago más cerca)');
+      ok(B.taunt === null && B.target === null, 'empujón: sacarle de su alcance a quien lo provocó rompe la provocación');
+      const t0 = dUc(B, T); runTo(cb, B, M); ok(B.target === M && dUc(B, M) <= B.range && dUc(B, T) >= t0 - 1, 'empujón: el provocado va a por el más cercano, no cruza el mapa tras el tanque empujado'); }
+    // 15) Sin empujón, el provocado sigue con quien lo provocó aunque este se aleje y tenga otro enemigo más cerca
+    { const { cb, T, M, B } = setup(); E.castAbility(cb, T, ['taunt', 'Provocar', { m: 1 }]); at(T, 3, 7); at(M, ...cellAt(cb, B, 2, (c, r) => hexD(c, r, 3, 7) > 2));
+      ok(dUc(B, T) > B.range && dUc(B, M) < dUc(B, T), 'provocar: montaje (quien lo provocó se aleja sin empujón; el mago, más cerca)');
+      const t0 = dUc(B, T); for (let i = 0; i < 20; i++) { still(cb, B); vmStep(cb); }
+      ok(B.taunt === T && B.target === T && dUc(B, T) < t0, 'provocar: sin empujón, el provocado sigue yendo a por quien lo provocó'); }
+    // 16) Un empujón que no lo saca de su alcance no rompe la provocación (tirador de alcance 4)
+    { const cb = fight([K.t, K.m], [K.r, K.b]), [T] = cb.units.filter(u => u.side === 0), [R, P] = cb.units.filter(u => u.side === 1);
+      at(R, 3, 1); at(T, 6, 7); at(P, 0, 0); at(T, 3, 4); at(P, 3, 3); still(cb); vmStep(cb); const d0 = dUc(R, T); E.castAbility(cb, T, ['taunt', 'Provocar', { m: 1 }]); knock(cb, P, T, 2);
+      ok(R.range >= dUc(R, T) && dUc(R, T) > d0, `provocar: montaje (empujado de ${d0} a ${dUc(R, T)} casillas, dentro del alcance ${R.range})`);
+      ok(R.taunt === T && R.target === T, 'provocar: un empujón que lo deja a su alcance no rompe la provocación'); }
+    // 17) Misma semilla, mismo combate con empujadores y Guardianes en juego
+    { const a = [['3,0', 'bulbasaur', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', 'nidoranf', 1, [], 0, 0], ['3,3', K.r, 2, [], 0, 0]], b = [['3,0', 'squirtle', 2, [], 0, 0], ['2,0', 'machop', 2, [], 0, 0], ['4,0', K.b, 2, [], 0, 0], ['3,3', 'abra', 2, [], 0, 0]];
+      const log = () => { const cb = E.createCombatSnap({ ag: [], m: {}, u: a }, { ag: [], m: {}, u: b }, { s: 5, n: 2 }, { seed: 91 }); let s = ''; for (let i = 0; i < 900 && !cb.done; i++) { vmStep(cb); s += cb.units.map(u => `${u.c},${u.r},${u.hp.toFixed(3)},${cb.units.indexOf(u.target)},${cb.units.indexOf(u.taunt)}`).join('|') + ';'; } return s + cb.winner; };
+      ok(log() === log(), 'empujón: dos ejecuciones con la misma semilla dan el mismo registro de combate'); } }
   // 7) El daño no cambia: cuerpo a cuerpo de coste 3 a 2★ contra tanque de coste 3 a 2★ ≈ 89 por golpe
   { const bk = E.UNIT_LIST.find(u => u.role === 'b' && u.cost === 3).key, tk = E.UNIT_LIST.find(u => u.role === 't' && u.cost === 3).key;
     const src = E.baseCombatUnit(E.DEF[bk], 1, 2), tgt = E.baseCombatUnit(E.DEF[tk], 0, 2); tgt.hp = tgt.maxHp;

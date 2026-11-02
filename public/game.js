@@ -1112,6 +1112,9 @@ function shove(cb,e,c,r,k,away){
    for(const [nc,nr] of neighbors(e.c,e.r)){ if(!freeCell(cb,nc,nr,e)) continue; const d=hexDist(nc,nr,c,r); if(away?d>bd:d<bd&&d>0){ bd=d; best=[nc,nr]; } }
    if(!best) break; if(!moved){ e.pc=e.c; e.pr=e.r; e.mt=0; } [e.c,e.r]=best; moved=true;
  }
+ // Quien lo tenía de objetivo y lo pierde de su alcance por el empujón vuelve a elegir al más cercano (nearestEnemy en su turno) en vez de
+ // cruzar el mapa tras él, aunque sea un tanque: el empujón rompe también la provocación (Guardián, Provocar), que si no duraba todo el combate
+ if(moved) for(const x of cb.units) if(!x.dead&&x.side!==e.side&&x.target===e&&dU(x,e)>x.range){ x.target=null; if(x.taunt===e) x.taunt=null; }
  return moved;
 }
 // Efecto que se resuelve más tarde (golpes retardados, zonas que hacen daño por tics…)
@@ -1318,7 +1321,7 @@ function stepCombat(cb){
    if(u.mana>=u.maxMana){ u.mana=u.sp.refund||0; castAbility(cb,u,u.ab); continue; }
    let d=dU(u,u.target);
    // Como en TFT: el objetivo se mantiene mientras está a su alcance; si no lo está y otro enemigo sí, pasa a ese (no ignora al que tiene delante),
-   // y al caminar va a por el enemigo al que llega antes (nextStep con any: sin rodeos). Quien fue provocado (Guardián, Provocar) sigue yendo a por quien lo provocó.
+   // y al caminar va a por el enemigo al que llega antes (nextStep con any: sin rodeos). Quien fue provocado (Guardián, Provocar) sigue yendo a por quien lo provocó, salvo que un empujón se lo saque de su alcance (shove).
    const free=u.target!==u.taunt;
    if(d>u.range&&free){ const n=closerFoe(cb,u,u.range+1); if(n){ u.target=n; d=dU(u,n); } }
    if(d<=u.range){ u.atkCd-=DT; if(u.atkCd<=0){ u.atkCd=1/(u.as*(u.chillT>0?.65:1)*(u.rushT>0?u.rushMul:1)); attack(cb,u,u.target); } }
