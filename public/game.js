@@ -814,6 +814,8 @@ function note(p,msg,toastIt){
 const TAUNT_T=2; // provocar (Guardián y la habilidad) obliga a ir a por quien provoca durante 2 s; luego mandan las reglas del objetivo (si lo cambias, cambia el texto de Guardián en TRAITS)
 const DT=0.05, COMBAT_T=40, PREP_T=3, END_T=3; // duración máxima del combate (luego empate), preparación antes de pelear (las fichas se dan la vuelta hacia el rival) y finalización: segundos de más tras acabar el último combate antes de volver a tu tablero, para ver qué pasó
 const PLAN_T=30, AUG_T=45; // tiempos fijos (no se configuran): planificación de cada ronda y elección de aumento
+// La fase 1 es más corta: en la 1-1 no se puede comprar ni vender (4 s), en la 1-2 y la 1-3 hay poco que hacer (10 y 15 s); el resto, PLAN_T
+const PLAN_T1=[4,10,15], planTime=R=>R&&R.s===1&&PLAN_T1[R.n-1]||PLAN_T;
 function hexDist(c1,r1,c2,r2){ const x1=c1-(r1-(r1&1))/2, x2=c2-(r2-(r2&1))/2; const y1=-x1-r1,y2=-x2-r2; return Math.max(Math.abs(x1-x2),Math.abs(y1-y2),Math.abs(r1-r2)); }
 const dU=(a,b)=>hexDist(a.c,a.r,b.c,b.r);
 function neighbors(c,r){ const d=(r&1)?[[1,0],[-1,0],[1,-1],[0,-1],[1,1],[0,1]]:[[1,0],[-1,0],[0,-1],[-1,-1],[0,1],[-1,1]]; return d.map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<7&&b>=0&&b<8); }
@@ -1618,7 +1620,7 @@ function botAugPick(p,choices,stage){
 }
 function autoAugs(){ for(const p of alivePlayers()) if(!p.isBot&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } checkAugDone(); }
 function startPlanning(){
- const R=G.round; G.phase='planning'; G.timer=PLAN_T; // siempre 30 s: ya no hay «¡Listo!» para empezar antes ni se configura
+ const R=G.round; G.phase='planning'; G.timer=planTime(R); // 30 s (4/10/15 en la fase 1): ya no hay «¡Listo!» para empezar antes ni se configura
  G.preview=R.type==='pve'?pveWave(R.s,R.n):null;
  for(const p of G.players) p.ready=false;
  for(const p of alivePlayers()) if(p.isBot) botPlan(p);
@@ -3241,14 +3243,14 @@ let lastBeep=-1;
 function combatBanner(){ const el=$('cbBanner'); if(!el) return; el.innerHTML='<img src="img/ui/combate.webp" alt=""><span>¡Combate!</span>'; /* emblema (escudo y espadas) del mismo blanco azulado que las letras */ el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(combatBanner.t); combatBanner.t=setTimeout(()=>el.classList.remove('on'),1600); }
 function updatePhase(){
  let t=''; // Temporizador y barra de la planificación; en los últimos 5 s suena un aviso cada segundo
- const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=PLAN_T;
+ const plan=G.phase==='planning'&&isFinite(G.timer), sec=plan?Math.max(0,Math.ceil(G.timer)):-1, tot=planTime(G.round), hw=Math.min(5,Math.floor(tot/2)); // hw: segundos de aviso (en la 1-1, de 4 s, solo los 2 últimos)
  // En combate, cuenta atrás del combate que se está viendo (el tuyo o el que miras), como la barra de TFT
  const vc=G.phase==='combat'&&viewCombat(), left=vc&&!vc.done?Math.max(0,COMBAT_T-vc.t):-1, csec=left>=0?Math.ceil(left):-1;
  $('rbTimer').textContent=plan?sec:csec>=0?csec:G.phase==='combat'?'⚔':'·';
  // Reloj circular: se vacía durante la planificación y durante el combate
- const frac=plan?clamp(G.timer/tot,0,1):left>=0?clamp(left/COMBAT_T,0,1):G.phase==='combat'?1:0; $('rbRing').setAttribute('stroke-dashoffset',(100.5*(1-frac)).toFixed(1)); $('roundBar').classList.toggle('hurry',plan&&sec<=5||csec>=0&&csec<=5);
+ const frac=plan?clamp(G.timer/tot,0,1):left>=0?clamp(left/COMBAT_T,0,1):G.phase==='combat'?1:0; $('rbRing').setAttribute('stroke-dashoffset',(100.5*(1-frac)).toFixed(1)); $('roundBar').classList.toggle('hurry',plan&&sec<=hw||csec>=0&&csec<=5);
  const alive=G.players.filter(p=>p.alive).length; $('rbAlive').textContent=`👤 ${alive}/${G.players.length}`;
- if(plan&&sec<=5&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.hurry(sec); } if(!plan) lastBeep=-1;
+ if(plan&&sec<=hw&&sec>0&&sec!==lastBeep&&!modalOpen()){ lastBeep=sec; Music.hurry(sec); } if(!plan) lastBeep=-1;
  switch(G.phase){
   case 'planning': t=(isFinite(G.timer)?`Planificación · ${Math.max(0,Math.ceil(G.timer))}s`:'Planificación')+(G.mp&&G.me&&G.me.ready?' · esperando al resto':''); break;
   case 'combat': t=G.myOpp?`Combate contra ${G.myOpp}`:'Combates en curso'; break;
