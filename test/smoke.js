@@ -54,6 +54,17 @@ ready.then(() => server.listen(0, async () => {
   me = await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json();
   assert.strictEqual(me.user.trainer, 'squirtle');
   assert.deepStrictEqual(me.user.settings, { vol: 1 }, 'ajustes saneados');
+  { // Planificador: como mucho 5 composiciones, nombre corto sin etiquetas, hasta 10 claves válidas sin repetir y una sola encendida
+    const bad = [...Array(7)].map((_, i) => ({ n: '<b>Equipo ' + i + '</b>'.repeat(9), u: ['charmander', 'charmander', 'MAL CLAVE', 5, { a: 1 }, 'pichu', ...Array.from({ length: 20 }, (_, j) => 'k' + j)], on: true, x: 'basura' }));
+    assert.strictEqual((await post('/api/me', { settings: { vol: 1, plans: bad } }, cookieA)).status, 200, 'guardar composiciones');
+    const pl = (await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json()).user.settings.plans;
+    assert(pl.length === 5 && pl.filter(p => p.on).length === 1 && pl[0].on, 'máx. 5 composiciones y una encendida');
+    assert(pl.every(p => p.n.length <= 24 && !/[<>]/.test(p.n) && Object.keys(p).join() === 'n,u,on'), 'nombre saneado y sin campos extra');
+    assert.deepStrictEqual(pl[0].u.slice(0, 3), ['charmander', 'pichu', 'k0'], 'claves válidas, sin repetir');
+    assert(pl.every(p => p.u.length === 10), 'máx. 10 fichas por composición');
+    assert.strictEqual((await post('/api/me', { settings: { vol: 1, plans: 'no' } }, cookieA)).status, 200);
+    assert.deepStrictEqual((await (await fetch(url + '/api/me', { headers: { Cookie: cookieA } })).json()).user.settings, { vol: 1 }, 'composiciones que no son una lista: fuera');
+  }
   r = await post('/api/register', { user: 'Beto', pass: 'secreta2', trainer: 'charmander' });
   const cookieB = cookieOf(r);
   // cerrar sesión invalida la cookie

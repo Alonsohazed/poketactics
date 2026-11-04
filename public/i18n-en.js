@@ -883,4 +883,17 @@ Object.assign(I18N.EN, {
   "Atacan más rápido y, al derrotar a su objetivo, saltan al siguiente con un acelerón y recuperan maná (el maná, como mucho una vez cada {0} s).": "They attack faster and, on defeating their target, dash to the next one with a burst of speed and recover mana (the mana, at most once every {0} s).",
   "+{0}% de vel. de ataque · al matar: acelerón +{1}% {2} s y {3}% de maná": "+{0}% attack speed · on a kill: +{1}% dash for {2} s and {3}% mana",
   "+{0}% · acelerón +{1}% {2} s y {3}% de maná": "+{0}% · +{1}% dash for {2} s and {3}% mana",
+  // ----- Planificador de composiciones (noviembre de 2026) -----
+  "Planificador": "Planner", "Planificador de composiciones": "Team planner", "Mis equipos": "My teams", "Nuevo equipo": "New team", "Equipo": "Team",
+  "Guarda hasta {0} composiciones. Enciende el interruptor de una para que sus fichas salgan marcadas con una Poké Ball en la tienda.": "Save up to {0} teams. Turn one on to mark its units with a Poké Ball in the shop.",
+  "Toca una ficha para añadirla al equipo (hasta {0}) y tócala otra vez, o en su hueco, para quitarla. Con el interruptor encendido, sus fichas salen marcadas con una Poké Ball en la tienda.": "Tap a unit to add it to the team (up to {0}) and tap it again, or its slot, to remove it. With the switch on, its units are marked with a Poké Ball in the shop.",
+  "Sus fichas salen marcadas en la tienda": "Its units are marked in the shop", "Marcar sus fichas en la tienda": "Mark its units in the shop",
+  "Editar": "Edit", "Más opciones": "More options", "Copiar código": "Copy code", "Eliminar": "Delete", "Pegar equipo": "Paste team", "+ Nuevo": "+ New", "Añadir": "Add",
+  "Aún no tienes composiciones. Pulsa «+ Nuevo» para crear la primera.": "You have no teams yet. Press «+ New» to create your first one.",
+  "Pega aquí el código del equipo (PT1:…)": "Paste the team code here (PT1:…)", "Volver a Mis equipos": "Back to My teams",
+  "Filtro: todas las sinergias": "Filter: all traits", "Filtro": "Filter", "Ayuda": "Help", "Cerrar": "Close", "Cambiar el nombre": "Rename", "Nombre del equipo": "Team name", "Quitar": "Remove", "Deshacer": "Undo", "Limpiar": "Clear",
+  "{0}: {1} (siguiente escalón: {2})": "{0}: {1} (next tier: {2})", "En tu composición «{0}»": "In your team «{0}»",
+  "Como mucho {0} composiciones": "{0} teams at most", "El equipo ya tiene {0} fichas": "The team already has {0} units", "Código del equipo copiado": "Team code copied", "Ese código no es un equipo válido": "That code is not a valid team",
+  // ----- Coste 5 a 3★ (noviembre de 2026) -----
+  "Coste 5 a ★★★: empieza con el maná lleno, recupera {0} de maná por segundo y recibe un {1}% menos de daño.": "Cost 5 at ★★★: starts with full mana, regains {0} mana per second and takes {1}% less damage.",
 });

@@ -1760,6 +1760,111 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .pxb-main small,.pxb-alt small{font-size:12.5px}
 .pxbIc{width:54px;height:54px;object-fit:contain;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
 .pxb-main .pxbIc{width:50px;height:50px}
+/* ===== Planificador de composiciones (#planner, renderPlanner en game.js): «Mis equipos» y el editor, entre la barra de arriba y la tienda ===== */
+.planner{position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:60;width:min(1180px,calc(100vw - 24px));display:flex;max-height:calc(100vh - 90px)}
+.planner.hidden{display:none}
+.planner:has(.plListBox){width:min(720px,calc(100vw - 24px))}
+body:has(#menu:not(.hidden)) .planner,body:has(#auth:not(.hidden)) .planner{display:none}
+.plBox{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#1f2550,#12152e);border:2px solid #c9a24a;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.06);color:#e6e8f7;padding:12px 16px 14px}
+.plHead{display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(201,162,74,.35);margin-bottom:12px}
+.plHead h2{flex:1;margin:0;font-family:var(--display,inherit);font-weight:400;font-size:24px;letter-spacing:.6px;color:#f3d27a;display:flex;align-items:center;gap:10px;text-transform:uppercase;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.plX,.plBack{width:36px;height:36px;border:0;background:none;color:#fff;cursor:pointer;display:grid;place-items:center;padding:0;border-radius:8px;box-shadow:none}
+.plX svg,.plBack svg{width:24px;height:24px}
+.plX:hover,.plBack:hover{background:rgba(255,255,255,.08)}
+.plHelp{position:relative;flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1.5px solid #c9a24a;color:#f3d27a;font:800 13px/19px var(--pxFont,sans-serif);text-align:center;cursor:help;text-transform:none;letter-spacing:0;text-shadow:none}
+.plTip{display:none;position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);width:300px;background:#0d1024;border:1px solid #c9a24a;border-radius:10px;padding:10px 12px;color:#e6e8f7;font:600 13px/1.4 var(--pxFont,sans-serif);text-align:left;z-index:3;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.plHelp:hover .plTip,.plHelp:focus .plTip{display:block}
+.plBtn{border:1.5px solid #c9a24a;background:linear-gradient(180deg,#7b5bd6,#5a3fb3);color:#fff;font:800 14px var(--pxFont,sans-serif);letter-spacing:.6px;text-transform:uppercase;border-radius:999px;padding:8px 20px;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.plBtn.ghost{background:rgba(255,255,255,.07)}
+.plBtn:disabled{opacity:.4;cursor:default}
+.plBtn:not(:disabled):hover{filter:brightness(1.15)}
+.plTog{position:relative;width:54px;height:30px;flex:0 0 auto;border-radius:999px;border:1.5px solid #59607f;background:#2a2f4f;cursor:pointer;padding:0;transition:background .15s,border-color .15s;box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
+.plTog i{position:absolute;left:3px;top:50%;width:22px;height:22px;transform:translateY(-50%);transition:left .18s;filter:grayscale(1) brightness(.75)}
+.plTog i svg{width:100%;height:100%;display:block}
+.plTog.on{background:#2f7a4e;border-color:#7fe0a3}
+.plTog.on i{left:26px;filter:drop-shadow(0 0 4px rgba(255,255,255,.6))}
+.plRows{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:2px}
+.plRow{position:relative;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:9px 10px 9px 14px}
+.plRow.on{border-color:rgba(127,224,163,.65);background:rgba(127,224,163,.07)}
+.plRowMain{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:7px;background:none;border:0;color:inherit;cursor:pointer;padding:0;text-align:left;box-shadow:none}
+.plRowMain b{font-size:15px;font-weight:800;color:#f4f0ff;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plRowMain em{font-style:normal;color:#a2a8cf;font-weight:700}
+.plRowMain:hover b{color:#f3d27a}
+.plMini{display:flex;gap:4px;flex-wrap:wrap}
+.plDots{width:30px;height:36px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:8px;padding:0;box-shadow:none}
+.plDots i{width:4px;height:4px;border-radius:50%;background:#cfd3ee}
+.plDots:hover{background:rgba(255,255,255,.08)}
+.plMenu{position:absolute;right:8px;top:calc(100% - 8px);z-index:4;display:flex;flex-direction:column;min-width:170px;background:#0d1024;border:1px solid #c9a24a;border-radius:10px;padding:5px;box-shadow:0 10px 26px rgba(0,0,0,.55)}
+.plMenu button{background:none;border:0;color:#e6e8f7;text-align:left;font:700 14px var(--pxFont,sans-serif);padding:8px 10px;border-radius:7px;cursor:pointer;box-shadow:none}
+.plMenu button:hover{background:rgba(255,255,255,.08)}
+.plMenu button[data-act=del]{color:#ff8d8d}
+.plEmpty{color:#a2a8cf;text-align:center;padding:30px 10px;margin:0}
+.plFoot{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:12px}
+.plCnt{margin-right:auto;color:#a2a8cf;font-weight:800}
+.plPasteBox{display:flex;gap:8px;margin-top:10px}
+.plPasteBox.hidden{display:none}
+.plPasteBox input,.plName input{flex:1;min-width:0;background:#0d1024;border:1px solid #59607f;border-radius:10px;color:#fff;font:600 14px var(--pxFont,sans-serif);padding:8px 12px}
+.plPic{position:relative;display:block;width:58px;height:58px;border-radius:10px;overflow:hidden;background:#0a0d1c;flex:0 0 auto}
+.plPic img{width:100%;height:100%;object-fit:cover;display:block}
+.plPic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 2px var(--cc,#555);pointer-events:none}
+.plPic.mini{width:40px;height:40px;border-radius:8px}
+.plPic.empty{background:rgba(255,255,255,.04)}
+.plPic.empty::after{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.plPic.big{width:100%;height:auto;aspect-ratio:1}
+.plCols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 58px 330px;gap:14px}
+.plLeft{min-height:0;display:flex;flex-direction:column;gap:10px}
+.plFilter{display:flex;align-items:center;gap:8px;align-self:flex-start;background:#0d1024;border:1px solid #59607f;border-radius:10px;padding:5px 10px;color:#cfd3ee;cursor:pointer}
+.plFilter svg{width:17px;height:17px}
+.plFilter select{background:none;border:0;color:#fff;font:700 14px var(--pxFont,sans-serif);outline:0;cursor:pointer}
+.plFilter select option{background:#12152e;color:#fff}
+.plGrid{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-right:6px}
+.plCostRow{display:flex;gap:10px;align-items:flex-start}
+.plCost{flex:0 0 30px;display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:14px;color:var(--cc);font-weight:900;font-size:17px;text-shadow:0 1px 0 #000}
+.plCost img{width:18px;height:18px}
+.plUnits{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.plU{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0;cursor:pointer;color:#e6e8f7;box-shadow:none;min-width:0}
+.plU .plPic{width:100%;height:auto;aspect-ratio:1}
+.plU b{font-size:11px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plU .plTr{position:absolute;left:3px;top:3px;display:flex;flex-direction:column;gap:1px;z-index:1}
+.plU .plTr i{width:15px;height:17px;display:grid;place-items:center;background:linear-gradient(180deg,#3a4656,#18202b);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);color:#fff}
+.plU .plTr i svg{width:9px;height:9px;fill:currentColor}
+.plU:hover .plPic{filter:brightness(1.2)}
+.plU.in .plPic::after{box-shadow:inset 0 0 0 3px #ffd75e,inset 0 0 12px rgba(255,215,94,.5)}
+.plU.in b{color:#ffd75e}
+.plInBall{position:absolute;right:3px;top:3px;width:17px;height:17px;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+.plInBall svg{width:100%;height:100%;display:block}
+.plHexes{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:2px;overflow:auto;min-height:0}
+.plHex{position:relative;flex:0 0 auto;width:46px;height:52px;display:grid;place-items:center;background:linear-gradient(180deg,#2c3350,#171b30);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);color:#8d93b6}
+.plHex.on{background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 85%,#fff 15%),color-mix(in srgb,var(--tc) 60%,#000 40%));color:#fff}
+.plHex i{display:grid;place-items:center}
+.plHex i svg{width:22px;height:22px;fill:currentColor}
+.plHex b{position:absolute;bottom:4px;right:9px;font-size:12px;font-weight:900;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
+.plRight{min-height:0;display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
+.plName{display:flex;align-items:center;gap:8px}
+.plName b{flex:1;min-width:0;font-size:17px;font-weight:800;color:#f4f0ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plPen{width:30px;height:30px;flex:0 0 auto;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#f3d27a;cursor:pointer;display:grid;place-items:center;padding:0;box-shadow:none}
+.plPen svg{width:18px;height:18px}
+.plSlots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.plSlot{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0;color:#e6e8f7;box-shadow:none;min-width:0}
+.plSlot:not(.full){aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);display:grid;place-items:center}
+.plSlot:not(.full) i{width:42%;opacity:.16;filter:grayscale(1)}
+.plSlot i svg{width:100%;display:block}
+.plSlot.full{cursor:pointer}
+.plSlot.full b{font-size:10.5px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plSlot.full:hover .plPic{filter:brightness(.65)}
+.plRight .plFoot{margin-top:auto}
+.top #planBtn{margin-left:auto}.top #planBtn+#fsBtn{margin-left:0}
+#planBtn.on{box-shadow:inset 0 0 0 2px #ffd75e,0 0 12px rgba(255,215,94,.45)}
+/* Fichas del equipo encendido en la tienda: una Poké Ball arriba a la izquierda del retrato (las estrellas de subida se apartan a su derecha) */
+.card .planMark{position:absolute;left:calc(var(--ch,150px) * .05);top:calc(var(--ch,150px) * .04);z-index:5;width:calc(var(--ch,150px) * .17);height:calc(var(--ch,150px) * .17);filter:drop-shadow(0 1px 2px rgba(0,0,0,.85)) drop-shadow(0 0 5px rgba(255,90,90,.5));pointer-events:none}
+.card .planMark svg{width:100%;height:100%;display:block}
+.card.v2 .planMark~.upStars{left:calc(var(--ch,150px) * .26)}
+@media (max-width:900px){
+  .plCols{grid-template-columns:minmax(0,1fr) 50px;overflow:auto}
+  .plRight{grid-column:1/-1}
+  .plHex{width:40px;height:46px}
+  .plHead h2{font-size:19px}
+}
 </style>
 </head>
 <body>
@@ -1767,6 +1872,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 <header class="top">
   <div class="brand"><img class="brandLogo" src="img/logo.webp" alt="Poké Tactics · Autochess" width="900" height="252"></div>
   <div class="roundBar" id="roundBar"><div class="rbLeft"><div class="rbTitle" id="stage">Fase 1-1</div></div><div class="pills" id="pills"></div><span class="rbClock" title="Tiempo de planificación"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="16"/><circle class="fg" id="rbRing" cx="20" cy="20" r="16" stroke-dasharray="100.5" stroke-dashoffset="0"/></svg><b class="rbTimer" id="rbTimer">·</b></span><span class="rbAlive" id="rbAlive" hidden></span><div class="phase" id="phase"></div></div>
+  <button class="btn ghost icon" id="planBtn" title="Planificador de composiciones" aria-label="Planificador de composiciones"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9 2.5h6a1 1 0 0 1 1 1V4h2.5A1.5 1.5 0 0 1 20 5.5v15a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20.5v-15A1.5 1.5 0 0 1 5.5 4H8v-.5a1 1 0 0 1 1-1zM6.2 6.2v13.6h11.6V6.2H16V7a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-.8zM8 10.2h2.4v2.4H8zm4.2.3h3.8v1.8h-3.8zM8 14.6h2.4V17H8zm4.2.3h3.8v1.8h-3.8z"/></svg></button>
   <button class="btn ghost icon" id="fsBtn" title="Pantalla completa" aria-label="Pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.5V3.5h6v2.4H5.9v3.6zm11-6h6v6h-2.4V5.9H14.5zM3.5 14.5h2.4v3.6h3.6v2.4h-6zm15.6 0h2.4v6h-6v-2.4h3.6z"/></svg></button>
   <button class="btn ghost icon" id="menuBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
 </header>

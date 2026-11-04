@@ -735,3 +735,45 @@ test('cartas de la tienda: el coste va a la altura del nombre (las miniaturas de
   const r = await page.evaluate(() => [...document.querySelectorAll('#cards .card')].map(card => { const c = card.querySelector('.cc').getBoundingClientRect(), n = card.querySelector('.cn').getBoundingClientRect(); return Math.abs((c.top + c.height / 2) - (n.top + n.height / 2)) <= 2 && c.height < 40; }));
   expect(r).toEqual([true, true, true, true, true]);
 });
+
+test('planificador: crear, editar y guardar composiciones (máx. 5) y marcar sus fichas en la tienda con una Poké Ball', async ({ page }) => {
+  await jumpToRound(page, 4); // 2-1: ya se compra
+  await page.evaluate(() => { G.me.shop = ['charmander', 'pichu', 'gastly', 'bulbasaur', 'onix']; renderShop.key = null; renderUI(); });
+  await expect(page.locator('#planner')).toHaveCount(0);
+  await page.locator('#planBtn').click();
+  await expect(page.locator('#planner')).toBeVisible();
+  await expect(page.locator('#planner h2')).toContainText('Mis equipos');
+  await page.locator('#plNew').click();
+  // Solo las fichas de la tienda, por coste (sin evoluciones)
+  const grid = await page.evaluate(() => ({ n: document.querySelectorAll('#planner [data-add]').length, costs: [...document.querySelectorAll('#planner .plCost b')].map(b => +b.textContent), shop: UNIT_LIST.filter(u => !DEF[u.key].evoOf).length, evo: [...document.querySelectorAll('#planner [data-add]')].some(b => DEF[b.dataset.add].evoOf) }));
+  expect(grid.n).toBe(grid.shop); expect(grid.costs).toEqual([1, 2, 3, 4, 5]); expect(grid.evo).toBe(false);
+  for (const k of ['charmander', 'pichu', 'onix']) await page.locator(`#planner [data-add="${k}"]`).click();
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(3);
+  await page.locator('#planner [data-add="pichu"]').click(); // tocarla otra vez la quita
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(2);
+  await page.locator('#plUndo').click();
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(3);
+  // Sin encender, la tienda no marca nada; encendida, sus 3 fichas llevan la Poké Ball
+  await expect(page.locator('#cards .planMark')).toHaveCount(0);
+  await page.locator('#planner .plRight [data-tog]').click();
+  await expect(page.locator('#cards .planMark')).toHaveCount(3);
+  expect(await page.evaluate(() => [...document.querySelectorAll('#cards .card')].filter(c => c.querySelector('.planMark')).map(c => G.me.shop[+c.dataset.i]))).toEqual(['charmander', 'pichu', 'onix']);
+  // Nombre
+  await page.locator('#plPen').click();
+  await page.locator('#plNameIn').fill('Fuego <b>rápido</b>');
+  await page.locator('#plNameIn').press('Enter');
+  await expect(page.locator('#planner .plName b')).toHaveText('Fuego brápido/b');
+  // Lista: máx. 5 y al eliminar la encendida se quitan las marcas
+  await page.locator('#plBack').click();
+  for (let i = 0; i < 4; i++) { await page.locator('#plNew').click(); await page.locator('#plBack').click(); }
+  await expect(page.locator('#planner .plRow')).toHaveCount(5);
+  await expect(page.locator('#plNew')).toBeDisabled();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem(SETTINGS_KEY)).plans);
+  expect(saved.length).toBe(5); expect(saved[0]).toMatchObject({ u: ['charmander', 'pichu', 'onix'], on: true });
+  await page.locator('#planner [data-menu="0"]').click();
+  await page.locator('#planner .plMenu [data-act="del"]').click();
+  await expect(page.locator('#planner .plRow')).toHaveCount(4);
+  await expect(page.locator('#cards .planMark')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#planner')).toBeHidden();
+});

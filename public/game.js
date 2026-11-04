@@ -551,7 +551,7 @@ const combineKey=(a,b)=>RECIPE[rk(a,b)];
 
 /* =============================== [CORE] =============================== */
 let G=null, UID=1;
-let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal',lang:''};
+let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal',lang:'',plans:[]};
 // Sin DOM (servidor) no hay traducción: TR devuelve el español
 if(typeof TR!=='function'){ var TR=s=>s; var I18N={lang:'es',locale:'es-ES',set(){},pick:(es)=>es}; }
 if(typeof SHINY_RC==='undefined'){ var SHINY_RC={}, SHINY_ART=new Set(); } // shiny.js solo se carga en el navegador: el servidor no dibuja
@@ -2830,6 +2830,7 @@ function bindEvents(){
  document.addEventListener('pointerdown',e=>{ if(!e.target.closest('#augList,#augBar')) $('augList').hidden=true; });
  $('goldBox').addEventListener('click',e=>{ e.stopPropagation(); $('incomeInfo').hidden=!$('incomeInfo').hidden; });
  document.addEventListener('pointerdown',e=>{ if(!e.target.closest('#goldBox')) $('incomeInfo').hidden=true; });
+ $('planBtn').addEventListener('click',()=>plannerOpen()?closePlanner():showPlanner());
  $('fsBtn').addEventListener('click',()=>{ const d=document; try{ if(d.fullscreenElement) d.exitFullscreen(); else d.documentElement.requestFullscreen({navigationUI:'hide'}).catch(()=>toast('Tu navegador no permite la pantalla completa')); }catch(e){ toast('Tu navegador no permite la pantalla completa'); } });
  document.addEventListener('fullscreenchange',()=>{ $('fsBtn').classList.toggle('on',!!document.fullscreenElement); $('fsBtn').title=document.fullscreenElement?'Salir de pantalla completa':'Pantalla completa'; layout(); });
  $('ucard').addEventListener('click',e=>{
@@ -3394,7 +3395,8 @@ function renderShop(){
  // Comprarla completaría un 2★ (y, si ya hay dos 2★, un 3★)
  const need=k=>me.mods.cheapCombine&&DEF[k].cost===1?1:2, upTo=k=>(owned[k]||0)>=need(k)?((two[k]||0)>=need(k)?3:2):0;
  // Solo se rehacen las cartas si cambia algo (así no parpadean los retratos)
- const key=(me.eeveeForm||'')+me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0)+(have.has(k)?'h':'')+upTo(k):'_').join();
+ const pl=planOn(), plk=new Set(pl?pl.u:[]); // planificador: las fichas del equipo encendido salen marcadas
+ const key=(me.eeveeForm||'')+(pl?esc(pl.n):'')+me.shop.map((k,i)=>k?k+(canBuy(me,i)&&me.alive?'+':'-')+(owned[k]||0)+(have.has(k)?'h':'')+upTo(k)+(plk.has(k)?'p':''):'_').join();
  if(key!==renderShop.key){ renderShop.key=key;
    // Precarga los modelos 3D de la tienda y de la siguiente evolución de lo que tienes, para que no haya esperas
    if(window.B3&&B3.preload) B3.preload([...me.shop.filter(k=>k&&DEF[k]).map(k=>dexOf(DEF[k],1)),...allUnits(me).map(u=>dexOf(DEF[u.defId],Math.min(3,u.star+1)))]);
@@ -3403,7 +3405,7 @@ function renderShop(){
      const d=DEF[k], can=canBuy(me,i)&&me.alive, ak=shopArtKey(k), fo=CARD_ART[ak]&&(ART_FOCUS[ak]||ART_DEF);
      return `<button class="card c${d.cost} ${fo?'v2':''} ${can?'':'off'} ${have.has(k)?'owned':''}" data-i="${i}" data-tip="shop:${k}" aria-label="Comprar ${d.name} por ${d.cost}">
        ${fo?`<span class="art v2art"><img src="${CARD_ART[ak]}" alt="" style="--fx:${fo[0]/100};--fy:${fo[1]/100};--z:${fo[2]};--zr:${(fo[3]||Math.min(1.6,Math.max(1,52/fo[0]))).toFixed(2)}"></span>`:CARD_ART[shopArtKey(k)]?`<span class="art cardArt" style="background-image:url('${CARD_ART[shopArtKey(k)]}')"></span>`:`<span class="art bg-${elemOf(d)}"><i class="fx"></i></span><span class="pic">${portraitImg(dexOf(d,1))}</span>`}
-       <i class="frame"></i>${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
+       <i class="frame"></i>${plk.has(k)?`<span class="planMark" title="En tu composición «${esc(pl.n)}»">${PB_SVG}</span>`:''}${upTo(k)?`<span class="upStars s${upTo(k)}" title="Al comprarlo sube a ${upTo(k)} estrellas">${'★'.repeat(upTo(k))}</span>`:''}
        <span class="cn">${DEF[shopArtKey(k)].name}</span>
        <span class="tr">${d.traits.map(t=>`<span title="${t}"><i>${traitIcon(t)}</i>${t}</span>`).join('')}</span>
        <span class="cc">${d.cost}</span></button>`;
@@ -3700,6 +3702,78 @@ function showDex(cost){
  <div class="dexFilters">${[0,1,2,3,4,5].map(c=>`<button class="btn sm" data-c="${c}" aria-pressed="${c===cost}">${c?'Coste '+c:'Todos'}</button>`).join('')}</div>
  <div class="dexGrid">${list.map(d=>`<div class="dexCard c${d.cost}" data-tip="unit:${d.key}"><div class="forms">${d.names.map((n,i)=>`${i?'<span class="ar">›</span>':''}${dexSprite(d,d.names.length>2?52:64,i)}`).join('')}</div><b>${d.names.join(' › ')}</b><span class="t">${d.traits.join(' · ')}</span></div>`).join('')}</div>`,{closable:true,gx:true});
  $('mbox').querySelectorAll('.dexFilters button').forEach(b=>b.onclick=()=>showDex(+b.dataset.c));
+}
+// ===== Planificador de composiciones (en partida, botón #planBtn): «Mis equipos» (hasta PLAN_MAX) y el editor con las fichas de la tienda por coste,
+// filtro por sinergia, sinergias del equipo en hexágonos, 10 huecos, Limpiar y Deshacer. El equipo con el interruptor encendido (solo uno) marca sus
+// fichas en la tienda con una Poké Ball arriba a la izquierda. Se guarda en la cuenta con los ajustes (S.plans; el servidor lo valida en cleanPlans)
+const PLAN_MAX=5, PLAN_SIZE=10, PLAN={view:'list',i:0,filter:'',undo:[],menu:-1,edit:false};
+const planUnits=()=>UNIT_LIST.filter(u=>DEF[u.key]&&!DEF[u.key].evoOf); // solo lo que sale en la tienda, con su forma de la tienda (sin evoluciones)
+const planList=()=>{ if(!Array.isArray(S.plans)) S.plans=[]; S.plans=S.plans.filter(p=>p&&typeof p.n==='string'&&Array.isArray(p.u)).slice(0,PLAN_MAX); for(const p of S.plans) p.u=p.u.filter(k=>DEF[k]&&!DEF[k].evoOf).slice(0,PLAN_SIZE); return S.plans; };
+const planOn=()=>planList().find(p=>p.on)||null;
+const planSave=()=>{ planList(); saveSettings(); renderShop.key=null; if(G&&G.me&&$('cards')) renderShop(); };
+const planCode=p=>'PT1:'+p.u.join('.');
+function planParse(t){ const m=/PT1:([a-z0-9_.]*)/i.exec(String(t||'')); if(!m) return null; const ok=new Set(planUnits().map(u=>u.key)); const u=[...new Set(m[1].toLowerCase().split('.').filter(k=>ok.has(k)))].slice(0,PLAN_SIZE); return u.length?u:null; }
+const PB_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.2" fill="#fff" stroke="#14161c" stroke-width="1.8"/><path d="M1.8 12a10.2 10.2 0 0 1 20.4 0z" fill="#e3383f" stroke="#14161c" stroke-width="1.8"/><path d="M1.8 12h20.4" stroke="#14161c" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="#fff" stroke="#14161c" stroke-width="1.8"/></svg>';
+function planTraits(keys){ const c={}; for(const k of keys) for(const t of DEF[k].traits) c[t]=(c[t]||0)+1;
+ return Object.entries(c).map(([t,n])=>{ const bp=TRAITS[t]?TRAITS[t].bp:[]; let lv=0; bp.forEach((b,i)=>{ if(n>=b) lv=i+1; }); return {t,n,lv,next:bp.find(b=>b>n)||null}; }).sort((a,b)=>b.lv-a.lv||b.n-a.n||a.t.localeCompare(b.t,'es')); }
+function planThumb(k,cls){ const d=DEF[k]; return '<span class="plPic'+(cls?' '+cls:'')+'" style="--cc:'+COST_HEX[d.cost-1]+'"><img src="'+artThumb(k)+'" alt="" data-dex="'+String(dexOf(d,1)).split('/').pop()+'" decoding="async"></span>'; }
+function planEl(){ let el=$('planner'); if(el) return el; el=document.createElement('div'); el.id='planner'; el.className='planner hidden'; el.setAttribute('role','dialog'); el.setAttribute('aria-label','Planificador'); document.body.appendChild(el);
+ el.addEventListener('contextmenu',e=>e.preventDefault()); el.addEventListener('pointerdown',e=>{ if(PLAN.menu>=0&&!e.target.closest('.plMenu,.plDots')){ PLAN.menu=-1; renderPlanner(); } });
+ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&plannerOpen()&&!(e.target&&e.target.id==='plNameIn')) closePlanner(); });
+ return el; }
+function showPlanner(view){ if(view) PLAN.view=view; const L=planList(); if(PLAN.view==='edit'&&!L[PLAN.i]) PLAN.view='list'; PLAN.menu=-1; PLAN.edit=false; const el=planEl(); el.classList.remove('hidden'); $('planBtn')&&$('planBtn').classList.add('on'); renderPlanner(); planFit(); }
+// Entre la barra de arriba y la tienda, para que se vean las Poké Balls de las cartas mientras se planifica
+function planFit(){ const el=$('planner'); if(!el||el.classList.contains('hidden')) return; const tb=document.querySelector('.top'), sh=$('shopPanel');
+ const top=Math.round((tb&&tb.getBoundingClientRect().bottom||56)+8), sb=sh&&sh.getClientRects().length?sh.getBoundingClientRect().top:innerHeight; el.style.top=top+'px'; el.style.maxHeight=Math.max(260,Math.round((sb>top+260?sb:innerHeight)-top-8))+'px'; }
+if(!HEADLESS) addEventListener('resize',()=>planFit());
+function closePlanner(){ const el=$('planner'); if(el) el.classList.add('hidden'); PLAN.menu=-1; PLAN.edit=false; $('planBtn')&&$('planBtn').classList.remove('on'); if(typeof hideTip==='function') hideTip(); }
+const plannerOpen=()=>{ const el=$('planner'); return !!(el&&!el.classList.contains('hidden')); };
+function planNew(u){ const L=planList(); if(L.length>=PLAN_MAX){ toast('Como mucho '+PLAN_MAX+' composiciones'); return; } L.push({n:'Nuevo equipo',u:u||[],on:false}); PLAN.i=L.length-1; PLAN.undo=[]; PLAN.view='edit'; planSave(); renderPlanner(); }
+function planEdit(fn){ const p=planList()[PLAN.i]; if(!p) return; const before=JSON.stringify(p.u); fn(p); if(JSON.stringify(p.u)===before) return; PLAN.undo.push(before); if(PLAN.undo.length>40) PLAN.undo.shift(); planSave(); renderPlanner(); }
+function renderPlanner(){
+ const el=planEl(), L=planList(), X='<button class="plX" id="plClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>';
+ const help=t=>'<span class="plHelp" tabindex="0" aria-label="Ayuda">?<span class="plTip">'+t+'</span></span>';
+ const tog=(on,i)=>'<button class="plTog'+(on?' on':'')+'" data-tog="'+i+'" aria-pressed="'+on+'" title="'+(on?'Sus fichas salen marcadas en la tienda':'Marcar sus fichas en la tienda')+'"><i>'+PB_SVG+'</i></button>';
+ if(PLAN.view==='list'){
+   el.innerHTML='<div class="plBox plListBox"><div class="plHead"><h2>Mis equipos '+help('Guarda hasta '+PLAN_MAX+' composiciones. Enciende el interruptor de una para que sus fichas salgan marcadas con una Poké Ball en la tienda.')+'</h2>'+X+'</div>'+
+     '<div class="plRows">'+(L.length?L.map((p,i)=>'<div class="plRow'+(p.on?' on':'')+'"><button class="plRowMain" data-open="'+i+'" title="Editar"><b><span translate="no">'+esc(p.n)+'</span> <em>('+p.u.length+')</em></b><span class="plMini">'+Array.from({length:PLAN_SIZE},(_,j)=>p.u[j]?planThumb(p.u[j],'mini'):'<span class="plPic mini empty"></span>').join('')+'</span></button>'+tog(!!p.on,i)+
+       '<button class="plDots" data-menu="'+i+'" title="Más opciones" aria-label="Más opciones"><i></i><i></i><i></i></button>'+(PLAN.menu===i?'<div class="plMenu"><button data-act="edit" data-i="'+i+'">Editar</button><button data-act="copy" data-i="'+i+'">Copiar código</button><button data-act="del" data-i="'+i+'">Eliminar</button></div>':'')+'</div>').join(''):'<p class="plEmpty">Aún no tienes composiciones. Pulsa «+ Nuevo» para crear la primera.</p>')+'</div>'+
+     '<div class="plPasteBox hidden" id="plPasteBox"><input id="plPasteIn" placeholder="Pega aquí el código del equipo (PT1:…)" maxlength="400" autocomplete="off"><button class="plBtn" id="plPasteOk">Añadir</button></div>'+
+     '<div class="plFoot"><span class="plCnt">'+L.length+'/'+PLAN_MAX+'</span><button class="plBtn ghost" id="plPaste">Pegar equipo</button><button class="plBtn" id="plNew"'+(L.length>=PLAN_MAX?' disabled':'')+'>+ Nuevo</button></div></div>';
+ } else {
+   const p=L[PLAN.i], inTeam=new Set(p.u), all=planUnits(), units=all.filter(u=>!PLAN.filter||u.traits.includes(PLAN.filter)), tr=planTraits(p.u);
+   const byCost=[1,2,3,4,5].map(c=>[c,units.filter(u=>u.cost===c)]).filter(([,l])=>l.length);
+   const traitsAll=[...new Set(all.flatMap(u=>u.traits))].sort((a,b)=>a.localeCompare(b,'es'));
+   el.innerHTML='<div class="plBox plEditBox"><div class="plHead"><button class="plBack" id="plBack" title="Volver a Mis equipos" aria-label="Volver a Mis equipos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5l-7 7 7 7M20 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button><h2>Planificador '+help('Toca una ficha para añadirla al equipo (hasta '+PLAN_SIZE+') y tócala otra vez, o en su hueco, para quitarla. Con el interruptor encendido, sus fichas salen marcadas con una Poké Ball en la tienda.')+'</h2>'+X+'</div>'+
+     '<div class="plCols"><div class="plLeft"><label class="plFilter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg><select id="plFilter" aria-label="Filtro"><option value="">Filtro: todas las sinergias</option>'+traitsAll.map(t=>'<option value="'+t+'"'+(PLAN.filter===t?' selected':'')+'>'+t+'</option>').join('')+'</select></label>'+
+       '<div class="plGrid">'+byCost.map(([c,l])=>'<div class="plCostRow"><div class="plCost" style="--cc:'+COST_HEX[c-1]+'"><img src="img/ui/coin.png" alt=""><b>'+c+'</b></div><div class="plUnits">'+l.map(u=>'<button class="plU'+(inTeam.has(u.key)?' in':'')+'" data-add="'+u.key+'" data-tip="shop:'+u.key+'" aria-label="'+DEF[u.key].name+'">'+planThumb(u.key)+'<span class="plTr">'+u.traits.map(t=>'<i style="--tc:'+(TRAITS[t]?TRAITS[t].color:'#888')+'">'+traitIcon(t)+'</i>').join('')+'</span><b>'+DEF[u.key].name+'</b>'+(inTeam.has(u.key)?'<span class="plInBall">'+PB_SVG+'</span>':'')+'</button>').join('')+'</div></div>').join('')+'</div></div>'+
+       '<div class="plHexes">'+(tr.length?tr.slice(0,10).map(x=>'<span class="plHex'+(x.lv?' on':'')+'" title="'+x.t+': '+x.n+(x.next?' (siguiente escalón: '+x.next+')':'')+'" style="--tc:'+(TRAITS[x.t]?TRAITS[x.t].color:'#888')+'"><i>'+traitIcon(x.t)+'</i><b>'+x.n+'</b></span>').join(''):'<span class="plHex"></span><span class="plHex"></span><span class="plHex"></span>')+'</div>'+
+       '<div class="plRight"><div class="plName">'+(PLAN.edit?'<input id="plNameIn" maxlength="24" value="'+esc(p.n)+'" autocomplete="off" aria-label="Nombre del equipo">':'<button class="plPen" id="plPen" title="Cambiar el nombre" aria-label="Cambiar el nombre"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg></button><b translate="no">'+esc(p.n)+'</b>')+tog(!!p.on,PLAN.i)+'</div>'+
+         '<div class="plSlots">'+Array.from({length:PLAN_SIZE},(_,j)=>{ const k=p.u[j]; return k?'<button class="plSlot full" data-rm="'+j+'" title="Quitar">'+planThumb(k,'big')+'<b>'+DEF[k].name+'</b></button>':'<span class="plSlot"><i>'+PB_SVG+'</i></span>'; }).join('')+'</div>'+
+         '<div class="plFoot"><button class="plBtn ghost" id="plUndo"'+(PLAN.undo.length?'':' disabled')+'>Deshacer</button><button class="plBtn" id="plClear"'+(p.u.length?'':' disabled')+'>Limpiar</button></div></div></div></div>';
+ }
+ // Retrato: miniatura de la tienda y, si falla, el sprite de la Pokédex
+ el.querySelectorAll('.plPic img').forEach(im=>im.onerror=()=>{ im.onerror=null; im.src=dexUrl(im.dataset.dex); });
+ const q=s=>el.querySelector(s), on=(s,fn)=>{ const n=q(s); if(n) n.onclick=fn; };
+ on('#plClose',closePlanner); on('#plBack',()=>{ PLAN.view='list'; PLAN.edit=false; renderPlanner(); }); on('#plNew',()=>planNew());
+ on('#plPaste',async()=>{ let t=''; try{ t=await navigator.clipboard.readText(); }catch(e){} const u=planParse(t); if(u){ planNew(u); return; } const b=q('#plPasteBox'); b.classList.remove('hidden'); q('#plPasteIn').focus(); });
+ on('#plPasteOk',()=>{ const u=planParse(q('#plPasteIn').value); if(!u){ toast('Ese código no es un equipo válido'); return; } planNew(u); });
+ const pin=q('#plPasteIn'); if(pin) pin.onkeydown=e=>{ if(e.key==='Enter') q('#plPasteOk').click(); };
+ el.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ PLAN.i=+b.dataset.open; PLAN.view='edit'; PLAN.undo=[]; PLAN.edit=false; renderPlanner(); });
+ el.querySelectorAll('[data-tog]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const i=+b.dataset.tog, was=!!L[i].on; L.forEach(x=>x.on=false); L[i].on=!was; planSave(); renderPlanner(); });
+ el.querySelectorAll('[data-menu]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); PLAN.menu=PLAN.menu===+b.dataset.menu?-1:+b.dataset.menu; renderPlanner(); });
+ el.querySelectorAll('.plMenu [data-act]').forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const i=+b.dataset.i, a=b.dataset.act; PLAN.menu=-1;
+   if(a==='edit'){ PLAN.i=i; PLAN.view='edit'; PLAN.undo=[]; }
+   else if(a==='copy'){ const c=planCode(L[i]); try{ await navigator.clipboard.writeText(c); toast('Código del equipo copiado'); }catch(err){ toast(c); } }
+   else if(a==='del'){ L.splice(i,1); planSave(); } renderPlanner(); });
+ const fl=q('#plFilter'); if(fl) fl.onchange=()=>{ PLAN.filter=fl.value; renderPlanner(); };
+ el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const k=b.dataset.add; planEdit(p=>{ const i=p.u.indexOf(k); if(i>=0) p.u.splice(i,1); else if(p.u.length<PLAN_SIZE) p.u.push(k); else toast('El equipo ya tiene '+PLAN_SIZE+' fichas'); }); });
+ el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>planEdit(p=>p.u.splice(+b.dataset.rm,1)));
+ on('#plClear',()=>planEdit(p=>{ p.u.length=0; }));
+ on('#plUndo',()=>{ const p=L[PLAN.i], u=PLAN.undo.pop(); if(!p||!u) return; p.u=JSON.parse(u); planSave(); renderPlanner(); });
+ on('#plPen',()=>{ PLAN.edit=true; renderPlanner(); const i=q('#plNameIn'); if(i){ i.focus(); i.select(); } });
+ const ni=q('#plNameIn'); if(ni){ let gone=false; const done=ok=>{ if(gone) return; gone=true; const v=ni.value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,24); if(ok&&v) L[PLAN.i].n=v; PLAN.edit=false; if(ok) planSave(); renderPlanner(); };
+   ni.onkeydown=e=>{ if(e.key==='Enter') done(true); if(e.key==='Escape'){ e.stopPropagation(); done(false); } }; ni.onblur=()=>done(true); }
 }
 function showRecipes(){
  openModal(`<h1>Objetos</h1><p class="muted">Fila + columna = objeto. Pasa el cursor por una casilla para ver qué hace.</p>
@@ -4386,7 +4460,7 @@ const Scene={
 };
 
 const SETTINGS_KEY='pokeTactics.settings';
-const SYNCED=['vol','muted','timer','speed','theme','diff','lang'];
+const SYNCED=['vol','muted','timer','speed','theme','diff','lang','plans'];
 function loadSettings(){ try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(s) for(const k of SYNCED) if(k in s) S[k]=s[k]; }catch(e){} applyLang(); }
 // Idioma: el guardado o, si nunca se eligió, el del navegador; cambia todo el DOM al momento (I18N) y repinta lo que no pasa por él
 function applyLang(){ const l=S.lang==='en'||S.lang==='es'?S.lang:I18N.guess(); I18N.set(l); document.title=TR('Poké Tactics'); }

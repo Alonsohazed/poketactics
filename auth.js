@@ -72,7 +72,19 @@ function cleanSettings(s) {
   if (!s || typeof s !== 'object') return out;
   for (const [k, t] of Object.entries(SETTINGS_KEYS)) if (typeof s[k] === t && (t !== 'string' || s[k].length <= 12)) out[k] = s[k];
   if (typeof out.vol === 'number') out.vol = Math.min(1, Math.max(0, out.vol));
+  const pl = cleanPlans(s.plans); if (pl) out.plans = pl;
   return out;
+}
+// Composiciones del planificador: hasta 5, nombre corto sin etiquetas, hasta 10 claves de ficha distintas y como mucho una encendida
+function cleanPlans(a) {
+  if (!Array.isArray(a)) return null;
+  let on = false;
+  return a.filter(p => p && typeof p === 'object' && Array.isArray(p.u)).slice(0, 5).map(p => {
+    const n = String(typeof p.n === 'string' ? p.n : '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 24) || 'Equipo';
+    const u = [...new Set(p.u.filter(k => typeof k === 'string' && /^[a-z0-9_]{1,20}$/.test(k)))].slice(0, 10);
+    const o = p.on === true && !on; if (o) on = true;
+    return { n, u, on: o };
+  });
 }
 
 function createAuth(db, { trainers, presence, onFriends, onEevee }) {
