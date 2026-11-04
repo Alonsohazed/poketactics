@@ -38,9 +38,9 @@ const TRAITS={
  'Planta':T('🌿','#4caf50',[2,4],'Afecta a tus Pokémon Planta','Se curan solos durante el combate.',['Regeneran 1.5% de vida máx. por segundo','Regeneran 3.5% de vida máx. por segundo']),
  'Eléctrico':T('⚡','#d9b400',[2,4],'Afecta a tus Pokémon Eléctrico','Sobrecarga: sus habilidades cargan al equipo y, al completar la carga, sale un rayo en cadena gratis.',['+20% de vel. de ataque · cada 3 habilidades eléctricas, rayo a 3 enemigos','+40% de vel. de ataque · cada 2 habilidades, rayo a 5 enemigos que aturde 0,5 s']),
  'Psíquico':T('🔮','#e0569b',[2,4,6],'Afecta a tus Pokémon Psíquico (y a todo tu equipo con 6)','Ciclos de maná: al lanzar su habilidad, regalan maná al aliado que más lo necesita.',['+15 de poder · regalan 10 de maná','+30 de poder · regalan 20 de maná','+60 de poder · regalan 35 de maná · Todo tu equipo: +15 de poder']),
- 'Roca':T('🪨','#a08c5b',[2,3,4,5],'Afecta a tus Pokémon Roca (y a todo tu equipo desde 3)','Más defensa contra ataques físicos.',['Roca: +25 de defensa','Roca: +40 · Equipo: +5','Roca: +55 · Equipo: +10','Roca: +82 · Equipo: +19']),
+ 'Roca':T('🪨','#a08c5b',[2,3,4,5],'Afecta a tus Pokémon Roca (y a todo tu equipo desde 3)','Más defensa, resistencia y vida.',['Roca: +25 de defensa y resistencia, +10% de vida','Roca: +40 y +15% de vida · Equipo: +5 de defensa','Roca: +55 y +20% de vida · Equipo: +10 de defensa','Roca: +82 y +26% de vida · Equipo: +19 de defensa']),
  'Dragón':T('🐉','#6f5ce0',[2,3,4,5],'Afecta a tus Pokémon Dragón','Más vida y su daño crece cuanto más dura el combate.',['+150 de vida · +1,5% de daño por segundo (máx. +30%)','+225 de vida · +2% por segundo (máx. +40%)','+300 de vida · +2,5% por segundo (máx. +50%)','+420 de vida · +3,4% por segundo (máx. +68%)']),
- 'Fantasma':T('👻','#7b62a3',[2,4,6],'Afecta a tus Pokémon Fantasma','Esquivan ataques físicos.',['Esquivan el 15%','Esquivan el 30%','Esquivan el 45%']),
+ 'Fantasma':T('👻','#7b62a3',[2,4,6],'Afecta a tus Pokémon Fantasma','Esquivan ataques físicos y resisten la magia.',['Esquivan el 15% · +10 de resistencia','Esquivan el 30% · +25 de resistencia','Esquivan el 45% · +40 de resistencia']),
  'Hada':T('🧚','#e27bb9',[2,4,6],'Afecta a TODO tu equipo','Todo tu equipo empieza el combate con escudo.',['Escudo de 100 (8s)','Escudo de 220 (8s)','Escudo de 400 (8s)']),
  'Normal':T('⭕','#9a987f',[2,4,6],'Afecta a tus Pokémon Normal','Más resistentes y algo más rápidos.',['+120 de vida y +8% de vel. de ataque','+300 de vida y +15%','+550 de vida y +25%']),
  'Acero':T('🔩','#8a9bb0',[2,4],'Afecta a tus Pokémon Acero','Fortaleza: más defensa y resistencia, reciben menos daño y absorben parte del que va a los aliados que tienen al lado.',['+25 de defensa y resistencia · 15% menos de daño · absorben el 25% del daño de los aliados adyacentes','+50 de defensa y resistencia · 25% menos de daño · absorben el 40%']),
@@ -66,9 +66,9 @@ const PRISM={
  'Planta':[6,'Regeneran 6% de vida máx./s · todo tu equipo regenera 2%/s'],
  'Eléctrico':[6,'+70% de vel. de ataque · cada habilidad eléctrica lanza un rayo a 7 enemigos que aturde 1 s'],
  'Psíquico':[8,'+100 de poder · regalan 60 de maná · Todo tu equipo: +40 de poder'],
- 'Roca':[7,'Roca: +160 de defensa · Todo tu equipo: +50'],
+ 'Roca':[7,'Roca: +160 de defensa y resistencia y +40% de vida · Todo tu equipo: +50 de defensa'],
  'Dragón':[7,'+800 de vida · +6% de daño por segundo (máx. +150%)'],
- 'Fantasma':[8,'Esquivan el 60% de los ataques físicos'],
+ 'Fantasma':[8,'Esquivan el 60% de los ataques físicos · +55 de resistencia'],
  'Hada':[8,'Escudo de 700 (8s) para todo tu equipo'],
  'Normal':[8,'+900 de vida y +40% de vel. de ataque'],
  'Acero':[6,'+90 de defensa y resistencia · 40% menos de daño · absorben el 60% del daño de los aliados adyacentes'],
@@ -836,10 +836,10 @@ function applyTraits(u,traits,Tt,mods){
  if(has('Eléctrico')){ u.as*=1+tv('Eléctrico',[0,.2,.4,.7]); u.elecTier=Tt['Eléctrico']||0; }
  if(has('Psíquico')){ u.ap+=tv('Psíquico',[0,15,30,60,100]); u.psyMana=tv('Psíquico',[0,10,20,35,60]); }
  u.ap+=tv('Psíquico',[0,0,0,15,40]);
- if(has('Roca')) u.df+=tv('Roca',[0,25,40,55,82,160]);
+ if(has('Roca')){ u.df+=tv('Roca',[0,25,40,55,82,160]); u.mr+=tv('Roca',[0,25,40,55,82,160]); u.maxHp*=1+tv('Roca',[0,.1,.15,.2,.26,.4]); }
  u.df+=tv('Roca',[0,0,5,10,19,50]);
  if(has('Dragón')){ u.maxHp+=tv('Dragón',[0,150,225,300,420,800]); u.dragonRamp=tv('Dragón',[0,.015,.02,.025,.034,.06]); u.dragonCap=tv('Dragón',[0,.3,.4,.5,.68,1.5]); }
- if(has('Fantasma')) u.dodge+=tv('Fantasma',[0,.15,.3,.45,.6]);
+ if(has('Fantasma')){ u.dodge+=tv('Fantasma',[0,.15,.3,.45,.6]); u.mr+=tv('Fantasma',[0,10,25,40,55]); }
  u.startShield+=tv('Hada',[0,100,220,400,700]);
  if(has('Normal')){ u.maxHp+=tv('Normal',[0,120,300,550,900]); u.as*=1+tv('Normal',[0,.08,.15,.25,.4]); }
  if(has('Acero')){ const r=tv('Acero',[0,25,50,90]); u.df+=r; u.mr+=r; u.dr+=tv('Acero',[0,.15,.25,.4]); u.fort=tv('Acero',[0,.25,.4,.6]); }
