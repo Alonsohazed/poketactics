@@ -596,6 +596,8 @@ class Actor{
    this.fitH=!!spec.tac; this.ensure();
    if(spec.star){ if(this.star&&spec.star>this.star&&!spec.dead) this.evolve(spec.star,!!spec.tac); this.star=spec.star; }
    // Transformación de Mew (contador morph): distorsión de 0,7 s con destello rosa al tomar otra forma o volver a la suya
+   // Banco de Pandora (spec.pfx: instante en que esta ficha cambió por otra en su hueco): la misma distorsión, con chispas doradas y violetas
+   if(spec.pfx&&spec.pfx!==this.pfxN){ this.pfxN=spec.pfx; this.morphT=0; const q=W3(spec.x,spec.y,0).setY(TOP+.5); burst(q,['#ffd65a','#b48cff','#ffffff'],42,3.8,{up:2.4,size:.28}); burst(q,['#7a4cff','#ffd65a'],18,1.4,{up:.5,size:.42}); }
    if(spec.morph!=null){ if(this.morphN!=null&&spec.morph>this.morphN){ this.morphT=0; burst(this.root.position.clone().setY(TOP+.6),['#ff9ad8','#b48cff','#ffffff'],28,3.4,{up:2,size:.26}); } this.morphN=spec.morph; }
    const p=W3(spec.x,spec.y,0);
    // Solo se gira al caminar: los quietos (tablero y banquillo) miran siempre al frente y un salto grande (soltar una ficha, reajuste del tablero) es un teletransporte
@@ -1243,6 +1245,26 @@ function stepCount(c,now){
 }
 // Casillas cosméticas: el lado del dueño del tablero, sutil y quieto, con sus dos colores alternos
 let tileMesh=null, tileKey='', m4h=new THREE.Matrix4();
+// Banco de Pandora: las 3 casillas que transforman a sus fichas llevan un círculo rúnico dorado que gira, otro violeta al contrario y una columna de luz;
+// cuando una ficha cambia por otra, su casilla destella (crece el círculo y sube la columna) durante 0,9 s (hit: hueco → instante del cambio)
+let pandoraG=null;
+function stepPandora(slots,hit,now){
+ if(!slots||!board.G){ if(pandoraG) pandoraG.visible=false; return; }
+ if(pandoraG&&pandoraG.geo!==board.G){ scene.remove(pandoraG); pandoraG=null; }
+ if(!pandoraG){ pandoraG=new THREE.Group(); pandoraG.geo=board.G; pandoraG.m=[]; const s=board.G.bs/M.R;
+   const mk=(g,tex,sz,c)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(sz,sz),new THREE.MeshBasicMaterial({map:tex,color:c,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false})); m.rotation.x=-Math.PI/2; m.renderOrder=2; g.add(m); return m; };
+   board.G.bench.forEach(([x,y])=>{ const g=new THREE.Group(), p=W3(x,y); g.position.set(p.x,TOP+.015,p.z);
+     g.r1=mk(g,runeTex,s*1.08,'#ffcf5a'); g.r2=mk(g,runeTex2,s*.72,'#b48cff'); g.r2.position.y=.01;
+     const pil=new THREE.Mesh(new THREE.CylinderGeometry(s*.3,s*.4,1.5,24,1,true),addMat('#9a6cff')); pil.position.y=.75; g.add(pil); g.pil=pil;
+     g.visible=false; pandoraG.add(g); pandoraG.m.push(g); });
+   scene.add(pandoraG); }
+ pandoraG.visible=true; const t=performance.now();
+ pandoraG.m.forEach((g,i)=>{ const on=slots.includes(i); g.visible=on; if(!on) return;
+   const h=hit&&hit[i]?clamp((t-hit[i])/900,0,1):1, f=h<1?Math.sin(h*Math.PI):0, sc=1+f*.4;
+   g.r1.rotation.z=now*.6; g.r2.rotation.z=-now*.9; g.r1.scale.set(sc,sc,1);
+   g.r1.material.opacity=.6+.25*Math.sin(now*3+i)+f*.5; g.r2.material.opacity=.55+.3*Math.sin(now*4+i)+f*.5;
+   g.pil.material.opacity=.16+.08*Math.sin(now*2.5+i)+f*.65; g.pil.scale.set(1,1+f*.9,1); g.pil.position.y=.75*(1+f*.9); });
+}
 function stepTiles(c,now,drop){
  if(!c||drop||!hexMesh){ if(tileMesh) tileMesh.visible=false; return; }
  if(!tileMesh){ tileMesh=new THREE.InstancedMesh(hexMesh.geometry,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.2,depthWrite:false}),28); tileMesh.renderOrder=1; scene.add(tileMesh); tileKey=''; }
@@ -1262,6 +1284,7 @@ function render(F){
  if(FLAT&&curArena==='glade'){ benchPads.visible=!!(F.cells&&F.cells.drop)||!!(F.pandora&&F.pandora.length); benchPads.material.transparent=true; benchPads.material.opacity=F.pandora&&!(F.cells&&F.cells.drop)?.5:.3; benchPads.material.depthWrite=false; }
  hexRing.visible=F.arena!=='plaza'&&drop; hexMesh.visible=false;
  stepTiles(F.tiles,now,!!(F.cells&&F.cells.drop));
+ stepPandora(F.pandora,F.pandoraHit,now);
  stepCount(F.floorCount,now);
  // actores
  const pt0=performance.now(); const seen=new Set();

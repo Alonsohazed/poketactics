@@ -3059,6 +3059,17 @@ const carVis=new Map(); let carFrame=0, carVisT=0, carDt=0;
 function carPos(pid,x,y){ let v=carVis.get(pid); if(!v){ v={x,y,f:-1}; carVis.set(pid,v); } if(v.f!==carFrame){ const k=1-Math.exp(-carDt*(G.carousel&&G.carousel.mirror?7:15)); v.x+=(x-v.x)*k; v.y+=(y-v.y)*k; v.f=carFrame; } return [v.x,v.y]; }
 // Efecto de una vez al colocar una ficha que comparte sinergia: memoria de cada ficha del tablero (casilla y sinergias activas)
 const synMem=new WeakMap(); let synCtx='', synFrame=0; // m.last = último fotograma en que la ficha estaba en el tablero (entrar = no estaba en el anterior)
+// Banco de Pandora: al empezar cada ronda se transforman las fichas de los 3 últimos huecos del banquillo. Aquí se detecta el cambio (lo que había al
+// acabar la ronda anterior frente a lo que hay en los 3 primeros segundos de la nueva, misma estrella) para que la casilla destelle y la ficha haga
+// la distorsión de cambio de forma; solo dibujo: vale igual en la práctica y en multijugador, sin nada nuevo en la red. PDW.hit: hueco → instante del cambio
+const PDW={ri:-1,owner:null,base:null,defs:null,t0:0,hit:{}};
+function pandoraWatch(owner){
+ const slots=[BENCH-3,BENCH-2,BENCH-1], now=performance.now(), defs=slots.map(i=>{ const u=owner.bench[i]; return u&&!DEF[u.defId].anvil?u.defId+'|'+u.star:null; });
+ if(PDW.owner!==owner.id){ PDW.owner=owner.id; PDW.ri=G.roundIdx; PDW.defs=defs; PDW.base=null; return PDW.hit; }
+ if(PDW.ri!==G.roundIdx){ PDW.ri=G.roundIdx; PDW.base=PDW.defs; PDW.t0=now; }
+ if(PDW.base&&now-PDW.t0<3000) slots.forEach((i,j)=>{ const a=PDW.base[j], b=defs[j]; if(a&&b&&a!==b&&a.split('|')[1]===b.split('|')[1]){ PDW.hit[i]=now; PDW.base[j]=b; } });
+ PDW.defs=defs; return PDW.hit;
+}
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
  sceneLinks=[]; if(inCar){ const tn=performance.now(); carFrame++; carDt=Math.min(.1,(tn-carVisT)/1000); carVisT=tn; } else if(carVis.size) carVis.clear();
@@ -3099,7 +3110,8 @@ function sceneActors(){
    for(const o of stepOthers(inCombat)) A.push({key:'tac:'+o.p.id,tac:true,dex:tacDexC(o.p),trail:trailOf(o.p),star:tacStar(o.p),morph:o.p.mewN|0,x:o.x,y:o.y,face:o.face,cast:o.cast||0,tx:o.tx!=null?o.tx:null,ty:o.ty,ring:o.col,scale:.72*tacSize(o.p),hud:{}}); }
  else { tacOthers=[]; const C=G.carousel; for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null) continue; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); A.push({key:'tac:'+p.id,tac:true,hold:.45,dex:tacDexC(p),trail:trailOf(p),star:tacStar(p),morph:p.mewN|0,x:vx,y:vy+geo.R*.35,face:Math.PI,ring:p===me?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',scale:.62*tacSize(p),alpha:!a.rel&&!a.done?.55:1,hud:{}}); } }
  const benchOf=inCombat||inCar?me:viewedPlayer();
- (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},star:d.anvil?0:u.star,still:true,dex:shinyDex(u,dexOf(d,u.star)),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star,shiny:!!u.shiny}}); });
+ const pdh=!inCar&&!inCombat&&benchOf&&benchOf.mods&&benchOf.mods.pandoraBench?pandoraWatch(benchOf):null;
+ (inCar?[]:benchOf.bench).forEach((u,i)=>{ if(!u||(drag&&drag.moved&&drag.u===u)) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:u,u,loc:{i},pfx:pdh&&pdh[i]&&performance.now()-pdh[i]<900?pdh[i]:0,star:d.anvil?0:u.star,still:true,dex:shinyDex(u,dexOf(d,u.star)),x,y,face:0,ring:COST_HEX[d.cost-1],sel:selected===u,scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star,shiny:!!u.shiny}}); });
  // En combate, la banca del rival en sus losas (reflejo de la tuya respecto al centro del campo): se ve qué tiene guardado
  const opp=inCombat&&combatOpp(); if(opp){ const cy2=cellXY(0,0)[1]+cellXY(0,7)[1]; (opp.bench||[]).forEach((u,i)=>{ if(!u||!DEF[u.defId]) return; const [x,y]=benchXY(i), d=DEF[u.defId]; A.push({key:'ob'+opp.id+':'+i+':'+u.defId+':'+u.star+(u.shiny?':s':''),still:true,dex:shinyDex(u,dexOf(d,u.star)),x:geo.W-x,y:cy2-y,face:0,ring:COST_HEX[d.cost-1],scale:unitScale(d,u.star)*.9,hud:{items:u.items,star:d.anvil?0:u.star,shiny:!!u.shiny}}); }); }
  if(drag&&drag.moved){ const d=DEF[drag.u.defId]; A.push({key:drag.u,dex:shinyDex(drag.u,dexOf(d,drag.u.star)),x:drag.x,y:drag.y,face:0,drag:true,ring:'#ffffff',scale:unitScale(d,drag.u.star),hud:{star:drag.u.star,shiny:!!drag.u.shiny}}); }
@@ -3120,7 +3132,7 @@ function draw(){
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
  B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
-   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n2:(()=>{ const o=inCombat&&combatOpp(); return o?interestOf(o):0; })(),col2:(()=>{ const o=inCombat&&combatOpp(); return o?(cosD(o,'cr')||{}).c||null:null; })(),n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10)),col:(cosD(tP,'cr')||{}).c||null}:null,tiles:playing&&!inCar&&tP?(cosD(tP,'tl')||{}).c||null:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
+   floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,pandoraHit:PDW.owner===(tP&&tP.id)?PDW.hit:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n2:(()=>{ const o=inCombat&&combatOpp(); return o?interestOf(o):0; })(),col2:(()=>{ const o=inCombat&&combatOpp(); return o?(cosD(o,'cr')||{}).c||null:null; })(),n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10)),col:(cosD(tP,'cr')||{}).c||null}:null,tiles:playing&&!inCar&&tP?(cosD(tP,'tl')||{}).c||null:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
  if(inCar) drawCarouselHud(); else { drawBoardTrainers(); drawTotemIcons(); }
