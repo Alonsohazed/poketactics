@@ -1004,6 +1004,20 @@ body.fullField .boardInfo span:not(:empty){background:rgba(8,12,28,.6)}
 @keyframes evTagShine{0%,55%{left:-40%}100%{left:120%}}
 @keyframes evFree{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.08)}}
 @media (prefers-reduced-motion:reduce){ .mnEvTag,.mnEvTag b::after,.mnEvFree{animation:none} }
+/* Botón de PokeAcademy (enlace a la guía de composiciones), gemelo del Eevee del gacha a la derecha: el mismo halo dorado,
+   el emblema de PokeAcademy en el centro y el mismo cartel con brillo. Abre la guía en otra pestaña */
+.mnAcad{position:fixed;right:24px;top:58px;z-index:16;width:150px;height:170px;display:block;text-decoration:none;cursor:pointer}
+.mnAcad .halo,.mnAcad .em{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none}
+.mnAcad .halo{width:150px;height:150px;animation:mnHalo 3.6s ease-in-out infinite}
+.mnAcad .em{width:62px;height:62px;top:46%;filter:drop-shadow(0 8px 8px rgba(0,0,0,.5));transition:transform .15s,filter .15s}
+.mnAcad:hover .em,.mnAcad:focus-visible .em{transform:translate(-50%,-54%);filter:drop-shadow(0 0 2px #ffd75e) drop-shadow(0 0 12px rgba(255,215,94,.9)) brightness(1.06)}
+.mnAcad:hover .halo,.mnAcad:focus-visible .halo{filter:brightness(1.15) saturate(1.1)}
+.mnAcad:focus-visible{outline:none}
+.mnAcad:hover .mnEvTag b::after{animation-duration:1.4s}.mnAcad:hover .mnEvTag b{color:#fff2b0}
+.mnAcad .acLong{display:none}
+@media (prefers-reduced-motion:reduce){ .mnAcad .halo{animation:none} }
+/* En pantallas estrechas el menú va en columna y arriba no hay hueco: abajo a la derecha, como el Eevee abajo a la izquierda */
+@media (max-width:1099px){ .mnAcad{top:auto;bottom:62px} }
 /* Ventana de sugerencias y errores */
 .fbKinds{display:flex;gap:22px;margin:12px 0 10px}
 .fbText{display:block;width:100%;box-sizing:border-box;min-height:130px;resize:vertical;padding:10px 12px;border-radius:12px;border:1px solid var(--k-line,rgba(255,255,255,.15));background:var(--k-in,#121630);color:var(--k-tx,#e6e8f7);font:15px/1.4 Nunito,system-ui,sans-serif}
@@ -1696,6 +1710,8 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .pxb.mnDex:hover,.pxb.mnDex:focus-visible{box-shadow:inset 0 0 0 2px #f0d078,inset 0 0 0 4px #5a3f12,0 0 12px rgba(240,208,120,.45)}
 .pxb.mnDex img{width:36px;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 @media (min-width:1100px) and (min-height:760px){ .mnEevee{height:680px} .mnEevee .halo,.mnEevee .haloF{top:54%} .mnEevee .ev{top:50%} }
+/* En escritorio, PokeAcademy ocupa el hueco de la derecha entre «Amigos» y Clasificatoria/Normal, a la altura del Eevee */
+@media (min-width:1100px) and (min-height:760px){ .mnAcad{top:auto;right:104px;bottom:270px;width:340px;height:400px} .mnAcad .halo{width:300px;height:300px;top:56%} .mnAcad .em{width:132px;height:132px;top:55%} .mnAcad .acLong{display:inline}.mnAcad .acShort{display:none} }
 /* Ficha del menú (mnCard): copa del rango arriba, retrato redondo con marco dorado, nombre, dos recuadros (minileyenda → selector, arena) y el rango compacto */
 .tcard.mnCard{padding:30px 18px 16px;gap:6px;overflow:visible;background:linear-gradient(180deg,rgba(23,26,46,.72),rgba(15,17,32,.78));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)} /* algo translúcida: el fondo se adivina detrás */
 .tcard.mnCard .mnTag{display:none}
@@ -1841,6 +1857,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 
 <div id="menu" class="screen hidden">
   <button class="mnEevee" id="eeveeGacha" type="button" title="Gacha" aria-label="Gacha"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="ev" src="img/menu/eevee-go.webp" alt="" width="410" height="410" decoding="async"><img class="haloF" src="img/menu/halo-oro-frente.webp" alt="" width="560" height="560" decoding="async"><span class="mnEvTag" aria-hidden="true"><small>✦ Gacha ✦</small><b>¡Atrapa minileyendas!</b></span><span class="mnEvFree" aria-hidden="true">¡Tirada gratis!</span></button>
+  <a class="mnAcad" id="academyBtn" href="https://pokeacademy.pages.dev/" target="_blank" rel="noopener" title="PokeAcademy: guías de composiciones, objetos y aumentos" aria-label="PokeAcademy: mira las composiciones más fuertes"><img class="halo" src="img/menu/halo-oro.webp" alt="" width="560" height="560" decoding="async"><img class="em" src="img/menu/pokeacademy.svg" alt="" width="100" height="100" decoding="async"><span class="mnEvTag" aria-hidden="true"><small>✦ PokeAcademy ✦</small><b><span class="acLong">¡Mira las composiciones más fuertes!</span><span class="acShort">¡Mira las comps más fuertes!</span></b></span></a>
   <div class="mnTools" id="mnTools">
     <button class="btn ghost icon mnTool" id="optBtn" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M19.92 8.65L22.73 9.6v4.8l-2.81.95.05-.12 1.32 2.66-3.4 3.4-2.66-1.32.12-.05-.95 2.81H9.6l-.95-2.81.12.05-2.66 1.32-3.4-3.4 1.32-2.66.05.12-2.81-.95V9.6l2.81-.95-.05.12-1.32-2.66 3.4-3.4 2.66 1.32-.12.05.95-2.81h4.8l.95 2.81-.12-.05 2.66-1.32 3.4 3.4-1.32 2.66zM15.9 12a3.9 3.9 0 1 0-7.8 0 3.9 3.9 0 1 0 7.8 0z"/></svg></button>
     <button class="btn ghost icon mnTool" id="howBtn" title="Guía" aria-label="Guía"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.4 6.3C8.6 4.4 5.8 4.3 3 5.4v12c2.8-1.1 5.6-1 8.4.9zM12.6 6.3c2.8-1.9 5.6-2 8.4-.9v12c-2.8-1.1-5.6-1-8.4.9z"/><path d="M2 8.6h1v10.6c2.8-1.1 5.8-1 9 1.1 3.2-2.1 6.2-2.2 9-1.1V8.6h1V21H2z"/></svg></button>
