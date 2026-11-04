@@ -38,9 +38,9 @@ const TRAITS={
  'Planta':T('🌿','#4caf50',[2,4],'Afecta a tus Pokémon Planta','Se curan solos durante el combate.',['Regeneran 1.5% de vida máx. por segundo','Regeneran 3.5% de vida máx. por segundo']),
  'Eléctrico':T('⚡','#d9b400',[2,4],'Afecta a tus Pokémon Eléctrico','Sobrecarga: sus habilidades cargan al equipo y, al completar la carga, sale un rayo en cadena gratis.',['+20% de vel. de ataque · cada 3 habilidades eléctricas, rayo a 3 enemigos','+40% de vel. de ataque · cada 2 habilidades, rayo a 5 enemigos que aturde 0,5 s']),
  'Psíquico':T('🔮','#e0569b',[2,4,6],'Afecta a tus Pokémon Psíquico (y a todo tu equipo con 6)','Ciclos de maná: al lanzar su habilidad, regalan maná al aliado que más lo necesita.',['+15 de poder · regalan 10 de maná','+30 de poder · regalan 20 de maná','+60 de poder · regalan 35 de maná · Todo tu equipo: +15 de poder']),
- 'Roca':T('🪨','#a08c5b',[2,3,4,5],'Afecta a tus Pokémon Roca (y a todo tu equipo desde 3)','Más defensa contra ataques físicos.',['Roca: +25 de defensa','Roca: +40 · Equipo: +5','Roca: +55 · Equipo: +10','Roca: +82 · Equipo: +19']),
+ 'Roca':T('🪨','#a08c5b',[2,3,4,5],'Afecta a tus Pokémon Roca (y a todo tu equipo desde 3)','Más defensa, resistencia y vida.',['Roca: +25 de defensa y resistencia, +10% de vida','Roca: +40 y +15% de vida · Equipo: +5 de defensa','Roca: +55 y +20% de vida · Equipo: +10 de defensa','Roca: +82 y +26% de vida · Equipo: +19 de defensa']),
  'Dragón':T('🐉','#6f5ce0',[2,3,4,5],'Afecta a tus Pokémon Dragón','Más vida y su daño crece cuanto más dura el combate.',['+150 de vida · +1,5% de daño por segundo (máx. +30%)','+225 de vida · +2% por segundo (máx. +40%)','+300 de vida · +2,5% por segundo (máx. +50%)','+420 de vida · +3,4% por segundo (máx. +68%)']),
- 'Fantasma':T('👻','#7b62a3',[2,4,6],'Afecta a tus Pokémon Fantasma','Esquivan ataques físicos.',['Esquivan el 15%','Esquivan el 30%','Esquivan el 45%']),
+ 'Fantasma':T('👻','#7b62a3',[2,4,6],'Afecta a tus Pokémon Fantasma','Esquivan ataques físicos y resisten la magia.',['Esquivan el 15% · +10 de resistencia','Esquivan el 30% · +25 de resistencia','Esquivan el 45% · +40 de resistencia']),
  'Hada':T('🧚','#e27bb9',[2,4,6],'Afecta a TODO tu equipo','Todo tu equipo empieza el combate con escudo.',['Escudo de 100 (8s)','Escudo de 220 (8s)','Escudo de 400 (8s)']),
  'Normal':T('⭕','#9a987f',[2,4,6],'Afecta a tus Pokémon Normal','Más resistentes y algo más rápidos.',['+120 de vida y +8% de vel. de ataque','+300 de vida y +15%','+550 de vida y +25%']),
  'Acero':T('🔩','#8a9bb0',[2,4],'Afecta a tus Pokémon Acero','Fortaleza: más defensa y resistencia, reciben menos daño y absorben parte del que va a los aliados que tienen al lado.',['+25 de defensa y resistencia · 15% menos de daño · absorben el 25% del daño de los aliados adyacentes','+50 de defensa y resistencia · 25% menos de daño · absorben el 40%']),
@@ -66,9 +66,9 @@ const PRISM={
  'Planta':[6,'Regeneran 6% de vida máx./s · todo tu equipo regenera 2%/s'],
  'Eléctrico':[6,'+70% de vel. de ataque · cada habilidad eléctrica lanza un rayo a 7 enemigos que aturde 1 s'],
  'Psíquico':[8,'+100 de poder · regalan 60 de maná · Todo tu equipo: +40 de poder'],
- 'Roca':[7,'Roca: +160 de defensa · Todo tu equipo: +50'],
+ 'Roca':[7,'Roca: +160 de defensa y resistencia y +40% de vida · Todo tu equipo: +50 de defensa'],
  'Dragón':[7,'+800 de vida · +6% de daño por segundo (máx. +150%)'],
- 'Fantasma':[8,'Esquivan el 60% de los ataques físicos'],
+ 'Fantasma':[8,'Esquivan el 60% de los ataques físicos · +55 de resistencia'],
  'Hada':[8,'Escudo de 700 (8s) para todo tu equipo'],
  'Normal':[8,'+900 de vida y +40% de vel. de ataque'],
  'Acero':[6,'+90 de defensa y resistencia · 40% menos de daño · absorben el 60% del daño de los aliados adyacentes'],
@@ -841,10 +841,10 @@ function applyTraits(u,traits,Tt,mods){
  if(has('Eléctrico')){ u.as*=1+tv('Eléctrico',[0,.2,.4,.7]); u.elecTier=Tt['Eléctrico']||0; }
  if(has('Psíquico')){ u.ap+=tv('Psíquico',[0,15,30,60,100]); u.psyMana=tv('Psíquico',[0,10,20,35,60]); }
  u.ap+=tv('Psíquico',[0,0,0,15,40]);
- if(has('Roca')) u.df+=tv('Roca',[0,25,40,55,82,160]);
+ if(has('Roca')){ u.df+=tv('Roca',[0,25,40,55,82,160]); u.mr+=tv('Roca',[0,25,40,55,82,160]); u.maxHp*=1+tv('Roca',[0,.1,.15,.2,.26,.4]); }
  u.df+=tv('Roca',[0,0,5,10,19,50]);
  if(has('Dragón')){ u.maxHp+=tv('Dragón',[0,150,225,300,420,800]); u.dragonRamp=tv('Dragón',[0,.015,.02,.025,.034,.06]); u.dragonCap=tv('Dragón',[0,.3,.4,.5,.68,1.5]); }
- if(has('Fantasma')) u.dodge+=tv('Fantasma',[0,.15,.3,.45,.6]);
+ if(has('Fantasma')){ u.dodge+=tv('Fantasma',[0,.15,.3,.45,.6]); u.mr+=tv('Fantasma',[0,10,25,40,55]); }
  u.startShield+=tv('Hada',[0,100,220,400,700]);
  if(has('Normal')){ u.maxHp+=tv('Normal',[0,120,300,550,900]); u.as*=1+tv('Normal',[0,.08,.15,.25,.4]); }
  if(has('Acero')){ const r=tv('Acero',[0,25,50,90]); u.df+=r; u.mr+=r; u.dr+=tv('Acero',[0,.15,.25,.4]); u.fort=tv('Acero',[0,.25,.4,.6]); }
@@ -1368,6 +1368,10 @@ const BOT_SKILL={
  avanzado:{lvl:1,reserve:-10,rolls:3,randBuy:0,smart:true},
  experto:{lvl:1,reserve:-10,rolls:3,randBuy:0,smart:true,econ:true,carry:true},
  maestro:{lvl:2,reserve:-10,rolls:6,randBuy:0,smart:true,econ:true,carry:true},
+ // Bots con nivel continuo (botQ de 0 a 1, sale del MMR en Clasificatoria; ver botPlanV2). Los presets solo sirven para pruebas:
+ // humano = un jugador promedio (compra fuera de plan y monta objetos al azar); liga = el nivel lo pone p.botQ
+ humano:{plan:1,q:.3,offPlan:.25,style:'azar',noComp:true},
+ intermedio2:{plan:1,q:.3}, experto2:{plan:1,q:.6}, profesional:{plan:1,q:.85}, liga:{plan:1},
 };
 const DIFF_SKILL={facil:'principiante',normal:'intermedio',dificil:'avanzado'};
 const botSkill=p=>BOT_SKILL[p.skill]||BOT_SKILL[DIFF_SKILL[G.diff]||'intermedio'];
@@ -1429,6 +1433,7 @@ function botEquip(p){
 }
 function botPlan(p){
  const R=G.round, s=R.s, K=botSkill(p);
+ if(K.plan) return botPlanV2(p);
  let tgt=s===1?3:s===2?(R.n<=3?4:5):s===3?(R.n<=2?6:7):s===4?8:s===5?9:10;
  if(K.lvl<0) tgt=Math.max(2,tgt+K.lvl);
  if(K.lvl>0&&s>=3) tgt=Math.min(10,tgt+(R.n>=4||K.lvl>1?1:0));
@@ -1443,6 +1448,167 @@ function botPlan(p){
  while(rolls<maxRolls&&(p.freeRerolls>0||p.gold-2>=reserve)){ reroll(p); rolls++; botShop(p,reserve); }
  while(p.freeRerolls>0){ reroll(p); botShop(p,reserve); }
  botArrange(p); botEquip(p);
+}
+// ---- Bots con nivel continuo (botQ): solo decisiones, nunca estadísticas ----
+// q va de 0 (Hierro) a 1 (Retador) y sale del MMR del asiento (botsFor en competitive.js), con variación entre asientos: en la
+// misma partida unos bots son algo mejores que otros. Cada bot tiene además un estilo con los objetos (botStyle):
+//  · azar: combina componentes como salgan y se los da a cualquiera (jugador que no entiende); dominante con q bajo
+//  · slam: forja en cuanto puede aunque no sea el objeto perfecto, para ganar rondas (tempo)
+//  · greedy: guarda componentes para los objetos exactos de su composición; pierde más rondas pero es más fuerte al completarla
+//  · equilibrado: forja objetos de la lista de su carry y suelta el resto a partir de la fase 3
+// Con q alto juegan las composiciones de PokeAcademy (BOT_COMPS), las disputan aunque otros las jueguen, colocan como la guía y,
+// con racha de victorias, suben de nivel antes gastando economía para mantenerla
+// [id, nivel, carry, objetos del carry, fichas «clave@fila,col» (fila 0 = primera línea), aumentos recomendados, aumento necesario]
+const BOT_COMPS=[
+ ['marea-de-kyogre','S','kyogre','moon+specs+wise','lapras@0,3 shellder@0,2 mimejr@0,4 poliwag@0,6 slowpoke@1,3 hatenna@3,3 kyogre@3,0 staryu@3,6','corriente concentracion lagrimas baston_serafin montones_stats master bolsa_urf epoca',''],
+ ['mente-maestra','S','mewtwo','moon+specs+wise','mimejr@0,3 drowzee@0,2 slowpoke@0,4 staryu@2,6 ralts@3,2 mewtwo@3,3 hatenna@3,4 abra@3,0','concentracion legado_arceus master equipo_imposible hambre_oro lagrimas montones_stats estudio_paciente',''],
+ ['tormenta-electrica','B','shinx','band+blood+sharp','voltorb@0,3 larvitar@0,2 elekid@0,4 shinx@0,6 magnemite@2,3 rowlet@3,3 zapdos@3,0 pichu@3,6','sobrecarga h_raichu loto acelerador gracia_retador relampago abrir_camino ultraball',''],
+ ['furia-dragon','B','gible','band+blood+sharp','bagon@0,3 larvitar@0,2 duskull@0,4 gible@0,6 horsea@3,2 staryu@3,4 dratini@3,5 rayquaza@3,0','equipo_imposible emb_clase fuego_concentrado ascension escalada_final ultraball vanguardia prodigio',''],
+ ['hadas-sanadoras','B','hatenna','moon+specs+wise','lapras@0,3 igglybuff@0,2 mimejr@0,4 togepi@2,2 cleffa@2,4 misdreavus@3,1 hatenna@3,3 ralts@3,5','legion_tres h_clefable aguante orbes_curativos2 armadura_argumental grande_poderoso baston_serafin emb_doble',''],
+ ['llama-espectral','B','litwick','moon+specs+wise','magmar@0,3 larvitar@0,2 duskull@0,4 growlithe@0,0 ponyta@0,6 houndour@3,3 litwick@3,1 moltres@3,5','combustion h_charizard fuego_concentrado baston_serafin montones_stats master corrosion prodigio',''],
+ ['aura-implacable','B','riolu','band+rage+sharp','hitmonchan@0,3 onix@0,2 cubone@0,4 poliwag@0,5 magnemite@3,2 rowlet@3,4 staryu@3,5 riolu@3,0','h_lucario loto exceso_garras acelerador crianza profesor_pokemon bolsa_heroica formacion_kanto',''],
+ ['depredadores','C','absol','band+blood+sharp','larvitar@0,3 duskull@0,4 absol@0,0 ponyta@0,6 scyther@1,1 growlithe@1,5 gible@1,3 shinx@3,3','reparto2 bolsita loto relampago bolsa_heroica cazadores crianza exceso_garras',''],
+ ['peleadores','C','machop','blood+titan+band','machop@0,3 poliwag@0,2 hitmonchan@0,4 cubone@0,1 charmander@0,5 nidoranm@1,3 elekid@1,4','h_machamp h_charizard evolucion_temprana academia crianza companero lecciones_boxeo grande_poderoso',''],
+ ['casa-embrujada','C','litwick','moon+specs+wise','duskull@0,3 bagon@0,4 gimmighoul@1,3 gastly@2,2 misdreavus@3,3 hatenna@3,4 litwick@3,0 rowlet@3,6','legion_tres aguante baston_serafin montones_stats emb_clase armadura_argumental bolsa_urf epoca',''],
+ ['rocas-colosales','B','staryu','band+rage+sharp','groudon@0,3 larvitar@0,2 onix@0,4 rhyhorn@0,1 nidoranf@0,5 magnemite@3,2 rowlet@3,0 staryu@3,6','grande_poderoso lecciones_boxeo montones_stats exceso_huesos guardaespaldas armadura_argumental emb_clase legado_arceus',''],
+ ['team-rocket','X','gastly','moon+specs+wise','grimer@0,3 drowzee@0,2 magikarp@0,4 zorua@0,6 sableye@1,5 houndour@3,3 meowth@3,5 gastly@3,0','h_gengar pacto_rocket h_meowth monetizacion crianza bolsa_heroica mercado_negro baston_serafin',''],
+ ['arcana-prismatica','A','litwick','moon+specs+wise','duskull@0,3 bagon@0,2 magmar@0,4 slowpoke@1,3 litwick@3,0 hatenna@3,2 oddish@3,4 horsea@3,5 darkrai@3,6','emb_clase flexible baston_serafin lagrimas montones_stats legion_tres master prodigio',''],
+ ['muralla-guardiana','A','staryu','em_coat+band+rage','larvitar@0,3 duskull@0,2 turtwig@0,4 mimejr@0,1 shellder@0,5 munchlax@1,3 lugia@1,4 staryu@3,6 rowlet@3,0','emb_clase guardaespaldas grande_poderoso armadura_argumental montones_stats lecciones_boxeo aguante legion_tres',''],
+ ['lluvia-de-flechas','B','rowlet','band+rage+sharp','larvitar@0,3 duskull@0,4 riolu@2,1 magnemite@3,1 pichu@3,4 staryu@3,2 zapdos@3,5 rowlet@3,6','emb_clase loto exceso_garras acelerador canon_cristal manten_linea ultraball gracia_retador',''],
+ ['pesos-pesados','C','magikarp','band+blood+titan','groudon@0,3 rhyhorn@0,2 grimer@0,4 larvitar@0,5 beldum@0,1 magikarp@1,3 magmar@1,4 geodude@1,2','emb_clase grande_poderoso exceso_huesos montones_stats lecciones_boxeo guardaespaldas ultraball legion_tres',''],
+ ['noche-eterna','C','zorua','band+blood+sharp','grimer@0,3 duskull@0,2 absol@0,0 zorua@0,6 sableye@1,5 gible@1,1 houndour@3,2 darkrai@3,4','emb_clase loto relampago cazadores ultraball legion_tres bolsita monetizacion',''],
+ ['unicornios','X','gible','band+blood','cubone@0,3 larvitar@0,2 lapras@0,4 gible@0,6 litwick@3,2 magnemite@3,4 meowth@3,6','diferente montones_stats grande_poderoso aguante ultraball bolsa_urf gracia_retador acelerador','diferente'],
+ ['leyendas-unidas','X','mewtwo','moon+specs+wise','lugia@0,3 slowpoke@0,2 mimejr@0,4 magnemite@1,1 kyogre@3,1 mewtwo@3,3 ralts@3,4 staryu@3,5 zapdos@3,6','equipo_imposible master expedicion duo_legendario escalada_final montones_stats hambre_oro estudio_paciente','equipo_imposible'],
+ ['el-elegido','X','magikarp','blood+titan+band','magikarp@0,3 shellder@0,2 lapras@0,4 drowzee@0,1 grimer@0,5 zorua@1,6 poliwag@1,2 staryu@3,4','h_gyarados corriente grande_poderoso montones_stats pacto_rocket lecciones_boxeo aguante ultraball','h_gyarados'],
+ ['psicoacademia','X','abra','moon+specs+wise','slowpoke@0,3 drowzee@0,2 mimejr@0,4 gastly@3,1 houndour@3,2 abra@3,3 hatenna@3,5','h_alakazam concentracion crianza evolucion_temprana reencuentros baston_serafin lagrimas academia','h_alakazam'],
+ ['fiebre-del-oro','C','gimmighoul','moon+specs+wise','duskull@0,3 sableye@0,5 gastly@3,1 misdreavus@3,4 gimmighoul@3,3 litwick@3,0 rowlet@3,6 meowth@2,2','h_meowth hambre_oro monetizacion amuleto2 espectro legion_tres oro21 estudio_paciente',''],
+ ['evolucion-imparable','A','dratini','band+rage+sharp','larvitar@0,3 bagon@0,2 charmander@0,4 nidoranm@0,5 nidoranf@0,1 bulbasaur@1,3 squirtle@1,2 dratini@3,3','crianza evolucion_temprana reencuentros academia entreno_diario h_charizard grande_poderoso favorito',''],
+ ['bosque-profundo','C','rowlet','band+rage+sharp','turtwig@0,3 bulbasaur@0,2 chikorita@0,4 larvitar@0,5 lapras@0,1 oddish@3,3 ralts@3,4 rowlet@3,6','fotosintesis grande_poderoso orbes_curativos2 aguante armadura_argumental legion_tres montones_stats bolsita',''],
+ ['normalidad-absoluta','C','rattata','band+blood+sharp','munchlax@0,3 igglybuff@0,2 ditto@0,4 eevee@0,5 rattata@0,6 lapras@0,1 meowth@3,3 gible@1,5','crianza evolucion_temprana reencuentros academia profesor_pokemon companero grande_poderoso aguante',''],
+].map(([id,tier,carry,items,units,augs,req])=>({id,tier,carry,items:items?items.split('+'):[],units:units.split(' ').map(x=>{ const [k,pos]=x.split('@'), [r,c]=pos.split(',').map(Number); return {k,key:c+','+r}; }),keys:new Set(units.split(' ').map(x=>x.split('@')[0])),augs:new Set(augs.split(' ')),req:req?req.split(' '):[]}));
+const BOT_TIER_W={S:4,A:3,B:2,C:1};
+// Objetos de daño que sirven a cualquier carry físico o mágico (lista de objetos de PokeAcademy): el carry los acepta tras los de su rol
+const BOT_DMG_AD=['scarf','band','rage','blood','sharp','justice','expert','twin','razorfang','hook'], BOT_DMG_AP=['justice','soothe','sharp','moon','expert','specs','wise','charcoal','energy'];
+const botQ=p=>p.botQ!=null?p.botQ:(BOT_SKILL[p.skill]&&BOT_SKILL[p.skill].q!=null?BOT_SKILL[p.skill].q:.5);
+function botStyle(p){
+ if(p.botStyle) return p.botStyle; const K=botSkill(p); if(K.style) return p.botStyle=K.style;
+ const q=botQ(p), r=Math.random(), az=.8*(1-q)*(1-q);
+ return p.botStyle=r<az?'azar':r<az+.35?'slam':Math.random()<.4?'greedy':'equilibrado';
+}
+// Curva de nivel por fases (4 en 2-1, 5 en 2-5, 6 en 3-2, 7 en 3-5, 8 en 4-1, 9 en 5-1)
+const BOT_CURVE=[[2,1,4],[2,5,5],[3,2,6],[3,5,7],[4,1,8],[5,1,9]];
+const botTempo=p=>botQ(p)>=.7&&p.streak>=2&&G.round.s>=2&&G.round.s<=4; // racha de victorias: los buenos aceleran
+function botTargetLevel(p){
+ const R=G.round, q=botQ(p); let t=3; for(const [s,n,l] of BOT_CURVE) if(R.s>s||(R.s===s&&R.n>=n)) t=l;
+ if(q<.25&&R.s>=3) t--; // los flojos suben tarde
+ if(botTempo(p)) t=Math.min(9,t+1); // mantener la racha vale más que el interés
+ if(t>=9&&p.gold<(q>=.75?30:50)) t=8;
+ return t;
+}
+// Oro que no se toca: con q alto, 50 de interés y gran gasto en 4-1/4-2; con q bajo, poco criterio
+function botFloor(p){
+ const R=G.round, s=R.s, q=botQ(p); if(s<=1) return 0;
+ let f=q>=.35?(s===2?(R.n<=3?10:30):50):q>=.15?Math.min(50,Math.floor(p.gold/10)*10):Math.min(20,Math.floor(p.gold/10)*10);
+ if(q>=.5&&s===4&&R.n<=2) f=q>=.8?10:20;
+ if(q>=.75&&s>=5&&p.level>=8) f=Math.min(f,30);
+ if(botTempo(p)) f=Math.min(f,20);
+ const keepLoss=q>=.55&&p.streak<=-3&&p.hp>=40; // racha de derrotas con vida de sobra: se guarda el oro
+ const lim=p.hp<20?0:p.hp<35?10:p.hp<50?(keepLoss?f:30):f;
+ return Math.min(f,lim);
+}
+// Composición objetivo: la que mejor encaja con lo que tiene más la fuerza de la composición (cuanto mejor el bot, más pesa);
+// los flojos eligen casi al azar o no eligen. Se compromete desde 3-2 (los buenos) o desde la fase 4 (los demás)
+function botPickComp(p){
+ const R=G.round, q=botQ(p); if(q<.15||botSkill(p).noComp||R.s<2||(R.s===2&&R.n<5)) return p.botComp||null;
+ if(p.botComp&&(R.s>=4||(R.s===3&&R.n>=2&&q>=.4))) return p.botComp;
+ const all=allUnits(p); let best=null, bs=-1e9;
+ for(const c of BOT_COMPS){ if(c.req.length&&!c.req.every(id=>p.augments.includes(id))) continue;
+   let sc=0; for(const u of all) if(c.keys.has(u.baseId)) sc+=DEF[u.defId].cost*u.star+(u.baseId===c.carry?4*u.star:0);
+   sc+=(c.tier==='X'?(c.req.length?4:1):BOT_TIER_W[c.tier])*q*1.5+(Math.random()-.5)*(1-q)*6; if(sc>bs){ bs=sc; best=c; } }
+ return p.botComp=best;
+}
+// Sinergia de respaldo (sin composición): la que más pesa entre sus fichas
+function botPlanTrait(p){
+ const w={}; for(const u of allUnits(p)){ const d=DEF[u.defId]; if(d.anvil) continue; for(const t of d.traits) if(t!=='Legendario'&&TRAITS[t]&&TRAITS[t].bp[0]>=2) w[t]=(w[t]||0)+d.cost*u.star; }
+ const t=Object.entries(w).sort((a,b)=>b[1]-a[1])[0]; return p.botPlanT=t?t[0]:null;
+}
+function botShopV2(p,floor){
+ const K=botSkill(p), q=botQ(p), comp=p.botComp, planT=botPlanTrait(p), adh=.4+.6*q; let bought=true, guard=0;
+ while(bought&&guard++<10){
+   bought=false; const all=allUnits(p), s=G.round.s;
+   for(let i=0;i<5;i++){
+     const k=p.shop[i]; if(!k) continue; const d=DEF[k], copies=all.filter(u=>u.baseId===k).length, inComp=!!comp&&comp.keys.has(k);
+     let want=(inComp&&Math.random()<adh)||(!!planT&&d.traits.includes(planT)&&(!comp||q<.6))||(copies>0&&(q<.5||inComp||d.cost>=3||s<=3))||all.length<maxBoard(p)+1||(d.cost>=4&&p.level>=7&&q<.8);
+     if(Math.random()<(K.offPlan||.35*(1-q)*(1-q))) want=!want&&p.gold>d.cost+10; // a veces compra lo que le gusta, no lo que necesita
+     // Los buenos disputan su composición: el carry y las parejas se compran aunque baje del mínimo de oro
+     const urgent=copies>=2||(q>=.6&&inComp&&(k===comp.carry||copies>=1));
+     if(!want||p.gold-d.cost<(urgent?0:floor)) continue;
+     if(!canBuy(p,i)&&!botMakeRoom(p,k)) continue;
+     if(buy(p,i)) bought=true;
+   }
+ }
+}
+// Tablero: prioriza las fichas de su composición y las pone donde dice la guía; el resto como siempre
+function botArrangeV2(p){
+ const q=botQ(p), comp=q>=.3?p.botComp:null, units=allUnits(p), all=units.filter(u=>!DEF[u.defId].anvil), anv=units.filter(u=>DEF[u.defId].anvil);
+ p.board={}; p.bench=Array(BENCH).fill(null);
+ const counts=traitCountsOf(all), val=u=>botValue(u,counts)+(comp&&comp.keys.has(u.baseId)?2+6*q:0);
+ all.sort((a,b)=>val(b)-val(a));
+ const n=p.level+p.mods.boardBonus+all.filter(u=>u.items.includes('master')).length, chosen=[], rest=[], seen=new Set();
+ for(const u of all){ if(chosen.length<n&&!seen.has(u.defId)){ chosen.push(u); seen.add(u.defId); } else rest.push(u); }
+ while(chosen.length<n&&rest.length) chosen.push(rest.shift());
+ const free=[]; for(const u of chosen){ const spot=comp&&comp.units.find(x=>x.k===u.baseId&&!p.board[x.key]); if(spot) p.board[spot.key]=u; else free.push(u); }
+ if(q<.15) for(const u of free){ const ks=shuffle([0,1,2,3].flatMap(r=>[0,1,2,3,4,5,6].map(c=>c+','+r))).filter(k=>!p.board[k]); if(ks[0]) p.board[ks[0]]=u; }
+ else for(const u of free) placeBot(p,u);
+ // Sin composición, el carry (el que más objetos lleva) a una esquina trasera
+ if(!comp&&q>=.3){ const ks=Object.keys(p.board), car=ks.map(k=>p.board[k]).filter(u=>!['t','b'].includes(DEF[u.defId].role)).sort((a,b)=>b.items.length-a.items.length)[0];
+   if(car){ const from=ks.find(k=>p.board[k]===car), to=['0,3','6,3'].find(k=>k!==from); if(from&&to&&!['0,3','6,3'].includes(from)){ const o=p.board[to]; p.board[to]=car; if(o) p.board[from]=o; else delete p.board[from]; } } }
+ for(const u of rest.concat(anv)){ const j=p.bench.findIndex(x=>!x); if(j>=0) p.bench[j]=u; else { p.gold+=sellValue(u); returnToPool(u.baseId,Math.pow(3,u.star-1)); for(const it of u.items) giveItem(p,it); } }
+}
+// Vende lo que no aporta (desde q medio): sin pareja, sin objetos, fuera del plan y barato; los muy buenos guardan las parejas
+function botSellWeak(p){
+ const q=botQ(p), s=G.round.s; if(q<.45||s<3) return; const comp=p.botComp, planT=p.botPlanT;
+ for(let i=0;i<p.bench.length;i++){ const u=p.bench[i]; if(!u) continue; const d=DEF[u.defId]; if(d.anvil||u.items.length) continue;
+   const same=countSame(p,u.baseId,u.star); if(q>=.7&&same>=2) continue;
+   const keep=(comp&&comp.keys.has(u.baseId))||(!comp&&planT&&d.traits.includes(planT));
+   if(same<2&&!keep&&d.cost<=(s>=4?3:2)) sellAt(p,{i}); }
+}
+// Objetos según el estilo. Carry = el de su composición o la mejor ficha que no es tanque; sus objetos, los de la guía o los de su rol
+function botEquipV2(p){
+ const st=botStyle(p), q=botQ(p), R=G.round; if(st==='azar') return botEquip(p);
+ const comp=p.botComp, units=boardUnits(p), counts=traitCountsOf(allUnits(p)), tankR=u=>['t','b'].includes(DEF[u.defId].role);
+ const score=u=>botValue(u,counts)+(comp&&comp.keys.has(u.baseId)?3:0)+u.items.length*3;
+ const listOf=u=>{ const role=DEF[u.defId].role, r=[...new Set((GLOVE_BIS[role]||GLOVE_BIS.r).concat(['m','h'].includes(role)?BOT_DMG_AP:BOT_DMG_AD))]; return comp&&u.baseId===comp.carry?comp.items.concat(r.filter(k=>!comp.items.includes(k))):r; };
+ let carry=(comp&&units.find(u=>u.baseId===comp.carry))||units.find(u=>u.uid===p.botCarry&&!tankR(u)); if(!carry) carry=units.filter(u=>!tankR(u)).sort((a,b)=>score(b)-score(a))[0]; if(carry) p.botCarry=carry.uid;
+ const tank=units.filter(tankR).sort((a,b)=>score(b)-score(a))[0], c2=q>=.7?units.filter(u=>!tankR(u)&&u!==carry).sort((a,b)=>score(b)-score(a))[0]:null;
+ // ¿Forjar ya? slam siempre; con racha de victorias (los buenos) o poca vida, también; greedy espera a los objetos exactos
+ const slam=st==='slam'||botTempo(p)||p.hp<55||R.s>=4, exact=st==='greedy'&&!slam;
+ const best=list=>{ for(const k of list){ if(p.items.includes(k)) return {k}; const f=ITEMS[k]&&ITEMS[k].from; if(!f) continue;
+   const a=p.items.indexOf(f[0]), b=p.items.findIndex((x,j)=>x===f[1]&&j!==a); if(a>=0&&b>=0) return {k,f}; } return null; };
+ const give=(u,list)=>{ if(!u) return; let g=0; while(u.items.length<3&&g++<3){ const o=best(list.filter(k=>!u.items.includes(k))); if(!o) break;
+   if(o.f){ p.items.splice(p.items.indexOf(o.f[0]),1); p.items.splice(p.items.indexOf(o.f[1]),1); } else p.items.splice(p.items.indexOf(o.k),1);
+   if(!addItemToUnit(u,o.k).ok){ p.items.push(o.k); break; } } };
+ if(carry) give(carry,exact?listOf(carry).slice(0,3):listOf(carry)); give(tank,exact?GLOVE_BIS.t.slice(0,3):GLOVE_BIS.t); if(c2) give(c2,listOf(c2));
+ // Lo que sobra: slam lo forja ya para quien le sirva; equilibrado desde la fase 3; greedy solo desde la fase 4 o con poca vida
+ if(!(slam||(st==='equilibrado'&&R.s>=3)||p.items.length>=6)) return;
+ const comps=p.items.filter(k=>ITEMS[k].comp), rest=p.items.filter(k=>!ITEMS[k].comp);
+ while(comps.length>=2){ const a=comps.pop(), b=comps.pop(), k=combineKey(a,b); if(k) rest.push(k); else { comps.push(a); break; } }
+ const others=units.filter(u=>u!==carry&&u!==c2).sort((a,b)=>score(b)-score(a)), left=[];
+ for(const it of rest){ const u=others.find(x=>x.items.length<3&&(GLOVE_BIS[DEF[x.defId].role]||[]).includes(it))||others.find(x=>x.items.length<3);
+   if(!(u&&addItemToUnit(u,it).ok)) left.push(it); }
+ p.items=[...left,...comps];
+}
+function botPlanV2(p){
+ const R=G.round; botPickComp(p); const floor=botFloor(p), tgt=botTargetLevel(p), q=botQ(p);
+ const lf=Math.max(0,floor-(q>=.5?20:10)); let g=0; while(p.level<tgt&&p.gold-xpCost(p)>=lf&&g++<40) if(!buyXp(p)) break;
+ botShopV2(p,floor);
+ // Refrescos: gran gasto en 4-1/4-2 (desde q medio), con poca vida, buscando mejoras desde la fase 5 (los muy buenos)
+ // y, desde la fase 3, el oro que pasa de 20 sobre el mínimo (por encima de 50 ya no da interés)
+ const roll=(q>=.5&&R.s===4&&R.n<=2)||p.hp<35||(q>=.75&&R.s>=5&&p.level>=8);
+ const stop=roll?floor:R.s>=3&&p.gold>floor+20?floor+10:Infinity;
+ let rolls=0; while(rolls<30&&p.gold>=2&&p.gold-2>=stop){ reroll(p); rolls++; botShopV2(p,floor); }
+ while(p.freeRerolls>0){ reroll(p); botShopV2(p,floor); }
+ botArrangeV2(p); botSellWeak(p); botEquipV2(p);
 }
 
 /* ============================ [AUGMENTS] ============================ */
@@ -1574,6 +1740,7 @@ function buildRounds(){
  return R;
 }
 const ROUNDS=buildRounds();
+// opts.bots[i] = {skill, q?, cs}: con q (Clasificatoria) el bot usa el nivel continuo botPlanV2 (skill 'liga', p.botQ)
 function newGame(opts={}){
  loadB3();
  if(!HEADLESS&&!opts.auto&&typeof guardBack==='function') guardBack();
@@ -1586,7 +1753,7 @@ function newGame(opts={}){
  for(const h of (opts.humans||[])){ const p=makePlayer(id++,String(h.nick||'Entrenador').slice(0,14),false,'🧢',h.tr); if(TACS[h.tr]) p.tac=h.tr; p.cs=String(h.cs||'').slice(0,200); p.remote=true; p.peer=h.peer; G.players.push(p); }
  const usados=G.players.map(p=>p.name);
  // opts.taken (servidor): nombre de una cuenta real; un rival generado nunca se llama como una persona
- while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; bp.cs=bs&&typeof bs.cs==='string'?bs.cs.slice(0,200):(!HEADLESS&&typeof COSM!=='undefined'?COSM.botEquip():''); bp.botIdx=G.players.length; G.players.push(bp); }
+ while(G.players.length<8){ let n=generateBotName(usados); const no=[]; for(let k=0;k<20&&opts.taken&&opts.taken(n);k++){ no.push(n); n=generateBotName(usados.concat(no)); } usados.push(n); const bp=makePlayer(id++,n,true,pick(NM_AVATARS),''); const bs=(opts.bots||[])[G.players.length-(opts.humans||[]).length-(opts.server?0:1)]; if(bs&&BOT_SKILL[bs.skill]) bp.skill=bs.skill; if(bs&&typeof bs.q==='number'&&isFinite(bs.q)){ bp.skill='liga'; bp.botQ=Math.max(0,Math.min(1,bs.q)); } bp.cs=bs&&typeof bs.cs==='string'?bs.cs.slice(0,200):(!HEADLESS&&typeof COSM!=='undefined'?COSM.botEquip():''); bp.botIdx=G.players.length; G.players.push(bp); }
  // En el servidor no hay jugador local: G.me es un espectador fantasma fuera de la lista
  G.me=opts.server?Object.assign(makePlayer(-1,'',true,''),{alive:false}):G.players[0];
  note(null,`Empieza la partida (dificultad: ${DIFF_NAME[G.diff]}). ¡Suerte, entrenador!`);
@@ -1624,8 +1791,10 @@ function nextRound(){
 function checkAugDone(){ if(G.phase==='augment'){ for(const p of alivePlayers()) if(p.away&&!p.augPicked&&p.augChoices){ applyAugment(p,AUG_BY[pick(p.augChoices)]); p.augPicked=true; } } // el ausente no hace esperar a los demás: se le aplica al azar lo que se aplicaría al acabar el plazo
  if(G.phase==='augment'&&alivePlayers().every(p=>p.isBot||p.augPicked)){ if(NET.modal==='aug') closeModal(); startPlanning(); } }
 function botAugPick(p,choices,stage){
- if(!botSkill(p).smart||!choices.length) return pick(choices);
- const top=topTrait(p), score=id=>{ const a=AUG_BY[id]; let s=Math.random()*.5; if(stage===0&&['econ','fast','slow','streak'].includes(a.cat)) s+=2; if(top&&(a.tags||[]).includes(top)) s+=3;
+ const K=botSkill(p), q=K.plan?botQ(p):null;
+ if(!(K.smart||(q!=null&&q>=.25))||!choices.length) return pick(choices);
+ // Los bots de nivel continuo eligen además los aumentos de su composición (más cuanto mejores son) y con menos azar
+ const top=topTrait(p), comp=q!=null&&p.botComp, score=id=>{ const a=AUG_BY[id]; let s=Math.random()*.5*(q!=null?1.5-q:1); if(comp&&comp.augs.has(id)) s+=2+3*q; if(stage===0&&['econ','fast','slow','streak'].includes(a.cat)) s+=2; if(top&&(a.tags||[]).includes(top)) s+=3;
    if(stage>0&&['trait','emblem','carry'].includes(a.cat)) s+=1.5; if(a.hero&&allUnits(p).some(u=>u.baseId===a.hero)) s+=2.5; if(a.req&&!a.req(p)) s-=9; return s; };
  return choices.slice().sort((x,y)=>score(y)-score(x))[0];
 }

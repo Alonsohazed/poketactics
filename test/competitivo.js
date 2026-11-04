@@ -187,7 +187,8 @@ ready.then(() => server.listen(0, async () => {
     const room = [...rooms.values()].find(r => r.seats.some(s => s.uid === X.id));
     ok(room && room.mode === 'ranked' && room.botInfo.length === 7 && room.matchId, 'la sala clasificatoria tiene id de partida y 7 bots');
     const G = room.game.G; ok(G.players.filter(p => p.isBot).length === 7 && G.players.filter(p => p.isBot).every(p => !/bot|🤖/i.test(p.name) && p.skill), 'los rivales no se delatan en el nombre y tienen nivel');
-    ok(G.players.filter(p => p.isBot).every(p => ['avanzado', 'experto', 'maestro'].includes(p.skill)), 'bots de Clasificatoria de nivel alto');
+    ok(G.players.filter(p => p.isBot).every(p => p.skill === 'liga' && p.botQ >= 0 && p.botQ <= 1), 'bots de Clasificatoria con nivel continuo según el MMR (botQ)');
+    ok(C.botsFor('ranked', [2000], 7).reduce((s, b) => s + b.q, 0) > C.botsFor('ranked', [1000], 7).reduce((s, b) => s + b.q, 0) + 3, 'a más MMR, bots de más nivel');
     // resultado real: se fuerza la eliminación en el motor del servidor y se espera el registro
     const res = []; sx.on('result', d => res.push(d));
     const meP = G.players.find(p => p.peer === sx.id); meP.hp = -999; G.timer = 0;

@@ -427,9 +427,9 @@ HERO({id:'h_dusknoir',tier:'S',w:.6,req:()=>!!(G.round&&G.round.s>=3),name:'Últ
    for(const e of cb2.units) if(!e.dead&&e.side!==side&&dU(v,e)<=2) dealDamage(cb2,v,e,v.maxHp*.45,'magic',false);
    for(const a of cb2.units) if(!a.dead&&a.side===side){ a.shield+=350; a.shieldT=Math.max(a.shieldT,4); } fxText(cb2,v,'¡Último Suspiro!','#b07cff'); }); }},'duskull',1);
 // Nuevos
-AG({id:'diferente',tier:'G',cat:'rules',name:'Diferente',icon:'🦄',desc:'Tus Pokémon sin ninguna sinergia activa ganan +400 de vida y +45% de vel. de ataque.',
+AG({id:'diferente',tier:'G',cat:'rules',name:'Diferente',icon:'🦄',desc:'Tus Pokémon sin ninguna sinergia activa ganan +400 de vida y +45% de vel. de ataque, y por cada uno de ellos todos ganan además +60 de vida, +3% de vel. de ataque, +4% de daño y +3 de defensa y resistencia.',
  snap:c=>{ const Tt=traitTiers(c.p); const ks=Object.entries(c.p.board).filter(([k,u])=>unitTraits(u).every(t=>!Tt[t])).map(([k])=>k); return ks.length?ks:null; },
- combat:(us,ks)=>{ if(!Array.isArray(ks)) return; for(const u of us) if(ks.includes(u.bk)) boost(u,{hpf:400,as:.45}); },
+ combat:(us,ks)=>{ if(!Array.isArray(ks)) return; const k=ks.length; for(const u of us) if(ks.includes(u.bk)) boost(u,{hpf:400+60*k,as:.45+.03*k,dmg:.04*k,df:3*k}); }, // escala con las fichas sin sinergia: premia la composición entera
  ui:c=>{ const Tt=traitTiers(c.p); return `Pokémon sin sinergia: ${boardUnits(c.p).filter(u=>unitTraits(u).every(t=>!Tt[t])).length}`; }});
 AG({id:'entreno_combate',tier:'S',cat:'carry',tags:['carry'],req:p=>boardUnits(p).length>0,name:'Entrenamiento de Combate',icon:'🏋️',desc:'Elige un Pokémon de tu tablero: gana +3 de ataque, +4,5 de poder y +20 de vida permanentes por cada combate que juegue en tu tablero.',
  on:{select:c=>c.offer('Entrenamiento de Combate','Elige a quién entrenar',boardUnits(c.p).slice(0,4).map(u=>({t:`${nameOf(DEF[u.defId],u.star)} ${'★'.repeat(u.star)}`,i:'🏋️',d:'',v:String(u.uid)}))),
