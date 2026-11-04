@@ -801,3 +801,30 @@ test('arenas por tipo: se elige en el menú, se guarda y en un combate PvP los a
   expect(r.hud).toEqual([...r.mine, ...r.opp]);
   expect(r.b[0]).toBeGreaterThan(r.a[0] + 200); // el trofeo del rival está a la derecha
 });
+
+test('planificador desde el menú: se abre con su botón, se crea un equipo y en la partida sigue ahí (y se cierra al empezar)', async ({ page }) => {
+  await page.evaluate(() => { closeModal(); showMenu(); });
+  await expect(page.locator('#menu')).toBeVisible();
+  await page.locator('#planMenuBtn').click();
+  await expect(page.locator('#planner')).toBeVisible();
+  await expect(page.locator('#planMenuBtn')).toHaveClass(/\bon\b/);
+  // bajo la barra de botones del menú, sin taparla
+  const pos = await page.evaluate(() => [Math.round($('planner').getBoundingClientRect().top), Math.round($('mnTools').getBoundingClientRect().bottom)]);
+  expect(pos[0]).toBeGreaterThanOrEqual(pos[1]);
+  await page.locator('#plNew').click();
+  for (const k of ['gastly', 'abra']) await page.locator(`#planner [data-add="${k}"]`).click();
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(2);
+  // en el menú, abrir cualquier ventana (aquí Normal → práctica) lo cierra para que no quede debajo; dentro de la partida, el mismo equipo
+  await page.evaluate(() => $('playBtn').click());
+  await expect(page.locator('#planner')).toBeHidden();
+  await page.locator('#practiceBtn').click();
+  await expect(page.locator('#menu')).toBeHidden();
+  await page.evaluate(() => { G.timer = Infinity; });
+  await expect(page.locator('#cards .card')).toHaveCount(5);
+  await page.locator('#planBtn').click();
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(2);
+  expect(await page.evaluate(() => S.plans.map(p => p.u.join(',')))).toContain('gastly,abra');
+  // y al volver al menú se cierra
+  await page.evaluate(() => showMenu());
+  await expect(page.locator('#planner')).toBeHidden();
+});

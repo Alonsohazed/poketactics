@@ -1742,6 +1742,7 @@ function buildRounds(){
 const ROUNDS=buildRounds();
 // opts.bots[i] = {skill, q?, cs}: con q (Clasificatoria) el bot usa el nivel continuo botPlanV2 (skill 'liga', p.botQ)
 function newGame(opts={}){
+ if(!HEADLESS&&typeof closePlanner==='function') closePlanner(); // al empezar una partida se cierra el que estuviera abierto en el menú (se vuelve a abrir con su botón)
  loadB3();
  if(!HEADLESS&&!opts.auto&&typeof guardBack==='function') guardBack();
  if(!HEADLESS&&window.B3&&B3.dropQueue) B3.dropQueue();
@@ -2991,6 +2992,7 @@ function bindEvents(){
  $('howBtn').addEventListener('click',()=>{ guideSeen(); showHow(); });
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
+ $('planMenuBtn').addEventListener('click',()=>plannerOpen()?closePlanner():showPlanner()); // el mismo planificador desde el menú
  $('optBtn').addEventListener('click',()=>showOptions(false)); $('fbBtn').addEventListener('click',()=>showFeedback());
  bindAuth();
  $('players').addEventListener('click',e=>{ const row=e.target.closest('.pl[data-pid]'); if(row&&G&&G.players.length) spectate(+row.dataset.pid); });
@@ -3826,7 +3828,7 @@ function renderCard(){
 /* ---------- modales ---------- */
 // opt.gx: ventana con la estética del gacha (barra con ✦ y título y una carta crema; gx:true usa el <h1> inicial como título y lo quita de la carta)
 function gxWrap(html,gx,plain){ const m=gx===true&&/^\s*<h1>([\s\S]*?)<\/h1>/.exec(html); return `<div class="gbTop gxTop"><span class="gbMark" aria-hidden="true">✦</span>${m?`<h1 class="gxT">${m[1]}</h1>`:`<b>${gx}</b>`}</div><section class="${plain?'gxPlain':'gxCard'}">${m?html.slice(m[0].length):html}</section>`; }
-function openModal(html,opt={}){ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('gx',!!opt.gx); if(opt.gx) html=gxWrap(html,opt.gx,opt.gxPlain); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').classList.toggle('tp',!!opt.tp); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
+function openModal(html,opt={}){ if(!liveGame()&&plannerOpen()) closePlanner(); /* en el menú, cualquier ventana cierra el planificador para no quedar debajo (en partida, los aumentos y elecciones no lo tocan) */ NET.modal=opt.kind||''; NET.onClose=opt.onClose||null; $('mbox').classList.toggle('bare',!!opt.bare); $('mbox').classList.toggle('gx',!!opt.gx); if(opt.gx) html=gxWrap(html,opt.gx,opt.gxPlain); $('mbox').classList.toggle('cfg',!!opt.cfg); $('mbox').classList.toggle('tp',!!opt.tp); $('mbox').innerHTML=(opt.closable?'<div class="mtop"><button class="mclose" aria-label="Cerrar" id="mClose">'+(window.PX?PX.icon('close',18):'×')+'</button></div>':'')+html; $('modal').classList.remove('hidden'); hydrate($('mbox')); if(window.PX) PX.hydrate($('mbox')); hideTip(); if(opt.closable) $('mClose').onclick=closeModal; }
 function closeModal(){ $('modal').classList.add('hidden'); $('mbox').innerHTML=''; hideTip(); NET.modal=''; const f=NET.onClose; NET.onClose=null; if(f) f(); }
 // Elegir minileyenda al empezar la partida (se recuerda en este navegador)
 function savedTac(){ if(ACC&&TACS[ACC.trainer]&&tacOwned(ACC.trainer)) return ACC.trainer; try{ const k=localStorage.getItem('pt_tac'); return TACS[k]&&tacOwned(k)?k:''; }catch(e){ return ''; } }
@@ -3892,7 +3894,7 @@ const PLAN_MAX=5, PLAN_SIZE=10, PLAN={view:'list',i:0,filter:'',undo:[],menu:-1,
 const planUnits=()=>UNIT_LIST.filter(u=>DEF[u.key]&&!DEF[u.key].evoOf); // solo lo que sale en la tienda, con su forma de la tienda (sin evoluciones)
 const planList=()=>{ if(!Array.isArray(S.plans)) S.plans=[]; S.plans=S.plans.filter(p=>p&&typeof p.n==='string'&&Array.isArray(p.u)).slice(0,PLAN_MAX); for(const p of S.plans) p.u=p.u.filter(k=>DEF[k]&&!DEF[k].evoOf).slice(0,PLAN_SIZE); return S.plans; };
 const planOn=()=>planList().find(p=>p.on)||null;
-const planSave=()=>{ planList(); saveSettings(); renderShop.key=null; if(G&&G.me&&$('cards')) renderShop(); };
+const planSave=()=>{ planList(); saveSettings(); renderShop.key=null; if(liveGame()&&$('cards')) renderShop(); }; // en el menú no hay tienda que marcar
 const planCode=p=>'PT1:'+p.u.join('.');
 function planParse(t){ const m=/PT1:([a-z0-9_.]*)/i.exec(String(t||'')); if(!m) return null; const ok=new Set(planUnits().map(u=>u.key)); const u=[...new Set(m[1].toLowerCase().split('.').filter(k=>ok.has(k)))].slice(0,PLAN_SIZE); return u.length?u:null; }
 const PB_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.2" fill="#fff" stroke="#14161c" stroke-width="1.8"/><path d="M1.8 12a10.2 10.2 0 0 1 20.4 0z" fill="#e3383f" stroke="#14161c" stroke-width="1.8"/><path d="M1.8 12h20.4" stroke="#14161c" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="#fff" stroke="#14161c" stroke-width="1.8"/></svg>';
@@ -3903,12 +3905,12 @@ function planEl(){ let el=$('planner'); if(el) return el; el=document.createElem
  el.addEventListener('contextmenu',e=>e.preventDefault()); el.addEventListener('pointerdown',e=>{ if(PLAN.menu>=0&&!e.target.closest('.plMenu,.plDots')){ PLAN.menu=-1; renderPlanner(); } });
  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&plannerOpen()&&!(e.target&&e.target.id==='plNameIn')) closePlanner(); });
  return el; }
-function showPlanner(view){ if(view) PLAN.view=view; const L=planList(); if(PLAN.view==='edit'&&!L[PLAN.i]) PLAN.view='list'; PLAN.menu=-1; PLAN.edit=false; const el=planEl(); el.classList.remove('hidden'); $('planBtn')&&$('planBtn').classList.add('on'); renderPlanner(); planFit(); }
-// Entre la barra de arriba y la tienda, para que se vean las Poké Balls de las cartas mientras se planifica
-function planFit(){ const el=$('planner'); if(!el||el.classList.contains('hidden')) return; const tb=document.querySelector('.top'), sh=$('shopPanel');
+function showPlanner(view){ if(view) PLAN.view=view; const L=planList(); if(PLAN.view==='edit'&&!L[PLAN.i]) PLAN.view='list'; PLAN.menu=-1; PLAN.edit=false; const el=planEl(); el.classList.remove('hidden'); for(const id of ['planBtn','planMenuBtn']) $(id)&&$(id).classList.add('on'); renderPlanner(); planFit(); }
+// En partida, entre la barra de arriba y la tienda, para que se vean las Poké Balls de las cartas mientras se planifica; en el menú, bajo su barra de botones
+function planFit(){ const el=$('planner'); if(!el||el.classList.contains('hidden')) return; const inMenu=$('menu')&&!$('menu').classList.contains('hidden'), tb=inMenu?$('mnTools'):document.querySelector('.top'), sh=inMenu?null:$('shopPanel');
  const top=Math.round((tb&&tb.getBoundingClientRect().bottom||56)+8), sb=sh&&sh.getClientRects().length?sh.getBoundingClientRect().top:innerHeight; el.style.top=top+'px'; el.style.maxHeight=Math.max(260,Math.round((sb>top+260?sb:innerHeight)-top-8))+'px'; }
 if(!HEADLESS) addEventListener('resize',()=>planFit());
-function closePlanner(){ const el=$('planner'); if(el) el.classList.add('hidden'); PLAN.menu=-1; PLAN.edit=false; $('planBtn')&&$('planBtn').classList.remove('on'); if(typeof hideTip==='function') hideTip(); }
+function closePlanner(){ const el=$('planner'); if(el) el.classList.add('hidden'); PLAN.menu=-1; PLAN.edit=false; for(const id of ['planBtn','planMenuBtn']) $(id)&&$(id).classList.remove('on'); if(typeof hideTip==='function') hideTip(); }
 const plannerOpen=()=>{ const el=$('planner'); return !!(el&&!el.classList.contains('hidden')); };
 function planNew(u){ const L=planList(); if(L.length>=PLAN_MAX){ toast('Como mucho '+PLAN_MAX+' composiciones'); return; } L.push({n:'Nuevo equipo',u:u||[],on:false}); PLAN.i=L.length-1; PLAN.undo=[]; PLAN.view='edit'; planSave(); renderPlanner(); }
 function planEdit(fn){ const p=planList()[PLAN.i]; if(!p) return; const before=JSON.stringify(p.u); fn(p); if(JSON.stringify(p.u)===before) return; PLAN.undo.push(before); if(PLAN.undo.length>40) PLAN.undo.shift(); planSave(); renderPlanner(); }
@@ -4570,7 +4572,7 @@ function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar')
 function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; if(B3.setSkin) B3.setSkin(arenaSkin()); /* la arena elegida, antes de precargar su imagen */ const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  AUG_FRAMES.forEach(u=>{ const im=new Image(); im.decoding='async'; im.src=u; });   // los marcos de las cartas de aumento ya están en caché en la 2-1
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }
-function showMenu(){ loadFriends(); setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
+function showMenu(){ if(plannerOpen()) closePlanner(); loadFriends(); setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
  // tras una partida con ascenso, descenso o rango revelado, se celebra al volver al menú
  if(NET.rankFx){ const d=NET.rankFx; NET.rankFx=null; setTimeout(()=>showRankChange(d),250); } }
 // Iconos pixel y escenario del menú (ui-art.js); si no cargó, el menú sigue funcionando con texto
