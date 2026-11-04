@@ -3682,7 +3682,7 @@ function showTacPick(first){
 }
 // Arenas del tablero (imágenes renderizadas en Blender con la cámara del juego: arena-coliseo.py y arena-temas.py de la skill de recursos; FLAT_SETS en board3d.js).
 // Es un ajuste visual de cada jugador (S.arena, se guarda en la cuenta): siempre ves tu arena, también cuando el rival viene a luchar a ella
-const ARENAS=[{k:'coliseo',n:'Coliseo estelar',t:'Clásica'},{k:'agua',n:'Abismo marino',t:'Agua'},{k:'fuego',n:'Caldera volcánica',t:'Fuego'},{k:'planta',n:'Jardín flotante',t:'Planta'},{k:'roca',n:'Cañón de arenisca',t:'Roca'},{k:'electrico',n:'Tormenta eléctrica',t:'Eléctrico'},{k:'cascada',n:'Isla de la cascada',t:'Naturaleza'}];
+const ARENAS=[{k:'coliseo',n:'Coliseo estelar',t:'Clásica'},{k:'agua',n:'Abismo marino',t:'Agua'},{k:'fuego',n:'Caldera volcánica',t:'Fuego'},{k:'planta',n:'Jardín flotante',t:'Planta'},{k:'roca',n:'Cañón de arenisca',t:'Roca'},{k:'electrico',n:'Tormenta eléctrica',t:'Eléctrico'}];
 const arenaOf=k=>ARENAS.find(a=>a.k===k)||ARENAS[0], arenaSkin=()=>arenaOf(S.arena).k, arenaThumb=k=>(window.ASSET_BASE||'')+'arena/'+k+'/thumb.webp';
 function showArenaPick(){ let sel=arenaSkin();
  openModal(`<div class="arPick">${ARENAS.map(a=>`<button class="arOpt ${a.k===sel?'on':''}" data-k="${a.k}" type="button" aria-label="${a.n}"><span class="arImg"><img src="${arenaThumb(a.k)}" alt="" decoding="async"></span><b>${a.n}</b><small>${a.t}</small><i class="arOk" aria-hidden="true">✓</i></button>`).join('')}</div>
