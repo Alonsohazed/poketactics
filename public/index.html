@@ -1777,7 +1777,7 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .pxbIc{width:54px;height:54px;object-fit:contain;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
 .pxb-main .pxbIc{width:50px;height:50px}
 /* ===== Planificador de composiciones (#planner, renderPlanner en game.js): «Mis equipos» y el editor, entre la barra de arriba y la tienda ===== */
-.planner{position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:60;width:min(1880px,calc(100vw - 48px));display:flex;max-height:calc(100vh - 90px)}
+.planner{position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:60;width:min(1440px,calc(100vw - 48px));display:flex;max-height:calc(100vh - 90px)}
 .planner.hidden{display:none}
 .planner:has(.plListBox){width:min(860px,calc(100vw - 24px))}
 body:has(.planner:not(.hidden)) #tip{z-index:62} /* las ventanas de fichas y sinergias, por encima del panel */
@@ -1839,7 +1839,7 @@ body:has(#auth:not(.hidden)) .planner{display:none} /* en el menú sí se abre (
 .plPen{width:30px;height:30px;flex:0 0 auto;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#f3d27a;cursor:pointer;display:grid;place-items:center;padding:0;box-shadow:none}
 .plPen svg{width:18px;height:18px}
 .plPen:hover{background:rgba(255,255,255,.14)}
-.plCols{flex:1;min-height:0;display:grid;grid-template-columns:clamp(260px,29%,440px) minmax(0,1fr);gap:18px}
+.plCols{flex:1;min-height:0;display:grid;grid-template-columns:clamp(240px,27%,380px) minmax(0,1fr);gap:18px}
 .plLeft{min-height:0;display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px}
 .plFilter{display:flex;align-items:center;gap:8px;align-self:stretch;background:#0d1024;border:1px solid #59607f;border-radius:10px;padding:5px 10px;color:#cfd3ee;cursor:pointer}
 .plFilter svg{width:17px;height:17px;flex:0 0 auto}
