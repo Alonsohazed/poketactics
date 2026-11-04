@@ -103,10 +103,20 @@ function skillFor(mode, mmr) {
   if (mode === 'ranked') return mmr < 1050 ? 'avanzado' : mmr < 1500 ? 'experto' : 'maestro'; // en clasificatoria, bastante mejores
   return mmr < 880 ? 'principiante' : mmr < 1100 ? 'intermedio' : mmr < 1350 ? 'avanzado' : 'experto';
 }
+// Nivel continuo de un bot de Clasificatoria (0 = Hierro, 1 = Retador) según el MMR, con una variación fija por asiento para que en la
+// misma partida unos sean algo mejores que otros (botPlanV2 en game.js). MMR → liga aproximada (mmrOfLadder): 700-880 Hierro,
+// 880-1060 Bronce, 1060-1240 Plata, 1240-1420 Oro, 1420-1600 Platino, 1600-1780 Esmeralda, 1780-1960 Diamante, 1960 Maestro,
+// 2030 Gran Maestro, 2140 Retador
+const BOT_Q_SPREAD = [-.08, .05, -.03, .08, -.12, .02, .06];
+const botQOf = (mmr, i = 0) => Math.round(clamp((mmr - 800) / 1300 + BOT_Q_SPREAD[i % 7], 0, 1) * 100) / 100;
 // Bots de una partida: rodean el MMR medio de las personas (con variación fija por asiento, sin azar)
 function botsFor(mode, humansMMR, n) {
   const m = avg(humansMMR) || CFG.START_MMR, out = [];
-  for (let i = 0; i < n; i++) { const mm = Math.round(m + [-60, 40, -20, 70, -90, 10, 50][i % 7] * (mode === 'ranked' ? .6 : 1)); const skill = skillFor(mode, mm); out.push({ skill, mmr: Math.round((mm + SKILL_MMR[skill]) / 2) }); }
+  for (let i = 0; i < n; i++) {
+    const mm = Math.round(m + [-60, 40, -20, 70, -90, 10, 50][i % 7] * (mode === 'ranked' ? .6 : 1)), skill = skillFor(mode, mm), b = { skill, mmr: Math.round((mm + SKILL_MMR[skill]) / 2) };
+    if (mode === 'ranked') b.q = botQOf(mm, i);
+    out.push(b);
+  }
   return out;
 }
 
@@ -153,4 +163,4 @@ function applyMatch(comp0, { mode, place, opps }) {
   return { comp: c, rec };
 }
 
-module.exports = { accountLevel, publicMatch, profileView, CFG, LEAGUES, ROMAN, rankOf, rankLabel, mmrOfLadder, ladderOfMMR, eloDelta, freshComp, normComp, publicComp, nextOf, SKILLS, SKILL_MMR, skillFor, botsFor, applyMatch };
+module.exports = { botQOf, accountLevel, publicMatch, profileView, CFG, LEAGUES, ROMAN, rankOf, rankLabel, mmrOfLadder, ladderOfMMR, eloDelta, freshComp, normComp, publicComp, nextOf, SKILLS, SKILL_MMR, skillFor, botsFor, applyMatch };
