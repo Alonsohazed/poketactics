@@ -172,7 +172,7 @@ Object.assign(I18N.EN, {
   'Cada {0} ataques lanza un rayo a {1} enemigos ({2} de daño mágico).': 'Every {0} attacks fires a bolt at {1} enemies ({2} magic damage).',
   'Cada {0}s cura a todo el equipo un {1}% de su vida máx.': 'Every {0}s heals the whole team for {1}% of their max health.',
   'Cada ataque le da +{0}% de velocidad de ataque, sin límite durante el combate.': 'Each attack grants +{0}% attack speed, with no cap during combat.',
-  'Cada golpe recibido le da +{0}% de daño (máx. {1} veces).': 'Each hit taken grants +{0}% damage (max {1} times).',
+  'Gana una carga al atacar y cada vez que le golpean (ataques o habilidades): +{0}% de daño por carga (máx. {1}).': 'Gains a stack when attacking and every time it is hit (attacks or abilities): +{0}% damage per stack (max {1}).',
   'Empieza con un escudo del {0}% de su vida máx. ({1}s).': 'Starts with a shield of {0}% max health ({1}s).',
   'Gana +{0} de poder de habilidad por segundo en combate.': 'Gains +{0} ability power per second in combat.',
   'Guante ladrón: cada ronda recibe {0} objetos completos al azar (cambian al empezar la ronda). Ocupa los {1} huecos: quien lo lleva no puede llevar otros objetos. +{2}% de prob. crítica.': 'Thief’s glove: each round it receives {0} random full items (they change at the start of the round). Takes up all {1} slots: the holder cannot carry other items. +{2}% crit chance.',

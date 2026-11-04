@@ -105,7 +105,10 @@ const STAR=[1,1.8,3.24];
 // Tanques a 2★: +20% de vida y +15 de defensa y resistencia, para que aguanten lo que cuestan sin ser inmortales con objetos
 const TANK2={hp:1.2,res:15};
 // A 3★ los costes altos se disparan: los costes 4 y 5 de 3 estrellas son casi una victoria asegurada (como en TFT)
-const STAR3_BY_COST=[3.24,3.24,3.4,5,10], ABIL3_BY_COST=[3,3.1,3.3,6,15];
+const STAR3_BY_COST=[3.24,3.24,3.4,5,10], ABIL3_BY_COST=[3,3.1,3.3,6,40];
+// Coste 5 a 3★: imposible de vencer salvo por otro coste 5 a 3★, aunque esté sola (medido con leg3.js alone: 100 % contra tableros de nivel 9
+// con costes 4 a 3★ y costes 5 a 2★, con y sin objetos): empieza con el maná lleno, recupera 40 por segundo y recibe un 30 % menos de daño
+const C5_3={mana:40,dr:.3};
 const ABIL_BASE=[180,250,330,520,600], ABIL_STAR=[1,1.5,2.6];
 const ROLE_NAME={t:'Tanque',b:'Cuerpo a cuerpo',a:'Asesino',r:'Tirador',m:'Mago',h:'Soporte'};
 
@@ -209,6 +212,7 @@ const MEGAS=[
 const ANVILS=[{key:'yunque',name:'Yunque de componentes',names:null,dex:'anvil',cost:1,role:'t',traits:[],ab:[['shield','—',{m:0}]],anvil:'c'},
  {key:'yunque_oro',name:'Yunque de objetos',names:null,dex:'anvil:oro',cost:1,role:'t',traits:[],ab:[['shield','—',{m:0}]],anvil:'f'}];
 const DEF={}; for(const u of [...UNIT_LIST,...EVOS,...MEGAS,...ANVILS]) DEF[u.key]=u;
+for(const u of UNIT_LIST) if(u.cost===5) for(const a of u.ab||[]) a[2].c5=1; // marca para el texto de la habilidad a 3★ (abDesc no conoce el coste)
 DEF.lugia.hpm=1.12; // Lugia: menos daño pero más aguante
 DEF.giratina.mult=.9; // Giratina: empieza más flojo y crece devorando (ghp/gad altos): pide objetos y tiempo
 // Forma de cada estrella. Los costes 4 de 3 formas empiezan en su 2.ª forma (Pupitar, Kirlia, Gabite…):
@@ -448,6 +452,7 @@ function abDesc(ab,P,star){
  if(p.mega) t+=` Forma Mega: cada lanzamiento le da +6% de vida máxima, +8 de poder y +8% de ataque durante el combate.`;
  if(p.selfAs&&k!=='dash') t+=` Gana +${R0(p.selfAs*100)}% de vel. de ataque (se acumula durante el combate).`;
  if(star>=3) t+=` ★★★: cada lanzamiento la hace más fuerte (+20%, o +25% en costes 4 y 5), sin límite.`;
+ if(star>=3&&p.c5) t+=` Coste 5 a ★★★: empieza con el maná lleno, recupera ${C5_3.mana} de maná por segundo y recibe un ${R0(C5_3.dr*100)}% menos de daño.`;
  return t;
 }
 
@@ -473,7 +478,7 @@ const FULL=[
  ['wing','wing','scarf','Pañuelo Elegido','🧣','+30% de velocidad de ataque y +1 de alcance.',{asPct:.3,range:1}],
  ['wing','spoon','rage','Cinta Furia','😤','Cada ataque le da +6% de velocidad de ataque, sin límite durante el combate.',{},{rage:.06}],
  ['wing','water','light','Bola Luminosa','💡','Cada 3 ataques lanza un rayo a 3 enemigos (70 de daño mágico).',{},{zap:70}],
- ['wing','coat','titan','Coraza Titán','🦾','Cada golpe recibido le da +2% de daño (máx. 25 veces).',{},{titan:.02}],
+ ['wing','coat','titan','Coraza Titán','🦾','Gana una carga al atacar y cada vez que le golpean (ataques o habilidades): +2% de daño por carga (máx. 25).',{},{titan:.02}],
  ['wing','goggles','twin','Garra Doble','✌️','Sus ataques golpean a un segundo enemigo por el 50%.',{},{split:.5}],
  ['wing','club','quick','Polvo Veloz','💨','+25% de velocidad de ataque y +150 de vida adicionales.',{asPct:.25,hp:150}],
  ['wing','lens','razorfang','Colmillo Afilado','🐺','Sus críticos reducen la defensa del objetivo un 30%.',{},{shred:.3}],
@@ -704,7 +709,7 @@ function rebuildCombat(a,b,R,seed,evs,t){
 }
 function liveItems(p,inst){
  if(G.phase!=='combat') return;
- const f=(G.fights||[]).find(x=>x.a===p||(x.b===p&&!x.ghost)); if(!f||!f.c) return;
+ const f=(G.fights||[]).find(x=>x.a===p||(x.b===p&&!x.ghost)); if(!f||!f.c||f.resolved) return; // ya acabó y se cobró: no se vuelve a simular
  const side=f.a===p?0:1, bk=Object.keys(p.board).find(k=>p.board[k]===inst); if(!bk) return;
  if(!G.mp){ if(!f.c.done) applyLiveItems(f.c,side,bk,inst.items.slice()); return; }
  const t=Math.max(0,Math.ceil(((Date.now()-f.t0)/1000*G.speed)/DT)*DT), ev={t,side,bk,items:inst.items.slice()};
@@ -869,7 +874,7 @@ function applyStats(u,s){
 function baseCombatUnit(d,side,star,rand=Math.random){
  const ro=ROLE[d.role], cm=d.cost-1, s=star>=3?STAR3_BY_COST[cm]:STAR[star-1], em=d.mult||1, ab=abOf(d,star), t2=d.role==='t'&&star>=2, hm=em*(d.hpm||1)*(t2?TANK2.hp:1), rs=t2?TANK2.res:0;
  return {side,d,star,cost:d.cost,name:nameOf(d,star),ab,maxHp:ro.hp*HPM[cm]*s*hm,ad:ro.ad*ADM[cm]*s*em,hp0:ro.hp*HPM[cm]*s*hm,ad0:ro.ad*ADM[cm]*s*em,as:ro.as,range:ro.range,df:ro.df+rs,mr:ro.mr+rs,ap:0,
-   mana:ab[2].mana0!=null?ab[2].mana0:ro.mana,maxMana:ab[2].mm||ro.maxMana,critC:.25,critM:1.4,dodge:0,burnPct:0,manaPerAtk:0,regen:0,manaRegen:0,omni:0,dr:0,bully:0,shock:0,
+   mana:d.cost===5&&star>=3?(ab[2].mm||ro.maxMana):ab[2].mana0!=null?ab[2].mana0:ro.mana,maxMana:ab[2].mm||ro.maxMana,critC:.25,critM:1.4,dodge:0,burnPct:0,manaPerAtk:0,regen:0,manaRegen:d.cost===5&&star>=3?C5_3.mana:0,omni:0,dr:d.cost===5&&star>=3?C5_3.dr:0,bully:0,shock:0,
    focus:false,berry:false,dmgBonus:0,shield:0,shieldT:0,startShield:0,stun:0,sleepT:0,stealth:0,tdr:0,tdrT:0,reflT:0,reflPct:0,empN:0,empDmg:0,empStun:0,glow:0,
    atkCd:.25+rand()*.35,moveCd:rand()*.2,target:null,burns:[],dead:false,kills:0,flash:0,mt:1,role:d.role,items:[],ref:null,sp:{},atkN:0,titanN:0};
 }
@@ -1034,7 +1039,9 @@ function dealDamage(cb,src,t,raw,kind,silent,crit){
  if(t.shield>0){ const a=Math.min(t.shield,dmg); t.shield-=a; dmg-=a; }
  t.hp-=dmg; if(!silent) t.flash=.12;
  if(cb.caster&&src===cb.caster){ cb.cDmg+=dmg; cb.cHits.add(t); }
- if(kind!=='true'){ t.mana+=Math.min(dmg*.04,12); if(t.sp.titan&&t.titanN<25){ t.titanN++; t.dmgBonus+=t.sp.titan; } }
+ if(kind!=='true') t.mana+=Math.min(dmg*.04,12);
+ // Coraza Titán: carga con cada golpe recibido de un enemigo, sea ataque o habilidad, también de daño verdadero; las quemaduras y venenos (silent) no cuentan, o se llenaría al instante
+ if(t.sp.titan&&!silent&&src&&src.side!==t.side) titanStack(t);
  if(t.reflT>0&&src&&src!==t&&kind!=='true'&&!src.dead) dealDamage(cb,t,src,dmg*t.reflPct,'true',true);
  if(src&&src.omni&&!src.dead) heal(src,dmg*src.omni);
  if(!silent&&dmg>=1){ fxText(cb,t,crit?R0(dmg)+'!':R0(dmg),crit?'#ffb400':kind==='magic'?'#7fb6ff':'#ffffff',crit); if(cb.visual) fx(cb,{type:'hit',u:t,src,crit,kind,el:unitEl(src),k:Math.min(1,dmg/Math.max(1,t.maxHp)*4),life:.4}); }
@@ -1087,7 +1094,10 @@ function hitFx(cb,u,e,amt,p){
  if(p.chill) e.chillT=Math.max(e.chillT||0,p.chill);
  if(p.wound) e.woundT=Math.max(e.woundT||0,p.wound);
 }
+// Coraza Titán: +2 % de daño por carga, hasta 25 (carga al atacar y al recibir golpes)
+const titanStack=u=>{ if(u.titanN<25){ u.titanN++; u.dmgBonus+=u.sp.titan; } };
 function attack(cb,u,t){
+ if(u.sp.titan) titanStack(u);
  const crit=cb.rng()<u.critC; const dmg=u.ad*(crit?u.critM:1);
  const el0=u.d.traits&&u.d.traits.find(x=>FX_EL.has(x));
  fx(cb,u.range>1?{type:'proj',fc:u.c,fr:u.r,tc:t.c,tr:t.r,color:typeColor(u.d),el:el0,life:.22,atk:1}:{type:'swing',c:u.c,r:u.r,tc:t.c,tr:t.r,el:el0,life:.18});
@@ -1504,6 +1514,7 @@ function pveLootKeys(p,R){ const L=pveSpec(R); return [...(R.s>1||R.n===3?['mag'
 function payCombatGold(final){
  if(G.phase!=='combat'&&!final) return;
  for(const f of G.fights||[]){ const c=f.c; if(!c||!c.gold) continue; const el=final?Infinity:(Date.now()-(f.t0||0))/1000*G.speed; f.paid=f.paid||[0,0];
+   if(!final&&!f.resolved&&c.done&&el>=c.t){ resolveFight(f); if(!SERVER) renderUI(); } // el resultado (y su oro) al acabar ese combate
    for(const [p,sd] of [[f.a,0],[f.pve||f.ghost?null:f.b,1]]){ if(!p) continue;
      const due=final?c.gold[sd]:(c.goldEv||[]).reduce((a,e)=>a+(e[1]===sd&&e[0]<=el?e[2]:0),0), pay=Math.min(c.gold[sd],due)-f.paid[sd];
      if(pay>0){ p.gold+=pay; f.paid[sd]+=pay; p.combatGold=(p.combatGold||0)+pay; } } }
@@ -1734,29 +1745,22 @@ const MEW_MAX=16;
 function mewWin(w,l){ if(!w||!l||!tacOf(w).mimic) return; const d=tacDex(l); if(!d||d===tacOf(w).dex[0]) return;
  w.mewSk=w.mewSk||[]; if(!w.mewSk.includes(d)&&w.mewSk.length<MEW_MAX) w.mewSk.push(d); w.mewF=d; w.mewN=(w.mewN|0)+1;
  note(w,`✨ Mew toma la forma de la minileyenda de ${l.name}`); }
-function resolveRound(){
- if(G.phase!=='combat') return;
- const R=G.round, base=STAGE_DMG[R.s]||22, me=G.me; const msgs=new Map(), extraGold={}, gold0=new Map(G.players.map(p=>[p,p.gold]));
- const won=new Map();
- const say=(p,m)=>msgs.set(p,m);
- for(const f of G.fights) if(f.c&&!f.c.done) simulate(f.c);
- payCombatGold(true);
- for(const p of G.players) if(p.combatGold){ extraGold[p.id]=p.combatGold; p.combatGold=0; }
- for(const f of G.fights){
-   const c=f.c; if(!c.done) simulate(c);
+// Resultado de un combate: victoria o derrota, vida, racha, eventos de los aumentos y Cazatesoros. Se aplica en cuanto ESE combate acaba
+// en tiempo real (payCombatGold), así el oro de la victoria se cobra al momento y no al terminar la ronda; resolveRound remata los que falten
+function resolveFight(f){
+ if(f.resolved) return; f.resolved=true;
+ const R=G.round, base=STAGE_DMG[R.s]||22, c=f.c, won=new Map(), msgs=new Map(), say=(p,m)=>msgs.set(p,m); if(!c.done) simulate(c);
    for(const u of c.units) if(u.ref&&u.kills) u.ref.kills+=u.kills;
-   const addG=()=>{};
    if(f.pve){
-     const p=f.a, w=c.winner===0; won.set(p,w); addG(p,c.gold[0]);
+     const p=f.a, w=c.winner===0; won.set(p,w);
      if(!w){ const d=base+survivors(c,1); p.hp-=d; p.lastDmg=d; }
      // Si el imán no llegó a caer (no derrotó a ninguno), se entrega igualmente
      if(f.lootKeys&&f.lootKeys.includes('mag')) giveItem(p,'magnet');
      if(f.lootKeys) for(const k of f.lootKeys.filter(k=>k==='c'||k==='ca'||k==='fa')) dropOrb(p,k); // componentes y yunques que no llegaron a caer: se dejan en el suelo igualmente
      const loot=f.lootKeys?[]:pveLoot(p,R,w);
      say(p,(w?'🐾 Ronda PvE superada':`🐾 Los salvajes te ganaron: −${p.lastDmg} de vida`)+(loot.length?' · Botín: '+loot.join(' · '):''));
-     continue;
-   }
-   const A=f.a,B=f.b; addG(A,c.gold[0]); if(!f.ghost) addG(B,c.gold[1]);
+   } else {
+   const A=f.a,B=f.b;
    if(c.winner===0){ win(A); won.set(A,true); if(!f.ghost){ lose(B,base+survivors(c,0)); won.set(B,false); } }
    else if(c.winner===1){ lose(A,base+survivors(c,1)); won.set(A,false); if(!f.ghost){ win(B); won.set(B,true); } }
    else { lose(A,base+survivors(c,1)); won.set(A,false); if(!f.ghost){ lose(B,base+survivors(c,0)); won.set(B,false); } }
@@ -1768,14 +1772,22 @@ function resolveRound(){
    if(!f.ghost) say(B,c.winner===1?`✅ Victoria contra ${A.name}`:c.winner===0?`❌ Derrota contra ${A.name}: −${B.lastDmg} de vida`:`⏱️ Empate por tiempo con ${A.name}: −${B.lastDmg} de vida`);
  }
  // Eventos de los aumentos, después de apuntar el resultado (una sola vez por combate)
- for(const f of G.fights){ const c=f.c, sides=f.pve?[[f.a,0,null]]:[[f.a,0,f.b],...(f.ghost?[]:[[f.b,1,f.a]])];
+ { const sides=f.pve?[[f.a,0,null]]:[[f.a,0,f.b],...(f.ghost?[]:[[f.b,1,f.a]])];
    for(const [p,side,o] of sides){ const w=c.winner===side, n=c.units.filter(u=>u.side===side&&!u.dead).length, k=c.units.filter(u=>u.side===side).reduce((a,u)=>a+u.kills,0);
      augFire(p,w?'win':'lose',{pve:!!f.pve,opp:o?o.id:null,streak:p.streak}); augFire(p,'survive',{n}); augFire(p,'kills',{n:k}); if(!w) augFire(p,'damaged',{d:p.lastDmg||0}); const us=c.units.filter(u=>u.side===side), cs={atk:us.reduce((a,u)=>a+(u.atkN||0),0),phys:us.reduce((a,u)=>a+(u.sPhys||0),0),taken:us.reduce((a,u)=>a+(u.sTank||0),0),mana:us.reduce((a,u)=>a+(u.castN||0)*(u.maxMana<9999?u.maxMana:0),0)};
      augFire(p,'roundEnd',{won:w,pve:!!f.pve,cs,firstKill:c.firstKill?c.firstKill[side]:null}); } }
  // Cazatesoros: botín tras cada combate (apuntado para la ficha de la sinergia)
- for(const p of alivePlayers()){ const tier=traitTiers(p)['Cazatesoros']||0; if(!tier) continue; const w=won.get(p);
+ for(const p of (f.pve||f.ghost?[f.a]:[f.a,f.b]).filter(q=>q.alive)){ const tier=traitTiers(p)['Cazatesoros']||0; if(!tier) continue; const w=won.get(p);
    lootTrack(p,()=>{ if(p.mods.lucky) p.gold+=2; if(w){ const st=Math.min(3,Math.max(0,p.streak-1)); p.gold+=(tier>=3?4:tier>=2?0:2)+st; if(tier>=2){ const out=[]; openOrb(p,G.round.s<=2?'gray12':'blue123',out); if(isHuman(p)) note(p,'💎 Cazatesoros: '+out.join(', '),false); } } else p.gold+=tier>=3?4:tier>=2?2:1; }); }
  for(const [p,m] of msgs) if(isHuman(p)) note(p,m,false);
+}
+function resolveRound(){
+ if(G.phase!=='combat') return;
+ const me=G.me, extraGold={};
+ for(const f of G.fights) if(f.c&&!f.c.done) simulate(f.c);
+ payCombatGold(true);
+ for(const p of G.players) if(p.combatGold){ extraGold[p.id]=p.combatGold; p.combatGold=0; }
+ for(const f of G.fights) resolveFight(f);
  for(const p of G.players) if(isHuman(p)&&extraGold[p.id]) note(p,`💰 Oro ganado en combate: +${extraGold[p.id]} de oro`,false);
  const dead=G.players.filter(p=>p.alive&&p.hp<=0).sort((a,b)=>a.hp-b.hp);
  let n=alivePlayers().length;

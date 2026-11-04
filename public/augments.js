@@ -339,7 +339,7 @@ AG({id:'vanguardia',tier:'S',cat:'carry',tags:['Guardián','Coloso'],name:'Cimie
    const t=u.traits.find(x=>CLASS_TRAITS.includes(x)); c.item('emb_'+t); c.say(`${nameOf(u,2)} ★★ y emblema ${t}`); }}});
 
 // ===== Clásicos (estadísticas y recursos directos) =====
-AG({id:'pacto_cruel',tier:'S',cat:'fast',tags:['fast'],name:'Pacto Cruel',icon:'🩸',desc:'Comprar EXP te cuesta vida en lugar de oro mientras tengas más de 20: 2 de vida hasta nivel 5 y 1 más por cada nivel desde ahí (3 a nivel 6, 4 a nivel 7…). Como mucho 8 compras así por ronda.',on:{select:c=>{ c.p.mods.xpHp=2; }}});
+AG({id:'pacto_cruel',tier:'P',cat:'fast',tags:['fast'],req:ST(2),name:'Pacto Cruel',icon:'🩸',desc:'Comprar EXP te cuesta vida en lugar de oro mientras tengas más de 20: 2 de vida hasta nivel 5 y 1 más por cada nivel desde ahí (3 a nivel 6, 4 a nivel 7…). Como mucho 8 compras así por ronda.',on:{select:c=>{ c.p.mods.xpHp=2; }}});
 AG({id:'pandora',tier:'S',cat:'risk',name:'Objetos de Pandora',icon:'📦',desc:'Recibes 1 componente. Al empezar cada ronda, los objetos de tu inventario cambian al azar por otros de su tipo: componentes por componentes, completos por completos, insignias por otras insignias y emblemas por otros emblemas (p. ej. el Emblema Acero puede volverse Emblema Agua).',
  on:{select:c=>c.comp(),roundStart:c=>{ c.p.items=c.p.items.map(pandoraCambio); }}});
 // Objetos de Pandora: cada objeto cambia por otro de su familia; insignias y emblemas siempre por uno distinto
@@ -785,5 +785,5 @@ const CAT_IMG={econ:"amulet-coin",fast:"exp-candy-xl",reroll:"repeat-ball",emble
 for(const a of AUGS){ const v=AUG_IMG[a.id]!=null?AUG_IMG[a.id]:CAT_IMG[a.cat]; if(v!=null) a.img=typeof v==='number'?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${v}.png`:/^b\d+$/.test(v)?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges/${v.slice(1)}.png`:`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${v}.png`; }
 // Icono propio (img/aug/<id>.webp, estilo TFT ya teñido con su rareza; iconos-aumentos-tft.js de la skill de recursos): todos menos los
 // de héroe, que siguen con la ilustración de su Pokémon. Al cambiar iconos o rarezas, regenera y sube AUG_ICO_V (el navegador guarda las imágenes 7 días).
-const AUG_ICO_V=4;
+const AUG_ICO_V=5;
 for(const a of AUGS) if(!a.hero) a.ico=`img/aug/${a.id}.webp?v=${AUG_ICO_V}`;

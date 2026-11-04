@@ -567,6 +567,21 @@ const combatUnits = (p, foeBoard) => { const cb = E.createCombatSnap(E.teamSnap(
   { const { G, p } = fresh(); G.phase = 'planning'; p.bench = keys.slice(0, 9).map(k => mk(k)); p.orbs = [{ id: 923, tier: 'gray', toks: ['ca'], c: 2, r: 5 }];
     ok(run('orbUnits')(p.orbs[0]) === 1 && run('openPlayerOrb')(p, 923, false) === null && p.orbs.some(o => o.id === 923), 'banca llena: el orbe con yunque espera en el suelo');
     p.bench[0] = null; ok(!!run('openPlayerOrb')(p, 923, false) && p.bench.some(u => u && u.defId === 'yunque'), 'con un hueco libre el yunque entra en la banca'); } }
+// Coste 5 a 3★: maná lleno al empezar, 40 de maná por segundo y 30 % menos de daño (solo a 3★); una sola gana a un tablero de 8 costes 4 a 2★
+{ const c5 = E.UNIT_LIST.filter(u => u.cost === 5).map(u => u.key), C = vm.runInContext('C5_3', ctx);
+  ok(c5.every(k => { const u3 = E.baseCombatUnit(E.DEF[k], 0, 3), u2 = E.baseCombatUnit(E.DEF[k], 0, 2); return u3.mana === u3.maxMana && u3.manaRegen === C.mana && u3.dr === C.dr && !u2.manaRegen && !u2.dr; }), 'coste 5 a 3★: maná lleno, regeneración y reducción de daño (y a 2★ nada de eso)');
+  const c4 = E.UNIT_LIST.filter(u => u.cost === 4).map(u => u.key), foe = { ag: [], m: {}, u: c4.slice(0, 8).map((k, i) => [['3,0', '2,0', '4,0', '1,0', '5,0', '3,3', '2,3', '4,3'][i], k, 2, [], 0, 0]) };
+  let w = 0; for (const k of c5) { const cb = E.createCombatSnap({ ag: [], m: {}, u: [['3,0', k, 3, [], 0, 0]] }, foe, { s: 6, n: 2 }, { seed: 7 }); E.simulate(cb); if (cb.winner === 0) w++; }
+  ok(w === c5.length, `coste 5 a 3★: sola y sin objetos gana a 8 costes 4 a 2★ (${w}/${c5.length})`); }
+// El oro de la victoria se cobra en cuanto acaba tu combate, con la ronda aún en marcha, y no se cobra otra vez al resolver la ronda
+{ const run = s => vm.runInContext(s, ctx), mk = (k, s) => Object.assign(run(`makeInst('${k}')`), { star: s });
+  const { G, p } = fresh(); G.phase = 'planning'; G.roundIdx = 4; G.round = E.ROUNDS[4]; p.mods.winGold = 5; p.streak = 0;
+  for (const q of G.players) { q.bench = q.bench.map(() => null); q.board = q === p ? { '3,0': mk('machop', 3), '2,0': mk('charmander', 3), '4,0': mk('squirtle', 3) } : { '3,0': mk('magikarp', 1) }; }
+  run('startCombat')(); const f = G.fights.find(x => x.a === p || x.b === p); E.simulate(f.c); const side = f.a === p ? 0 : 1;
+  ok(f.c.winner === side, 'oro de la victoria: montaje (tu equipo gana)');
+  const g0 = p.gold; f.t0 = Date.now() - 1000 * f.c.t / G.speed - 50; run('payCombatGold')(false);
+  ok(G.phase === 'combat' && f.resolved && p.gold >= g0 + 5 && p.streak === 1, `oro de la victoria: se cobra al acabar tu combate (+${p.gold - g0} de oro, ronda aún en combate)`);
+  const g1 = p.gold; run('resolveRound')(); ok(p.streak === 1 && p.gold === g1 && p.history.filter(h => h === 'W').length === 1, 'oro de la victoria: al resolver la ronda no se cobra dos veces'); }
 // Elección pendiente (yunque) abierta al empezar el combate: la persona elige después y recibe el objeto (solo bots y ausentes eligen solos)
 { const run = s => vm.runInContext(s, ctx);
   const { G, p } = fresh(); G.phase = 'planning'; p.bench = p.bench.map(() => null); p.bench[0] = run(`makeInst('yunque_oro')`); G.round = E.ROUNDS[G.roundIdx];
