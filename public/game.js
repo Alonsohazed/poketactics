@@ -551,7 +551,7 @@ const combineKey=(a,b)=>RECIPE[rk(a,b)];
 
 /* =============================== [CORE] =============================== */
 let G=null, UID=1;
-let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal',lang:'',plans:[]};
+let S={name:'Tú',avatar:'🧢',trainer:'red',speed:1,timer:30,theme:'dark',vol:.5,muted:false,diff:'normal',lang:'',plans:[],arena:'coliseo'};
 // Sin DOM (servidor) no hay traducción: TR devuelve el español
 if(typeof TR!=='function'){ var TR=s=>s; var I18N={lang:'es',locale:'es-ES',set(){},pick:(es)=>es}; }
 if(typeof SHINY_RC==='undefined'){ var SHINY_RC={}, SHINY_ART=new Set(); } // shiny.js solo se carga en el navegador: el servidor no dibuja
@@ -2628,7 +2628,10 @@ const AUG_SIL_IMG={};
 function augSilImg(a){ let v=AUG_SIL_IMG[a.id]; if(!v){ v=AUG_SIL_IMG[a.id]={img:null}; augSil(a).then(u=>{ if(!u) return; const im=new Image(); im.onload=()=>{ v.img=im; }; im.src=u; }); } return v.img; }
 function drawTotemIcons(){
  hudAugs=[]; const tt=B3.totemTop&&B3.totemTop(); if(!tt) return;
- const list=(viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean); if(!list.length) return; // sin aumentos no hay recuadros: el trofeo se ve solo hasta elegir el primero
+ drawAugRow((viewOwner().augments||[]).map(id=>AUG_BY[id]).filter(Boolean),tt); // sin aumentos no hay recuadros: el trofeo se ve solo hasta elegir el primero
+ const opp=combatOpp(), t2=opp&&B3.totemTop2&&B3.totemTop2(); if(t2) drawAugRow((opp.augments||[]).map(id=>AUG_BY[id]).filter(Boolean),t2); // el rival que viene a luchar a tu arena: sus aumentos, en su trofeo
+}
+function drawAugRow(list,tt){ if(!list.length) return;
  const R=geo.R, sz=Math.max(28,R*1.0), bw=Math.max(2,sz*.1), gap=bw*2+3, w=list.length*(sz+gap)-3, x0=tt[0]-w/2, cy=tt[1]-sz/2-bw-4;
  ctx.save();
  list.forEach((a,i)=>{ const cx=x0+i*(sz+gap)+sz/2+bw; ctx.fillStyle='#000'; ctx.fillRect(cx-sz/2-bw,cy-sz/2-bw,sz+2*bw,sz+2*bw); ctx.fillStyle='#04090c'; ctx.fillRect(cx-sz/2,cy-sz/2,sz,sz);
@@ -3132,7 +3135,7 @@ function draw(){
  const bubbles=inCar?G.carousel.order.map((p,idx)=>{ const a=G.carousel.av[p.id]; if(!a||a.x==null||a.rel||a.done) return null; const left=releaseAt(idx)-G.carousel.t; const [vx,vy]=carPos(p.id,...carV(a.x,a.y)); return {id:p.id,x:vx,y:vy+geo.R*.35,k:clamp(left/3,0,1),col:(cosD(p,'br')||{}).c||null}; }).filter(Boolean):[];
  const pads=inCar?(()=>{ const {cx,cy,rr}=carGeo(), C=G.carousel; return C.order.map((p,idx)=>{ const a=C.av[p.id]||{}, an=carAng(idx,C.order.length), [px,py]=carV(cx+Math.cos(an)*rr*1.12,cy+Math.sin(an)*rr*1.12); return {id:p.id,x:px,y:py+geo.R*.35,dim:!!(a.rel||a.done)}; }); })():[];
  const links=[]; if(sceneLinks.length>1){ const rest=sceneLinks.slice(1); let cur=sceneLinks[0]; while(rest.length){ let bi=0,bd=1e9; rest.forEach((q,i)=>{ const d=Math.hypot(q[0]-cur[0],q[1]-cur[1]); if(d<bd){bd=d;bi=i;} }); const nx=rest.splice(bi,1)[0]; links.push([cur[0],cur[1],nx[0],nx[1]]); cur=nx; } }
- B3.render({arena:playing?bgKind():'glade',car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
+ B3.render({arena:playing?bgKind():'glade',skin:arenaSkin(),car:inCar?carGeo():null,pads,links,actors:A,bubbles,orbs:playing?orbList():[],totem:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.35,y:cellXY(0,4)[1]-geo.R*.75}:null,
    floorCount:playing&&!inCar?floorCountSpec():null,pandora:playing&&!inCar&&tP&&tP.mods&&tP.mods.pandoraBench?[BENCH-3,BENCH-2,BENCH-1]:null,pandoraHit:PDW.owner===(tP&&tP.id)?PDW.hit:null,interest:playing&&G.phase!=='carousel'?{x:geo.ox-geo.R*.55,y:cellXY(0,7)[1]-geo.R*.2,dy:-geo.R*.85,n2:(()=>{ const o=inCombat&&combatOpp(); return o?interestOf(o):0; })(),col2:(()=>{ const o=inCombat&&combatOpp(); return o?(cosD(o,'cr')||{}).c||null:null; })(),n:Math.min(tP.mods.maxInterest,5,Math.floor(tP.gold/10)),col:(cosD(tP,'cr')||{}).c||null}:null,tiles:playing&&!inCar&&tP?(cosD(tP,'tl')||{}).c||null:null,fx:inCombat?viewCombat().fx:[],cellPx:vXY,unitPx:unitXY,cells:{drop:dragBoard,hover:cell&&cell[1]>=4?cell[1]*7+cell[0]:-1},benchHover:bh});
  hudActors=A; hudItems=[];
  if(!playing) return;
@@ -3677,6 +3680,16 @@ function showTacPick(first){
    catch(err){ toast(err.message); $('tacOk').disabled=false; if(err.status===401) showAuth(err.message); }
  };
 }
+// Arenas del tablero (imágenes renderizadas en Blender con la cámara del juego: arena-coliseo.py y arena-temas.py de la skill de recursos; FLAT_SETS en board3d.js).
+// Es un ajuste visual de cada jugador (S.arena, se guarda en la cuenta): siempre ves tu arena, también cuando el rival viene a luchar a ella
+const ARENAS=[{k:'coliseo',n:'Coliseo estelar',t:'Clásica'},{k:'agua',n:'Abismo marino',t:'Agua'},{k:'fuego',n:'Caldera volcánica',t:'Fuego'},{k:'planta',n:'Jardín flotante',t:'Planta'},{k:'roca',n:'Cañón de arenisca',t:'Roca'},{k:'electrico',n:'Tormenta eléctrica',t:'Eléctrico'}];
+const arenaOf=k=>ARENAS.find(a=>a.k===k)||ARENAS[0], arenaSkin=()=>arenaOf(S.arena).k, arenaThumb=k=>(window.ASSET_BASE||'')+'arena/'+k+'/thumb.webp';
+function showArenaPick(){ let sel=arenaSkin();
+ openModal(`<div class="arPick">${ARENAS.map(a=>`<button class="arOpt ${a.k===sel?'on':''}" data-k="${a.k}" type="button" aria-label="${a.n}"><span class="arImg"><img src="${arenaThumb(a.k)}" alt="" decoding="async"></span><b>${a.n}</b><small>${a.t}</small><i class="arOk" aria-hidden="true">✓</i></button>`).join('')}</div>
+  <div class="row tpFoot" style="justify-content:flex-end;margin-top:14px"><button class="btn gold tpOk" id="arOk">Confirmar</button></div>`,{closable:true,gx:'Arena',onClose:()=>{ if(ACC) showMenu(); }});
+ $('mbox').querySelectorAll('.arOpt').forEach(b=>b.onclick=()=>{ sel=b.dataset.k; $('mbox').querySelectorAll('.arOpt').forEach(x=>x.classList.toggle('on',x===b)); });
+ $('arOk').onclick=()=>{ S.arena=sel; saveSettings(); if(window.B3&&B3.setSkin) B3.setSkin(sel); closeModal(); showMenu(); prefetchForGame(); };
+}
 // Retrato de la minileyenda de un jugador en su etapa actual (niveles 6 y 8): la forma de Eevee elegida con su carta, las evoluciones con su retrato de forma (art/f)
 function tacArtNow(p){ const t=tacOf(p), st=tacStage(p); if(!st||t.mimic) return artImg(tacKey(p));
  if(t.pick){ const k=p.tacForm&&(st>1&&p.tacForm[1]||p.tacForm[0]); return k&&CARD_ART[k]?artImg(k):artImg(tacKey(p)); }
@@ -3982,10 +3995,10 @@ function renderMenu(){ gachaHint();
   <div class="mcAvatar">${artImg(tk)}</div>
   <div class="tname">${nameHTML(ACC.name,myCs())}</div>${titleOf(myCs())?`<div class="tTitle">«${esc(titleOf(myCs()))}»</div>`:''}
   <div class="mcSep"></div>
-  <div class="mcEq"><button class="mcBox" id="pickTr" type="button" title="Cambiar minileyenda"><span class="mcImg">${artImg(tk)}</span><span class="tfrom">${esc(t.name)}</span></button><div class="mcBox static" title="Arena"><span class="mcImg"><img src="arena/coliseo/base1x.webp" alt="" decoding="async"></span><span>Arena</span></div></div>
+  <div class="mcEq"><button class="mcBox" id="pickTr" type="button" title="Cambiar minileyenda"><span class="mcImg">${artImg(tk)}</span><span class="tfrom">${esc(t.name)}</span></button><button class="mcBox" id="pickArena" type="button" title="Cambiar arena"><span class="mcImg"><img src="${arenaThumb(arenaSkin())}" alt="" decoding="async"></span><span class="tfrom">${esc(arenaOf(arenaSkin()).n)}</span></button></div>
   <div class="mcFoot">${rankMiniHTML()}</div>
   <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="18"></i><span>Ver perfil</span></button></div>`;
- guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
+ guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pickArena').onclick=showArenaPick; $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
 }
 /* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
 const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
@@ -4385,7 +4398,7 @@ function gaColl(){ const st=GA.st, own=new Set(st.inv), all=COSM.LIST.filter(i=>
 // Anuncio: alguien ha conseguido a Eevee (solo llega a quien está en el menú)
 function onAnn(d){ if(!d||typeof d.name!=='string') return; const el=$('annBar'); if(!el) return; el.innerHTML=`${PX.icon('star',22)}<span><b>${esc(d.name.slice(0,20))}</b> ha conseguido a ${d.k==='mew'?'Mew':'Eevee'}</span>`; el.classList.remove('hidden'); clearTimeout(onAnn.t); onAnn.t=setTimeout(()=>el.classList.add('hidden'),6000); }
 // Mientras se está en el menú se precargan el escenario y los modelos seguros de la primera ronda (minileyenda, Magikarp y los coste 1); en móvil o con ahorro de datos, solo el escenario
-function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
+function prefetchForGame(){ if(!window.B3||!B3.prefetch||!B3.ready) return; if(B3.setSkin) B3.setSkin(arenaSkin()); /* la arena elegida, antes de precargar su imagen */ const save=navigator.connection&&navigator.connection.saveData, t=TACS[savedTac()]||TACS.charmander;
  AUG_FRAMES.forEach(u=>{ const im=new Image(); im.decoding='async'; im.src=u; });   // los marcos de las cartas de aumento ya están en caché en la 2-1
  const dex=save?[]:[t.dex[0],129,...(matchMedia("(min-width:1101px)").matches?Object.values(DEF).filter(d=>d.cost===1&&!d.evoOf).map(d=>dexOf(d,1)):[])]; B3.prefetch([...new Set(dex)]); }
 function showMenu(){ loadFriends(); setTimeout(()=>{ layout.key=''; layout(); prefetchForGame(); },50); renderMenu(); try{ const sk=sock(); if(sk&&sk.connected) sk.emit('resumable'); renderResume(); }catch(e){} if($('islands')) $('islands').hidden=true; $('auth').classList.add('hidden'); $('menu').classList.remove('hidden'); pxArt($('menu'));
@@ -4460,7 +4473,7 @@ const Scene={
 };
 
 const SETTINGS_KEY='pokeTactics.settings';
-const SYNCED=['vol','muted','timer','speed','theme','diff','lang','plans'];
+const SYNCED=['vol','muted','timer','speed','theme','diff','lang','plans','arena'];
 function loadSettings(){ try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(s) for(const k of SYNCED) if(k in s) S[k]=s[k]; }catch(e){} applyLang(); }
 // Idioma: el guardado o, si nunca se eligió, el del navegador; cambia todo el DOM al momento (I18N) y repinta lo que no pasa por él
 function applyLang(){ const l=S.lang==='en'||S.lang==='es'?S.lang:I18N.guess(); I18N.set(l); document.title=TR('Poké Tactics'); }

@@ -78,7 +78,7 @@ test('tres copias se combinan en 2 estrellas', async ({ page }) => {
 test('rondas: sin «¡Listo!» ni «Saltar combate»: al acabar el tiempo empieza el combate y la ronda avanza @rapido', async ({ page }) => {
   // en la partida ya no hay botones para adelantar la ronda, saltar el combate, cambiar la velocidad, la sala, la Pokédex, las recetas ni el volumen
   for (const id of ['readyBtn', 'speedBtn', 'netTag', 'dexBtn', 'recBtn', 'muteBtn', 'rbPhase']) await expect(page.locator('#' + id)).toHaveCount(0);
-  expect(await page.evaluate(() => [G.speed, document.querySelectorAll('.top > button').length])).toEqual([1, 2]); // velocidad x1 y solo pantalla completa y ☰
+  expect(await page.evaluate(() => [G.speed, document.querySelectorAll('.top > button').length])).toEqual([1, 3]); // velocidad x1 y solo el planificador, pantalla completa y el engranaje
   await page.evaluate(() => { G.speed = 4; });
   const r0 = await page.evaluate(() => G.roundIdx);
   await page.evaluate(() => { G.timer = .3; });
@@ -177,7 +177,7 @@ test('planificador de fases: título, rondas, reloj y jugadores vivos @rapido', 
   expect(fondo).toEqual(['none|0px', 'none|0px', 'none|0px']);
   // la barra superior no lleva franja y sus dos botones son redondos
   const top = await page.evaluate(() => { const t = getComputedStyle(document.querySelector('.top')), b = getComputedStyle(document.getElementById('menuBtn')); return [t.backgroundImage, t.borderBottomWidth, b.borderRadius, document.querySelectorAll('.top > button').length]; });
-  expect(top).toEqual(['none', '0px', '50%', 2]);
+  expect(top).toEqual(['none', '0px', '50%', 3]); // planificador, pantalla completa y engranaje
   // el engranaje abre la ventana de configuración; Rendirse está deshabilitado antes de la fase 3-1
   await page.locator('#menuBtn').click(); await expect(page.locator('#modal h1')).toHaveText('Configuración'); await expect(page.locator('#optVol')).toBeVisible();
   await expect(page.locator('#surrBtn')).toBeDisabled(); await page.locator('#mClose').click(); await expect(page.locator('#modal')).toBeHidden();
@@ -776,4 +776,28 @@ test('planificador: crear, editar y guardar composiciones (máx. 5) y marcar sus
   await expect(page.locator('#cards .planMark')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.locator('#planner')).toBeHidden();
+});
+
+test('arenas por tipo: se elige en el menú, se guarda y en un combate PvP los aumentos del rival salen sobre su trofeo', async ({ page }) => {
+  // Vuelta al menú: el recuadro «Arena» de la ficha abre el selector con las 6
+  await page.evaluate(() => { closeModal(); showMenu(); });
+  await page.locator('#pickArena').click();
+  await expect(page.locator('.arOpt')).toHaveCount(6);
+  await expect(page.locator('.arOpt.on')).toHaveAttribute('data-k', 'coliseo');
+  await page.locator('.arOpt[data-k="agua"]').click();
+  await page.locator('#arOk').click();
+  await expect(page.locator('#pickArena .tfrom')).toHaveText('Abismo marino');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem(SETTINGS_KEY)).arena)).toBe('agua');
+  // En partida se ve su imagen, encajada igual que el coliseo (mismos puntos)
+  await startSolo(page);
+  await expect.poll(() => page.evaluate(() => B3.skin)).toBe('agua');
+  await expect.poll(() => page.evaluate(() => { const im = document.querySelector('#flatBg img'); return !!im && /arena\/agua\/base(1x)?\.webp/.test(im.src) && im.complete && im.naturalWidth > 0; })).toBe(true);
+  // Combate PvP: mis aumentos sobre mi trofeo y los del rival sobre el suyo (a la derecha)
+  await jumpToRound(page, 5);
+  await page.evaluate(() => { const ids = Object.keys(AUG_BY).filter(k => !AUG_BY[k].hero); G.players.forEach((p, i) => { p.augments = ids.slice(i * 2, i * 2 + 2); }); G.timer = 0; });
+  await expect.poll(() => page.evaluate(() => G.phase)).toBe('combat');
+  await expect.poll(() => page.evaluate(() => !!combatOpp())).toBe(true);
+  const r = await page.evaluate(async () => { await new Promise(res => setTimeout(res, 400)); const o = combatOpp(), a = B3.totemTop(), b = B3.totemTop2(); return { mine: G.me.augments, opp: o.augments, hud: hudAugs.map(h => h.id), a, b }; });
+  expect(r.hud).toEqual([...r.mine, ...r.opp]);
+  expect(r.b[0]).toBeGreaterThan(r.a[0] + 200); // el trofeo del rival está a la derecha
 });

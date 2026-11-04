@@ -29,7 +29,7 @@ test('el formulario valida antes de enviar', async ({ page }) => {
 test('registro, elección de minileyenda, cierre de sesión y vuelta a entrar @rapido', async ({ page }) => {
   const user = await register(page, undefined, 'bulbasaur');
   await expect(page.locator('#menuWho .tname')).toHaveText(user);
-  await expect(page.locator('#menuWho .tfrom')).toContainText('Bulbasaur');
+  await expect(page.locator('#pickTr .tfrom')).toContainText('Bulbasaur');
   // cerrar sesión desde Opciones
   await page.locator('#optBtn').click();
   await page.locator('#logoutBtn').click();
@@ -44,7 +44,7 @@ test('registro, elección de minileyenda, cierre de sesión y vuelta a entrar @r
   await page.locator('#auPass').fill(PASS);
   await page.locator('#auGo').click();
   await expect(page.locator('#menu')).toBeVisible();
-  await expect(page.locator('#menuWho .tfrom')).toContainText('Bulbasaur');
+  await expect(page.locator('#pickTr .tfrom')).toContainText('Bulbasaur');
 });
 
 test('la sesión sobrevive a recargar la página', async ({ page }) => {
@@ -72,7 +72,7 @@ test('la minileyenda se cambia en el menú y queda guardada en la cuenta', async
   await page.locator('#pickTr').click();
   await page.locator('.tacOpt[data-k="squirtle"]').click();
   await page.locator('#tacOk').click();
-  await expect(page.locator('#menuWho .tfrom')).toContainText('Squirtle');
+  await expect(page.locator('#pickTr .tfrom')).toContainText('Squirtle');
   await page.reload();
-  await expect(page.locator('#menuWho .tfrom')).toContainText('Squirtle');
+  await expect(page.locator('#pickTr .tfrom')).toContainText('Squirtle');
 });

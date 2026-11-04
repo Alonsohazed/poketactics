@@ -70,3 +70,7 @@ Para añadir un entrenador: comprueba la URL de Showdown con `curl -I` antes de 
 - Opciones del genérico: `flota=1`, `relax=0` (no bajar brazos), `tipo=cuadrupedo|bipedo`, `amp=` (amplitud) y `caer=<prefijo>+<prefijo>:<grados>` (deja colgar cadenas que el modelo trae rectas, p. ej. `caer=LFeeler+RFeeler:75` en Riolu).
 - `scripts/crear-clips-blender.py`: el de Chikorita (152), hecho a mano para su esqueleto.
 - Después: `scripts/optimizar-modelo.mjs`, el `.json` del modelo en `public/anims/` y el número en `ANIM_SET` de `board3d.js`.
+
+## Escenarios del tablero (Blender)
+- `scripts/arena-coliseo.py`: el coliseo (`public/arena/coliseo/`), con la cámara del juego; deja en `<salida>.json` los puntos de `FLAT_IMG`.
+- `scripts/arena-temas.py <tema> <salida.png> [ancho] [alto] [muestras] [gpu]`: las arenas por tipo (`agua`, `fuego`, `planta`, `roca`, `electrico`), el mismo escenario que el coliseo (cámara, campo, banca, repisas y trofeos idénticos: los puntos salen iguales) con el suelo, las piedras, la decoración flotante y el cielo de su tipo. Con `gpu=1` usa HIP/OptiX/CUDA si hay (en este PC, la AMD: ~40 s por arena a 2880×1620 y 48 muestras). Después, con sharp: `base.webp` (q72), `base1x.webp` (1440×810, q74) y `thumb.webp` (480×270, para el selector de arena) en `public/arena/<tema>/`. Para un tema nuevo: su paleta en `T`, su clave en el bucle de `FLAT_SETS` de `board3d.js` y en `ARENAS` de `game.js`.

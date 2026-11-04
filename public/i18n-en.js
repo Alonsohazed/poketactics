@@ -896,4 +896,6 @@ Object.assign(I18N.EN, {
   "Como mucho {0} composiciones": "{0} teams at most", "El equipo ya tiene {0} fichas": "The team already has {0} units", "Código del equipo copiado": "Team code copied", "Ese código no es un equipo válido": "That code is not a valid team",
   // ----- Coste 5 a 3★ (noviembre de 2026) -----
   "Coste 5 a ★★★: empieza con el maná lleno, recupera {0} de maná por segundo y recibe un {1}% menos de daño.": "Cost 5 at ★★★: starts with full mana, regains {0} mana per second and takes {1}% less damage.",
+  // ----- Arenas por tipo (noviembre de 2026) -----
+  "Cambiar arena": "Change arena", "Coliseo estelar": "Starry Colosseum", "Clásica": "Classic", "Abismo marino": "Ocean Abyss", "Caldera volcánica": "Volcanic Caldera", "Jardín flotante": "Floating Garden", "Cañón de arenisca": "Sandstone Canyon", "Tormenta eléctrica": "Electric Storm",
 });
