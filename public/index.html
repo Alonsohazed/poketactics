@@ -1777,9 +1777,10 @@ body:has(#menu:not(.hidden)) #menuScene,body:has(#auth:not(.hidden)) #menuScene{
 .pxbIc{width:54px;height:54px;object-fit:contain;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
 .pxb-main .pxbIc{width:50px;height:50px}
 /* ===== Planificador de composiciones (#planner, renderPlanner en game.js): «Mis equipos» y el editor, entre la barra de arriba y la tienda ===== */
-.planner{position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:60;width:min(1180px,calc(100vw - 24px));display:flex;max-height:calc(100vh - 90px)}
+.planner{position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:60;width:min(1880px,calc(100vw - 48px));display:flex;max-height:calc(100vh - 90px)}
 .planner.hidden{display:none}
-.planner:has(.plListBox){width:min(720px,calc(100vw - 24px))}
+.planner:has(.plListBox){width:min(860px,calc(100vw - 24px))}
+body:has(.planner:not(.hidden)) #tip{z-index:62} /* las ventanas de fichas y sinergias, por encima del panel */
 body:has(#auth:not(.hidden)) .planner{display:none} /* en el menú sí se abre (botón #planMenuBtn), para planear las composiciones antes de jugar */
 .plBox{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#1f2550,#12152e);border:2px solid #c9a24a;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.06);color:#e6e8f7;padding:12px 16px 14px}
 .plHead{display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(201,162,74,.35);margin-bottom:12px}
@@ -1827,48 +1828,81 @@ body:has(#auth:not(.hidden)) .planner{display:none} /* en el menú sí se abre (
 .plPic.empty{background:rgba(255,255,255,.04)}
 .plPic.empty::after{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .plPic.big{width:100%;height:auto;aspect-ratio:1}
-.plCols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 58px 330px;gap:14px}
-.plLeft{min-height:0;display:flex;flex-direction:column;gap:10px}
-.plFilter{display:flex;align-items:center;gap:8px;align-self:flex-start;background:#0d1024;border:1px solid #59607f;border-radius:10px;padding:5px 10px;color:#cfd3ee;cursor:pointer}
-.plFilter svg{width:17px;height:17px}
-.plFilter select{background:none;border:0;color:#fff;font:700 14px var(--pxFont,sans-serif);outline:0;cursor:pointer}
-.plFilter select option{background:#12152e;color:#fff}
-.plGrid{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-right:6px}
-.plCostRow{display:flex;gap:10px;align-items:flex-start}
-.plCost{flex:0 0 30px;display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:14px;color:var(--cc);font-weight:900;font-size:17px;text-shadow:0 1px 0 #000}
-.plCost img{width:18px;height:18px}
-.plUnits{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
-.plU{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0;cursor:pointer;color:#e6e8f7;box-shadow:none;min-width:0}
-.plU .plPic{width:100%;height:auto;aspect-ratio:1}
-.plU b{font-size:11px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.plU .plTr{position:absolute;left:3px;top:3px;display:flex;flex-direction:column;gap:1px;z-index:1}
-.plU .plTr i{width:15px;height:17px;display:grid;place-items:center;background:linear-gradient(180deg,#3a4656,#18202b);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);color:#fff}
-.plU .plTr i svg{width:9px;height:9px;fill:currentColor}
-.plU:hover .plPic{filter:brightness(1.2)}
-.plU.in .plPic::after{box-shadow:inset 0 0 0 3px #ffd75e,inset 0 0 12px rgba(255,215,94,.5)}
-.plU.in b{color:#ffd75e}
-.plInBall{position:absolute;right:3px;top:3px;width:17px;height:17px;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))}
-.plInBall svg{width:100%;height:100%;display:block}
-.plHexes{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:2px;overflow:auto;min-height:0}
-.plHex{position:relative;flex:0 0 auto;width:46px;height:52px;display:grid;place-items:center;background:linear-gradient(180deg,#2c3350,#171b30);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);color:#8d93b6}
-.plHex.on{background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 85%,#fff 15%),color-mix(in srgb,var(--tc) 60%,#000 40%));color:#fff}
-.plHex i{display:grid;place-items:center}
-.plHex i svg{width:22px;height:22px;fill:currentColor}
-.plHex b{position:absolute;bottom:4px;right:9px;font-size:12px;font-weight:900;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
-.plRight{min-height:0;display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
-.plName{display:flex;align-items:center;gap:8px}
-.plName b{flex:1;min-width:0;font-size:17px;font-weight:800;color:#f4f0ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Editor al estilo del Team Planner de TFT: columna estrecha de fichas a la izquierda y el equipo grande a la derecha (2 filas de 5 cartas) con sus sinergias debajo.
+   Ocupa todo el alto disponible (planFit le da la altura) y las cartas crecen con el panel */
+.plEditBox{height:100%}
+.plHeadE{flex-wrap:wrap;row-gap:8px}
+.plHeadE h2{flex:0 0 auto}
+.plHeadE .plName{flex:1;min-width:160px;display:flex;align-items:center;gap:8px;margin-left:10px}
+.plTools{display:flex;gap:10px;align-items:center;margin-left:auto}
+.plName b{min-width:0;font-size:17px;font-weight:800;color:#f4f0ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plPen{width:30px;height:30px;flex:0 0 auto;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#f3d27a;cursor:pointer;display:grid;place-items:center;padding:0;box-shadow:none}
 .plPen svg{width:18px;height:18px}
-.plSlots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.plSlot{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0;color:#e6e8f7;box-shadow:none;min-width:0}
-.plSlot:not(.full){aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);display:grid;place-items:center}
-.plSlot:not(.full) i{width:42%;opacity:.16;filter:grayscale(1)}
-.plSlot i svg{width:100%;display:block}
-.plSlot.full{cursor:pointer}
-.plSlot.full b{font-size:10.5px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.plSlot.full:hover .plPic{filter:brightness(.65)}
-.plRight .plFoot{margin-top:auto}
+.plPen:hover{background:rgba(255,255,255,.14)}
+.plCols{flex:1;min-height:0;display:grid;grid-template-columns:clamp(260px,29%,440px) minmax(0,1fr);gap:18px}
+.plLeft{min-height:0;display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px}
+.plFilter{display:flex;align-items:center;gap:8px;align-self:stretch;background:#0d1024;border:1px solid #59607f;border-radius:10px;padding:5px 10px;color:#cfd3ee;cursor:pointer}
+.plFilter svg{width:17px;height:17px;flex:0 0 auto}
+.plFilter select{flex:1;min-width:0;background:none;border:0;color:#fff;font:700 14px var(--pxFont,sans-serif);outline:0;cursor:pointer}
+.plFilter select option{background:#12152e;color:#fff}
+.plGrid{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-right:6px;scrollbar-width:thin}
+.plTierH{display:flex;align-items:center;justify-content:space-between;margin:0 2px 6px;color:#e6e8f7;font-weight:800;font-size:14px}
+.plTierH b{display:flex;align-items:center;gap:4px;color:#f3d27a}
+.plTierH img{width:15px;height:15px}
+.plUnits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.plU{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:8px;overflow:hidden;cursor:pointer;background:#0a0d1c;box-shadow:inset 0 0 0 2px var(--cc,#555);transition:transform .1s,filter .1s}
+.plU img{width:100%;height:100%;object-fit:cover;display:block}
+.plU::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 2px var(--cc,#555);pointer-events:none}
+.plU:hover{filter:brightness(1.2);transform:translateY(-1px)}
+.plU.in::after{box-shadow:inset 0 0 0 3px #fff,inset 0 0 12px rgba(255,255,255,.45)}
+.plInBall{position:absolute;right:3px;top:3px;width:18px;height:18px;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+.plInBall svg{width:100%;height:100%;display:block}
+.plRight{min-height:0;display:flex;flex-direction:column;gap:14px}
+.plSlots{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:14px}
+.plSlot{position:relative;min-height:0;display:flex;flex-direction:column;border:0;padding:0;border-radius:10px;overflow:hidden;background:#0a0d1c;color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 6px 16px rgba(0,0,0,.35)}
+.plSlot .plArt{position:relative;flex:1;min-height:0;display:block;overflow:hidden;background:#070b10}
+.plSlot .plArt img{width:100%;height:100%;object-fit:cover;object-position:50% 45%;display:block}
+.plSlot .plArt img.wide{object-position:68% 45%}
+.plSlotN{flex:0 0 auto;height:clamp(26px,3.4vh,36px);display:flex;align-items:center;justify-content:center;padding:0 6px;font-size:clamp(13px,1.6vh,17px);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--cc,#555) 85%,#fff 15%),color-mix(in srgb,var(--cc,#555) 70%,#000 30%));text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.plSlotTr{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:1}
+.plSlotTr i{width:clamp(24px,3vh,32px);height:calc(clamp(24px,3vh,32px) * 1.1);display:grid;place-items:center;background:linear-gradient(180deg,#3a4656,#18202b);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);color:#fff}
+.plSlotTr i svg{width:58%;height:58%;fill:currentColor}
+.plSlot.full{cursor:pointer;box-shadow:0 0 0 2px var(--cc,#555),0 6px 16px rgba(0,0,0,.35)}
+.plSlot.full:hover .plArt img{filter:brightness(.7)}
+.plQuit{display:none;position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);z-index:2;padding:4px 12px;border-radius:999px;background:rgba(0,0,0,.65);font-style:normal;font-weight:800;font-size:13px;letter-spacing:.04em;pointer-events:none}
+.plSlot.full:hover .plQuit{display:block}
+.plSlot.empty{background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.plSlot.empty .plArt{display:grid;place-items:center;background:none}
+.plSlot.empty .plArt i{width:34%;max-width:70px;opacity:.13;filter:grayscale(1)}
+.plSlot.empty .plArt i svg{width:100%;display:block}
+.plSlot.empty .plSlotN{background:rgba(255,255,255,.04)}
+.plTraits{flex:0 0 auto;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 14px;padding:6px 4px 2px;min-height:76px;align-items:flex-start}
+.plTrait{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:help;outline:0}
+.plTrait .plHex{width:clamp(42px,5.2vh,56px);height:calc(clamp(42px,5.2vh,56px) * 1.12);display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:linear-gradient(180deg,#323a55,#1a1f33);color:#9ba2c4;font-weight:900;font-size:17px}
+.plTrait .plHex svg{width:52%;height:52%;fill:currentColor}
+.plTrait b{font-size:15px;font-weight:800;color:#cfd3ee}
+.plTrait.bronze .plHex{background:linear-gradient(180deg,#d2915a,#8a5328);color:#fff}
+.plTrait.silver .plHex{background:linear-gradient(180deg,#e2e9f0,#8f9aa8);color:#1b2030}
+.plTrait.gold .plHex{background:linear-gradient(180deg,#ffe08a,#c08a1e);color:#3a2604}
+.plTrait.bronze b,.plTrait.silver b,.plTrait.gold b{color:#fff}
+.plTrait:hover .plHex,.plTrait:focus .plHex{filter:brightness(1.15)}
+.plTrait.more .plHex{background:linear-gradient(180deg,#5a4a1c,#2b2410);color:#f3d27a;font-size:15px;box-shadow:none}
+.plNoTr{margin:auto;color:#8d93b6;font-weight:700}
+@media (max-width:900px){ /* pantallas estrechas: el panel se desplaza entero, las cartas son cuadradas y las sinergias van en una fila deslizable */
+  .plCols{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;overflow:auto}
+  .plLeft{max-height:260px}
+  .plUnits{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
+  .plSlots{flex:none;grid-template-rows:repeat(2,auto);gap:8px}
+  .plSlot .plArt{flex:none;aspect-ratio:1}
+  .plSlotTr{left:4px;top:4px} .plSlotTr i{width:18px;height:20px}
+  .plSlotN{font-size:11px;height:24px}
+  .plTraits{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;min-height:0;padding-bottom:6px}
+  .plTrait{flex:0 0 auto}
+  .plHead h2{font-size:19px}
+  .plTools{margin-left:0}
+}
+@media (max-width:620px){ .plSlotTr{display:none} } /* en el móvil las cartas son pequeñas: sus sinergias ya están en la fila de abajo */
 .top #planBtn{margin-left:auto}.top #planBtn+#fsBtn{margin-left:0}
 /* Botón del planificador en el menú (#planMenuBtn): círculo perfecto a la izquierda de Normal, del alto de Clasificatoria (78 px), con su mismo azul, borde dorado e icono blanco.
    En escritorio va por fuera de la columna de Normal y Clasificatoria (las dos siguen del mismo ancho); en pantallas estrechas, en la misma fila que Normal */
@@ -1885,12 +1919,6 @@ body:has(#auth:not(.hidden)) .planner{display:none} /* en el menú sí se abre (
 .card .planMark{position:absolute;left:calc(var(--ch,150px) * .05);top:calc(var(--ch,150px) * .04);z-index:5;width:calc(var(--ch,150px) * .17);height:calc(var(--ch,150px) * .17);filter:drop-shadow(0 1px 2px rgba(0,0,0,.85)) drop-shadow(0 0 5px rgba(255,90,90,.5));pointer-events:none}
 .card .planMark svg{width:100%;height:100%;display:block}
 .card.v2 .planMark~.upStars{left:calc(var(--ch,150px) * .26)}
-@media (max-width:900px){
-  .plCols{grid-template-columns:minmax(0,1fr) 50px;overflow:auto}
-  .plRight{grid-column:1/-1}
-  .plHex{width:40px;height:46px}
-  .plHead h2{font-size:19px}
-}
 /* ===== Selector de arena (showArenaPick en game.js): las 6 arenas en tarjetas con su miniatura (arena/<clave>/thumb.webp) ===== */
 .arPick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .arOpt{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:8px 8px 10px;border-radius:14px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--k-tx,#e6e8f7);cursor:pointer;text-align:left;box-shadow:none}

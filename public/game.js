@@ -3044,18 +3044,19 @@ function unitTip(key){
 function lootHTML(){ const L=G&&G.me&&G.me.loot; if(!L) return '<div class="loot"><b>💎 Botín de la partida</b><br><span class="muted">Todavía nada: gana combates con 2 o más Cazatesoros.</span></div>';
  return `<div class="loot"><b>💎 Botín de la partida</b><div>🪙 Oro: <b>${L.gold}</b></div><div>🐾 Pokémon: <b>${L.units}</b></div><div>🎒 Objetos: <b>${L.items}</b></div><div class="lootTot">≈ <b>${L.value}</b> de oro en total</div></div>`; }
 function tipHTML(spec){
- const i=spec.indexOf(':'), type=spec.slice(0,i), key=spec.slice(i+1);
+ const i=spec.indexOf(':'), type=spec.slice(0,i); let key=spec.slice(i+1); // let: la ventana de una sinergia del planificador (ptrait:<sinergia>|<claves>) se queda solo con la sinergia
  if(type==='unit') return unitTip(key);
  if(type==='shop') return shopTip(key);
  if(type==='form'){ const [k,s]=key.split('|'); const d=DEF[k]; if(!d) return ''; const st=+s; const ab=abOf(d,st); return `<h4>${nameOf(d,st)} ${'★'.repeat(st)}</h4><div class="scope">${ab[1]} · ${KIND_NAME[ab[0]]}</div><div>${abHTML(ab,baseCombatUnit(d,0,st),st)}</div>`; }
- if(type==='trait'){
-   const Tr=TRAITS[key]; if(!Tr) return '';
-   const live=G&&G.me&&G.players&&G.players.length, c=live?(traitCounts(G.me)[key]||0):0, e=live?(emblemCountsOf(boardUnits(G.me))[key]||0):0, tier=tierOf(key,c,e);
+ if(type==='trait'||type==='ptrait'){
+   const pt=type==='ptrait', [tk,pl]=pt?key.split('|'):[key,null], Tr=TRAITS[tk]; if(!Tr) return ''; key=tk;
+   const plan=pt?(pl||'').split('.').filter(k=>DEF[k]):null, live=G&&G.me&&G.players&&G.players.length;
+   const c=pt?plan.filter(k=>DEF[k].traits.includes(key)).length:live?(traitCounts(G.me)[key]||0):0, e=!pt&&live?(emblemCountsOf(boardUnits(G.me))[key]||0):0, tier=tierOf(key,c,e);
    const units=UNIT_LIST.filter(u=>u.traits.includes(key));
-   const onBoard=new Set(G&&G.me?boardUnits(G.me).map(u=>u.defId):[]);
+   const onBoard=new Set(pt?plan:G&&G.me?boardUnits(G.me).map(u=>u.defId):[]);
    return `<h4>${Tr.icon} ${key} <span class="small muted">${c}/${Tr.bp.find(b=>b>c)||Tr.bp[Tr.bp.length-1]}</span></h4><div class="scope">${Tr.scope}</div><div>${Tr.sum}</div>
      <div style="margin-top:6px">${Tr.lv.map((t,j)=>`<div class="tl ${tier>j?'on':''}"><b>(${Tr.bp[j]})</b> ${t}</div>`).join('')}${Tr.pr?`<div class="tl pr ${tier>Tr.bp.length?'on':''}"><b>(${Tr.pr[0]})</b> 🌈 ${Tr.pr[1]}${e?'':' <i>🔒 Solo con al menos un emblema</i>'}</div>`:''}</div>
-     <div class="trUnits">${units.map(u=>{ const k=CARD_ART[u.key]?u.key:null; return `<span class="trU c${u.cost} ${onBoard.has(u.key)?'on':''}" title="${esc(u.name)}">${k?`<img src="${artThumb(k)}" alt="" class="artPic" data-dex="${dexOf(u,1)}">`:portraitImg(dexOf(u,1))}</span>`; }).join('')}</div>${key==='Cazatesoros'?lootHTML():''}`;
+     <div class="trUnits">${units.map(u=>{ const k=CARD_ART[u.key]?u.key:null; return `<span class="trU c${u.cost} ${onBoard.has(u.key)?'on':''}" title="${esc(u.name)}">${k?`<img src="${artThumb(k)}" alt="" class="artPic" data-dex="${dexOf(u,1)}">`:portraitImg(dexOf(u,1))}</span>`; }).join('')}</div>${key==='Cazatesoros'&&!pt?lootHTML():''}`;
  }
  if(type==='item'){
    const I=ITEMS[key]; if(!I) return '';
@@ -3894,6 +3895,8 @@ const PLAN_MAX=5, PLAN_SIZE=10, PLAN={view:'list',i:0,filter:'',undo:[],menu:-1,
 const planUnits=()=>UNIT_LIST.filter(u=>DEF[u.key]&&!DEF[u.key].evoOf); // solo lo que sale en la tienda, con su forma de la tienda (sin evoluciones)
 const planList=()=>{ if(!Array.isArray(S.plans)) S.plans=[]; S.plans=S.plans.filter(p=>p&&typeof p.n==='string'&&Array.isArray(p.u)).slice(0,PLAN_MAX); for(const p of S.plans) p.u=p.u.filter(k=>DEF[k]&&!DEF[k].evoOf).slice(0,PLAN_SIZE); return S.plans; };
 const planOn=()=>planList().find(p=>p.on)||null;
+// «Copiar tablero» (el Snapshot de TFT): las fichas de tu tablero, sin repetir y de más caras a más baratas, en su forma de la tienda
+const planBoardKeys=()=>{ const ok=new Set(planUnits().map(u=>u.key)); return [...new Set(boardUnits(G.me).slice().sort((a,b)=>DEF[b.baseId].cost-DEF[a.baseId].cost).map(u=>u.baseId))].filter(k=>ok.has(k)).slice(0,PLAN_SIZE); };
 const planSave=()=>{ planList(); saveSettings(); renderShop.key=null; if(liveGame()&&$('cards')) renderShop(); }; // en el menú no hay tienda que marcar
 const planCode=p=>'PT1:'+p.u.join('.');
 function planParse(t){ const m=/PT1:([a-z0-9_.]*)/i.exec(String(t||'')); if(!m) return null; const ok=new Set(planUnits().map(u=>u.key)); const u=[...new Set(m[1].toLowerCase().split('.').filter(k=>ok.has(k)))].slice(0,PLAN_SIZE); return u.length?u:null; }
@@ -3908,7 +3911,7 @@ function planEl(){ let el=$('planner'); if(el) return el; el=document.createElem
 function showPlanner(view){ if(view) PLAN.view=view; const L=planList(); if(PLAN.view==='edit'&&!L[PLAN.i]) PLAN.view='list'; PLAN.menu=-1; PLAN.edit=false; const el=planEl(); el.classList.remove('hidden'); for(const id of ['planBtn','planMenuBtn']) $(id)&&$(id).classList.add('on'); renderPlanner(); planFit(); }
 // En partida, entre la barra de arriba y la tienda, para que se vean las Poké Balls de las cartas mientras se planifica; en el menú, bajo su barra de botones
 function planFit(){ const el=$('planner'); if(!el||el.classList.contains('hidden')) return; const inMenu=$('menu')&&!$('menu').classList.contains('hidden'), tb=inMenu?$('mnTools'):document.querySelector('.top'), sh=inMenu?null:$('shopPanel');
- const top=Math.round((tb&&tb.getBoundingClientRect().bottom||56)+8), sb=sh&&sh.getClientRects().length?sh.getBoundingClientRect().top:innerHeight; el.style.top=top+'px'; el.style.maxHeight=Math.max(260,Math.round((sb>top+260?sb:innerHeight)-top-8))+'px'; }
+ const top=Math.round((tb&&tb.getBoundingClientRect().bottom||56)+8), sb=sh&&sh.getClientRects().length?sh.getBoundingClientRect().top:innerHeight; const h=Math.max(260,Math.round((sb>top+260?sb:innerHeight)-top-8)); el.style.top=top+'px'; el.style.maxHeight=h+'px'; el.style.height=PLAN.view==='edit'?Math.min(h,1040)+'px':''; }
 if(!HEADLESS) addEventListener('resize',()=>planFit());
 function closePlanner(){ const el=$('planner'); if(el) el.classList.add('hidden'); PLAN.menu=-1; PLAN.edit=false; for(const id of ['planBtn','planMenuBtn']) $(id)&&$(id).classList.remove('on'); if(typeof hideTip==='function') hideTip(); }
 const plannerOpen=()=>{ const el=$('planner'); return !!(el&&!el.classList.contains('hidden')); };
@@ -3925,19 +3928,27 @@ function renderPlanner(){
      '<div class="plPasteBox hidden" id="plPasteBox"><input id="plPasteIn" placeholder="Pega aquí el código del equipo (PT1:…)" maxlength="400" autocomplete="off"><button class="plBtn" id="plPasteOk">Añadir</button></div>'+
      '<div class="plFoot"><span class="plCnt">'+L.length+'/'+PLAN_MAX+'</span><button class="plBtn ghost" id="plPaste">Pegar equipo</button><button class="plBtn" id="plNew"'+(L.length>=PLAN_MAX?' disabled':'')+'>+ Nuevo</button></div></div>';
  } else {
+   // Editor al estilo del Team Planner de TFT: a la izquierda, estrecha, la lista de fichas por coste (solo retratos); a la derecha, grande, el equipo en 2 filas de 5
+   // cartas con retrato, sinergias y el nombre del color de su coste, y debajo sus sinergias con «n/siguiente escalón» (al pasar el ratón, la ventana de la sinergia con sus fichas)
    const p=L[PLAN.i], inTeam=new Set(p.u), all=planUnits(), units=all.filter(u=>!PLAN.filter||u.traits.includes(PLAN.filter)), tr=planTraits(p.u);
    const byCost=[1,2,3,4,5].map(c=>[c,units.filter(u=>u.cost===c)]).filter(([,l])=>l.length);
    const traitsAll=[...new Set(all.flatMap(u=>u.traits))].sort((a,b)=>a.localeCompare(b,'es'));
-   el.innerHTML='<div class="plBox plEditBox"><div class="plHead"><button class="plBack" id="plBack" title="Volver a Mis equipos" aria-label="Volver a Mis equipos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5l-7 7 7 7M20 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button><h2>Planificador '+help('Toca una ficha para añadirla al equipo (hasta '+PLAN_SIZE+') y tócala otra vez, o en su hueco, para quitarla. Con el interruptor encendido, sus fichas salen marcadas con una Poké Ball en la tienda.')+'</h2>'+X+'</div>'+
+   const live=liveGame()&&G.me, snap=live?planBoardKeys():[], TRMAX=12, trShow=tr.slice(0,tr.length>TRMAX?TRMAX-1:TRMAX), trMore=tr.slice(trShow.length), plist=p.u.join('.');
+   const tierCls=x=>{ const bp=TRAITS[x.t]?TRAITS[x.t].bp:[]; return !x.lv?'':x.lv>=bp.length?' gold':x.lv>=2?' silver':' bronze'; };
+   const slotArt=k=>{ const src=CARD_ART[k]||artThumb(k); return '<span class="plArt"><img src="'+src+'" alt="" data-dex="'+String(dexOf(DEF[k],1)).split('/').pop()+'" decoding="async"'+(CARD_ART[k]?' class="wide"':'')+'></span>'; };
+   el.innerHTML='<div class="plBox plEditBox"><div class="plHead plHeadE"><button class="plBack" id="plBack" title="Volver a Mis equipos" aria-label="Volver a Mis equipos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5l-7 7 7 7M20 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'+
+     '<h2>Planificador '+help('Toca una ficha de la izquierda para añadirla al equipo (hasta '+PLAN_SIZE+') y tócala otra vez, o su carta, para quitarla. Pasa el ratón por una sinergia para ver sus fichas. Con el interruptor encendido, sus fichas salen marcadas con una Poké Ball en la tienda.')+'</h2>'+tog(!!p.on,PLAN.i)+
+     '<div class="plName">'+(PLAN.edit?'<input id="plNameIn" maxlength="24" value="'+esc(p.n)+'" autocomplete="off" aria-label="Nombre del equipo">':'<button class="plPen" id="plPen" title="Cambiar el nombre" aria-label="Cambiar el nombre"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg></button><b translate="no">'+esc(p.n)+'</b>')+'</div>'+
+     '<div class="plTools">'+(live?'<button class="plBtn ghost" id="plSnap" title="Pone en el equipo las fichas de tu tablero"'+(snap.length?'':' disabled')+'>Copiar tablero</button>':'')+'<button class="plBtn ghost" id="plUndo"'+(PLAN.undo.length?'':' disabled')+'>Deshacer</button><button class="plBtn" id="plClear"'+(p.u.length?'':' disabled')+'>Limpiar</button></div>'+X+'</div>'+
      '<div class="plCols"><div class="plLeft"><label class="plFilter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg><select id="plFilter" aria-label="Filtro"><option value="">Filtro: todas las sinergias</option>'+traitsAll.map(t=>'<option value="'+t+'"'+(PLAN.filter===t?' selected':'')+'>'+t+'</option>').join('')+'</select></label>'+
-       '<div class="plGrid">'+byCost.map(([c,l])=>'<div class="plCostRow"><div class="plCost" style="--cc:'+COST_HEX[c-1]+'"><img src="img/ui/coin.png" alt=""><b>'+c+'</b></div><div class="plUnits">'+l.map(u=>'<button class="plU'+(inTeam.has(u.key)?' in':'')+'" data-add="'+u.key+'" data-tip="shop:'+u.key+'" aria-label="'+DEF[u.key].name+'">'+planThumb(u.key)+'<span class="plTr">'+u.traits.map(t=>'<i style="--tc:'+(TRAITS[t]?TRAITS[t].color:'#888')+'">'+traitIcon(t)+'</i>').join('')+'</span><b>'+DEF[u.key].name+'</b>'+(inTeam.has(u.key)?'<span class="plInBall">'+PB_SVG+'</span>':'')+'</button>').join('')+'</div></div>').join('')+'</div></div>'+
-       '<div class="plHexes">'+(tr.length?tr.slice(0,10).map(x=>'<span class="plHex'+(x.lv?' on':'')+'" title="'+x.t+': '+x.n+(x.next?' (siguiente escalón: '+x.next+')':'')+'" style="--tc:'+(TRAITS[x.t]?TRAITS[x.t].color:'#888')+'"><i>'+traitIcon(x.t)+'</i><b>'+x.n+'</b></span>').join(''):'<span class="plHex"></span><span class="plHex"></span><span class="plHex"></span>')+'</div>'+
-       '<div class="plRight"><div class="plName">'+(PLAN.edit?'<input id="plNameIn" maxlength="24" value="'+esc(p.n)+'" autocomplete="off" aria-label="Nombre del equipo">':'<button class="plPen" id="plPen" title="Cambiar el nombre" aria-label="Cambiar el nombre"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg></button><b translate="no">'+esc(p.n)+'</b>')+tog(!!p.on,PLAN.i)+'</div>'+
-         '<div class="plSlots">'+Array.from({length:PLAN_SIZE},(_,j)=>{ const k=p.u[j]; return k?'<button class="plSlot full" data-rm="'+j+'" title="Quitar">'+planThumb(k,'big')+'<b>'+DEF[k].name+'</b></button>':'<span class="plSlot"><i>'+PB_SVG+'</i></span>'; }).join('')+'</div>'+
-         '<div class="plFoot"><button class="plBtn ghost" id="plUndo"'+(PLAN.undo.length?'':' disabled')+'>Deshacer</button><button class="plBtn" id="plClear"'+(p.u.length?'':' disabled')+'>Limpiar</button></div></div></div></div>';
+       '<div class="plGrid">'+byCost.map(([c,l])=>'<div class="plTier"><div class="plTierH"><span>Coste '+c+'</span><b><img src="img/ui/coin.png" alt="">'+c+'</b></div><div class="plUnits">'+l.map(u=>'<button class="plU'+(inTeam.has(u.key)?' in':'')+'" data-add="'+u.key+'" data-tip="shop:'+u.key+'" aria-label="'+DEF[u.key].name+'" style="--cc:'+COST_HEX[u.cost-1]+'"><img src="'+artThumb(u.key)+'" alt="" data-dex="'+String(dexOf(DEF[u.key],1)).split('/').pop()+'" decoding="async">'+(inTeam.has(u.key)?'<span class="plInBall">'+PB_SVG+'</span>':'')+'</button>').join('')+'</div></div>').join('')+'</div></div>'+
+       '<div class="plRight"><div class="plSlots">'+Array.from({length:PLAN_SIZE},(_,j)=>{ const k=p.u[j]; if(!k) return '<span class="plSlot empty"><span class="plArt"><i>'+PB_SVG+'</i></span><b class="plSlotN"></b></span>'; const d=DEF[k];
+           return '<button class="plSlot full" data-rm="'+j+'" data-tip="shop:'+k+'" style="--cc:'+COST_HEX[d.cost-1]+'" aria-label="Quitar '+d.name+'">'+slotArt(k)+'<span class="plSlotTr">'+d.traits.map(t=>'<i>'+traitIcon(t)+'</i>').join('')+'</span><em class="plQuit">Quitar</em><b class="plSlotN">'+d.name+'</b></button>'; }).join('')+'</div>'+
+         '<div class="plTraits">'+(tr.length?trShow.map(x=>{ const bp=TRAITS[x.t]?TRAITS[x.t].bp:[]; return '<span class="plTrait'+tierCls(x)+'" data-tip="ptrait:'+x.t+'|'+plist+'" tabindex="0" aria-label="'+x.t+'"><i class="plHex">'+traitIcon(x.t)+'</i><b>'+x.n+'/'+(x.next||bp[bp.length-1]||x.n)+'</b></span>'; }).join('')+
+           (trMore.length?'<span class="plTrait more" title="'+trMore.map(x=>x.t+' '+x.n).join(' · ')+'"><i class="plHex">+'+trMore.length+'</i><b>&nbsp;</b></span>':''):'<p class="plNoTr">Añade fichas para ver sus sinergias</p>')+'</div></div></div></div>';
  }
  // Retrato: miniatura de la tienda y, si falla, el sprite de la Pokédex
- el.querySelectorAll('.plPic img').forEach(im=>im.onerror=()=>{ im.onerror=null; im.src=dexUrl(im.dataset.dex); });
+ planFit(); el.querySelectorAll('.plPic img,.plU img,.plArt img').forEach(im=>im.onerror=()=>{ im.onerror=null; im.src=dexUrl(im.dataset.dex); });
  const q=s=>el.querySelector(s), on=(s,fn)=>{ const n=q(s); if(n) n.onclick=fn; };
  on('#plClose',closePlanner); on('#plBack',()=>{ PLAN.view='list'; PLAN.edit=false; renderPlanner(); }); on('#plNew',()=>planNew());
  on('#plPaste',async()=>{ let t=''; try{ t=await navigator.clipboard.readText(); }catch(e){} const u=planParse(t); if(u){ planNew(u); return; } const b=q('#plPasteBox'); b.classList.remove('hidden'); q('#plPasteIn').focus(); });
@@ -3954,6 +3965,7 @@ function renderPlanner(){
  el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const k=b.dataset.add; planEdit(p=>{ const i=p.u.indexOf(k); if(i>=0) p.u.splice(i,1); else if(p.u.length<PLAN_SIZE) p.u.push(k); else toast('El equipo ya tiene '+PLAN_SIZE+' fichas'); }); });
  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>planEdit(p=>p.u.splice(+b.dataset.rm,1)));
  on('#plClear',()=>planEdit(p=>{ p.u.length=0; }));
+ on('#plSnap',()=>{ const ks=planBoardKeys(); if(!ks.length){ toast('No tienes fichas en el tablero'); return; } planEdit(p=>{ p.u=ks; }); });
  on('#plUndo',()=>{ const p=L[PLAN.i], u=PLAN.undo.pop(); if(!p||!u) return; p.u=JSON.parse(u); planSave(); renderPlanner(); });
  on('#plPen',()=>{ PLAN.edit=true; renderPlanner(); const i=q('#plNameIn'); if(i){ i.focus(); i.select(); } });
  const ni=q('#plNameIn'); if(ni){ let gone=false; const done=ok=>{ if(gone) return; gone=true; const v=ni.value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,24); if(ok&&v) L[PLAN.i].n=v; PLAN.edit=false; if(ok) planSave(); renderPlanner(); };

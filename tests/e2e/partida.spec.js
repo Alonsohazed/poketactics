@@ -745,7 +745,7 @@ test('planificador: crear, editar y guardar composiciones (máx. 5) y marcar sus
   await expect(page.locator('#planner h2')).toContainText('Mis equipos');
   await page.locator('#plNew').click();
   // Solo las fichas de la tienda, por coste (sin evoluciones)
-  const grid = await page.evaluate(() => ({ n: document.querySelectorAll('#planner [data-add]').length, costs: [...document.querySelectorAll('#planner .plCost b')].map(b => +b.textContent), shop: UNIT_LIST.filter(u => !DEF[u.key].evoOf).length, evo: [...document.querySelectorAll('#planner [data-add]')].some(b => DEF[b.dataset.add].evoOf) }));
+  const grid = await page.evaluate(() => ({ n: document.querySelectorAll('#planner [data-add]').length, costs: [...document.querySelectorAll('#planner .plTierH b')].map(b => +b.textContent), shop: UNIT_LIST.filter(u => !DEF[u.key].evoOf).length, evo: [...document.querySelectorAll('#planner [data-add]')].some(b => DEF[b.dataset.add].evoOf) }));
   expect(grid.n).toBe(grid.shop); expect(grid.costs).toEqual([1, 2, 3, 4, 5]); expect(grid.evo).toBe(false);
   for (const k of ['charmander', 'pichu', 'onix']) await page.locator(`#planner [data-add="${k}"]`).click();
   await expect(page.locator('#planner .plSlot.full')).toHaveCount(3);
@@ -755,8 +755,25 @@ test('planificador: crear, editar y guardar composiciones (máx. 5) y marcar sus
   await expect(page.locator('#planner .plSlot.full')).toHaveCount(3);
   // Sin encender, la tienda no marca nada; encendida, sus 3 fichas llevan la Poké Ball
   await expect(page.locator('#cards .planMark')).toHaveCount(0);
-  await page.locator('#planner .plRight [data-tog]').click();
+  await page.locator('#planner .plHeadE [data-tog]').click();
   await expect(page.locator('#cards .planMark')).toHaveCount(3);
+  // Como el Team Planner de TFT: la columna de fichas de la izquierda es estrecha y el equipo de la derecha, grande
+  const cols = await page.evaluate(() => [document.querySelector('#planner .plLeft').getBoundingClientRect().width, document.querySelector('#planner .plRight').getBoundingClientRect().width]);
+  expect(cols[1]).toBeGreaterThan(cols[0] * 1.8);
+  // Al pasar por una sinergia sale su ventana con sus fichas, marcadas las del equipo (Fuego: Charmander)
+  await page.locator('#planner .plTrait[aria-label="Fuego"]').hover();
+  await expect(page.locator('#tip')).toBeVisible();
+  await expect(page.locator('#tip h4')).toContainText('Fuego');
+  const tipU = await page.evaluate(() => ({ all: document.querySelectorAll('#tip .trU').length, on: document.querySelectorAll('#tip .trU.on').length, fire: UNIT_LIST.filter(u => u.traits.includes('Fuego')).length }));
+  expect(tipU).toEqual({ all: tipU.fire, on: 1, fire: tipU.fire });
+  // «Copiar tablero» (el Snapshot de TFT): el equipo pasa a ser lo que tienes en el tablero
+  await page.evaluate(() => { const me = G.me; me.board = {}; me.level = 8; ['gastly', 'abra', 'growlithe'].forEach((k, i) => { me.board[i + ',0'] = makeInst(k); }); renderUI(); renderPlanner(); });
+  await page.locator('#plSnap').click();
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(3);
+  expect(await page.evaluate(() => S.plans[PLAN.i].u.slice().sort())).toEqual(['abra', 'gastly', 'growlithe']);
+  await page.locator('#plUndo').click();
+  await expect(page.locator('#planner .plSlot.full')).toHaveCount(3);
+  expect(await page.evaluate(() => S.plans[PLAN.i].u)).toEqual(['charmander', 'pichu', 'onix']);
   expect(await page.evaluate(() => [...document.querySelectorAll('#cards .card')].filter(c => c.querySelector('.planMark')).map(c => G.me.shop[+c.dataset.i]))).toEqual(['charmander', 'pichu', 'onix']);
   // Nombre
   await page.locator('#plPen').click();
