@@ -1,4 +1,4 @@
-# Arenas temáticas por tipo (agua, fuego, planta, roca, electrico): el mismo escenario que el «coliseo» (arena-coliseo.py) con la misma cámara,
+# Arenas temáticas por tipo (agua, fuego, planta, roca, electrico) y «cascada» (isla de hierba con ríos, cascada, pinos y braseros): el mismo escenario que el «coliseo» (arena-coliseo.py) con la misma cámara,
 # el mismo campo, la misma banca de 9 losas, las mismas repisas con los 5 rombos y los mismos pedestales con el trofeo de los aumentos
 # (el mío a la izquierda y el del rival, reflejado, a la derecha), pero con el suelo, las piedras, la decoración flotante, las luces y el cielo de su tipo.
 # Los puntos de encaje (FLAT_IMG) salen idénticos a los del coliseo, así que en board3d.js basta con cambiar la carpeta.
@@ -48,8 +48,13 @@ T = {
    roca='#121218', brillo='#ffd23a', luz='#ffe066', repisa='#22222a', rombo='#0b0b10', ribete='#33333d', banca='#1c1c22', losa='#3a3a44',
    borde='#1d1d24', isla='#17171e', fres='#ffe066', flot='#1a1a22', cielo=('#03030a', '#11163a', '#2f2a74', '#5a46b8'), veta='#ffd84a',
    amb='#1c1c2c', sol='#fff0a0', frente='#ffe27a', arriba='#fffbe8'),
+ # isla de hierba con ríos y cascada: losas claras de arenisca con el borde que se funde con la hierba, piedra clara y fuego en los braseros
+ 'cascada': dict(c0='#a39a5f', c1='#d1c287', junta='#8b8157', jemit='#ffb347', jstr=0, jmix=.3, rough=.9, peb='#7d776a',
+   roca='#5d4a3a', brillo='#ffc25a', luz='#ffb45a', repisa='#8f8a7e', rombo='#45413b', ribete='#a9a396', banca='#7a756b', losa='#aca598',
+   borde='#8c877c', isla='#4a3a2c', fres='#9fbfd4', flot='#5d4a3a', cielo=('#4d5560', '#626b76', '#78828c', '#8f9aa5'), veta='#aab6c0',
+   amb='#55606c', sol='#ffe6c0', frente='#d6e4ee', arriba='#fff7ea'),
 }[TEMA]
-rnd = random.Random({'agua': 21, 'fuego': 31, 'planta': 41, 'roca': 51, 'electrico': 61}[TEMA])
+rnd = random.Random({'agua': 21, 'fuego': 31, 'planta': 41, 'roca': 51, 'electrico': 61, 'cascada': 71}[TEMA])
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -105,6 +110,15 @@ if TEMA == 'agua':  # charcos: zonas lisas y brillantes (más lisa la piedra don
     pz = N('ShaderNodeTexNoise'); pz.inputs['Scale'].default_value = .35; L(tc.outputs['Object'], pz.inputs['Vector'])
     pr = N('ShaderNodeMapRange'); pr.inputs['From Min'].default_value = .5; pr.inputs['From Max'].default_value = .62; pr.inputs['To Min'].default_value = T['rough']; pr.inputs['To Max'].default_value = .08
     L(pz.outputs['Fac'], pr.inputs['Value']); L(pr.outputs['Result'], bs.inputs['Roughness'])
+if TEMA == 'cascada':  # el campo se funde con la hierba hacia los bordes (por manchas, no en línea recta)
+    gg = N('ShaderNodeTexCoord'); gs = N('ShaderNodeSeparateXYZ'); L(gg.outputs['Generated'], gs.inputs[0])
+    def cdist(o):
+        a1 = N('ShaderNodeMath'); a1.operation = 'SUBTRACT'; L(o, a1.inputs[0]); a1.inputs[1].default_value = .5
+        a2 = N('ShaderNodeMath'); a2.operation = 'ABSOLUTE'; L(a1.outputs[0], a2.inputs[0]); return a2
+    dxn, dyn = cdist(gs.outputs['X']), cdist(gs.outputs['Y']); mxn = N('ShaderNodeMath'); mxn.operation = 'MAXIMUM'; L(dxn.outputs[0], mxn.inputs[0]); L(dyn.outputs[0], mxn.inputs[1])
+    gn2 = N('ShaderNodeTexNoise'); gn2.inputs['Scale'].default_value = .5; L(tc.outputs['Object'], gn2.inputs['Vector']); ad2 = N('ShaderNodeMath'); ad2.operation = 'MULTIPLY_ADD'; L(gn2.outputs['Fac'], ad2.inputs[0]); ad2.inputs[1].default_value = .22; L(mxn.outputs[0], ad2.inputs[2])
+    gr2 = N('ShaderNodeMapRange'); gr2.inputs['From Min'].default_value = .43; gr2.inputs['From Max'].default_value = .62; gr2.inputs['To Max'].default_value = .85; L(ad2.outputs[0], gr2.inputs['Value'])
+    gm2 = N('ShaderNodeMix'); gm2.data_type = 'RGBA'; L(gr2.outputs['Result'], gm2.inputs['Factor']); L(jm.outputs[2], gm2.inputs[6]); gm2.inputs[7].default_value = C('#7d9a45'); L(gm2.outputs[2], bs.inputs['Base Color'])
 bump = N('ShaderNodeBump'); bump.inputs['Strength'].default_value = .35; bump.inputs['Distance'].default_value = .015; L(edge.outputs['Result'], bump.inputs['Height']); L(bump.outputs['Normal'], bs.inputs['Normal'])
 FB0 = 2 * MID_Z - 5.75
 bpy.ops.mesh.primitive_plane_add(size=1, location=W(0, 0, (FB0 + 5.75) / 2)); fl = bpy.context.object; fl.name = 'suelo'
@@ -203,8 +217,9 @@ def wall(x0, z0, x1, z1, n, inner):
         t = (i + .5) / max(1, int(Ln / 2.5)); bpy.ops.object.light_add(type='POINT', location=W(x0 + (x1 - x0) * t + inner[0] * 1.6, .35, z0 + (z1 - z0) * t + inner[1] * 1.6))
         lt = bpy.context.object; lt.data.color = lin(hexc(T['luz'])); lt.data.energy = 35; lt.data.shadow_soft_size = .6
 RB = FZ0 - .75; RL = -8.55
-wall(RL, FZ0 - .3, RL, 3.4, 22, (.55, 0))
-wall(-RL, MIR(0, 3.4)[1], -RL, MIR(0, FZ0 - .3)[1], 22, (-.55, 0))
+if TEMA != 'cascada':  # la cascada no lleva muros de piedra: hierba, ríos y pinos (más abajo)
+    wall(RL, FZ0 - .3, RL, 3.4, 22, (.55, 0))
+    wall(-RL, MIR(0, 3.4)[1], -RL, MIR(0, FZ0 - .3)[1], 22, (-.55, 0))
 
 # ---------- repisas con los 5 rombos (igual que el coliseo, con el ribete del color del tipo) ----------
 M_LEDGE = mat('repisa', T['repisa'], .8); M_SOCK = mat('rombo', T['rombo'], .6); M_SOCKR = mat('rombo_borde', T['ribete'], .5, T['brillo'], .5)
@@ -253,7 +268,7 @@ def spots(n, d0=13, d1=30, y0=-14, y1=-2):
         out.append((x, y, z, d))
     return out
 M_FL = mat('roca_flotante', T['flot'], .85, metal=.5 if TEMA == 'electrico' else 0)
-for (x, y, z, d) in spots(16):  # rocas
+for (x, y, z, d) in (spots(16) if TEMA != 'cascada' else []):  # rocas
     r = rnd.uniform(.5, 2.2) * (1 + (d - 13) / 30); bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r, location=W(x, y, z)); o = bpy.context.object
     for v in o.data.vertices: v.co *= 1 + rnd.uniform(-.18, .18)
     o.scale = (1, rnd.uniform(.7, 1.1), rnd.uniform(.6, .9)); o.rotation_euler = (rnd.uniform(0, 3), rnd.uniform(0, 3), rnd.uniform(0, 3)); o.data.materials.append(M_FL); bpy.ops.object.shade_smooth()
@@ -289,6 +304,152 @@ if TEMA == 'electrico':  # rayos lejanos: líneas quebradas que brillan
     for (x, y, z, d) in spots(18, 12, 28, -12, 1):  # esquirlas de cristal que flotan
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=0, radius=rnd.uniform(.3, .9), location=W(x, y, z)); o = bpy.context.object; o.scale = (.45, .45, 1.4)
         o.rotation_euler = (rnd.uniform(0, 3), rnd.uniform(0, 3), rnd.uniform(0, 3)); o.data.materials.append(M_CRYS if rnd.random() < .35 else M_FL)
+
+# ---------- «cascada»: isla de hierba con ríos a los lados que se juntan delante y caen por el borde, pinos, acantilados, matas, flores y 4 braseros ----------
+def cascada():
+    import bmesh
+    M_GRASS2 = bpy.data.materials.new('pradera'); M_GRASS2.use_nodes = True; gt = M_GRASS2.node_tree; gbs = gt.nodes['Principled BSDF']
+    gco = gt.nodes.new('ShaderNodeTexCoord'); gnz = gt.nodes.new('ShaderNodeTexNoise'); gnz.inputs['Scale'].default_value = .35; gnz.inputs['Detail'].default_value = 5; gt.links.new(gco.outputs['Object'], gnz.inputs['Vector'])
+    gnf = gt.nodes.new('ShaderNodeTexNoise'); gnf.inputs['Scale'].default_value = 6; gt.links.new(gco.outputs['Object'], gnf.inputs['Vector'])
+    grr = gt.nodes.new('ShaderNodeValToRGB'); grr.color_ramp.elements[0].color = C('#4f7a2e'); grr.color_ramp.elements[1].color = C('#86ad4c'); gt.links.new(gnz.outputs['Fac'], grr.inputs['Fac'])
+    gov = gt.nodes.new('ShaderNodeMix'); gov.data_type = 'RGBA'; gov.blend_type = 'OVERLAY'; gov.inputs['Factor'].default_value = .2; gt.links.new(grr.outputs['Color'], gov.inputs[6]); gt.links.new(gnf.outputs['Color'], gov.inputs[7])
+    gt.links.new(gov.outputs[2], gbs.inputs['Base Color']); gbs.inputs['Roughness'].default_value = .92
+    M_EARTH = mat('tierra', '#5b4534', .9); M_CLIFF = rock_mat()
+    # ríos: dos cauces por fuera de las repisas que bajan hacia delante y se juntan en una poza que cae por el borde
+    RIO = [(-11.4, -14.8), (-12.0, -10), (-11.1, -5), (-11.9, 0), (-11.2, 4.6), (-9.6, 8.2), (-6.2, 9.7), (-3.0, 10.4), (0, 10.6)]
+    RIOS = [RIO, [(-x, z) for x, z in RIO]]
+    def seg_d(px, pz, a, b):
+        ax, az = a; bx, bz = b; vx, vz = bx - ax, bz - az; L2 = vx * vx + vz * vz or 1; t = max(0, min(1, ((px - ax) * vx + (pz - az) * vz) / L2)); return math.hypot(px - ax - t * vx, pz - az - t * vz)
+    def rio_d(x, z): return min(seg_d(x, z, r[i], r[i + 1]) for r in RIOS for i in range(len(r) - 1))
+    POZA = lambda x, z: abs(x) < 3.3 and z > 9.6
+    CX, CZ, RX, RZ = 0, -2.2, 16.5, 13.7
+    def borde_r(a): return 1 + .07 * noise.noise(Vector((math.cos(a) * 1.7, math.sin(a) * 1.7, .4))) + .03 * noise.noise(Vector((math.cos(a) * 6, math.sin(a) * 6, 1.1)))
+    def dentro(x, z):
+        if abs(x) < 3.6 and 8 < z < 12.4: return True  # la poza llega hasta el borde, donde empieza la cascada
+        a = math.atan2((z - CZ) / RZ, (x - CX) / RX); return math.hypot((x - CX) / RX, (z - CZ) / RZ) < borde_r(a)
+    def altura(x, z):
+        dx = max(0, abs(x) - 9.9); dz = max(0, z - 7.8, -11.7 - z); d = math.hypot(dx, dz); r = rio_d(x, z)
+        if POZA(x, z): return -.32
+        sm = lambda e0, e1, t: (lambda u: u * u * (3 - 2 * u))(max(0, min(1, (t - e0) / (e1 - e0))))
+        bed = -.08 - .28 * (1 - sm(.55, 1.25, r))  # orilla en pendiente suave (sin escalones de la rejilla)
+        k = min(1, d / 3.5) * sm(1.2, 3.0, r)
+        return bed + k * (.18 + .5 * (noise.noise(Vector((x * .16, z * .16, .3))) + .5))
+    # suelo de la isla: rejilla recortada con el contorno irregular y, por fuera, la pared de tierra que baja
+    bm = bmesh.new(); NX, NZ, X0, X1, Z0, Z1 = 150, 130, -19, 19, -18.5, 14; grid = {}
+    for i in range(NX + 1):
+        for j in range(NZ + 1):
+            x = X0 + (X1 - X0) * i / NX; z = Z0 + (Z1 - Z0) * j / NZ; grid[i, j] = bm.verts.new(W(x, altura(x, z), z))
+    for i in range(NX):
+        for j in range(NZ):
+            x = X0 + (X1 - X0) * (i + .5) / NX; z = Z0 + (Z1 - Z0) * (j + .5) / NZ
+            if dentro(x, z): bm.faces.new((grid[i, j], grid[i, j + 1], grid[i + 1, j + 1], grid[i + 1, j]))
+    for v in [v for v in bm.verts if not v.link_faces]: bm.verts.remove(v)
+    for v in [v for v in bm.verts if v.is_boundary]:  # el contorno sobre la curva (sin escalones de la rejilla), salvo el labio recto de la poza
+        x, z = v.co.x, -v.co.y
+        if abs(x) < 3.75 and z > 8: continue
+        a = math.atan2((z - CZ) / RZ, (x - CX) / RX); rr = borde_r(a); nx_, nz_ = CX + RX * rr * math.cos(a), CZ + RZ * rr * math.sin(a); v.co = Vector(W(nx_, altura(nx_, nz_), nz_))
+    bnd = [e for e in bm.edges if e.is_boundary]
+    ext = bmesh.ops.extrude_edge_only(bm, edges=bnd); nv = [g for g in ext['geom'] if isinstance(g, bmesh.types.BMVert)]
+    for v in nv:  # la pared baja entre 2,5 y 4 y se mete un poco hacia dentro, como un acantilado
+        x, mz = v.co.x, -v.co.y; s = .93 + .03 * noise.noise(Vector((x * .3, mz * .3, 2)))
+        v.co.x = CX + (x - CX) * s; v.co.y = -(CZ + (mz - CZ) * s); v.co.z = -2.5 - 1.5 * (noise.noise(Vector((x * .25, mz * .25, 5))) + .5)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for f in bm.faces: f.material_index = 0 if f.normal.z > .5 else 1
+    me = bpy.data.meshes.new('isla_hierba'); bm.to_mesh(me); bm.free(); ob = bpy.data.objects.new('isla_hierba', me); sc.collection.objects.link(ob)
+    me.materials.append(M_GRASS2); me.materials.append(M_EARTH)
+    # agua: cintas a lo largo de los cauces y la poza de delante
+    M_WATER = mat('agua', '#3b9dbb', .05, '#1f7896', .18)
+    wn_ = M_WATER.node_tree; wbs = wn_.nodes['Principled BSDF']; wco = wn_.nodes.new('ShaderNodeTexCoord'); wnz = wn_.nodes.new('ShaderNodeTexNoise'); wnz.inputs['Scale'].default_value = 3; wn_.links.new(wco.outputs['Object'], wnz.inputs['Vector'])
+    wbm = wn_.nodes.new('ShaderNodeBump'); wbm.inputs['Strength'].default_value = .15; wn_.links.new(wnz.outputs['Fac'], wbm.inputs['Height']); wn_.links.new(wbm.outputs['Normal'], wbs.inputs['Normal'])
+    def cinta(pts, w, y, m, name):
+        bm2 = bmesh.new(); prev = None
+        for k, (x, z) in enumerate(pts):
+            a = pts[max(0, k - 1)]; b = pts[min(len(pts) - 1, k + 1)]; tx, tz = b[0] - a[0], b[1] - a[1]; L = math.hypot(tx, tz) or 1; nx, nz = -tz / L, tx / L
+            l = bm2.verts.new(W(x + nx * w / 2, y, z + nz * w / 2)); r = bm2.verts.new(W(x - nx * w / 2, y, z - nz * w / 2))
+            if prev: bm2.faces.new((prev[0], prev[1], r, l))
+            prev = (l, r)
+        me2 = bpy.data.meshes.new(name); bm2.to_mesh(me2); bm2.free(); o2 = bpy.data.objects.new(name, me2); sc.collection.objects.link(o2); me2.materials.append(m); return o2
+    def suave(pts, n=6):  # más puntos entre los del cauce (curva de Catmull-Rom) para que no se vea quebrado
+        out = []
+        for i in range(len(pts) - 1):
+            p0 = pts[max(0, i - 1)]; p1 = pts[i]; p2 = pts[i + 1]; p3 = pts[min(len(pts) - 1, i + 2)]
+            for s in range(n):
+                t = s / n; t2 = t * t; t3 = t2 * t
+                out.append(tuple(.5 * (2 * p1[c] + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3) for c in (0, 1)))
+        return out + [pts[-1]]
+    for r in RIOS: cinta(suave(r), 1.45, -.2, M_WATER, 'rio')
+    box('poza', -3.45, 3.45, 9.7, 12.4, -.6, -.2, M_WATER)
+    # cascada: lámina que cae por delante con vetas blancas y se desvanece abajo, y espuma al pie de la poza
+    M_FALL = bpy.data.materials.new('cascada'); M_FALL.use_nodes = True; ft = M_FALL.node_tree; fbs = ft.nodes['Principled BSDF']
+    fbs.inputs['Base Color'].default_value = C('#9fd6ea'); fbs.inputs['Roughness'].default_value = .2
+    fco = ft.nodes.new('ShaderNodeTexCoord'); fwv = ft.nodes.new('ShaderNodeTexWave'); fwv.bands_direction = 'X'; fwv.inputs['Scale'].default_value = 9; fwv.inputs['Distortion'].default_value = 6; fwv.inputs['Detail'].default_value = 4; ft.links.new(fco.outputs['UV'], fwv.inputs['Vector'])
+    fsep = ft.nodes.new('ShaderNodeSeparateXYZ'); ft.links.new(fco.outputs['UV'], fsep.inputs[0])
+    ffade = ft.nodes.new('ShaderNodeMapRange'); ffade.inputs['From Min'].default_value = 0; ffade.inputs['From Max'].default_value = .85; ffade.inputs['To Min'].default_value = .95; ffade.inputs['To Max'].default_value = 0; ft.links.new(fsep.outputs['Y'], ffade.inputs['Value'])
+    fmix = ft.nodes.new('ShaderNodeMath'); fmix.operation = 'MULTIPLY'; ft.links.new(fwv.outputs['Fac'], fmix.inputs[0]); ft.links.new(ffade.outputs['Result'], fmix.inputs[1])
+    fem = ft.nodes.new('ShaderNodeMath'); fem.operation = 'MULTIPLY'; fem.inputs[1].default_value = 1.6; ft.links.new(fmix.outputs[0], fem.inputs[0])
+    fal = ft.nodes.new('ShaderNodeMath'); fal.operation = 'ADD'; fal.inputs[1].default_value = .25; ft.links.new(fmix.outputs[0], fal.inputs[0])
+    fal2 = ft.nodes.new('ShaderNodeMath'); fal2.operation = 'MULTIPLY'; ft.links.new(fal.outputs[0], fal2.inputs[0]); ft.links.new(ffade.outputs['Result'], fal2.inputs[1]); ft.links.new(fal2.outputs[0], fbs.inputs['Alpha'])
+    fbs.inputs['Emission Color'].default_value = C('#e8f7ff'); ft.links.new(fem.outputs[0], fbs.inputs['Emission Strength'])
+    bm3 = bmesh.new(); uv = bm3.loops.layers.uv.new(); PERF = [(12.35, -.2), (12.8, -.6), (13.2, -1.6), (13.45, -3.4), (13.6, -6), (13.65, -9.5)]; XS = [-3.35 + 6.7 * i / 16 for i in range(17)]
+    rows = [[bm3.verts.new(W(x * (1 + .02 * k), y, z + .15 * math.cos(x * .9))) for x in XS] for k, (z, y) in enumerate(PERF)]
+    for k in range(len(PERF) - 1):
+        for i in range(len(XS) - 1):
+            f = bm3.faces.new((rows[k][i], rows[k][i + 1], rows[k + 1][i + 1], rows[k + 1][i]))
+            for lp, (a, b) in zip(f.loops, ((i, k), (i + 1, k), (i + 1, k + 1), (i, k + 1))): lp[uv].uv = (a / (len(XS) - 1), b / (len(PERF) - 1))
+    me3 = bpy.data.meshes.new('cascada'); bm3.to_mesh(me3); bm3.free(); o3 = bpy.data.objects.new('cascada', me3); sc.collection.objects.link(o3); me3.materials.append(M_FALL)
+    M_FOAM = mat('espuma', '#eaf7ff', .6, '#ffffff', .6)
+    for i in range(16):
+        x = rnd.uniform(-3.2, 3.2); bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=rnd.uniform(.12, .28), location=W(x, -.22, 12.25 + rnd.uniform(-.1, .12))); o = bpy.context.object; o.scale = (1.6, 1, .35); o.data.materials.append(M_FOAM); bpy.ops.object.shade_smooth()
+    # pinos (troncos y 4 conos de copa), acantilados con hierba arriba, matas y flores
+    M_TRUNK = mat('tronco', '#4a3426', .9); M_PINE = [mat('pino1', '#2d5a2c', .85), mat('pino2', '#3a6b33', .85), mat('pino3', '#24502a', .85)]
+    def pino(x, z, h):
+        y0 = altura(x, z); bpy.ops.mesh.primitive_cylinder_add(vertices=7, radius=h * .045, depth=h * .3, location=W(x, y0 + h * .15, z)); bpy.context.object.data.materials.append(M_TRUNK)
+        m = rnd.choice(M_PINE)
+        for i in range(4):
+            r = h * (.3 - .055 * i); bpy.ops.mesh.primitive_cone_add(vertices=9, radius1=r, radius2=r * .15, depth=h * .36, location=W(x, y0 + h * (.33 + .17 * i), z)); o = bpy.context.object
+            jag(o, .08, -9); o.rotation_euler.z = rnd.uniform(0, math.tau); o.data.materials.append(m)
+    def mata(x, z, s):
+        y0 = altura(x, z)
+        for k in range(3):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=s * rnd.uniform(.55, .85), location=W(x + rnd.uniform(-s, s) * .6, y0 + s * .35, z + rnd.uniform(-s, s) * .5)); o = bpy.context.object
+            for v in o.data.vertices: v.co *= 1 + .2 * noise.noise(v.co * 3.5)
+            o.scale = (1, 1, .75); o.data.materials.append(M_PINE[k % 3]); bpy.ops.object.shade_smooth()
+    def risco(x, z, w, h):
+        y0 = altura(x, z); y = y0
+        for j in range(3):
+            hh = h * (.45 if j == 0 else .3); rr = w * (1 - .16 * j)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=rr, depth=hh, location=W(x + rnd.uniform(-.3, .3), y + hh / 2, z + rnd.uniform(-.3, .3))); o = bpy.context.object; jag(o, .1, -9); o.data.materials.append(M_CLIFF); y += hh * .95
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=w * .66, depth=.12, location=W(x, y + .04, z)); o = bpy.context.object; jag(o, .08, -9); o.data.materials.append(M_GRASS2)
+    for (x, z, w, h) in ((-13.6, -13.2, 1.9, 3.6), (-11.6, -14.6, 1.4, 2.4), (13.4, -12.6, 2.2, 4.4), (15.0, -10.4, 1.5, 2.8), (14.2, -14.5, 1.6, 3.2)): risco(x, z, w, h)
+    for k in range(60):
+        side = rnd.random()
+        if side < .4: x, z = rnd.uniform(-15.5, 15.5), rnd.uniform(-16, -12.2)            # detrás de la banca del rival
+        elif side < .8: x, z = rnd.choice((-1, 1)) * rnd.uniform(12.8, 15.8), rnd.uniform(-11, 4)  # a los lados, por fuera de los ríos
+        else: x, z = rnd.choice((-1, 1)) * rnd.uniform(12.2, 14.6), rnd.uniform(4, 8)
+        if not dentro(x * 1.05, z * 1.03) or rio_d(x, z) < 1.7 or any(math.hypot(x - a, z - b) < c + .6 for (a, b, c, _) in ((-13.6, -13.2, 1.9, 0), (13.4, -12.6, 2.2, 0), (15.0, -10.4, 1.5, 0), (14.2, -14.5, 1.6, 0), (-11.6, -14.6, 1.4, 0))): continue
+        pino(x, z, rnd.uniform(2.0, 3.6))
+    for k in range(34):  # matas junto a la plataforma y entre los ríos (bajas: no tapan el campo)
+        x = rnd.choice((-1, 1)) * rnd.uniform(9.9, 10.1 if k % 3 else 13.5); z = rnd.uniform(-11, 9.5)
+        if rio_d(x, z) < 1.5 or POZA(x, z) or not dentro(x, z): continue
+        mata(x, z, rnd.uniform(.35, .6))
+    M_BOUL = mat('canto', '#7a7266', .85)
+    for k in range(26):
+        x = rnd.choice((-1, 1)) * rnd.uniform(10, 15.5); z = rnd.uniform(-14, 9)
+        if rio_d(x, z) < 1.1 or not dentro(x, z): continue
+        r = rnd.uniform(.18, .5); bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=W(x, altura(x, z) + r * .25, z)); o = bpy.context.object; jag(o, .2, -9); o.scale = (1, rnd.uniform(.7, 1), .6); o.data.materials.append(M_BOUL)
+    M_FLOR = [mat('flor_naranja', '#f08a3a', .6), mat('flor_lila', '#a585e0', .6), mat('flor_blanca', '#f2efe6', .6)]
+    for k in range(140):
+        x = rnd.uniform(-14, 14); z = rnd.uniform(-14, 11.5)
+        if (abs(x) < 9.95 and -9.6 < z < 7.75) or rio_d(x, z) < 1.25 or POZA(x, z) or not dentro(x, z): continue
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=rnd.uniform(.05, .09), location=W(x, altura(x, z) + .05, z)); bpy.context.object.data.materials.append(rnd.choice(M_FLOR))
+    # braseros de piedra en las 4 esquinas, con fuego y su luz
+    M_BRZ = mat('brasero', '#9a9488', .8); M_BRZD = mat('brasero_oscuro', '#6d685f', .8); M_FIRE = mat('fuego', '#ffb347', .5, '#ff7a1a', 12); M_FIRE2 = mat('fuego2', '#fff0a0', .5, '#ffd35a', 18)
+    for (bx, bz) in ((-7.75, 6.75), (7.75, 6.75), MIR(-7.75, 6.75), MIR(7.75, 6.75)):
+        box('brasero', bx - .42, bx + .42, bz - .42, bz + .42, -.03, .55, M_BRZ, .05); box('brasero2', bx - .5, bx + .5, bz - .5, bz + .5, .55, .72, M_BRZD, .05)
+        for (r, d, m, dy) in ((.26, .55, M_FIRE, .95), (.14, .42, M_FIRE2, .93)):
+            bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=r, radius2=0, depth=d, location=W(bx, dy, bz)); o = bpy.context.object; jag(o, .15, -9); o.data.materials.append(m)
+        bpy.ops.object.light_add(type='POINT', location=W(bx, 1.25, bz)); lt = bpy.context.object; lt.data.color = lin(hexc('#ff9a4a')); lt.data.energy = 60; lt.data.shadow_soft_size = .3
+if TEMA == 'cascada': cascada()
 
 # ---------- pedestales con el trofeo de los aumentos: idénticos a los del coliseo (solo el aro del pedestal toma el color del tipo) ----------
 TX, TZT, TH, TS = -6.063, -1.426, .14, .56
@@ -362,7 +523,7 @@ sr = WN('ShaderNodeMapRange'); sr.inputs['From Min'].default_value = 0; sr.input
 sp = WN('ShaderNodeMath'); sp.operation = 'POWER'; sp.inputs[1].default_value = 3; WL(sr.outputs['Result'], sp.inputs[0])
 sel = WN('ShaderNodeSeparateColor'); WL(st.outputs['Color'], sel.inputs['Color'])
 sk = WN('ShaderNodeMath'); sk.operation = 'MULTIPLY'; WL(sp.outputs[0], sk.inputs[0]); WL(sel.outputs['Red'], sk.inputs[1])
-skw = WN('ShaderNodeMath'); skw.operation = 'MULTIPLY'; skw.inputs[1].default_value = .55 if TEMA in ('planta', 'roca') else 1; WL(sk.outputs[0], skw.inputs[0])  # menos estrellas en los cielos «de día»
+skw = WN('ShaderNodeMath'); skw.operation = 'MULTIPLY'; skw.inputs[1].default_value = 0 if TEMA == 'cascada' else .55 if TEMA in ('planta', 'roca') else 1; WL(sk.outputs[0], skw.inputs[0])  # menos estrellas en los cielos «de día»
 sw = WN('ShaderNodeMix'); sw.data_type = 'RGBA'; sw.blend_type = 'ADD'; WL(skw.outputs[0], sw.inputs['Factor']); WL(addc.outputs[2], sw.inputs[6]); sw.inputs[7].default_value = (3.2, 3.2, 3.6, 1)
 WL(sw.outputs[2], bgn.inputs['Color']); bgn.inputs['Strength'].default_value = 1.0
 lp = WN('ShaderNodeLightPath'); mixw = WN('ShaderNodeMixShader'); dark = WN('ShaderNodeBackground'); dark.inputs['Color'].default_value = C(T['amb']); dark.inputs['Strength'].default_value = .6

@@ -782,7 +782,7 @@ test('arenas por tipo: se elige en el menú, se guarda y en un combate PvP los a
   // Vuelta al menú: el recuadro «Arena» de la ficha abre el selector con las 6
   await page.evaluate(() => { closeModal(); showMenu(); });
   await page.locator('#pickArena').click();
-  await expect(page.locator('.arOpt')).toHaveCount(6);
+  await expect(page.locator('.arOpt')).toHaveCount(await page.evaluate(() => ARENAS.length)); // coliseo, 5 por tipo y la cascada
   await expect(page.locator('.arOpt.on')).toHaveAttribute('data-k', 'coliseo');
   await page.locator('.arOpt[data-k="agua"]').click();
   await page.locator('#arOk').click();

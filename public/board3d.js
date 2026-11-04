@@ -168,7 +168,7 @@ const FLAT_SETS={
 };
 // Arenas por tipo (arena-temas.py de la skill de recursos): la misma cámara, el mismo campo, la misma banca y los mismos trofeos que el coliseo,
 // así que comparten sus puntos de encaje; solo cambia la carpeta. Sin capas animadas (capas: []: no se pide capas.json)
-for(const k of ['agua','fuego','planta','roca','electrico']) FLAT_SETS[k]={...FLAT_SETS.coliseo,dir:'arena/'+k+'/',capas:[]};
+for(const k of ['agua','fuego','planta','roca','electrico','cascada']) FLAT_SETS[k]={...FLAT_SETS.coliseo,dir:'arena/'+k+'/',capas:[]};
 FLAT_SETS.coliseo.capas=[];
 let FLAT_IMG=FLAT_SETS.coliseo, flatSkin='coliseo'; // totem: junto al borde izquierdo del tablero, a la altura de la fila `row`, `dx` radios de casilla hacia fuera y `dy` hacia abajo
 // Carrusel: plataforma Poké Ball sobre suelo rojo, renderizada en Blender con la misma perspectiva que la cámara del carrusel (carrusel-pokeball.py de la skill de recursos);
