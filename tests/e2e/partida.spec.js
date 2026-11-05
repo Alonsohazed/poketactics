@@ -248,10 +248,13 @@ test('carrusel multijugador: con retrasos de red las animaciones no se reinician
     const sw = {}, prev = {}, m0 = B3.made, t0 = performance.now();
     await new Promise(res => { (function f() { const info = B3.smInfo; for (const d in info) for (const o of info[d]) { if (prev[o.key] !== undefined && prev[o.key] !== o.estado) sw[o.key] = (sw[o.key] || 0) + 1; prev[o.key] = o.estado; } if (performance.now() - t0 < 7000) requestAnimationFrame(f); else res(); })(); });
     stop = true; const e = Object.entries(sw).map(([k, v]) => [String(k), v]);
-    return { nuevos: B3.made - m0, opts: e.filter(([k]) => k.startsWith('co')).reduce((a, [, v]) => a + v, 0), tacMax: Math.max(0, ...e.filter(([k]) => k.startsWith('tac')).map(([, v]) => v)) };
+    // los que alguien ya cogió van tras su minileyenda (el mismo actor): se paran cuando ella se para, como ella
+    const taken = new Set(G.carousel.opts.map((o, i) => o.taken ? 'co' + i + ':' + o.key : null).filter(Boolean));
+    return { nuevos: B3.made - m0, opts: e.filter(([k]) => k.startsWith('co') && !taken.has(k)).reduce((a, [, v]) => a + v, 0), folMax: Math.max(0, ...e.filter(([k]) => taken.has(k)).map(([, v]) => v)), tacMax: Math.max(0, ...e.filter(([k]) => k.startsWith('tac')).map(([, v]) => v)) };
   });
   expect(r.nuevos, 'ningún modelo se recrea').toBeLessThanOrEqual(1);
   expect(r.opts, 'los Pokémon del carrusel no se paran y arrancan').toBe(0);
+  expect(r.folMax, 'el Pokémon cogido solo cambia al arrancar y al pararse, como su minileyenda').toBeLessThanOrEqual(3);
   expect(r.tacMax, 'cada minileyenda solo cambia al arrancar y al pararse').toBeLessThanOrEqual(3);
 });
 
@@ -316,6 +319,24 @@ test('carrusel: tu puesto abajo, barreras azul claro y libertad tras coger un Po
   expect(r.abajo, 'tu puesto queda abajo en pantalla').toBe(true);
   expect(r.bars).toBeGreaterThan(0); expect(r.col).toEqual(['#8fdcff']); expect(r.piezas, 'pared y aro, sin cúpula ni halo').toBe(2);
   expect(r.done).toBe(true); expect(r.movido, 'con el Pokémon cogido se sigue moviendo').toBeGreaterThan(5); expect(r.invalido).toBe(false);
+});
+
+test('carrusel: el Pokémon que coges sigue siendo su modelo 3D (el mismo actor) y te sigue pegado a donde vayas', async ({ page }) => {
+  await jumpToRound(page, 6); await expect(page.locator('#pills .pill.cur.rt-carousel')).toHaveCount(1);
+  const r = await page.evaluate(async () => {
+    const w = ms => new Promise(r => setTimeout(r, ms)); await w(800); const C = G.carousel, me = G.me, a = C.av[me.id];
+    for (const p of C.order) if (p !== me && C.av[p.id]) C.av[p.id].delay = 999; // los rivales esperan: así el carrusel no acaba mientras se mide
+    C.t = Math.max(C.t, releaseAt(C.order.indexOf(me))); await w(200);
+    const i = C.opts.findIndex(o => !o.taken), key = 'co' + i + ':' + C.opts[i].key; doAct({ t: 'car', i });
+    for (let n = 0; n < 120 && !a.done; n++) await w(100);
+    const m0 = B3.made, seen = []; const d = () => { const p = B3.posOf(key), t = B3.posOf('tac:' + me.id); return p && t ? Math.hypot(p[0] - t[0], p[1] - t[1]) : null; };
+    for (const [x, y] of [[-.8, .2], [.7, .4], [0, -.7]]) { doAct({ t: 'carmove', x, y }); for (let n = 0; n < 14; n++) { await w(100); seen.push(d()); } }
+    return { done: a.done, carry: a.carry && a.carry.key, nuevos: B3.made - m0, existe: seen.every(v => v != null), lejos: Math.max(...seen.filter(v => v != null).slice(4)), retrato: typeof B3.portrait };
+  });
+  expect(r.done).toBe(true);
+  expect(r.existe, 'el actor 3D del carrusel sigue en escena tras cogerlo (no pasa a un retrato 2D)').toBe(true);
+  expect(r.nuevos, 'no se recrea el modelo al cogerlo').toBeLessThanOrEqual(1);
+  expect(r.lejos, 'va pegado a la minileyenda (en radios de casilla)').toBeLessThan(1.6);
 });
 
 // La burla de Charmander (H) de otro jugador sube su contador en pub; quien mira su mismo tablero ve su animación de lanzamiento y la bola de fuego

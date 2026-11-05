@@ -3233,6 +3233,15 @@ let sceneLinks=[];
 // Entrenadores del carrusel: la posición que se dibuja persigue a la real con suavizado exponencial (sin saltos entre pasos de 33 ms ni entre mensajes de red)
 const carVis=new Map(); let carFrame=0, carVisT=0, carDt=0;
 function carPos(pid,x,y){ let v=carVis.get(pid); if(!v){ v={x,y,f:-1}; carVis.set(pid,v); } if(v.f!==carFrame){ const k=1-Math.exp(-carDt*(G.carousel&&G.carousel.mirror?7:15)); v.x+=(x-v.x)*k; v.y+=(y-v.y)*k; v.f=carFrame; } return [v.x,v.y]; }
+// El Pokémon que coge cada uno en el carrusel lo sigue pegado: es el mismo actor 3D que giraba en el carrusel (misma clave, no se recrea) y va justo detrás
+// de su minileyenda según hacia dónde camina, algo a un lado para no taparla (si se para, se queda donde estaba, a su lado), sin quedarse nunca a más de 1,35 veces esa distancia
+const carFol=new Map();
+function carFollow(pid,tx,ty,sx,sy){ const R=geo.R, D=R*.78; let f=carFol.get(pid);
+ if(!f){ const d0=Math.hypot(tx-sx,ty-sy)||1; f={x:sx,y:sy,dx:(tx-sx)/d0,dy:(ty-sy)/d0,lx:tx,ly:ty}; carFol.set(pid,f); }
+ const mx=tx-f.lx, my=ty-f.ly, m=Math.hypot(mx,my); if(m>R*.02){ f.dx=mx/m; f.dy=my/m; } f.lx=tx; f.ly=ty;
+ const gx=tx-f.dx*D*.72-f.dy*D*.55, gy=ty-f.dy*D*.72+f.dx*D*.55, k=1-Math.exp(-carDt*9); f.x+=(gx-f.x)*k; f.y+=(gy-f.y)*k; // detrás y un poco a un lado: no tapa a su minileyenda
+ const ox=f.x-tx, oy=f.y-ty, od=Math.hypot(ox,oy); if(od>D*1.35){ f.x=tx+ox/od*D*1.35; f.y=ty+oy/od*D*1.35; }
+ return [f.x,f.y]; }
 // Efecto de una vez al colocar una ficha que comparte sinergia: memoria de cada ficha del tablero (casilla y sinergias activas)
 const synMem=new WeakMap(); let synCtx='', synFrame=0; // m.last = último fotograma en que la ficha estaba en el tablero (entrar = no estaba en el anterior)
 // Banco de Pandora: al empezar cada ronda se transforman las fichas de los 3 últimos huecos del banquillo. Aquí se detecta el cambio (lo que había al
@@ -3248,7 +3257,7 @@ function pandoraWatch(owner){
 }
 function sceneActors(){
  const A=[], me=G.me, inCombat=G.phase==='combat'&&viewCombat(), inCar=G.phase==='carousel'&&G.carousel;
- sceneLinks=[]; if(inCar){ const tn=performance.now(); carFrame++; carDt=Math.min(.1,(tn-carVisT)/1000); carVisT=tn; } else if(carVis.size) carVis.clear();
+ sceneLinks=[]; if(inCar){ const tn=performance.now(); carFrame++; carDt=Math.min(.1,(tn-carVisT)/1000); carVisT=tn; } else { if(carVis.size) carVis.clear(); if(carFol.size) carFol.clear(); }
  const since=NET.lastTick?Math.max(0,(performance.now()-NET.lastTick)/1000)*(G.speed||1):0;
  drawSub=inCombat&&!inCombat.done?Math.min(DT,((G.view&&G.view.cb===inCombat?G.view.acc:G.acc)||0)+since):0;
  if(inCombat){
@@ -3265,6 +3274,10 @@ function sceneActors(){
    }
  } else if(inCar){
    const C=G.carousel; C.opts.forEach((o,i)=>{ if(o.taken) return; const [x,y]=carV(...optPos(C,i)); A.push({key:'co'+i+':'+o.key,opt:i,hold:.5,dex:dexOf(DEF[o.key],1),x,y,face:0,ring:COST_HEX[DEF[o.key].cost-1],halo:COST_HEX[DEF[o.key].cost-1],sel:selCar===i,scale:1,hud:{items:[o.item]}}); });
+   // los que ya tienen su Pokémon lo llevan detrás, en 3D (misma clave que en el carrusel: sigue el mismo modelo, que corre tras su minileyenda)
+   for(const p of C.order){ const a=C.av[p.id]; if(!a||a.x===null||!a.carry||!DEF[a.carry.key]) continue; const i=C.opts.findIndex(o=>o.key===a.carry.key); if(i<0) continue; const o=C.opts[i];
+     const [vx,vy]=carPos(p.id,...carV(a.x,a.y)), [sx,sy]=carV(...optPos(C,i)), [x,y]=carFollow(p.id,vx,vy+geo.R*.35,sx,sy);
+     A.push({key:'co'+i+':'+o.key,hold:.35,dex:dexOf(DEF[o.key],1),x,y,ring:COST_HEX[DEF[o.key].cost-1],scale:1,hud:{items:o.item?[o.item]:[]}}); }
  } else {
    const who=viewedPlayer(), mine=who===me, ctx=who.id+'|'+G.phase+'|'+G.roundIdx, quiet=ctx!==synCtx, now=performance.now(); synCtx=ctx;
    const info=[], fr=++synFrame, tiers=activeTraits(who), showSyn=G.phase==='planning'||G.phase==='augment'||G.phase==='results';
@@ -3345,7 +3358,6 @@ function drawCarouselHud(){
  for(const {p,a,x,y} of list){
    const locked=!a.rel&&!a.done, mine=p===G.me;
    const [sx,sy,ss]=drawTrainer(x,y+R*.35,trainerOf(p),{noSprite:true,s:R*1.7,ring:mine?'#4c8dff':a.rel&&!a.done?'#3fd27a':'#8a93ad',face:a.face||1,mode:a.moving?'run':a.done?'cheer':'idle',seed:p.id*.7,dim:locked,label:(p.name.length>10?p.name.slice(0,9)+'…':p.name)+(locked?' 🔒':''),emoji:p.emoji});
-   if(a.carry&&DEF[a.carry.key]){ const dx=dexOf(DEF[a.carry.key],1), u=B3.portrait(dx); const e=u?loadImg('pt:'+dx,u):null; const s=ss*.65; if(e&&e.status==='ok') ctx.drawImage(e.img,sx+ss*.1,sy-ss*.95-s*.5,s,s); }
  }
  const myIdx=C.order.indexOf(G.me), myAv=C.av[G.me.id];
  const msg=!myAv?'Mirando el carrusel':myAv.done?'Ya tienes tu Pokémon: sigue moviéndote con clic derecho mientras eligen los demás':myAv.rel?'¡Libre! Clic derecho para moverte y pasa por encima de un Pokémon':`Tu barrera se abre en ${Math.max(0,Math.ceil(releaseAt(myIdx)-C.t))}s · menos vida = sales antes`;
