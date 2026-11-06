@@ -70,6 +70,14 @@ Object.assign(I18N.EN, {
   // ----- Rarezas, ligas, modos, roles -----
   'Común': 'Common', 'Poco común': 'Uncommon', 'Raro': 'Rare', 'Épico': 'Epic', 'Mítica': 'Mythic', 'Épica': 'Epic', 'Rara': 'Rare', 'Legendaria': 'Legendary',
   'Plata': 'Silver', 'Oro': 'Gold', 'Bronce': 'Bronze', 'Hierro': 'Iron', 'Platino': 'Platinum', 'Esmeralda': 'Emerald', 'Diamante': 'Diamond', 'Maestro': 'Master',
+  // ligas con su división (los números romanos no son cifras: cada combinación va entera)
+  'Hierro I': 'Iron I', 'Hierro II': 'Iron II', 'Hierro III': 'Iron III', 'Hierro IV': 'Iron IV', 'Hierro V': 'Iron V',
+  'Bronce I': 'Bronze I', 'Bronce II': 'Bronze II', 'Bronce III': 'Bronze III', 'Bronce IV': 'Bronze IV', 'Bronce V': 'Bronze V',
+  'Plata I': 'Silver I', 'Plata II': 'Silver II', 'Plata III': 'Silver III', 'Plata IV': 'Silver IV', 'Plata V': 'Silver V',
+  'Oro I': 'Gold I', 'Oro II': 'Gold II', 'Oro III': 'Gold III', 'Oro IV': 'Gold IV', 'Oro V': 'Gold V',
+  'Platino I': 'Platinum I', 'Platino II': 'Platinum II', 'Platino III': 'Platinum III', 'Platino IV': 'Platinum IV', 'Platino V': 'Platinum V',
+  'Esmeralda I': 'Emerald I', 'Esmeralda II': 'Emerald II', 'Esmeralda III': 'Emerald III', 'Esmeralda IV': 'Emerald IV', 'Esmeralda V': 'Emerald V',
+  'Diamante I': 'Diamond I', 'Diamante II': 'Diamond II', 'Diamante III': 'Diamond III', 'Diamante IV': 'Diamond IV', 'Diamante V': 'Diamond V',
   'Gran Maestro': 'Grandmaster', 'Retador': 'Challenger', 'Fácil': 'Easy', 'Difícil': 'Hard', 'Aleatoria': 'Random', 'Aleatorio': 'Random',
   'Tanque': 'Tank', 'Mago': 'Mage', 'Soporte': 'Support', 'Cuerpo a cuerpo': 'Melee', 'Minileyenda': 'Little Legend', 'Entrenador': 'Trainer', 'Sala': 'Room', 'Sala de {0}': '{0}’s room',
   // ----- Tipos de habilidad -----
@@ -910,4 +918,12 @@ Object.assign(I18N.EN, {
   "Coste 5 a ★★★: empieza con el maná lleno, recupera {0} de maná por segundo y recibe un {1}% menos de daño.": "Cost 5 at ★★★: starts with full mana, regains {0} mana per second and takes {1}% less damage.",
   // ----- Arenas por tipo (noviembre de 2026) -----
   "Cambiar arena": "Change arena", "Coliseo estelar": "Starry Colosseum", "Clásica": "Classic", "Abismo marino": "Ocean Abyss", "Caldera volcánica": "Volcanic Caldera", "Jardín flotante": "Floating Garden", "Cañón de arenisca": "Sandstone Canyon", "Tormenta eléctrica": "Electric Storm",
+  // ----- Clasificación de Clasificatoria (noviembre de 2026) -----
+  "Tu rango": "Your rank", "Clasificación": "Leaderboard", "Pedir amistad": "Send friend request", "Global": "Global", "Ver la clasificación": "View leaderboard", "Aparecer": "Show me", "No aparecer": "Hide me",
+  "Cargando la clasificación…": "Loading leaderboard…", "Tú": "You", "Amigo": "Friend", "Pedir amistad a {0}": "Send a friend request to {0}", "{0} partida": "{0} game", "{0} partidas": "{0} games",
+  "Termina tu posicionamiento ({0}/{1}) para entrar en la clasificación.": "Finish your placement ({0}/{1}) to enter the leaderboard.",
+  "No apareces en la clasificación (lo cambias en Configuración). Tu puesto sería el {0}.º.": "You are hidden from the leaderboard (change it in Settings). Your place would be #{0}.",
+  "No apareces en la clasificación (lo cambias en Configuración).": "You are hidden from the leaderboard (change it in Settings).",
+  "Ninguno de tus amigos ha terminado aún el posicionamiento.": "None of your friends has finished their placement yet.", "Aún no hay nadie en la clasificación: ¡sé el primero!": "Nobody is on the leaderboard yet: be the first!",
+  "Tú y tus amigos con rango": "You and your ranked friends", "Tú y tus amigos con rango · {0} en posicionamiento": "You and your ranked friends · {0} in placement", "Los {0} mejores de {1} entrenadores con rango": "Top {0} of {1} ranked trainers", "{0} entrenadores con rango": "{0} ranked trainers", "{0} entrenador con rango": "{0} ranked trainer",
 });

@@ -33,6 +33,43 @@ test('cancelar la cola, ver la clasificatoria y el historial vacío', async ({ p
   await expect(page.locator('.hEmpty')).toBeVisible();
 });
 
+test('clasificación: pestañas, aviso de posicionamiento, filas con medallas, mi puesto y pedir amistad', async ({ page }) => {
+  await register(page);
+  // cuenta nueva: «Tu rango» con el posicionamiento y, en «Clasificación», el aviso para terminarlo (datos reales del servidor)
+  await page.locator('#rankedBtn').click();
+  await expect(page.locator('[data-rt="rank"]')).toHaveClass(/on/);
+  await expect(page.locator('.rkBig')).toContainText('Posicionamiento 0/3');
+  await page.locator('[data-rt="lb"]').click();
+  await expect(page.locator('#rkBody .lbMe .lbNote')).toContainText('Termina tu posicionamiento (0/3)');
+  await page.locator('[data-sc="amigos"]').click();
+  await expect(page.locator('#rkBody .lbList')).toContainText('Ninguno de tus amigos');
+  // «No aparecer» en Configuración se guarda en la cuenta
+  await page.evaluate(() => closeModal());
+  await page.locator('#optBtn').click();
+  await page.locator('#optLb label.rd', { hasText: 'No aparecer' }).click();
+  await page.locator('#saveOpt').click();
+  await expect.poll(() => page.evaluate(async () => (await (await fetch('/api/me')).json()).user.settings.lbHide)).toBe(true);
+  // con datos de ejemplo: 3 medallas, mi fila al final si no estoy en la lista y botón para pedir amistad (no a mí ni a un amigo)
+  const row = (n, lp, o = {}) => ({ n, tac: 'pichu', cs: '', r: { league: 'gold', name: 'Oro', div: 'II', lp }, g: 12, me: 0, fr: 0, ...o });
+  await page.route('**/api/leaderboard*', r => r.fulfill({ json: { scope: 'global', total: 120, list: [row('Uno', 90), row('Dos', 80, { fr: 1 }), row('Tres', 70), row('Cuatro', 60)],
+    me: { rank: { placing: false, league: 'silver', name: 'Plata', div: 'I', lp: 10 }, pos: 140, hidden: false, row: row('Yo', 10, { me: 1 }) } } }));
+  await page.evaluate(() => { closeModal(); LB.data = {}; LB.scope = 'global'; });
+  await page.locator('#rkMini').click(); // el rango de la ficha del menú abre directamente la clasificación
+  await expect(page.locator('[data-rt="lb"]')).toHaveClass(/on/);
+  await expect(page.locator('#rkBody .lbList .lbRow')).toHaveCount(4);
+  await expect(page.locator('#rkBody .lbSub')).toHaveText('Los 100 mejores de 120 entrenadores con rango');
+  await expect(page.locator('.lbPos.m1')).toHaveText('1'); await expect(page.locator('.lbPos.m3')).toHaveText('3'); await expect(page.locator('.lbPos.m4')).toHaveCount(0);
+  await expect(page.locator('.lbMe .lbRow.me')).toContainText('140');
+  await expect(page.locator('.lbMe .lbYou')).toHaveText('Tú');
+  await expect(page.locator('.lbRow').nth(1).locator('.lbFr')).toHaveText('Amigo');
+  await expect(page.locator('#rkBody .lbAdd')).toHaveCount(3);
+  // ocultarse en Configuración: la ventana lo dice
+  await page.route('**/api/leaderboard*', r => r.fulfill({ json: { scope: 'global', total: 119, list: [row('Uno', 90)], me: { rank: { placing: false, league: 'silver', name: 'Plata', div: 'I', lp: 10 }, pos: 139, hidden: true, row: null } } }));
+  await page.evaluate(() => { closeModal(); LB.data = {}; });
+  await page.locator('#rkMini').click();
+  await expect(page.locator('#rkBody .lbMe .lbNote')).toContainText('No apareces en la clasificación');
+});
+
 test('perfil propio desde el menú: estandarte, vitrinas, pestañas por modo e historial vacío', async ({ page }) => {
   const user = await register(page, undefined, 'squirtle');
   await page.locator('#pfBtn').click();

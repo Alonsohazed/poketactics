@@ -2987,7 +2987,7 @@ function bindEvents(){
  // Engranaje del acceso y del registro: la misma configuración (volumen, tema, calidad), sin «Cerrar sesión»
  $('authOptBtn').addEventListener('click',()=>{ Music.init(); showOptions(false); });
  $('playBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showNormal(); });
- $('rankedBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showRanked(); });
+ $('rankedBtn').addEventListener('click',()=>{ Music.init(); loadB3(); showRanked('rank'); });
  $('histBtn').addEventListener('click',showHistory); $('frBtn').addEventListener('click',()=>openFriends()); $('eeveeGacha').addEventListener('click',showGacha); // el Eevee con halo del menú abre el gacha
  $('howBtn').addEventListener('click',()=>{ guideSeen(); showHow(); });
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
@@ -3998,11 +3998,12 @@ function showOptions(inGame){
  <div class="cfgRow"><b>Idioma</b>${rd('optLang',[['es','Español'],['en','English']],S.lang||I18N.lang)}</div>
  <div class="cfgRow"><b>Tema</b>${rd('optTheme',[['system','Según el sistema'],['light','Claro'],['dark','Oscuro']],S.theme||'system')}</div>
  <div class="cfgRow"><b>Calidad gráfica</b>${rd('optGfx',[['auto','Automática'],['2','Alta'],['1','Media'],['0','Baja']],GFX.q)}</div>
+ ${ACC?`<div class="cfgRow"><b>Clasificación</b>${rd('optLb',[['0','Aparecer'],['1','No aparecer']],S.lbHide?'1':'0')}</div>`:''}
  <div class="cfgBtns">${ACC?'<button class="cfgBtn ghost" id="fbOpt">Sugerencias y errores</button>':''}${inGame||!ACC?'':'<button class="cfgBtn ghost" id="logoutBtn">Cerrar sesión</button>'}<button class="cfgBtn" id="saveOpt">Guardar</button></div>
  ${inGame?`<div class="cfgSep"></div><div class="cfgSur"><div><button class="cfgBtn red" id="surrBtn" ${can?'':'disabled'}>Rendirse</button><button class="cfgBtn ghost" id="quitBtn">Volver al menú</button></div><small>${can?'Quedas eliminado en el último puesto entre los que siguen vivos y la partida termina para ti':'Rendirse solo se puede desde la fase 3-1'}</small></div>`:''}`,{closable:true,cfg:true,gx:true});
  const val=n=>{ const e=document.querySelector(`input[name="${n}"]:checked`); return e?e.value:''; };
  $('optVol').oninput=e=>{ S.vol=+e.target.value/100; S.muted=false; $('optVolV').textContent=e.target.value; Music.init(); Music.setVol(); };
- $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; S.lang=val('optLang')||S.lang; saveSettings(); applyTheme(); applyLang(); if(ACC) renderMenu(); if(G&&G.players&&G.players.length) renderUI(); closeModal(); };
+ $('saveOpt').onclick=()=>{ try{ localStorage.setItem('pt_gfx',val('optGfx')||'auto'); }catch(e){} applyGfx(); S.theme=val('optTheme')||'system'; S.lang=val('optLang')||S.lang; if(ACC&&val('optLb')&&(val('optLb')==='1')!==!!S.lbHide){ S.lbHide=val('optLb')==='1'; LB.data={}; } saveSettings(); applyTheme(); applyLang(); if(ACC) renderMenu(); if(G&&G.players&&G.players.length) renderUI(); closeModal(); };
  if($('logoutBtn')) $('logoutBtn').onclick=()=>{ closeModal(); logout(); };
  if($('fbOpt')) $('fbOpt').onclick=()=>showFeedback(inGame?'bug':'idea');
  if($('quitBtn')) $('quitBtn').onclick=()=>{ closeModal(); confirmQuit(); };
@@ -4193,7 +4194,7 @@ function renderMenu(){ gachaHint();
   <div class="mcEq"><button class="mcBox" id="pickTr" type="button" title="Cambiar minileyenda"><span class="mcImg">${artImg(tk)}</span><span class="tfrom">${esc(t.name)}</span></button><button class="mcBox" id="pickArena" type="button" title="Cambiar arena"><span class="mcImg"><img src="${arenaThumb(arenaSkin())}" alt="" decoding="async"></span><span class="tfrom">${esc(arenaOf(arenaSkin()).n)}</span></button></div>
   <div class="mcFoot">${rankMiniHTML()}</div>
   <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="18"></i><span>Ver perfil</span></button></div>`;
- guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pickArena').onclick=showArenaPick; $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=showRanked; pxArt($('menu'));
+ guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pickArena').onclick=showArenaPick; $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=()=>showRanked('lb'); // tu rango en la ficha del menú: directo a la clasificación pxArt($('menu'));
 }
 /* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
 const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
@@ -4209,7 +4210,7 @@ function lpBar(rk){
 }
 // Panel compacto de rango (ficha del menú)
 function rankMiniHTML(){ const c=COMP(), rk=c.ranked;
- return `<button class="rkMini" id="rkMini" type="button" aria-label="Ver la clasificatoria">${rankBadge(rk,48)}<span class="rkTxt"><b>${esc(rankText(rk))}</b><small>${rk.placing?'Juega 3 partidas para revelar tu rango':rk.lp+' LP'}</small>${lpBar(rk)}</span></button>
+ return `<button class="rkMini" id="rkMini" type="button" aria-label="Ver la clasificación">${rankBadge(rk,48)}<span class="rkTxt"><b>${esc(rankText(rk))}</b><small>${rk.placing?'Juega 3 partidas para revelar tu rango':rk.lp+' LP'}</small>${lpBar(rk)}</span></button>
   <div class="candyRow" title="Caramelos: se ganan en cada partida de Normal, Clasificatoria o sala informal"><i data-i="candy" data-s="20"></i><b>${c.candies}</b><span>caramelos</span></div>`; }
 
 // ----- cola -----
@@ -4260,15 +4261,47 @@ function practiceParams(){ if(!/^(localhost|127.0.0.1)$/.test(location.hostname)
 function leaguesHTML(rk){ const cur=rk.placing?'':rk.league;
  return [['iron','Hierro'],['bronze','Bronce'],['silver','Plata'],['gold','Oro'],['platinum','Platino'],['emerald','Esmeralda'],['diamond','Diamante'],['master','Maestro'],['grandmaster','Gran Maestro'],['challenger','Retador']]
   .map(([k,n],i)=>`<div class="lgItem ${k===cur?'on':''}">${window.PX?PX.badge(k,34+i*2.4|0):''}<span>${n}</span></div>`).join(''); } // cada liga, un poco más grande
-function showRanked(){
+// Ventana de Clasificatoria con dos pestañas: «Tu rango» (lo de siempre y el botón de buscar) y «Clasificación» (los 100 primeros, Global o Amigos)
+const LB={tab:'rank',scope:'global',data:{},at:{}};
+function showRanked(tab){ if(typeof tab==='string') LB.tab=tab;
+ openModal(`<div class="lbTabs" role="tablist"><button type="button" role="tab" data-rt="rank">Tu rango</button><button type="button" role="tab" data-rt="lb">Clasificación</button></div><div id="rkBody"></div>`,{closable:true,gx:'Clasificatoria'});
+ $('mbox').querySelectorAll('[data-rt]').forEach(b=>b.onclick=()=>{ LB.tab=b.dataset.rt; renderRanked(); });
+ renderRanked();
+}
+function renderRanked(){ const body=$('rkBody'); if(!body) return;
+ $('mbox').querySelectorAll('[data-rt]').forEach(b=>{ b.classList.toggle('on',b.dataset.rt===LB.tab); b.setAttribute('aria-selected',b.dataset.rt===LB.tab); });
+ if(LB.tab==='lb') return renderLeaderboard(body);
  const rk=COMP().ranked;
- openModal(`<div class="rkBig">${rankBadge(rk,128)}<div class="rkBigTxt"><div class="pxKicker">Clasificatoria</div><h1>${esc(rankText(rk))}</h1>${rk.placing?`<p class="muted">Juega ${rk.of-rk.done} partida${rk.of-rk.done===1?'':'s'} más para revelar tu rango.</p>`:`<p class="rkLp">${rk.lp} LP</p>`}${lpBar(rk)}</div></div>
+ body.innerHTML=`<div class="rkBig">${rankBadge(rk,128)}<div class="rkBigTxt"><div class="pxKicker">Clasificatoria</div><h1>${esc(rankText(rk))}</h1>${rk.placing?`<p class="muted">Juega ${rk.of-rk.done} partida${rk.of-rk.done===1?'':'s'} más para revelar tu rango.</p>`:`<p class="rkLp">${rk.lp} LP</p>`}${lpBar(rk)}</div></div>
   <div class="modeInfo"><p>Contra entrenadores de tu nivel y <b>rivales competitivos</b>, bastante mejores que en Normal: gestionan la economía, buscan sinergias y colocan bien. El <b>1.º</b> gana muchos LP; del <b>2.º al 4.º</b>, pocos; del <b>5.º al 8.º</b> se pierden, más cuanto más abajo. Si tu nivel real está por encima de tu rango, subes más rápido.</p>
   <p>Cada partida también da <b>caramelos</b>. De Hierro a Diamante hay 5 divisiones (V a I) de 100 LP; Maestro, Gran Maestro y Retador no tienen divisiones.</p></div>
   <div class="leagues">${leaguesHTML(rk)}</div>
-  <button class="pxb pxb-alt wide" id="qRanked" type="button"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Buscar clasificatoria</b><small>Entrenadores de tu nivel y partidas más exigentes</small></span><i class="pxCaret" aria-hidden="true"></i></button>`,{closable:true,gx:'Clasificatoria'});
- $('qRanked').onclick=()=>startQueue('ranked');
+  <button class="pxb pxb-alt wide" id="qRanked" type="button"><i data-i="ranked" data-s="36"></i><span class="pxbT"><b>Buscar clasificatoria</b><small>Entrenadores de tu nivel y partidas más exigentes</small></span><i class="pxCaret" aria-hidden="true"></i></button>`;
+ window.PX&&PX.hydrate(body); $('qRanked').onclick=()=>startQueue('ranked');
 }
+// La clasificación la da el servidor (/api/leaderboard): se pide al abrirla y como mucho una vez cada 30 s por pestaña
+async function renderLeaderboard(body){ const sc=LB.scope, d=LB.data[sc];
+ const head=`<div class="lbScope"><button type="button" data-sc="global" class="${sc==='global'?'on':''}">Global</button><button type="button" data-sc="amigos" class="${sc==='amigos'?'on':''}">Amigos</button></div>`;
+ if(!d||Date.now()-(LB.at[sc]||0)>30000){ if(!d) body.innerHTML=head+'<p class="lbNote">Cargando la clasificación…</p>'; bindLbScope(body);
+   try{ LB.data[sc]=await api('/api/leaderboard?scope='+sc); LB.at[sc]=Date.now(); }catch(e){ if(!d){ body.innerHTML=head+`<p class="lbNote">${esc(e.message)}</p>`; bindLbScope(body); return; } }
+   if(LB.tab!=='lb'||LB.scope!==sc||!$('rkBody')) return; }
+ body.innerHTML=head+lbHTML(LB.data[sc]); bindLbScope(body); window.PX&&PX.hydrate(body);
+ body.querySelectorAll('.lbAdd').forEach(bt=>bt.onclick=async()=>{ bt.disabled=true; await friendOp('request',bt.dataset.n); if(FR.msg&&FR.msg.ok) bt.outerHTML='<span class="lbSent">Enviada</span>'; else bt.disabled=false; });
+}
+function bindLbScope(body){ body.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{ LB.scope=b.dataset.sc; renderLeaderboard(body); }); }
+function lbRowHTML(r,pos){ const tac=TACS[r.tac]?r.tac:'charmander', t=titleOf(r.cs), medal=pos<=3?` m${pos}`:'';
+ return `<div class="lbRow${r.me?' me':''}"><span class="lbPos${medal}">${pos}</span><span class="lbAv" style="${frameVars(r.cs)}">${artImg(tac)}</span><span class="lbWho"><b translate="no">${nameHTML(r.n,r.cs)}</b>${t?`<small>«${esc(t)}»</small>`:''}<small class="lbRkM">${esc(rankText(r.r))} · ${r.r.lp} LP</small></span>`+
+  `<span class="lbRank">${rankBadge(r.r,40)}<span><b>${esc(rankText(r.r))}</b><small>${r.r.lp} LP</small></span></span><span class="lbG">${r.g} ${r.g===1?'partida':'partidas'}</span>`+
+  `<span class="lbAct">${r.me?'<span class="lbYou">Tú</span>':r.fr?'<span class="lbFr">Amigo</span>':`<button type="button" class="lbAdd" data-n="${esc(r.n)}" title="Pedir amistad" aria-label="Pedir amistad a ${esc(r.n)}">${PX.icon('addfriend',18)}</button>`}</span></div>`; }
+function lbHTML(d){ if(!d) return '';
+ const list=(d.list||[]).map((r,i)=>lbRowHTML(r,i+1)).join(''), me=d.me||{}, inList=(d.list||[]).some(r=>r.me);
+ let foot='';
+ if(me.rank&&me.rank.placing) foot=`<div class="lbMe"><p class="lbNote">Termina tu posicionamiento (${me.rank.done}/${me.rank.of}) para entrar en la clasificación.</p></div>`;
+ else if(d.scope==='global'&&me.hidden) foot=`<div class="lbMe"><p class="lbNote">No apareces en la clasificación (lo cambias en Configuración)${me.pos?`. Tu puesto sería el ${me.pos}.º`:''}.</p></div>`;
+ else if(!inList&&me.row&&me.pos) foot=`<div class="lbMe">${lbRowHTML(me.row,me.pos)}</div>`;
+ const empty=d.scope==='amigos'?'Ninguno de tus amigos ha terminado aún el posicionamiento.':'Aún no hay nadie en la clasificación: ¡sé el primero!';
+ const sub=d.scope==='amigos'?`Tú y tus amigos con rango${d.placing?` · ${d.placing} en posicionamiento`:''}`:(d.total||0)>100?`Los 100 mejores de ${d.total} entrenadores con rango`:`${d.total||0} ${d.total===1?'entrenador':'entrenadores'} con rango`;
+ return `<p class="lbSub">${sub}</p><div class="lbList">${list||`<p class="lbNote">${empty}</p>`}</div>${foot}`; }
 
 // ----- resultado de la partida, ascensos y revelación del rango -----
 function onResult(d){
@@ -4668,7 +4701,7 @@ const Scene={
 };
 
 const SETTINGS_KEY='pokeTactics.settings';
-const SYNCED=['vol','muted','timer','speed','theme','diff','lang','plans','arena'];
+const SYNCED=['vol','muted','timer','speed','theme','diff','lang','plans','arena','lbHide'];
 function loadSettings(){ try{ const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(s) for(const k of SYNCED) if(k in s) S[k]=s[k]; }catch(e){} applyLang(); }
 // Idioma: el guardado o, si nunca se eligió, el del navegador; cambia todo el DOM al momento (I18N) y repinta lo que no pasa por él
 function applyLang(){ const l=S.lang==='en'||S.lang==='es'?S.lang:I18N.guess(); I18N.set(l); document.title=TR('Poké Tactics'); }

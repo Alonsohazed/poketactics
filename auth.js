@@ -15,7 +15,7 @@ const COOKIE = 'pt_sid';
 const SESSION_DAYS = 30;
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const PASS_MIN = 6, PASS_MAX = 72;
-const SETTINGS_KEYS = { vol: 'number', muted: 'boolean', timer: 'number', speed: 'number', theme: 'string', diff: 'string', lang: 'string', arena: 'string' };
+const SETTINGS_KEYS = { vol: 'number', muted: 'boolean', timer: 'number', speed: 'number', theme: 'string', diff: 'string', lang: 'string', arena: 'string', lbHide: 'boolean' };
 
 async function hashPassword(pass) {
   const salt = crypto.randomBytes(16);
@@ -56,7 +56,7 @@ function limiter(max, windowMs) {
   };
 }
 
-const { publicComp, profileView } = require('./competitive');
+const { publicComp, profileView, rankOf } = require('./competitive');
 const FR = require('./friends');
 const COSM = require('./public/cosmetics');
 const GACHA = require('./gacha');
@@ -183,6 +183,8 @@ function createAuth(db, { trainers, presence, onFriends, onEevee }) {
       fields.trainer = b.trainer;
     }
     if (b.settings !== undefined) fields.settings = cleanSettings(b.settings);
+    // ocultarse o volver a la clasificación se nota al momento, sin esperar a que caduque la caché
+    if (fields.settings && !!fields.settings.lbHide !== !!(user.settings && user.settings.lbHide)) lbCache = null;
     const updated = Object.keys(fields).length ? await db.updateUser(user.id, fields) : user;
     res.json({ user: publicUser(updated) });
   }));
@@ -204,6 +206,28 @@ function createAuth(db, { trainers, presence, onFriends, onEevee }) {
     if (!who || (!self && !(await FR.areFriends(db, user.id, who.id)))) return res.status(404).json({ error: 'Perfil no disponible' });
     const [agg, list] = await Promise.all([db.modeStats(who.id), db.matches(who.id, 10)]);
     res.json({ profile: profileView(who, agg, list), self, friend: !self, presence: !self && presence ? presence(who.id) : null });
+  }));
+
+  // Clasificación de Clasificatoria: los 100 primeros por la escalera de LP, tu puesto y la de tus amigos. Solo viaja lo que se ve
+  // (nombre, minileyenda, cosméticos públicos, rango y partidas): nunca el MMR, ids ni ajustes. Quien eligió «No aparecer en la
+  // clasificación» (settings.lbHide) no sale en la global, pero sí en la de sus amigos (que ya ven su perfil). La global se guarda 60 s
+  const lbLimit = limiter(30, 60 * 1000), LB_N = 100, LB_TTL = 60 * 1000, LB_SLOTS = ['nc', 'tt', 'ic', 'fr']; let lbCache = null;
+  const lbRow = (u, me, fr) => { const c = u.comp || {}, r = rankOf(c.ladder);
+    return { n: u.name, tac: u.trainer || '', cs: COSM.eqString((u.cosm || {}).eq, LB_SLOTS), r: { league: r.league, name: r.name, div: r.div, lp: r.lp }, g: c.rgames | 0, me: me ? 1 : 0, fr: fr ? 1 : 0 }; };
+  router.get('/leaderboard', needUser(async (req, res, user) => {
+    if (lbLimit.blocked(user.id)) return res.status(429).json({ error: 'Demasiadas peticiones. Espera un momento.' });
+    lbLimit.hit(user.id);
+    const scope = req.query.scope === 'amigos' ? 'amigos' : 'global', fids = await db.friendIds(user.id), fset = new Set(fids);
+    const rk = publicComp(user.comp).ranked, hidden = !!(user.settings && user.settings.lbHide);
+    if (scope === 'amigos') {
+      const all = (await db.usersByIds([user.id, ...fids.filter(id => id !== user.id)])), on = all.filter(u => u.comp && u.comp.ladder != null && Number.isFinite(+u.comp.ladder));
+      on.sort((a, b) => (+b.comp.ladder - +a.comp.ladder) || ((a.comp.rgames | 0) - (b.comp.rgames | 0)) || (a.id - b.id));
+      const pos = on.findIndex(u => u.id === user.id);
+      return res.json({ scope, total: on.length, placing: all.length - on.length, list: on.slice(0, LB_N).map(u => lbRow(u, u.id === user.id, fset.has(u.id))), me: { rank: rk, pos: pos < 0 ? null : pos + 1, hidden } });
+    }
+    if (!lbCache || Date.now() - lbCache.at > LB_TTL) { const r = await db.leaderboard(LB_N); lbCache = { at: Date.now(), total: r.total, rows: r.rows }; }
+    const pos = await db.ladderPos(user);
+    res.json({ scope, total: lbCache.total, list: lbCache.rows.map(u => lbRow(u, u.id === user.id, fset.has(u.id))), me: { rank: rk, pos, hidden, row: pos ? lbRow(user, true, false) : null } });
   }));
 
   // Amigos: lista (con su estado en directo) y acciones por nombre. Cada cambio avisa a los afectados (onFriends)

@@ -26,6 +26,11 @@ function applyResult(stats, place) {
 }
 
 // ---------- archivo JSON (desarrollo local) ----------
+// Clasificación de Clasificatoria: más LP en la escalera primero; a igualdad, quien llegó con menos partidas y después la cuenta más antigua.
+// Solo cuentas que terminaron el posicionamiento (comp.ladder) y que no pidieron ocultarse (settings.lbHide)
+const lbOn = u => u && u.comp && u.comp.ladder != null && Number.isFinite(+u.comp.ladder);
+const lbCmp = (a, b) => (+b.comp.ladder - +a.comp.ladder) || ((a.comp.rgames | 0) - (b.comp.rgames | 0)) || (a.id - b.id);
+const LBW = `comp->>'ladder' IS NOT NULL AND COALESCE(settings->>'lbHide', 'false') <> 'true'`, LBL = `(comp->>'ladder')::float8`, LBG = `COALESCE((comp->>'rgames')::int, 0)`;
 function fileStore(file) {
   let db = { seq: 0, users: [], sessions: {} };
   let writing = Promise.resolve();
@@ -85,6 +90,9 @@ function fileStore(file) {
       if (l) Object.assign(l, { status, label: label != null ? label : l.label, created: now }); else db.friends.push({ a, b, status, label: label || '', created: now }); await save(); },
     async delLink(a, b) { const n = db.friends.length; db.friends = db.friends.filter(x => !(x.a === a && x.b === b)); if (db.friends.length !== n) await save(); return n - db.friends.length; },
     async friendIds(userId) { return db.friends.filter(l => l.a === userId && l.status === 'accepted').map(l => l.b); },
+    async leaderboard(limit) { const L = db.users.filter(u => lbOn(u) && !(u.settings && u.settings.lbHide)).sort(lbCmp); return { total: L.length, rows: L.slice(0, limit) }; },
+    async ladderPos(u) { if (!lbOn(u)) return null; return 1 + db.users.filter(o => o.id !== u.id && lbOn(o) && !(o.settings && o.settings.lbHide) && lbCmp(o, u) < 0).length; },
+    async usersByIds(ids) { return ids.map(byId).filter(Boolean); },
     // Solicitudes a nombres sin cuenta (o a quien te bloqueó): se ven como pendientes y caducan igual que las demás
     async ghosts(userId) { return db.ghosts.filter(g => g.u === userId).map(g => ({ name: g.name, created: g.created })); },
     async addGhost(userId, name) { if (!db.ghosts.some(g => g.u === userId && g.key === keyOf(name))) { db.ghosts.push({ u: userId, name, key: keyOf(name), created: new Date().toISOString() }); await save(); } },
@@ -151,6 +159,7 @@ function pgStore(url) {
           UNIQUE (match_id, user_id)
         );
         CREATE INDEX IF NOT EXISTS matches_user_idx ON matches(user_id, id DESC);
+        CREATE INDEX IF NOT EXISTS users_ladder_idx ON users (((comp->>'ladder')::float8) DESC) WHERE comp->>'ladder' IS NOT NULL;
         CREATE TABLE IF NOT EXISTS friends (
           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -209,6 +218,15 @@ function pgStore(url) {
         ON CONFLICT (user_id, friend_id) DO UPDATE SET status = EXCLUDED.status, label = COALESCE($4, friends.label), created_at = now()`, [a, b, status, label == null ? null : label]);
     },
     async delLink(a, b) { return (await pool.query('DELETE FROM friends WHERE user_id = $1 AND friend_id = $2', [a, b])).rowCount; },
+    async leaderboard(limit) {
+      const [list, tot] = await Promise.all([
+        pool.query(`SELECT id, name, trainer, comp, cosm, settings FROM users WHERE ${LBW} ORDER BY ${LBL} DESC, ${LBG} ASC, id ASC LIMIT $1`, [limit]),
+        pool.query(`SELECT count(*)::int AS n FROM users WHERE ${LBW}`)]);
+      return { total: tot.rows[0].n, rows: list.rows.map(row) }; },
+    async ladderPos(u) { if (!lbOn(u)) return null; const L = +u.comp.ladder, G = u.comp.rgames | 0;
+      const r = await pool.query(`SELECT count(*)::int AS n FROM users WHERE ${LBW} AND id <> $3 AND (${LBL} > $1 OR (${LBL} = $1 AND (${LBG} < $2 OR (${LBG} = $2 AND id < $3))))`, [L, G, u.id]);
+      return r.rows[0].n + 1; },
+    async usersByIds(ids) { if (!ids.length) return []; return (await pool.query('SELECT id, name, trainer, comp, cosm, settings FROM users WHERE id = ANY($1::int[])', [ids])).rows.map(row); },
     async friendIds(userId) { return (await pool.query(`SELECT friend_id FROM friends WHERE user_id = $1 AND status = 'accepted'`, [userId])).rows.map(r => r.friend_id); },
     async ghosts(userId) { return (await pool.query('SELECT name, created_at AS created FROM friend_ghosts WHERE user_id = $1', [userId])).rows; },
     async addGhost(userId, name) { await pool.query('INSERT INTO friend_ghosts (user_id, name, name_key) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [userId, name, keyOf(name)]); },

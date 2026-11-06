@@ -1931,6 +1931,42 @@ body:has(#auth:not(.hidden)) .planner{display:none} /* en el menú sí se abre (
 .arOk{display:none;position:absolute;right:14px;top:14px;width:26px;height:26px;border-radius:50%;background:#f3d27a;color:#1a1e3c;font:900 15px/26px sans-serif;text-align:center;font-style:normal;box-shadow:0 2px 6px rgba(0,0,0,.5)}
 .arOpt.on .arOk{display:block}
 @media (max-width:700px){ .arPick{grid-template-columns:repeat(2,minmax(0,1fr))} }
+/* ===== Clasificación de Clasificatoria (showRanked → renderLeaderboard en game.js): pestañas «Tu rango» y «Clasificación», Global y Amigos ===== */
+.lbTabs{display:flex;gap:8px;margin:0 0 14px}
+.lbTabs button,.lbScope button{border:1.5px solid var(--k-line,rgba(255,255,255,.12));background:var(--k-row,rgba(255,255,255,.06));color:var(--k-tx,#e6e8f7);font:800 14px var(--pxFont,sans-serif);border-radius:999px;padding:8px 18px;cursor:pointer;box-shadow:none}
+.lbTabs button.on{background:linear-gradient(180deg,#7b5bd6,#5a3fb3);border-color:#c9a24a;color:#fff}
+.lbScope{display:flex;gap:6px;margin-bottom:6px}
+.lbScope button{padding:6px 14px;font-size:13px}
+.lbScope button.on{border-color:#c9a24a;color:#f3d27a;background:rgba(201,162,74,.12)}
+.lbSub{margin:4px 2px 10px;color:var(--k-mut,#a2a8cf);font-size:13px;font-weight:700}
+.lbList{display:flex;flex-direction:column;gap:6px;max-height:min(52vh,560px);overflow:auto;padding-right:4px;scrollbar-width:thin}
+.lbRow{display:grid;grid-template-columns:44px 46px minmax(0,1fr) minmax(150px,auto) 86px 40px;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--k-row,rgba(255,255,255,.055));border:1px solid transparent}
+.lbRow.me{border-color:#c9a24a;background:rgba(201,162,74,.12)}
+.lbPos{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;font-weight:900;font-size:15px;color:var(--k-h,#fff);background:rgba(255,255,255,.07)}
+.lbPos.m1{background:linear-gradient(180deg,#ffe08a,#c08a1e);color:#3a2604}
+.lbPos.m2{background:linear-gradient(180deg,#eef2f6,#97a3b2);color:#1b2030}
+.lbPos.m3{background:linear-gradient(180deg,#e2a26a,#8a5328);color:#fff}
+.lbAv{position:relative;width:42px;height:42px;border-radius:50%;overflow:hidden;background:#0a0d1c;box-shadow:0 0 0 2px var(--f1,#c9a24a),0 0 0 4px var(--f2,transparent)}
+.lbAv img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;display:block}
+.lbWho{min-width:0;display:flex;flex-direction:column}
+.lbWho b{font-size:15px;font-weight:800;color:var(--k-h,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbWho small{font-size:12px;color:var(--k-mut,#a2a8cf);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbRank{display:flex;align-items:center;gap:8px;min-width:0}
+.lbRank img{width:40px;height:40px;flex:0 0 auto}
+.lbRank b{display:block;font-size:14px;font-weight:800;color:var(--k-h,#fff);white-space:nowrap}
+.lbRank small{display:block;font-size:12px;color:#f3d27a;font-weight:800}
+.lbG{font-size:12.5px;color:var(--k-mut,#a2a8cf);font-weight:700;text-align:right;white-space:nowrap}
+.lbAct{display:flex;justify-content:center}
+.lbAdd{width:34px;height:34px;border-radius:50%;border:1.5px solid #c9a24a;background:rgba(201,162,74,.1);color:#f3d27a;cursor:pointer;display:grid;place-items:center;padding:0;box-shadow:none}
+.lbAdd:hover{background:rgba(201,162,74,.25)}
+.lbAdd:disabled{opacity:.5;cursor:default}
+.lbYou,.lbFr,.lbSent{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--k-mut,#a2a8cf)}
+.lbYou{color:#f3d27a}
+.lbMe{margin-top:10px;padding-top:10px;border-top:1px solid var(--k-line,rgba(255,255,255,.1))}
+.lbNote{margin:10px 2px;color:var(--k-mut,#a2a8cf);font-weight:700}
+.lbWho .lbRkM{display:none;color:#f3d27a;font-weight:800}
+/* En el móvil la fila mide unos 250 px: el rango y los LP van bajo el nombre y se quitan la copa, las partidas y el título, para que el nombre quepa */
+@media (max-width:620px){ .lbRow{grid-template-columns:28px 34px minmax(0,1fr) 32px;gap:6px;padding:6px 8px} .lbG,.lbRank,.lbWho small:not(.lbRkM){display:none} .lbWho .lbRkM{display:block;font-size:11.5px} .lbAv{width:34px;height:34px} .lbPos{width:28px;height:28px;font-size:13px} .lbAdd{width:32px;height:32px} }
 </style>
 </head>
 <body>

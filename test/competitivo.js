@@ -233,6 +233,32 @@ ready.then(() => server.listen(0, async () => {
     sa.close();
     // reinicio: la cola vive en memoria; al desconectarse se vacía y no queda nadie colgado
     const ckR = await reg('Rocio'); const sr = await sock(ckR); sr.emit('queue', { mode: 'normal' }); await sleep(150); ok(queues.normal.length === 1, 'en cola'); sr.close(); await sleep(250); ok(queues.normal.length === 0, 'al perder la conexión (o reiniciar el servidor) sale de la cola');
+    // clasificación de Clasificatoria: más LP primero, empates por partidas y antigüedad, sin cuentas en posicionamiento ni ocultas y sin MMR ni ids
+    const lb = async (ck, q) => { const r = await fetch(url + '/api/leaderboard' + (q || ''), ck ? { headers: { Cookie: ck } } : {}); return { s: r.status, b: r.status === 200 ? await r.json() : null }; };
+    ok((await lb(null)).s === 401, 'clasificación: hace falta sesión');
+    const rankedAcc = async (name, places) => { const ck = await reg(name), u = await me(ck); for (let i = 0; i < places.length; i++) await db.recordMatch(u.id, name + '-' + i, 'ranked', rk(places[i])); return ck; };
+    const ckL = await rankedAcc('Lucia', [1, 1, 1, 1]), ckM = await rankedAcc('Marta', [2, 2, 2]), ckN = await rankedAcc('Nora', [5, 5, 5]); await rankedAcc('Olga', [2, 2, 2]); const ckP = await rankedAcc('Pablo', [1, 1]);
+    const lad = async n => +(await db.userByName(n)).comp.ladder;
+    const want = ['Yago', 'Lucia', 'Marta', 'Nora', 'Olga']; const L0 = {}; for (const n of want) L0[n] = await lad(n);
+    want.sort((a, b) => (L0[b] - L0[a]) || 0); // Marta y Olga empatan (mismas partidas): va antes la cuenta más antigua
+    ok(L0.Marta === L0.Olga && want.indexOf('Marta') < want.indexOf('Olga'), 'clasificación: Marta y Olga empatadas en LP');
+    const gN = (await lb(ckN)).b; const names = gN.list.map(r => r.n);
+    ok(gN.scope === 'global' && names.join() === want.join(), `clasificación global ordenada por LP (${names.join(', ')})`);
+    ok(!names.includes('Pablo') && !names.includes('Xenia') && gN.total === 5, 'clasificación: las cuentas en posicionamiento no salen');
+    ok(gN.me.pos === want.indexOf('Nora') + 1 && gN.me.row && gN.me.row.me === 1 && gN.list.filter(r => r.me).length === 1 && gN.list.find(r => r.me).n === 'Nora', `clasificación: mi puesto (${gN.me.pos}) y mi fila marcada`);
+    ok(gN.list.every(r => Object.keys(r).sort().join() === 'cs,fr,g,me,n,r,tac' && Object.keys(r.r).sort().join() === 'div,league,lp,name'), 'clasificación: cada fila solo lleva nombre, minileyenda, cosméticos, rango, partidas y marcas');
+    ok(!/mmr|"(id|uid)"|settings|pass|lbHide/i.test(JSON.stringify(gN)) && !/ladder/.test(JSON.stringify([gN.list, gN.me.row])), 'clasificación: sin MMR, ids ni ajustes, y sin los LP totales de nadie (los tuyos ya te los da /api/me)');
+    const gP = (await lb(ckP)).b; ok(gP.me.pos === null && gP.me.row === null && gP.me.rank.placing, 'clasificación: quien está en posicionamiento no tiene puesto');
+    ok((await lb(ckN, '?scope=hack')).b.scope === 'global', 'clasificación: un ámbito desconocido es la global');
+    // ocultarse: desaparece al momento de la global (sin esperar a la caché) para todos, pero sus amigos la siguen viendo
+    ok((await post('/api/me', { settings: { lbHide: true } }, ckL)).status === 200, 'ocultarse de la clasificación');
+    const gN2 = (await lb(ckN)).b; ok(!gN2.list.some(r => r.n === 'Lucia') && gN2.total === 4 && gN2.me.pos === gN.me.pos - (want.indexOf('Lucia') < want.indexOf('Nora') ? 1 : 0), 'oculta: fuera de la global y los demás suben un puesto');
+    const gL = (await lb(ckL)).b; ok(gL.me.hidden === true && !gL.list.some(r => r.n === 'Lucia'), 'oculta: ella lo sabe y no sale en la lista');
+    await post('/api/friends/request', { name: 'Lucia' }, ckN); await post('/api/friends/accept', { name: 'Nora' }, ckL);
+    const aN = (await lb(ckN, '?scope=amigos')).b;
+    ok(aN.scope === 'amigos' && aN.list.map(r => r.n).join() === ['Lucia', 'Nora'].sort((a, b) => L0[b] - L0[a]).join() && aN.list.find(r => r.n === 'Lucia').fr === 1, 'amigos: tú y tus amigos (también los ocultos), por LP');
+    const aP = (await lb(ckP, '?scope=amigos')).b; ok(aP.list.length === 0 && aP.placing === 1 && aP.me.pos === null, 'amigos: en posicionamiento, lista vacía');
+    await post('/api/me', { settings: { lbHide: false } }, ckL); ok((await lb(ckM)).b.list.some(r => r.n === 'Lucia'), 'volver a aparecer: vuelve a la global al momento');
   } catch (e) { fails++; console.log('FALLO (excepción):', e); }
   console.log(`\n${checks - fails}/${checks} comprobaciones correctas`);
   if (fails) { console.log('FALLO: pruebas del sistema competitivo'); process.exit(1); }
