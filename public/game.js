@@ -2993,6 +2993,7 @@ function bindEvents(){
  $('dexMenuBtn').addEventListener('click',()=>showDex(0));
  $('recMenuBtn').addEventListener('click',showRecipes);
  $('planMenuBtn').addEventListener('click',()=>plannerOpen()?closePlanner():showPlanner()); // el mismo planificador desde el menú
+ $('lbMenuBtn').addEventListener('click',()=>{ Music.init(); showRanked('lb'); }); // la clasificación, en su botón redondo junto a Clasificatoria
  $('optBtn').addEventListener('click',()=>showOptions(false)); $('fbBtn').addEventListener('click',()=>showFeedback());
  bindAuth();
  $('players').addEventListener('click',e=>{ const row=e.target.closest('.pl[data-pid]'); if(row&&G&&G.players.length) spectate(+row.dataset.pid); });
@@ -4194,7 +4195,7 @@ function renderMenu(){ gachaHint();
   <div class="mcEq"><button class="mcBox" id="pickTr" type="button" title="Cambiar minileyenda"><span class="mcImg">${artImg(tk)}</span><span class="tfrom">${esc(t.name)}</span></button><button class="mcBox" id="pickArena" type="button" title="Cambiar arena"><span class="mcImg"><img src="${arenaThumb(arenaSkin())}" alt="" decoding="async"></span><span class="tfrom">${esc(arenaOf(arenaSkin()).n)}</span></button></div>
   <div class="mcFoot">${rankMiniHTML()}</div>
   <div class="row"><button class="pxb" id="pfBtn"><i data-i="people" data-s="18"></i><span>Ver perfil</span></button></div>`;
- guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pickArena').onclick=showArenaPick; $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=()=>showRanked('lb'); // tu rango en la ficha del menú: directo a la clasificación pxArt($('menu'));
+ guideHint(); $('pickTr').onclick=()=>showTacPick(false); $('pickArena').onclick=showArenaPick; $('pfBtn').onclick=()=>showProfile(ACC.name); $('rkMini').onclick=()=>showRanked('rank'); pxArt($('menu'));
 }
 /* ---------- modos de juego, colas, rango, resultados e historial (todo sale del servidor) ---------- */
 const COMP=()=>(ACC&&ACC.comp)||{candies:0,ranked:{placing:true,done:0,of:3}};
@@ -4210,7 +4211,7 @@ function lpBar(rk){
 }
 // Panel compacto de rango (ficha del menú)
 function rankMiniHTML(){ const c=COMP(), rk=c.ranked;
- return `<button class="rkMini" id="rkMini" type="button" aria-label="Ver la clasificación">${rankBadge(rk,48)}<span class="rkTxt"><b>${esc(rankText(rk))}</b><small>${rk.placing?'Juega 3 partidas para revelar tu rango':rk.lp+' LP'}</small>${lpBar(rk)}</span></button>
+ return `<button class="rkMini" id="rkMini" type="button" aria-label="Ver la clasificatoria">${rankBadge(rk,48)}<span class="rkTxt"><b>${esc(rankText(rk))}</b><small>${rk.placing?'Juega 3 partidas para revelar tu rango':rk.lp+' LP'}</small>${lpBar(rk)}</span></button>
   <div class="candyRow" title="Caramelos: se ganan en cada partida de Normal, Clasificatoria o sala informal"><i data-i="candy" data-s="20"></i><b>${c.candies}</b><span>caramelos</span></div>`; }
 
 // ----- cola -----

@@ -35,6 +35,9 @@ test('cancelar la cola, ver la clasificatoria y el historial vacío', async ({ p
 
 test('clasificación: pestañas, aviso de posicionamiento, filas con medallas, mi puesto y pedir amistad', async ({ page }) => {
   await register(page);
+  // botón redondo de la clasificación: en la columna del planificador y a la altura de Clasificatoria, círculo perfecto
+  await expect.poll(() => page.evaluate(() => { const r = id => document.getElementById(id).getBoundingClientRect(), l = r('lbMenuBtn'), p = r('planMenuBtn'), k = r('rankedBtn'); // tras la animación de entrada del menú
+    return Math.abs(l.x - p.x) < 1 && Math.abs(l.y - k.y) < 1 && Math.abs(l.width - l.height) < 1 && Math.abs(l.width - p.width) < 1; })).toBe(true);
   // cuenta nueva: «Tu rango» con el posicionamiento y, en «Clasificación», el aviso para terminarlo (datos reales del servidor)
   await page.locator('#rankedBtn').click();
   await expect(page.locator('[data-rt="rank"]')).toHaveClass(/on/);
@@ -54,7 +57,7 @@ test('clasificación: pestañas, aviso de posicionamiento, filas con medallas, m
   await page.route('**/api/leaderboard*', r => r.fulfill({ json: { scope: 'global', total: 120, list: [row('Uno', 90), row('Dos', 80, { fr: 1 }), row('Tres', 70), row('Cuatro', 60)],
     me: { rank: { placing: false, league: 'silver', name: 'Plata', div: 'I', lp: 10 }, pos: 140, hidden: false, row: row('Yo', 10, { me: 1 }) } } }));
   await page.evaluate(() => { closeModal(); LB.data = {}; LB.scope = 'global'; });
-  await page.locator('#rkMini').click(); // el rango de la ficha del menú abre directamente la clasificación
+  await page.locator('#lbMenuBtn').click(); // el botón redondo junto a Clasificatoria abre directamente la clasificación
   await expect(page.locator('[data-rt="lb"]')).toHaveClass(/on/);
   await expect(page.locator('#rkBody .lbList .lbRow')).toHaveCount(4);
   await expect(page.locator('#rkBody .lbSub')).toHaveText('Los 100 mejores de 120 entrenadores con rango');
@@ -66,7 +69,7 @@ test('clasificación: pestañas, aviso de posicionamiento, filas con medallas, m
   // ocultarse en Configuración: la ventana lo dice
   await page.route('**/api/leaderboard*', r => r.fulfill({ json: { scope: 'global', total: 119, list: [row('Uno', 90)], me: { rank: { placing: false, league: 'silver', name: 'Plata', div: 'I', lp: 10 }, pos: 139, hidden: true, row: null } } }));
   await page.evaluate(() => { closeModal(); LB.data = {}; });
-  await page.locator('#rkMini').click();
+  await page.locator('#lbMenuBtn').click();
   await expect(page.locator('#rkBody .lbMe .lbNote')).toContainText('No apareces en la clasificación');
 });
 
